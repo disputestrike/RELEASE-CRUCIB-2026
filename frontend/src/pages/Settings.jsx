@@ -1,680 +1,870 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-  User, Mail, Lock, Bell, Shield, CreditCard,
-  Save, Check, Key, ExternalLink, Zap,
-  HelpCircle, FileText, Settings as SettingsIcon,
-  Copy, AlertCircle, Database, Download,
-  Eye, EyeOff, CheckCircle, XCircle, Wrench, ChevronRight,
+import { 
+  User, Mail, Lock, Bell, Shield, CreditCard, 
+  Moon, Sun, Save, Check, Key, ExternalLink, Zap, HelpCircle, FileText, BarChart3, Settings as SettingsIcon, Rocket, Copy, AlertCircle, Database, Download
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth, API } from '../App';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
-import { ENGINE_ROOM_ITEMS } from '../config/engineRoomNav';
 
-// Design tokens — matches dark sidebar/workspace exactly
-// T uses CSS variables so theme switching works automatically
-/* Neutrals only: primary controls use black/gray. Reserve red (danger) for delete account + destructive confirm. */
-const T = {
-  bg:      'var(--theme-bg)',
-  surface: 'var(--theme-surface)',
-  border:  'var(--theme-border-vis)',
-  text:    'var(--theme-text)',
-  muted:   'var(--theme-muted)',
-  accent:  '#1A1A1A',
-  accentH: '#000000',
-  success: '#10b981',
-  danger:  '#ef4444',
-  input:   'var(--theme-input)',
-};
+const STORAGE_THEME = 'crucibai-theme';
 
-// ── Primitives ─────────────────────────────────────────────────────────────
-const Card = ({ children }) => (
-  <div style={{ background: T.surface, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
-    {children}
-  </div>
-);
-
-const Label = ({ children }) => (
-  <p style={{ fontSize: 11, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>{children}</p>
-);
-
-const SectionTitle = ({ children }) => (
-  <p style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 16 }}>{children}</p>
-);
-
-const Field = ({ label, children }) => (
-  <div style={{ marginBottom: 14 }}>
-    <Label>{label}</Label>
-    {children}
-  </div>
-);
-
-const PwInput = ({ value, onChange, placeholder }) => {
-  const [show, setShow] = useState(false);
-  return (
-    <div style={{ position: 'relative' }}>
-      <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, pointerEvents: 'none' }} />
-      <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder || '••••••••'}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 34px', background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none' }} />
-      <button type="button" onClick={() => setShow(v => !v)}
-        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}>
-        {show ? <EyeOff size={13} /> : <Eye size={13} />}
-      </button>
-    </div>
-  );
-};
-
-const TextInput = ({ icon: Icon, value, onChange, placeholder, type = 'text', disabled }) => (
-  <div style={{ position: 'relative' }}>
-    {Icon && <Icon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, pointerEvents: 'none' }} />}
-    <input type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled}
-      style={{ width: '100%', boxSizing: 'border-box', padding: `10px 12px 10px ${Icon ? 34 : 12}px`, background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none', opacity: disabled ? 0.5 : 1 }} />
-  </div>
-);
-
-const Toggle = ({ checked, onChange }) => (
-  <label style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}>
-    <input type="checkbox" checked={checked} onChange={onChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
-    <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? T.accent : T.input, border: `1.5px solid rgba(255,255,255,0.15)`, position: 'relative', transition: 'background 0.2s' }}>
-      <div style={{ position: 'absolute', top: 2, left: checked ? 22 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
-    </div>
-  </label>
-);
-
-const Btn = ({ children, onClick, disabled, variant = 'primary', size = 'md' }) => {
-  const bg = { primary: T.accent, secondary: T.input, danger: T.danger, ghost: 'transparent' }[variant];
-  const color = variant === 'secondary' || variant === 'ghost' ? T.text : '#fff';
-  const border = variant === 'ghost' || variant === 'secondary' ? `1px solid ${T.border}` : 'none';
-  const pad = { sm: '6px 14px', md: '9px 18px', lg: '11px 24px' }[size];
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: pad, borderRadius: 8, border, background: bg, color, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'opacity 0.15s' }}>
-      {children}
-    </button>
-  );
-};
-
-const Row = ({ label, desc, children }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${T.border}` }}>
-    <div style={{ flex: 1, paddingRight: 16 }}>
-      <p style={{ fontSize: 14, fontWeight: 500, color: T.text }}>{label}</p>
-      {desc && <p style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{desc}</p>}
-    </div>
-    {children}
-  </div>
-);
-
-const Msg = ({ type, text }) => {
-  if (!text) return null;
-  const c = { success: T.success, error: T.danger, info: '#737373' }[type] || T.danger;
-  const Icon = type === 'success' ? CheckCircle : XCircle;
-  return (
-    <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 8, background: `${c}18`, border: `1px solid ${c}40`, marginBottom: 14 }}>
-      <Icon size={14} style={{ color: c, flexShrink: 0, marginTop: 1 }} />
-      <p style={{ fontSize: 13, color: c }}>{text}</p>
-    </div>
-  );
-};
-
-// ── Tabs ───────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'account',       label: 'Account',          icon: User },
-  { id: 'security',      label: 'Security',          icon: Shield },
-  { id: 'billing',       label: 'Billing & Usage',   icon: CreditCard },
-  { id: 'notifications', label: 'Notifications',     icon: Bell },
-  { id: 'data',          label: 'Data & Privacy',    icon: Database },
-  { id: 'general',       label: 'General',           icon: SettingsIcon },
-  { id: 'engine',        label: 'Engine room',       icon: Wrench },
-];
-
-// ── Main ───────────────────────────────────────────────────────────────────
 const Settings = () => {
-  const { user, token, refreshUser, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [tab, setTab] = useState(() => {
-    const t = location.state?.openTab;
-    return TABS.some((x) => x.id === t) ? t : 'account';
-  });
-  const engineListRef = useRef(null);
-  const focusEngineHref = typeof location.state?.focusEngineHref === 'string' ? location.state.focusEngineHref : null;
-  const h = token ? { Authorization: `Bearer ${token}` } : {};
+  const [deleteAccountModal, setDeleteAccountModal] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState(null);
+  const [activeTab, setActiveTab] = useState(location.state?.openTab || 'profile');
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const t = location.state?.openTab;
-    if (t && TABS.some((x) => x.id === t)) setTab(t);
-  }, [location.state, location.key]);
-
-  /** Sidebar “Runs” / “Marketplace” land here first — scroll the matching Engine room row into view */
-  useLayoutEffect(() => {
-    if (tab !== 'engine' || !focusEngineHref || !engineListRef.current) return;
-    const el = engineListRef.current.querySelector(`[data-engine-href="${focusEngineHref}"]`);
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [tab, focusEngineHref, location.key]);
-
-  // Theme system — real working toggle
-  const [theme, setTheme] = useState(() => localStorage.getItem('crucibai-theme') || 'dark');
-  const toggleTheme = (newTheme) => {
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('crucibai-theme', newTheme);
-  };
-
-  // Dynamic tokens - now both T and TH use CSS variables that auto-respond to data-theme
-  const isDark = theme === 'dark';
-  const TH = {
-    bg:      'var(--theme-bg)',
-    surface: 'var(--theme-surface)',
-    border:  'var(--theme-border-vis)',
-    text:    'var(--theme-text)',
-    muted:   'var(--theme-muted)',
-    input:   'var(--theme-input)',
-    accent:  '#1A1A1A',
-  };
-
-  // Account
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileMsg, setProfileMsg] = useState(null);
-
-  // Security — password
-  const [curPw, setCurPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [conPw, setConPw] = useState('');
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwMsg, setPwMsg] = useState(null);
-
-  // Security — MFA
-  const [mfaOn, setMfaOn] = useState(false);
-  const [mfaStep, setMfaStep] = useState(null);
-  const [mfaQr, setMfaQr] = useState(null);
-  const [mfaSec, setMfaSec] = useState(null);
+  const [deployTokens, setDeployTokens] = useState({ vercel: '', netlify: '' });
+  const [deployTokensStatus, setDeployTokensStatus] = useState({ has_vercel: false, has_netlify: false });
+  const [deploySaving, setDeploySaving] = useState(false);
+  const [deploySaved, setDeploySaved] = useState(false);
+  const [language, setLanguage] = useState('en');
+  const [mfaStatus, setMfaStatus] = useState(false);
+  const [mfaSetupStep, setMfaSetupStep] = useState(null);
+  const [mfaQrCode, setMfaQrCode] = useState(null);
+  const [mfaSecret, setMfaSecret] = useState(null);
   const [mfaCode, setMfaCode] = useState('');
-  const [mfaBack, setMfaBack] = useState([]);
-  const [mfaDPw, setMfaDPw] = useState('');
-  const [mfaBusy, setMfaBusy] = useState(false);
-  const [mfaMsg, setMfaMsg] = useState(null);
+  const [mfaBackupCodes, setMfaBackupCodes] = useState([]);
+  const [mfaDisablePassword, setMfaDisablePassword] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState(null);
+  const [capabilities, setCapabilities] = useState({ sandbox_available: null, sandbox_default: true });
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    notifications: {
+      email: true,
+      push: false,
+      marketing: false,
+      taskComplete: true
+    }
+  });
 
-  // Deploy tokens
-  const [dTokens, setDTokens] = useState({ vercel: '', netlify: '', github: '', railway: '' });
-  const [dStatus, setDStatus] = useState({ has_vercel: false, has_netlify: false });
-  const [dSaving, setDSaving] = useState(false);
-  const [dMsg, setDMsg] = useState(null);
+  // Force light theme only — no dark mode anywhere
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem(STORAGE_THEME, 'light');
+  }, []);
 
-  // Notifications
-  const [notifs, setNotifs] = useState({ email: true, push: false, marketing: false, task_complete: true });
-  const [nSaving, setNSaving] = useState(false);
-  const [nMsg, setNMsg] = useState(null);
-
-  // Privacy
-  const [priv, setPriv] = useState({ analytics: true, training: true, crash: true });
-  const [pSaving, setPSaving] = useState(false);
-  const [pMsg, setPMsg] = useState(null);
-
-  // Billing
-  const [usage, setUsage] = useState(null);
-
-  // Delete
-  const [delModal, setDelModal] = useState(false);
-  const [delPw, setDelPw] = useState('');
-  const [delBusy, setDelBusy] = useState(false);
-  const [delErr, setDelErr] = useState(null);
-
-  useEffect(() => { setName(user?.name || ''); setEmail(user?.email || ''); }, [user]);
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   useEffect(() => {
-    if (!token) return;
-    if (tab === 'security') {
-      axios.get(`${API}/mfa/status`, { headers: h }).then(r => setMfaOn(r.data.mfa_enabled)).catch(() => {});
-    }
-    if (tab === 'account' || tab === 'security') {
-      axios.get(`${API}/users/me/deploy-tokens`, { headers: h }).then(r => setDStatus(r.data)).catch(() => {});
-    }
-    if (tab === 'billing') {
-      axios.get(`${API}/tokens/usage`, { headers: h }).then(r => setUsage(r.data)).catch(() => {});
-    }
-  }, [tab, token]);
+    if (location.state?.openTab) setActiveTab(location.state.openTab);
+  }, [location.state?.openTab]);
 
-  const msg = (setter, type, text, ms = 3500) => {
-    setter({ type, text });
-    setTimeout(() => setter(null), ms);
-  };
 
-  const saveProfile = async () => {
-    if (!name.trim()) { msg(setProfileMsg, 'error', 'Name cannot be empty'); return; }
-    setProfileSaving(true);
+
+  useEffect(() => {
+    if (token && activeTab === 'deploy') {
+      axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => setDeployTokensStatus(r.data))
+        .catch((e) => logApiError('Settings', e));
+    }
+  }, [token, activeTab]);
+
+  useEffect(() => {
+    if (token && activeTab === 'security') {
+      axios.get(`${API}/mfa/status`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => setMfaStatus(r.data.mfa_enabled))
+        .catch((e) => logApiError('Settings', e));
+    }
+  }, [token, activeTab]);
+
+  useEffect(() => {
+    if (token && activeTab === 'general') {
+      axios.get(`${API}/settings/capabilities`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => setCapabilities(r.data))
+        .catch((e) => { logApiError('Settings capabilities', e); setCapabilities({ sandbox_available: false, sandbox_default: true }); });
+    }
+  }, [token, activeTab]);
+
+  const handleMfaSetupStart = async () => {
+    setMfaError(null);
+    setMfaLoading(true);
     try {
-      await axios.patch(`${API}/users/me`, { name: name.trim(), email: email.trim() }, { headers: h });
-      if (refreshUser) await refreshUser();
-      msg(setProfileMsg, 'success', 'Profile saved.');
-    } catch (e) { msg(setProfileMsg, 'error', e.response?.data?.detail || 'Save failed'); }
-    finally { setProfileSaving(false); }
+      const r = await axios.post(`${API}/mfa/setup`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setMfaQrCode(r.data.qr_code);
+      setMfaSecret(r.data.secret);
+      setMfaSetupStep('qr');
+    } catch (e) {
+      setMfaError(e.response?.data?.detail || 'Failed to setup MFA');
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
-  const changePw = async () => {
-    if (!curPw || !newPw || !conPw) { msg(setPwMsg, 'error', 'All fields required'); return; }
-    if (newPw !== conPw) { msg(setPwMsg, 'error', 'Passwords do not match'); return; }
-    if (newPw.length < 8) { msg(setPwMsg, 'error', 'Password must be at least 8 characters'); return; }
-    setPwSaving(true);
+  const handleMfaVerify = async () => {
+    if (mfaCode.length !== 6) {
+      setMfaError('Enter 6 digits');
+      return;
+    }
+    setMfaError(null);
+    setMfaLoading(true);
     try {
-      await axios.post(`${API}/users/me/change-password`, { current_password: curPw, new_password: newPw }, { headers: h });
-      msg(setPwMsg, 'success', 'Password updated.');
-      setCurPw(''); setNewPw(''); setConPw('');
-    } catch (e) { msg(setPwMsg, 'error', e.response?.data?.detail || 'Incorrect password'); }
-    finally { setPwSaving(false); }
+      const r = await axios.post(`${API}/mfa/verify`, { token: mfaCode }, { headers: { Authorization: `Bearer ${token}` } });
+      setMfaBackupCodes(r.data.backup_codes || []);
+      setMfaSetupStep('done');
+      setMfaStatus(true);
+      setMfaCode('');
+    } catch (e) {
+      setMfaError(e.response?.data?.detail || 'Invalid code');
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
-  const saveDeploy = async () => {
+  const handleMfaDisable = async () => {
+    setMfaError(null);
+    setMfaLoading(true);
+    try {
+      await axios.post(`${API}/mfa/disable`, { password: mfaDisablePassword }, { headers: { Authorization: `Bearer ${token}` } });
+      setMfaStatus(false);
+      setMfaSetupStep(null);
+      setMfaDisablePassword('');
+    } catch (e) {
+      setMfaError(e.response?.data?.detail || 'Failed to disable');
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+
+
+  const handleSaveDeployTokens = async () => {
     const body = {};
-    if (dTokens.vercel.trim()) body.vercel = dTokens.vercel.trim();
-    if (dTokens.netlify.trim()) body.netlify = dTokens.netlify.trim();
-    if (!Object.keys(body).length) return;
-    setDSaving(true);
+    if (deployTokens.vercel.trim()) body.vercel = deployTokens.vercel.trim();
+    if (deployTokens.netlify.trim()) body.netlify = deployTokens.netlify.trim();
+    if (Object.keys(body).length === 0) return;
+    setDeploySaving(true);
+    setDeploySaved(false);
     try {
-      await axios.patch(`${API}/users/me/deploy-tokens`, body, { headers: h });
-      setDStatus(p => ({ has_vercel: p.has_vercel || !!body.vercel, has_netlify: p.has_netlify || !!body.netlify }));
-      setDTokens({ vercel: '', netlify: '' });
-      msg(setDMsg, 'success', 'Deploy tokens saved.');
-    } catch (e) { msg(setDMsg, 'error', 'Failed to save'); }
-    finally { setDSaving(false); }
+      await axios.patch(`${API}/users/me/deploy-tokens`, body, { headers: { Authorization: `Bearer ${token}` } });
+      setDeploySaved(true);
+      setDeployTokensStatus(prev => ({
+        has_vercel: prev.has_vercel || !!body.vercel,
+        has_netlify: prev.has_netlify || !!body.netlify,
+      }));
+      setDeployTokens({ vercel: '', netlify: '' });
+      setTimeout(() => setDeploySaved(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeploySaving(false);
+    }
   };
 
-  const saveNotifs = async () => {
-    setNSaving(true);
-    try {
-      await axios.patch(`${API}/users/me/notifications`, notifs, { headers: h }).catch(() => {});
-      msg(setNMsg, 'success', 'Preferences saved.');
-    } finally { setNSaving(false); }
-  };
-
-  const savePriv = async () => {
-    setPSaving(true);
-    try {
-      await axios.patch(`${API}/users/me/privacy`, priv, { headers: h }).catch(() => {});
-      msg(setPMsg, 'success', 'Privacy settings saved.');
-    } finally { setPSaving(false); }
-  };
-
-  const exportData = async () => {
-    try { await axios.post(`${API}/users/me/export`, {}, { headers: h }); } catch (_) { void 0; }
-    alert('Export requested. You will receive an email with your download link within 24 hours.');
-  };
-
-  const mfaStart = async () => {
-    setMfaBusy(true); setMfaMsg(null);
-    try { const r = await axios.post(`${API}/mfa/setup`, {}, { headers: h }); setMfaQr(r.data.qr_code); setMfaSec(r.data.secret); setMfaStep('qr'); }
-    catch (e) { msg(setMfaMsg, 'error', e.response?.data?.detail || 'Setup failed'); }
-    finally { setMfaBusy(false); }
-  };
-
-  const mfaVerify = async () => {
-    if (mfaCode.length !== 6) { msg(setMfaMsg, 'error', 'Enter 6 digits'); return; }
-    setMfaBusy(true); setMfaMsg(null);
-    try { const r = await axios.post(`${API}/mfa/verify`, { token: mfaCode }, { headers: h }); setMfaBack(r.data.backup_codes || []); setMfaStep('done'); setMfaOn(true); setMfaCode(''); }
-    catch (e) { msg(setMfaMsg, 'error', e.response?.data?.detail || 'Invalid code'); }
-    finally { setMfaBusy(false); }
-  };
-
-  const mfaDisable = async () => {
-    setMfaBusy(true); setMfaMsg(null);
-    try { await axios.post(`${API}/mfa/disable`, { password: mfaDPw }, { headers: h }); setMfaOn(false); setMfaStep(null); setMfaDPw(''); }
-    catch (e) { msg(setMfaMsg, 'error', e.response?.data?.detail || 'Failed'); }
-    finally { setMfaBusy(false); }
-  };
-
-  const deleteAccount = async () => {
-    setDelBusy(true); setDelErr(null);
-    try { await axios.post(`${API}/users/me/delete`, { password: delPw }, { headers: h }); logout(); navigate('/'); }
-    catch (e) { setDelErr(e.response?.data?.detail || 'Delete failed'); }
-    finally { setDelBusy(false); }
-  };
-
-  const credits = user?.credit_balance ?? Math.floor((user?.token_balance ?? 0) / 1000);
+  const sidebarNav = [
+    { id: 'profile', name: 'Account', icon: User },
+    { id: 'general', name: 'General', icon: SettingsIcon },
+    { id: 'notifications', name: 'Notifications', icon: Bell },
+    { id: 'security', name: 'Security', icon: Shield },
+    { id: 'billing', name: 'Billing & Usage', icon: CreditCard },
+    { id: 'data', name: 'Data & Privacy', icon: Database },
+  ];
 
   return (
-    <div style={{ display: 'flex', gap: 32, maxWidth: 880 }}>
-
-      {/* Nav */}
-      <aside style={{ width: 196, flexShrink: 0 }}>
-        <p style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 18 }}>Settings</p>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {TABS.map(t => {
-            const active = tab === t.id;
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: 'none', background: active ? 'rgba(255,255,255,0.07)' : 'none', color: active ? T.text : T.muted, fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', borderLeft: `2px solid ${active ? 'var(--theme-text)' : 'transparent'}` }}>
-                <t.icon size={14} />{t.label}
-              </button>
-            );
-          })}
+    <div className="flex flex-col md:flex-row gap-8 max-w-5xl" data-testid="settings">
+      {/* Left sidebar (Manus-style) */}
+      <aside className="md:w-56 shrink-0">
+        <h2 className="text-lg font-semibold mb-4">Settings</h2>
+        <nav className="space-y-1">
+          {sidebarNav.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${
+                activeTab === tab.id
+                  ? 'bg-[#F3F1ED] text-[#1A1A1A] border border-black/10'
+                  : 'text-[#666666] hover:bg-[#F3F1ED] hover:text-[#1A1A1A] border border-transparent'
+              }`}
+              data-testid={`settings-tab-${tab.id}`}
+            >
+              <tab.icon className="w-5 h-5 shrink-0" />
+              {tab.name}
+            </button>
+          ))}
         </nav>
       </aside>
 
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-8">
 
-        {/* ACCOUNT */}
-        {tab === 'account' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Profile</SectionTitle>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, padding: '14px', background: T.input, borderRadius: 10 }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#3D3D3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(user?.name?.[0] || 'G').toUpperCase()}</div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{user?.name || 'Guest'}</p>
-                  <p style={{ fontSize: 12, color: T.muted }}>{user?.email || '—'}</p>
-                  <p style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{user?.plan ? `${user.plan.charAt(0).toUpperCase()}${user.plan.slice(1)} plan` : 'Free plan'}{user?.created_at ? ` · Since ${new Date(user.created_at).toLocaleDateString()}` : ''}</p>
-                </div>
-              </div>
-              <Msg type={profileMsg?.type} text={profileMsg?.text} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <Field label="Name"><TextInput icon={User} value={name} onChange={e => setName(e.target.value)} placeholder="Your name" /></Field>
-                <Field label="Email"><TextInput icon={Mail} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" /></Field>
-              </div>
-              <Btn onClick={saveProfile} disabled={profileSaving}>{profileSaving ? 'Saving…' : <><Save size={13} /> Save profile</>}</Btn>
-            </Card>
-
-            <Card>
-              <SectionTitle>Deploy integrations</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 8 }}>Connect Vercel or Netlify to deploy builds directly from the workspace without downloading a ZIP.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16, padding: '10px 12px', background: T.input, borderRadius: 8, border: `1px solid rgba(255,255,255,0.1)` }}>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Vercel token at <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>vercel.com/account/tokens</a></p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Netlify token at <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>app.netlify.com/user/applications</a></p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your GitHub token at <a href="https://github.com/settings/tokens/new?scopes=repo&description=CrucibAI+Git+Sync" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>github.com/settings/tokens</a> (select <code>repo</code> scope)</p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Railway token at <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>railway.app/account/tokens</a></p>
-              </div>
-              <Msg type={dMsg?.type} text={dMsg?.text} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                <Field label={<>Vercel token {dStatus.has_vercel && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
-                  <TextInput icon={Key} type="password" value={dTokens.vercel} onChange={e => setDTokens(p => ({ ...p, vercel: e.target.value }))} placeholder={dStatus.has_vercel ? 'Leave blank to keep existing' : 'Paste Vercel token'} />
-                </Field>
-                <Field label={<>Netlify token {dStatus.has_netlify && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
-                  <TextInput icon={Key} type="password" value={dTokens.netlify} onChange={e => setDTokens(p => ({ ...p, netlify: e.target.value }))} placeholder={dStatus.has_netlify ? 'Leave blank to keep existing' : 'Paste Netlify token'} />
-                </Field>
-                <Field label={<>GitHub token {dStatus.has_github && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
-                  <TextInput icon={Key} type="password" value={dTokens.github} onChange={e => setDTokens(p => ({ ...p, github: e.target.value }))} placeholder={dStatus.has_github ? 'Leave blank to keep existing' : 'Paste GitHub personal access token'} />
-                </Field>
-                <Field label={<>Railway token {dStatus.has_railway && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
-                  <TextInput icon={Key} type="password" value={dTokens.railway} onChange={e => setDTokens(p => ({ ...p, railway: e.target.value }))} placeholder={dStatus.has_railway ? 'Leave blank to keep existing' : 'Paste Railway API token'} />
-                </Field>
-              </div>
-              <Btn onClick={saveDeploy} disabled={dSaving || (!dTokens.vercel && !dTokens.netlify && !dTokens.github && !dTokens.railway)}>{dSaving ? 'Saving…' : <><Save size={13} /> Save tokens</>}</Btn>
-            </Card>
-
-            <Card>
-              <SectionTitle>Danger zone</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>Permanently delete your account and all data. This cannot be undone.</p>
-              <Btn variant="danger" onClick={() => { setDelModal(true); setDelErr(null); setDelPw(''); }}>Delete account</Btn>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* SECURITY */}
-        {tab === 'security' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Change password</SectionTitle>
-              <Msg type={pwMsg?.type} text={pwMsg?.text} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                <Field label="Current password"><PwInput value={curPw} onChange={e => setCurPw(e.target.value)} /></Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Field label="New password"><PwInput value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min 8 characters" /></Field>
-                  <Field label="Confirm new password"><PwInput value={conPw} onChange={e => setConPw(e.target.value)} /></Field>
-                </div>
-              </div>
-              <Btn onClick={changePw} disabled={pwSaving || !curPw || !newPw || !conPw}>{pwSaving ? 'Updating…' : <><Lock size={13} /> Update password</>}</Btn>
-            </Card>
-
-            <Card>
-              <SectionTitle>Two-factor authentication</SectionTitle>
-              <Msg type={mfaMsg?.type} text={mfaMsg?.text} />
-              {!mfaStep && !mfaOn && (<><p style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>Protect your account with an authenticator app (Google Authenticator, Authy, etc.)</p><Btn onClick={mfaStart} disabled={mfaBusy}>{mfaBusy ? 'Setting up…' : <><Shield size={13} /> Enable 2FA</>}</Btn></>)}
-              {mfaOn && !mfaStep && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 14, background: `${T.success}18`, borderRadius: 8, border: `1px solid ${T.success}40` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><CheckCircle size={16} style={{ color: T.success }} /><div><p style={{ fontSize: 14, fontWeight: 600, color: T.text }}>2FA enabled</p><p style={{ fontSize: 12, color: T.muted }}>Your account is protected</p></div></div>
-                  <Btn variant="ghost" size="sm" onClick={() => setMfaStep('disable')}>Disable</Btn>
-                </div>
-              )}
-              {mfaStep === 'disable' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <PwInput value={mfaDPw} onChange={e => setMfaDPw(e.target.value)} placeholder="Enter your password to confirm" />
-                  <div style={{ display: 'flex', gap: 8 }}><Btn variant="danger" onClick={mfaDisable} disabled={mfaBusy || !mfaDPw}>{mfaBusy ? 'Disabling…' : 'Disable 2FA'}</Btn><Btn variant="ghost" onClick={() => { setMfaStep(null); setMfaDPw(''); setMfaMsg(null); }}>Cancel</Btn></div>
-                </div>
-              )}
-              {mfaStep === 'qr' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <p style={{ fontSize: 13, color: T.muted }}>Scan with your authenticator app, then enter the 6-digit code.</p>
-                  {mfaQr && <img src={mfaQr} alt="QR" style={{ width: 156, height: 156, borderRadius: 8, border: `1.5px solid rgba(255,255,255,0.15)`, padding: 8, background: '#fff' }} />}
-                  {mfaSec && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.input, borderRadius: 6, border: `1.5px solid rgba(255,255,255,0.15)` }}><code style={{ fontSize: 12, color: T.muted, flex: 1, wordBreak: 'break-all' }}>{mfaSec}</code><button type="button" onClick={() => navigator.clipboard.writeText(mfaSec)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}><Copy size={12} /></button></div>}
-                  <input value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" style={{ padding: '10px', background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 22, textAlign: 'center', letterSpacing: '0.3em', fontFamily: 'monospace', outline: 'none' }} />
-                  <div style={{ display: 'flex', gap: 8 }}><Btn onClick={mfaVerify} disabled={mfaBusy || mfaCode.length !== 6}>{mfaBusy ? 'Verifying…' : 'Verify'}</Btn><Btn variant="ghost" onClick={() => { setMfaStep(null); setMfaQr(null); setMfaSec(null); setMfaCode(''); setMfaMsg(null); }}>Cancel</Btn></div>
-                </div>
-              )}
-              {mfaStep === 'done' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <Msg type="success" text="2FA enabled. Save these backup codes somewhere safe — you'll need them if you lose your device." />
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {mfaBack.map((c, i) => <div key={i} style={{ padding: '4px 10px', background: T.input, borderRadius: 6, fontFamily: 'monospace', fontSize: 12, color: T.muted, display: 'flex', alignItems: 'center', gap: 6 }}>{c}<button type="button" onClick={() => navigator.clipboard.writeText(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}><Copy size={11} /></button></div>)}
-                  </div>
-                  <Btn onClick={() => { setMfaStep(null); setMfaBack([]); }}>Done</Btn>
-                </div>
-              )}
-            </Card>
-          </motion.div>
-        )}
-
-        {/* BILLING */}
-        {tab === 'billing' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Credits & Usage</SectionTitle>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-                {[
-                  { label: 'Credits remaining', value: credits.toLocaleString(), color: T.text },
-                  { label: 'Credits used', value: (usage?.credits_used || 0).toLocaleString(), color: T.text },
-                  { label: 'Current plan', value: (user?.plan || 'Free').charAt(0).toUpperCase() + (user?.plan || 'free').slice(1), color: T.text },
-                ].map(item => (
-                  <div key={item.label} style={{ padding: 16, background: T.input, borderRadius: 10, textAlign: 'center' }}>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: item.color }}>{item.value}</p>
-                    <p style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{item.label}</p>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <Link to="/app/tokens" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><Zap size={13} /> Buy credits</Link>
-                <Link to="/pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><FileText size={13} /> View plans</Link>
-              </div>
-            </Card>
-            <Card>
-              <SectionTitle>Payment</SectionTitle>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', background: T.input, borderRadius: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <CreditCard size={18} style={{ color: T.muted }} />
-                  <div><p style={{ fontSize: 13, fontWeight: 500, color: T.text }}>No payment method on file</p><p style={{ fontSize: 12, color: T.muted }}>Credits are prepaid and never expire</p></div>
-                </div>
-                <Link to="/app/tokens" style={{ fontSize: 13, color: T.text, textDecoration: 'underline', fontWeight: 500 }}>Add card →</Link>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* NOTIFICATIONS */}
-        {tab === 'notifications' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Notification preferences</SectionTitle>
-              <Msg type={nMsg?.type} text={nMsg?.text} />
-              {[
-                { key: 'email',         label: 'Email notifications',  desc: 'Build complete, errors, and account alerts' },
-                { key: 'push',          label: 'Browser notifications', desc: 'Real-time build progress notifications' },
-                { key: 'task_complete', label: 'Build complete',        desc: 'Notify when an agent build finishes' },
-                { key: 'marketing',     label: 'Product updates',       desc: 'New features and release notes' },
-              ].map(item => (
-                <Row key={item.key} label={item.label} desc={item.desc}>
-                  <Toggle checked={notifs[item.key]} onChange={e => setNotifs(p => ({ ...p, [item.key]: e.target.checked }))} />
-                </Row>
-              ))}
-              <div style={{ marginTop: 16 }}><Btn onClick={saveNotifs} disabled={nSaving}>{nSaving ? 'Saving…' : <><Save size={13} /> Save preferences</>}</Btn></div>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* DATA & PRIVACY */}
-        {tab === 'data' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Export your data</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>Download all your projects, prompts, and account data as a ZIP archive. You'll receive an email with the download link within 24 hours.</p>
-              <Btn onClick={exportData}><Download size={13} /> Request export</Btn>
-            </Card>
-            <Card>
-              <SectionTitle>Privacy controls</SectionTitle>
-              <Msg type={pMsg?.type} text={pMsg?.text} />
-              {[
-                { key: 'analytics', label: 'Usage analytics',  desc: 'Allow anonymous usage data to improve CrucibAI' },
-                { key: 'training',  label: 'Model training',   desc: 'Allow prompts (anonymized) to help improve model quality' },
-                { key: 'crash',     label: 'Crash reports',    desc: 'Send crash reports to help fix bugs faster' },
-              ].map(item => (
-                <Row key={item.key} label={item.label} desc={item.desc}>
-                  <Toggle checked={priv[item.key]} onChange={e => setPriv(p => ({ ...p, [item.key]: e.target.checked }))} />
-                </Row>
-              ))}
-              <div style={{ marginTop: 16 }}><Btn onClick={savePriv} disabled={pSaving}>{pSaving ? 'Saving…' : <><Save size={13} /> Save settings</>}</Btn></div>
-            </Card>
-            <Card>
-              <SectionTitle>Data retention</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 12 }}>Build logs and chat history are kept for 90 days. Projects are kept indefinitely until you delete them.</p>
-              <Link to="/privacy" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.text, textDecoration: 'underline' }}>Read our privacy policy <ExternalLink size={12} /></Link>
-            </Card>
-            <Card>
-              <SectionTitle>Help</SectionTitle>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <a href="/learn" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><FileText size={13} /> Docs</a>
-                <a href="mailto:support@crucibai.com" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><HelpCircle size={13} /> Contact support</a>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* GENERAL */}
-        {tab === 'general' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Appearance</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>Choose your preferred theme. Your selection is saved to your browser.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { id: 'dark',  label: 'Dark theme',  desc: 'Easy on the eyes. Best for long sessions.', dot: '#18181B' },
-                  { id: 'light', label: 'Light theme',  desc: 'High contrast. Great in bright environments.', dot: '#F5F5F4' },
-                ].map(opt => {
-                  const active = theme === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => toggleTheme(opt.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 14,
-                        padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
-                        background: active ? 'rgba(255,255,255,0.08)' : T.input,
-                        border: `2px solid ${active ? 'var(--theme-text)' : 'rgba(255,255,255,0.14)'}`,
-                        textAlign: 'left', transition: 'all 0.15s',
-                      }}
-                    >
-                      {/* Theme preview swatch */}
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: opt.dot, border: '2px solid rgba(255,255,255,0.15)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 16, height: 2, borderRadius: 1, background: opt.id === 'dark' ? '#71717a' : '#9ca3af' }} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 2 }}>{opt.label}</p>
-                        <p style={{ fontSize: 12, color: T.muted }}>{opt.desc}</p>
-                      </div>
-                      {/* Selection indicator */}
-                      <div style={{
-                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                        border: `2px solid ${active ? (opt.id === 'dark' ? '#E5E5E5' : '#1A1A1A') : 'rgba(255,255,255,0.2)'}`,
-                        background: active ? (opt.id === 'dark' ? '#E5E5E5' : '#1A1A1A') : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: opt.id === 'dark' ? '#1A1A1A' : '#fff' }} />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ fontSize: 12, color: T.muted, marginTop: 12 }}>
-                Currently active: <strong style={{ color: T.text }}>{theme === 'dark' ? 'Dark theme' : 'Light theme'}</strong>
-              </p>
-            </Card>
-            <Card>
-              <SectionTitle>Language</SectionTitle>
+      {/* General Tab (language + appearance) */}
+      {activeTab === 'general' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">General</h3>
+          <div className="space-y-8">
+            <div>
+              <label className="block text-sm font-medium mb-2">Language</label>
               <select
-                style={{
-                  padding: '10px 12px', borderRadius: 8, fontSize: 13,
-                  background: T.input, color: T.text, outline: 'none', width: 200,
-                  border: `1.5px solid rgba(255,255,255,0.2)`,
-                  cursor: 'pointer',
-                }}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full max-w-xs px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
               >
                 <option value="en">English</option>
               </select>
-              <p style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>More languages coming soon.</p>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* ENGINE ROOM — power-user links (moved from sidebar) */}
-        {tab === 'engine' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Card>
-              <SectionTitle>Engine room</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>
-                Advanced tools, integrations, and internal routes. Same destinations as before; they now live here to keep the home sidebar calm.
-              </p>
-              <div ref={engineListRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {ENGINE_ROOM_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    data-engine-href={item.href}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', borderRadius: 8, textDecoration: 'none',
-                      color: T.text, fontSize: 13, background: T.input,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <item.icon size={16} style={{ color: T.muted, flexShrink: 0 }} />
-                    <span style={{ flex: 1 }}>{item.label}</span>
-                    {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.muted, border: `1px solid ${T.border}`, padding: '2px 6px', borderRadius: 4 }}>Beta</span>}
-                    <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
-                  </Link>
-                ))}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3">Appearance</label>
+              <p className="text-sm text-gray-500 mb-4">CrucibAI uses a light theme only. White backgrounds, light grey borders, orange accent.</p>
+              <div className="flex items-center gap-2 p-4 rounded-xl border border-gray-200 bg-[#FAFAF8]">
+                <Sun className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-800">Light theme</span>
               </div>
-            </Card>
-          </motion.div>
-        )}
-
-      </div>
-
-      {/* DELETE MODAL */}
-      {delModal && (
-        <div onClick={() => !delBusy && setDelModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 14, padding: 28, maxWidth: 400, width: '90%' }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 8 }}>Delete account</p>
-            <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>This permanently deletes your account and all projects. Enter your password to confirm.</p>
-            <PwInput value={delPw} onChange={e => setDelPw(e.target.value)} placeholder="Your password" />
-            {delErr && <p style={{ fontSize: 12, color: T.danger, marginTop: 8 }}>{delErr}</p>}
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
-              <Btn variant="ghost" onClick={() => setDelModal(false)} disabled={delBusy}>Cancel</Btn>
-              <Btn variant="danger" onClick={deleteAccount} disabled={delBusy || !delPw.trim()}>{delBusy ? 'Deleting…' : 'Delete permanently'}</Btn>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Sandbox (runs)</label>
+              <p className="text-sm text-gray-500 mb-2">Tests and security checks run in an isolated environment when Docker is available.</p>
+              <div className="flex items-center gap-2 text-sm">
+                {capabilities.sandbox_available === true && (
+                  <span className="text-[#1A1A1A]" data-testid="sandbox-available">Sandbox (Docker): available</span>
+                )}
+                {capabilities.sandbox_available === false && (
+                  <span className="text-[#666666]">Sandbox (Docker): not available — runs use host</span>
+                )}
+                {capabilities.sandbox_available === null && activeTab === 'general' && (
+                  <span className="text-gray-500">Checking…</span>
+                )}
+                {capabilities.sandbox_default !== undefined && capabilities.sandbox_available === true && (
+                  <span className="text-gray-500">· Default: {capabilities.sandbox_default ? 'on' : 'off'}</span>
+                )}
+              </div>
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* Usage Tab */}
+      {activeTab === 'usage' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Usage</h3>
+          <div className="space-y-6">
+            <div className="p-4 bg-[#FAFAF8] rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-[#666666]">Token balance</span>
+                <span className="font-mono font-semibold" data-testid="settings-token-balance">
+                  {(user?.token_balance ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Prepaid tokens for AI builds. Usage is deducted per request.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/app/tokens"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition"
+              >
+                <Zap className="w-4 h-4" /> Buy more tokens
+              </Link>
+              <Link
+                to="/pricing"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#EBE8E2] hover:bg-[#E0DCD5] rounded-lg font-medium text-sm transition"
+              >
+                <FileText className="w-4 h-4" /> Pricing plans
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Get help Tab */}
+      {activeTab === 'help' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Get help</h3>
+          <div className="space-y-4">
+            <a
+              href="/learn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 bg-[#FAFAF8] rounded-lg hover:bg-[#F3F1ED] transition"
+            >
+              <FileText className="w-5 h-5 text-[#1A1A1A]" />
+              <div>
+                <p className="font-medium">Documentation</p>
+                <p className="text-sm text-gray-500">Guides, shortcuts, and how-tos</p>
+              </div>
+              <ExternalLink className="w-4 h-4 ml-auto text-gray-500" />
+            </a>
+            <a
+              href="mailto:support@crucibai.com"
+              className="flex items-center gap-3 p-4 bg-[#FAFAF8] rounded-lg hover:bg-[#F3F1ED] transition"
+            >
+              <HelpCircle className="w-5 h-5 text-[#1A1A1A]" />
+              <div>
+                <p className="font-medium">Contact support</p>
+                <p className="text-sm text-gray-500">support@crucibai.com</p>
+              </div>
+              <ExternalLink className="w-4 h-4 ml-auto text-gray-500" />
+            </a>
+          </div>
+        </motion.div>
+      )}
+
+      {/* API & Environment Tab */}
+
+
+      {/* Deploy integrations Tab */}
+      {activeTab === 'deploy' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-2">One-click deploy</h3>
+          <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify without downloading a ZIP. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-[#1A1A1A] text-xs">(saved)</span>}</label>
+              <input
+                type="password"
+                value={deployTokens.vercel}
+                onChange={(e) => setDeployTokens(prev => ({ ...prev, vercel: e.target.value }))}
+                placeholder={deployTokensStatus.has_vercel ? "Leave blank to keep existing" : "Paste Vercel token"}
+                className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-[#1A1A1A] text-xs">(saved)</span>}</label>
+              <input
+                type="password"
+                value={deployTokens.netlify}
+                onChange={(e) => setDeployTokens(prev => ({ ...prev, netlify: e.target.value }))}
+                placeholder={deployTokensStatus.has_netlify ? "Leave blank to keep existing" : "Paste Netlify token"}
+                className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={handleSaveDeployTokens}
+              disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
+            >
+              {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Profile Tab */}
+      {activeTab === 'profile' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Profile Information</h3>
+          
+          <div className="space-y-6">
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-white" style={{ background: '#E05A25' }}>
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <p className="font-medium">{user?.name}</p>
+                <p className="text-sm text-gray-500">{user?.email}</p>
+                <p className="text-xs text-gray-600 mt-1">Member since {new Date(user?.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full pl-12 pr-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+                    data-testid="settings-name-input"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full pl-12 pr-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+                    data-testid="settings-email-input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Current Plan</p>
+                  <p className="text-sm text-[#666666] capitalize">{user?.plan || 'Free'}</p>
+                </div>
+                <a href="/app/tokens" className="text-[#1A1A1A] hover:underline text-sm">
+                  Upgrade Plan →
+                </a>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Notifications Tab */}
+      {activeTab === 'notifications' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Notification Preferences</h3>
+          
+          <div className="space-y-4">
+            {[
+              { key: 'email', label: 'Email Notifications', desc: 'Receive updates about your projects via email' },
+              { key: 'push', label: 'Push Notifications', desc: 'Get real-time browser notifications' },
+              { key: 'marketing', label: 'Marketing Emails', desc: 'Receive tips, updates, and promotional content' }
+            ].map(item => (
+              <div key={item.key} className="flex items-center justify-between p-4 bg-[#FAFAF8] rounded-lg">
+                <div>
+                  <p className="font-medium">{item.label}</p>
+                  <p className="text-sm text-gray-500">{item.desc}</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.notifications[item.key]}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      notifications: { ...formData.notifications, [item.key]: e.target.checked }
+                    })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E05A25]"></div>
+                </label>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Security Tab */}
+      {activeTab === 'security' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Security Settings</h3>
+
+          {/* Security & accessibility (trust page + Workspace scan/A11y) */}
+          <div className="mb-8 p-4 rounded-lg border border-black/10 bg-[#FAFAF8]">
+            <h4 className="font-medium text-[#1A1A1A] mb-2">Security &amp; accessibility</h4>
+            <p className="text-sm text-[#666666] mb-2">Run <strong className="text-[#1A1A1A]">Security scan</strong> and <strong className="text-[#1A1A1A]">Accessibility check</strong> in the Workspace on your code (built here or imported). We return a short checklist and a11y report.</p>
+            <Link to="/security" className="text-sm text-[#1A1A1A] hover:underline inline-flex items-center gap-1">
+              How we keep the platform and your code safe <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {/* Two-Factor Authentication */}
+          <div className="space-y-4 mb-8">
+            <h4 className="font-medium flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#1A1A1A]" />
+              Two-Factor Authentication (2FA)
+            </h4>
+            {mfaError && (
+              <div className="flex items-start gap-2 p-3 bg-[#F5F5F4] border border-black/10 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-[#666666] mt-0.5 shrink-0" />
+                <p className="text-[#666666] text-sm">{mfaError}</p>
+              </div>
+            )}
+            {mfaStatus && !mfaSetupStep ? (
+              <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
+                <p className="text-[#1A1A1A] font-medium mb-3">2FA is enabled</p>
+                <p className="text-sm text-[#666666] mb-4">Your account is protected with two-factor authentication.</p>
+                <button
+                  type="button"
+                  onClick={() => setMfaSetupStep('disable')}
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm transition"
+                >
+                  Disable 2FA
+                </button>
+              </div>
+            ) : mfaSetupStep === 'disable' ? (
+              <div className="p-4 bg-[#FAFAF8] rounded-lg space-y-3">
+                <p className="text-sm text-[#666666]">Enter your password to disable 2FA.</p>
+                <input
+                  type="password"
+                  value={mfaDisablePassword}
+                  onChange={(e) => setMfaDisablePassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full px-4 py-2 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleMfaDisable}
+                    disabled={mfaLoading || !mfaDisablePassword}
+                    className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm disabled:opacity-50"
+                  >
+                    {mfaLoading ? 'Disabling...' : 'Disable 2FA'}
+                  </button>
+                  <button
+                    onClick={() => { setMfaSetupStep(null); setMfaDisablePassword(''); setMfaError(null); }}
+                    className="px-4 py-2 bg-[#EBE8E2] hover:bg-[#E0DCD5] rounded-lg text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : !mfaSetupStep ? (
+              <div className="p-4 bg-[#FAFAF8] rounded-lg">
+                <p className="text-sm text-[#666666] mb-4">Add an extra layer of security with an authenticator app (Google Authenticator, Authy, etc.).</p>
+                <button
+                  type="button"
+                  onClick={handleMfaSetupStart}
+                  disabled={mfaLoading}
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  {mfaLoading ? 'Setting up...' : 'Enable 2FA'}
+                </button>
+              </div>
+            ) : mfaSetupStep === 'qr' ? (
+              <div className="p-4 bg-[#FAFAF8] rounded-lg space-y-4">
+                <p className="text-sm text-[#666666]">Scan with your authenticator app, then enter the 6-digit code below.</p>
+                {mfaQrCode && <img src={mfaQrCode} alt="QR Code" className="w-48 h-48 border border-black/10 rounded p-2 bg-white" />}
+                {mfaSecret && (
+                  <div className="flex items-center gap-2 p-2 bg-[#F3F1ED] rounded">
+                    <code className="text-sm font-mono text-[#666666] break-all flex-1">{mfaSecret}</code>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(mfaSecret)} className="p-1 hover:bg-[#F3F1ED] rounded"><Copy className="w-4 h-4" /></button>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  maxLength={6}
+                  className="w-full px-4 py-2 bg-[#FAFAF8] border border-black/10 rounded-lg font-mono text-center text-xl tracking-widest focus:border-gray-700 outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleMfaVerify}
+                    disabled={mfaLoading || mfaCode.length !== 6}
+                    className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    {mfaLoading ? 'Verifying...' : 'Verify'}
+                  </button>
+                  <button
+                    onClick={() => { setMfaSetupStep(null); setMfaQrCode(null); setMfaSecret(null); setMfaCode(''); setMfaError(null); }}
+                    className="px-4 py-2 bg-[#EBE8E2] rounded-lg text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : mfaSetupStep === 'done' ? (
+              <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg space-y-3">
+                <p className="text-[#1A1A1A] font-medium">2FA enabled. Save these backup codes in a safe place.</p>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-auto">
+                  {mfaBackupCodes.map((c, i) => (
+                    <div key={i} className="flex items-center gap-1 px-2 py-1 bg-[#F3F1ED] rounded font-mono text-sm">
+                      <span>{c}</span>
+                      <button type="button" onClick={() => navigator.clipboard.writeText(c)}><Copy className="w-3 h-3 text-[#666666]" /></button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { setMfaSetupStep(null); setMfaBackupCodes([]); }}
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm"
+                >
+                  Done
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Current Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="password"
+                  className="w-full pl-12 pr-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">New Password</label>
+                <input
+                  type="password"
+                  className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
+              <h4 className="font-medium text-[#666666] mb-2">Danger Zone</h4>
+              <p className="text-sm text-[#666666] mb-4">Once you delete your account, there is no going back.</p>
+              <button
+                type="button"
+                onClick={() => { setDeleteAccountModal(true); setDeleteAccountError(null); setDeleteAccountPassword(''); }}
+                className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg transition text-sm"
+              >
+                Delete Account
+              </button>
+              {deleteAccountModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !deleteAccountLoading && setDeleteAccountModal(false)}>
+                  <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl border border-black/10" onClick={e => e.stopPropagation()}>
+                    <h4 className="font-semibold text-[#1A1A1A] mb-2">Delete account</h4>
+                    <p className="text-sm text-[#666666] mb-4">Enter your password to permanently delete your account and all data.</p>
+                    <input
+                      type="password"
+                      value={deleteAccountPassword}
+                      onChange={e => setDeleteAccountPassword(e.target.value)}
+                      placeholder="Password"
+                      className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg mb-4 focus:border-gray-700 outline-none"
+                      autoFocus
+                    />
+                    {deleteAccountError && <p className="text-sm text-red-600 mb-2">{deleteAccountError}</p>}
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setDeleteAccountModal(false)} disabled={deleteAccountLoading} className="px-4 py-2 rounded-lg border border-black/10 text-[#666666] hover:bg-gray-100">Cancel</button>
+                      <button
+                        type="button"
+                        disabled={deleteAccountLoading || !deleteAccountPassword.trim()}
+                        onClick={async () => {
+                          setDeleteAccountLoading(true); setDeleteAccountError(null);
+                          try {
+                            await axios.post(`${API}/users/me/delete`, { password: deleteAccountPassword }, { headers: { Authorization: `Bearer ${token}` } });
+                            logout(); navigate('/');
+                          } catch (err) {
+                            setDeleteAccountError(err.response?.data?.detail || err.message || 'Delete failed');
+                          } finally {
+                            setDeleteAccountLoading(false);
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
+                      >
+                        {deleteAccountLoading ? 'Deleting…' : 'Delete permanently'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Billing & Usage Tab (merged) */}
+      {activeTab === 'billing' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Billing & Usage</h3>
+          
+          <div className="space-y-6">
+            {/* Usage section (merged from usage tab) */}
+            <div className="p-4 bg-[#FAFAF8] rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-[#666666]">Token balance</span>
+                <span className="font-mono font-semibold" data-testid="settings-token-balance">
+                  {(user?.token_balance ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Prepaid tokens for AI builds. Usage is deducted per request.</p>
+            </div>
+
+            <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="font-medium">Current Plan</p>
+                  <p className="text-2xl font-bold capitalize text-[#1A1A1A]">{user?.plan || 'Free'}</p>
+                </div>
+                <a
+                  href="/app/tokens"
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition"
+                >
+                  Upgrade
+                </a>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/app/tokens"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition"
+                >
+                  <Zap className="w-4 h-4" /> Buy more tokens
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#EBE8E2] hover:bg-[#E0DCD5] rounded-lg font-medium text-sm transition"
+                >
+                  <FileText className="w-4 h-4" /> Pricing plans
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-4">Payment Methods</h4>
+              <div className="p-4 bg-[#FAFAF8] rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-6 h-6 text-[#666666]" />
+                  <span className="text-[#666666]">No payment method added</span>
+                </div>
+                <button className="text-[#1A1A1A] hover:underline text-sm">
+                  Add Method
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Data & Privacy Tab (NEW) */}
+      {activeTab === 'data' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white rounded-xl border border-black/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Data & Privacy</h3>
+          <div className="space-y-6">
+            {/* Data Export */}
+            <div className="p-4 bg-[#FAFAF8] rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Download className="w-4 h-4 text-[#1A1A1A]" />
+                Export your data
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">Download all your projects, prompts, and account data as a ZIP archive.</p>
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition">
+                <Download className="w-4 h-4" /> Request data export
+              </button>
+            </div>
+
+            {/* Privacy Controls */}
+            <div className="p-4 bg-[#FAFAF8] rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#1A1A1A]" />
+                Privacy controls
+              </h4>
+              <div className="space-y-4 mt-4">
+                {[
+                  { key: 'analytics', label: 'Usage analytics', desc: 'Allow anonymous usage data to improve CrucibAI' },
+                  { key: 'training', label: 'Model training', desc: 'Allow your prompts to be used for model improvement (anonymized)' },
+                  { key: 'crash', label: 'Crash reports', desc: 'Send crash reports to help fix bugs' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-gray-500">{item.desc}</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" defaultChecked className="sr-only peer" />
+                      <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E05A25]"></div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Data Retention */}
+            <div className="p-4 bg-[#FAFAF8] rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Database className="w-4 h-4 text-[#1A1A1A]" />
+                Data retention
+              </h4>
+              <p className="text-sm text-gray-500 mb-2">Build logs and chat history are retained for 90 days. Projects are kept indefinitely until you delete them.</p>
+              <Link to="/privacy" className="text-sm text-[#1A1A1A] hover:underline inline-flex items-center gap-1">
+                Read our privacy policy <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Help link (moved from separate tab) */}
+            <div className="pt-4 border-t border-black/10">
+              <h4 className="font-medium mb-3">Need help?</h4>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/learn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#FAFAF8] hover:bg-[#F3F1ED] rounded-lg text-sm transition"
+                >
+                  <FileText className="w-4 h-4 text-[#1A1A1A]" /> Documentation
+                </a>
+                <a
+                  href="mailto:support@crucibai.com"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#FAFAF8] hover:bg-[#F3F1ED] rounded-lg text-sm transition"
+                >
+                  <HelpCircle className="w-4 h-4 text-[#1A1A1A]" /> Contact support
+                </a>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Save Button (profile / notifications) */}
+      {(activeTab === 'profile' || activeTab === 'notifications') && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-2 px-6 py-3 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition"
+            data-testid="save-settings-btn"
+          >
+            {saved ? (
+              <>
+                <Check className="w-5 h-5" />
+                Saved!
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                Save Changes
+              </>
+            )}
+          </button>
         </div>
       )}
+      </div>
     </div>
   );
 };

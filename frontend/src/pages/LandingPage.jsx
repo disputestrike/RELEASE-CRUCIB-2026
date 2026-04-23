@@ -1,15 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ArrowRight, Menu, X, Paperclip, Image, FileText, Mic, MicOff } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
 import SuggestionChips from '../components/SuggestionChips';
-import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../components/SolutionsNavDropdown';
-import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
 const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
 const MAX_PROMPT_IN_URL = 1500;
@@ -41,19 +38,8 @@ const LandingPage = () => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
     const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
-    // If user is not signed in, save prompt so after auth we go straight to building (time-to-action)
-    if (!user && !token) {
-      try {
-        sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
-        if (state?.initialAttachedFiles?.length) {
-          sessionStorage.setItem(PENDING_PROMPT_KEY + '_hasFiles', '1');
-        }
-      } catch (_) { void 0; }
-      navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
-      return;
-    }
-    const q = `prompt=${encodeURIComponent(prompt)}&autoStart=1`;
-    navigate(`/app/workspace?${q}`, { state: withWorkspaceHandoffNonce({ ...state, initialPrompt: prompt, autoStart: true }) });
+    const q = `prompt=${encodeURIComponent(prompt)}`;
+    navigate(`/app/workspace?${q}`, { state });
   };
 
   const handleLandingFileSelect = (e) => {
@@ -134,10 +120,7 @@ const LandingPage = () => {
         if (text) handleVoiceTranscribed(text);
         else setVoiceError('No text from transcription.');
       } catch (err) {
-        const msg = err?.code === 'ERR_NETWORK' || err?.response?.status >= 500
-          ? 'Voice needs the backend. Start the CrucibAI backend to transcribe.'
-          : (err.response?.data?.detail || err.message || 'Transcription failed.');
-        setVoiceError(msg);
+        setVoiceError(err.response?.data?.detail || err.message || 'Transcription failed.');
       } finally {
         setIsTranscribing(false);
         if (voiceStreamRef.current) {
@@ -166,7 +149,7 @@ const LandingPage = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           const text = res.data?.text?.trim();
           if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
-        } catch (_) { void 0; }
+        } catch (_) {}
       }
       if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
     }
@@ -174,32 +157,26 @@ const LandingPage = () => {
     startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
   };
 
-  /** Send enabled when there is text or image/audio attachment (matches submit disabled logic). */
-  const hasLandingSendContent =
-    Boolean(input.trim()) ||
-    attachedFiles.some((f) => f.type?.startsWith('image/') || f.type?.startsWith('audio/'));
-
   return (
     <div className="marketing-page bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — 6 items only */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-6">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <Logo variant="full" height={32} href="/" className="shrink-0" />
-          <div className="hidden md:flex flex-1 items-center justify-center gap-8 min-w-0">
-            <SolutionsNavDropdown />
+          <div className="hidden md:flex items-center gap-6">
+            <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
-          </div>
-          <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
-            <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
+            <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
+            <Link to="/auth" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
+            <Link to="/auth?mode=register" className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition">Sign up</Link>
+            <button
+              onClick={() => navigate('/app')}
+              className="px-4 py-2 rounded-full bg-[#1A1A1A]/10 text-[#1A1A1A] text-sm font-medium hover:bg-[#1A1A1A]/20 transition"
+            >
               Dashboard
             </button>
-            {!user && (
-              <Link to="/auth" className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
-            )}
-            <button type="button" onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">
-              Get started
-            </button>
+            <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -211,25 +188,14 @@ const LandingPage = () => {
         {mobileMenuOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
-              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Our solution — who it&apos;s for</p>
-              <div className="flex flex-col gap-2 pl-1 border-l border-gray-200">
-                {SOLUTION_LINKS.map((item) => (
-                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
-                ))}
-              </div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Use cases</p>
-              <div className="flex flex-col gap-2 pl-1 border-l border-gray-200">
-                {USE_CASE_LINKS.map((item) => (
-                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
-                ))}
-              </div>
+              <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
-              {!user && (
-                <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
-              )}
-              <button type="button" onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
-              <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get started</button>
+              <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
+              <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+              <Link to="/auth?mode=register" className="w-full py-3 bg-black text-white rounded-lg font-medium text-center mt-2" onClick={() => setMobileMenuOpen(false)}>Sign up</Link>
+              <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium">Dashboard</button>
+              <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium">Get Started</button>
             </div>
           </motion.div>
         )}
@@ -240,10 +206,13 @@ const LandingPage = () => {
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-2 text-center">
             What can I do for you?
           </motion.h1>
-          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#a3a3a3] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all max-w-[720px] mx-auto">
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-center text-sm text-gray-500 mb-6">
+            126-agent swarm · web + mobile + App Store · full stack in minutes
+          </motion.p>
+          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, i) => (
@@ -286,19 +255,8 @@ const LandingPage = () => {
                       <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition shrink-0" title="Attach file">
                         <Paperclip className="w-5 h-5" />
                       </button>
-                      <button
-                        type="submit"
-                        disabled={!hasLandingSendContent || isBuilding}
-                        className={`p-2 rounded-full shrink-0 transition ${
-                          isBuilding
-                            ? 'bg-neutral-800 text-white cursor-wait'
-                            : hasLandingSendContent
-                              ? 'bg-neutral-900 text-white hover:bg-black shadow-sm'
-                              : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
-                        }`}
-                        title={isBuilding ? 'Starting…' : 'Send'}
-                      >
-                        {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" strokeWidth={2} />}
+                      <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding} className="p-2 rounded-lg bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0" title="Send">
+                        {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
@@ -321,8 +279,13 @@ const LandingPage = () => {
       {/* CTA — single line, last thing visible on first screen */}
       <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
-          <p className="text-sm text-gray-500">Plan, build, and ship — web, mobile, and automation in one workspace.</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-3">Your idea is inevitable.</h2>
+          <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
+            <span>✦ 126 specialized agents</span>
+            <span>✦ Web · Mobile · App Store</span>
+            <span>✦ Deploy in minutes</span>
+            <span>✦ Free to start</span>
+          </div>
         </div>
       </section>
       </div>
@@ -343,7 +306,7 @@ const LandingPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/our-projects#solutions" className="text-kimi-muted hover:text-kimi-text transition">Our solution</Link></li>
+                <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
                 <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
                 <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
                 <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
@@ -353,6 +316,7 @@ const LandingPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
               <ul className="space-y-3 text-sm">
+                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
                 <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
                 <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
                 <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>

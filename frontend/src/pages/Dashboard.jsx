@@ -1,33 +1,21 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic, MicOff, Paperclip, Loader2,
-  Sparkles, ArrowRight, ArrowUp, Upload, X, Github,
-  Layout, Code, Zap, Globe, Monitor,
-  Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
-  BarChart3, ExternalLink, ChevronDown,
-  ThumbsUp, ThumbsDown, Share2, RefreshCw,
+  Sparkles, ArrowRight, Upload, X, Github,
+  Layout, Smartphone, Code, Zap, Globe,
+  Copy, Pencil, Play, CheckCircle, Clock, AlertCircle,
+  BarChart3, ExternalLink
 } from 'lucide-react';
 import Logo from '../components/Logo';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import './Dashboard.css';
-import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
-
-/** Backup when `location.state` is dropped (refresh / edge navigation); consumed in UnifiedWorkspace. */
-function stashWorkspaceAutostartGoal(text) {
-  const raw = (text || '').trim();
-  if (!raw) return;
-  try {
-    sessionStorage.setItem('crucibai_autostart_goal', raw);
-  } catch (_) { void 0; }
-}
 
 /**
  * Dashboard — New Task / Home screen
@@ -41,123 +29,8 @@ const CHAT_ONLY_PATTERNS = [
   /^(how\s+are\s+you|what'?s\s+going\s+on|how\s+is\s+it\s+going)\s*[!.?]*$/i,
   /^(bye|goodbye|see\s*ya|later)\s*[!.?]*$/i,
 ];
-/** Collapse newlines so multiline specs still match (JS `.` does not cross `\n`). */
-function flattenIntentText(p) {
-  return (p || '').replace(/\r\n|\r|\n/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-const BUILD_KEYWORDS =
-  /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b[\s\S]{0,8000}?\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
-/** Looser match for typos (e.g. "WEBITSIDE") or phrases split across lines. */
-const BUILD_KEYWORDS_LOOSE =
-  /\b(build|building|create|creating|make|making|develop|developing)\b[\s\S]{0,8000}?\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend)\b/i;
-
-/** Long technical briefs often omit the word "build" but clearly request software. */
-function looksLikeBuildSpec(flat) {
-  const f = (flat || '').toLowerCase();
-  if (f.length < 160) return false;
-  const signals = [
-    'react native',
-    'ios',
-    'android',
-    'expo',
-    'jest',
-    'playwright',
-    'e2e',
-    'swagger',
-    'microservice',
-    'rest api',
-    'graphql',
-    'stripe',
-    'postgres',
-    'mongodb',
-    'tailwind',
-    'fastapi',
-    'next.js',
-    'vite',
-    'kubernetes',
-    'docker',
-    'offline',
-    'multi-tenant',
-    'saas',
-    'dashboard',
-    'crm',
-  ];
-  const n = signals.filter((s) => f.includes(s)).length;
-  return n >= 2;
-}
+const BUILD_KEYWORDS = /\b(build|create|make|develop|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b.*\b(app|application|website|web\s*app|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
 const AGENT_KEYWORDS = /\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow)\b/i;
-
-/** Stringify bubble content so user/assistant lines always render (never [object Object]). */
-function formatChatContent(content) {
-  if (content == null) return '';
-  if (typeof content === 'string') return content;
-  if (typeof content === 'number' || typeof content === 'boolean') return String(content);
-  if (typeof content === 'object') {
-    if (content.text != null) return formatChatContent(content.text);
-    if (content.message != null) return formatChatContent(content.message);
-    if (content.content != null) return formatChatContent(content.content);
-    try {
-      return JSON.stringify(content);
-    } catch {
-      return '';
-    }
-  }
-  return String(content);
-}
-
-function genMessageId() {
-  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-}
-
-/** Ensure every message has a stable id (and optional reaction) for UI + persistence. */
-function normalizeMessagesForStore(msgs) {
-  if (!Array.isArray(msgs)) return [];
-  return msgs.map((m) => ({
-    ...m,
-    id: typeof m?.id === 'string' && m.id ? m.id : genMessageId(),
-    ...(m?.reaction === 'up' || m?.reaction === 'down' ? { reaction: m.reaction } : {}),
-  }));
-}
-
-/** Prior turns for API: all messages before the latest user line (exclusive). */
-function buildPriorTurnsFromMessages(msgs) {
-  if (!Array.isArray(msgs) || msgs.length < 2) return [];
-  return msgs.slice(0, -1).map((m) => ({
-    role: m.role === 'assistant' ? 'assistant' : 'user',
-    content: formatChatContent(m.content),
-  }));
-}
-
-function lastUserContentBeforeIndex(messages, assistantIndex) {
-  for (let j = assistantIndex - 1; j >= 0; j -= 1) {
-    if (messages[j]?.role === 'user') return formatChatContent(messages[j].content);
-  }
-  return '';
-}
-
-const USER_WANTS_CODE_RE = /\b(code|snippet|implement(ation)?|jsx|tsx|python|java(script)?|typescript|react\s+component|write\s+(a\s+)?function|show\s+(me\s+)?(the\s+)?code|npm\s+install|example\s+code|paste\s+(the\s+)?code)\b/i;
-
-function userRequestedCodeBlock(userText) {
-  if (!userText || typeof userText !== 'string') return false;
-  if (USER_WANTS_CODE_RE.test(userText)) return true;
-  if (/```/.test(userText)) return true;
-  return false;
-}
-
-/** Display-only cleanup when the model still emits markdown/code in prose answers. */
-function sanitizeAssistantDisplay(raw, allowCodeFences) {
-  if (raw == null || typeof raw !== 'string') return '';
-  let t = raw;
-  if (!allowCodeFences) {
-    t = t.replace(/```[\w.-]*\n[\s\S]*?```/g, '\n\n');
-    t = t.replace(/```[\s\S]*?```/g, '\n\n');
-  }
-  t = t.replace(/\*\*([^*]+)\*\*/g, '$1');
-  t = t.replace(/(^|[\s>])\*([^*\n]+)\*(?=[\s<]|$)/gm, '$1$2');
-  t = t.replace(/^\s*\*\s+(.+)$/gm, '• $1');
-  return t.replace(/\n{3,}/g, '\n\n').trim();
-}
 
 function isDefinitelyChat(prompt) {
   const p = prompt.trim();
@@ -200,11 +73,8 @@ async function inferBuildSpec(userPrompt, API, token) {
 async function detectIntent(prompt, API, token) {
   const p = prompt.trim();
   if (isDefinitelyChat(p)) return "chat";
-  const flat = flattenIntentText(p);
-  let looksBuild = BUILD_KEYWORDS.test(flat);
-  if (!looksBuild) looksBuild = BUILD_KEYWORDS_LOOSE.test(flat);
-  if (!looksBuild) looksBuild = looksLikeBuildSpec(flat);
-  const looksAgent = AGENT_KEYWORDS.test(flat);
+  const looksBuild = BUILD_KEYWORDS.test(p);
+  const looksAgent = AGENT_KEYWORDS.test(p);
   if (!looksBuild && !looksAgent) return "chat";
 
   try {
@@ -216,12 +86,7 @@ async function detectIntent(prompt, API, token) {
       system_message: INTENT_SYSTEM,
     }, { headers, timeout: 10000 });
     const raw = (res.data?.response || "").trim().toLowerCase().replace(/["']/g, "");
-    if (raw === "build") return "build";
-    if (raw === "agent") return "agent";
-    // Model often returns "chat" for clear build phrasing — trust keyword signals.
-    if (looksBuild && !looksAgent) return "build";
-    if (looksAgent && !looksBuild) return "agent";
-    if (looksBuild && looksAgent) return raw.startsWith("agent") ? "agent" : "build";
+    if (raw === "build" || raw === "agent") return raw;
     return "chat";
   } catch {
     // When backend is down (e.g. no Ollama), use keyword fallback so build/agent prompts still work
@@ -242,19 +107,6 @@ function formatCronShort(cron) {
   return "on a schedule";
 }
 
-const SKILLS = [
-  { icon: '🌐', name: 'Web App', skill_name: 'web-app-builder', desc: 'Full-stack React + Node.js with auth, database, and API', prompt: 'Build a full-stack web app with user authentication, dashboard, and REST API' },
-  { icon: '📱', name: 'Mobile App', skill_name: 'mobile-app-builder', desc: 'React Native with Expo — iOS and Android ready', prompt: 'Build a mobile app with navigation, screens, and local storage' },
-  { icon: '🛒', name: 'E-Commerce', skill_name: 'ecommerce-builder', desc: 'Product catalog, cart, checkout with Stripe payments', prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
-  { icon: '📊', name: 'SaaS Dashboard', skill_name: 'saas-mvp-builder', desc: 'Auth, subscription billing, user management, metrics', prompt: 'Build a SaaS MVP with Stripe billing, user auth, and admin dashboard' },
-  { icon: '🤖', name: 'AI Chatbot', skill_name: 'ai-chatbot-builder', desc: 'Multi-agent chat interface with knowledge base integration', prompt: 'Build an AI chatbot with multi-agent support and document knowledge base' },
-  { icon: '🏠', name: 'Landing Page', skill_name: 'landing-page-builder', desc: 'Hero, features, pricing, testimonials, CTA sections', prompt: 'Build a landing page with hero, features grid, pricing table, and FAQ' },
-  { icon: '⚡', name: 'Automation', skill_name: 'automation-builder', desc: 'Scheduled agents, webhooks, workflow pipelines', prompt: 'Build an automation that runs daily and sends results to Slack or email' },
-  { icon: '🛠️', name: 'Internal Tool', skill_name: 'internal-tool-builder', desc: 'Admin tables, forms, CRUD, approval workflows', prompt: 'Build an internal admin tool with data tables, forms, and user roles' },
-  { icon: '🎮', name: 'Game', skill_name: null, desc: 'Browser-based game with canvas, physics, leaderboard', prompt: 'Build a browser-based game with scoring and leaderboard' },
-  { icon: '📄', name: 'Blog / CMS', skill_name: null, desc: 'Articles, categories, search, author dashboard', prompt: 'Build a blog with articles, categories, search, and an author dashboard' },
-];
-
 const QUICK_START_CHIPS = [
   { label: 'Build website', icon: Layout, prompt: 'Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer — beautiful modern design' },
   { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
@@ -262,9 +114,6 @@ const QUICK_START_CHIPS = [
   { label: 'SaaS MVP', icon: Zap, prompt: 'Build a SaaS MVP with login/register pages, dashboard, subscription pricing table, settings, and admin panel' },
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
 ];
-
-/** First row on home (Manus-style); Import + templates live under “More”. */
-const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 4);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -283,8 +132,6 @@ const Dashboard = () => {
   const [gitUrl, setGitUrl] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const moreMenuRef = useRef(null);
   // Chat state for conversational (non-build) messages
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -295,9 +142,6 @@ const Dashboard = () => {
   const actionFeedbackTimerRef = useRef(null);
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const homeMessagesRef = useRef(null);
-  /** When true, new messages / loading scroll the transcript to the bottom */
-  const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
 
@@ -364,10 +208,12 @@ const Dashboard = () => {
       const task = storeTasks?.find(t => t.id === chatTaskId);
       const msgs = task?.messages;
       if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-        setChatMessages(normalizeMessagesForStore(msgs));
+        setChatMessages(msgs);
         setConversationStarted(true);
+      } else {
+        // No persisted messages yet (e.g. mid-send); don't clear existing chat
+        if (chatMessages.length === 0) setConversationStarted(false);
       }
-      // If task has no messages yet (mid-send), keep in-memory chat — never clear optimistic turns
       setPrompt('');
       inputRef.current?.focus();
       return;
@@ -387,58 +233,21 @@ const Dashboard = () => {
     if (focusPrompt && inputRef.current) {
       inputRef.current.focus();
     }
-    if (location.state?.suggestedPrompt) {
-      setPrompt(location.state.suggestedPrompt);
-      inputRef.current?.focus();
-    }
-    if (location.state?.openImport) {
-      setShowImportModal(true);
-    }
   }, [location.state]);
 
-  const NEAR_BOTTOM_PX = 120;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
 
-  const scrollTranscriptToBottom = useCallback((behavior = 'smooth') => {
-    const root = homeMessagesRef.current;
-    if (!root || !stickToBottomRef.current) return;
-    requestAnimationFrame(() => {
-      root.scrollTo({ top: root.scrollHeight, behavior: behavior === 'instant' ? 'auto' : behavior });
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    const root = homeMessagesRef.current;
-    if (!root || !chatMessages.length) return;
-    const onScroll = () => {
-      const dist = root.scrollHeight - root.scrollTop - root.clientHeight;
-      stickToBottomRef.current = dist < NEAR_BOTTOM_PX;
-    };
-    root.addEventListener('scroll', onScroll, { passive: true });
-    return () => root.removeEventListener('scroll', onScroll);
-  }, [chatMessages.length]);
-
-  useLayoutEffect(() => {
-    if (!chatMessages.length) return;
-    scrollTranscriptToBottom(chatLoading ? 'instant' : 'smooth');
-  }, [chatMessages, chatLoading, scrollTranscriptToBottom]);
-
-  /** Composer textarea: grow with content up to 160px, then internal scroll; ~single-line start */
-  const adjustComposerHeight = useCallback(() => {
+  // Auto-expand textarea as user types (wrap + grow upward)
+  useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    const maxPx = 160;
-    const minPx = 24;
-    el.style.height = '0px';
-    el.style.overflowY = 'hidden';
-    const sh = el.scrollHeight;
-    const h = Math.min(Math.max(sh, minPx), maxPx);
-    el.style.height = `${h}px`;
-    el.style.overflowY = sh > maxPx ? 'auto' : 'hidden';
-  }, []);
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 28), 240)}px`;
+  }, [prompt]);
 
-  useLayoutEffect(() => {
-    adjustComposerHeight();
-  }, [prompt, attachedFiles.length, chatMessages.length, adjustComposerHeight]);
+  const firstName = user?.name?.split(' ')[0] || 'there';
 
   const PROMPT_CONVERT_TO_FILE_LIMIT = 3000;
 
@@ -456,22 +265,6 @@ const Dashboard = () => {
   };
 
   const handleConvertToFile = () => attachTextAsFile(prompt, 'pasted_content.txt');
-
-  const requestAssistantReply = useCallback(async (taskId, userText, priorTurns, filesToSend) => {
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const attachments = filesToSend?.length > 0 ? filesToSend.map((f) => {
-      const type = f.type?.startsWith('image/') ? 'image' : (f.type === 'application/pdf' ? 'pdf' : 'text');
-      return { type, data: f.data, name: f.name };
-    }) : undefined;
-    const res = await axios.post(`${API}/ai/chat`, {
-      message: userText,
-      session_id: `chat_${taskId}`,
-      model: 'auto',
-      ...(priorTurns?.length ? { prior_turns: priorTurns } : {}),
-      ...(attachments?.length ? { attachments } : {}),
-    }, { headers, timeout: 120000 });
-    return res.data?.response || res.data?.message || '';
-  }, [API, token]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -492,25 +285,19 @@ const Dashboard = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           const text = res.data?.text?.trim();
           if (text) userPrompt = (userPrompt ? userPrompt + ' ' : '') + text;
-        } catch (_) { void 0; }
+        } catch (_) {}
       }
       filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
     }
 
     const userMsg = { role: 'user', content: userPrompt || (filesToSend.length ? `[${filesToSend.length} attachment(s)]` : '') };
-    stickToBottomRef.current = true;
     setPrompt('');
     setAttachedFiles([]);
-    let messagesAfterUser;
     flushSync(() => {
-      setChatMessages((prev) => {
-        messagesAfterUser = [...prev, userMsg];
-        return messagesAfterUser;
-      });
+      setChatMessages(prev => [...prev, userMsg]);
       setConversationStarted(true);
       setChatLoading(true);
     });
-    requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
 
     // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
@@ -521,18 +308,14 @@ const Dashboard = () => {
       const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
       const taskName = (spec || userPrompt).slice(0, 60);
       const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
-      stashWorkspaceAutostartGoal(spec || userPrompt);
-      const ws = new URLSearchParams();
-      if (taskId) ws.set('taskId', taskId);
-      ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
-        search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({
+        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+        state: {
           initialPrompt: spec || userPrompt,
           autoStart: true,
           initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
-        })
+        }
       });
       return;
     }
@@ -549,13 +332,11 @@ const Dashboard = () => {
             ? 'webhook-triggered'
             : 'scheduled';
         setChatMessages(prev => [...prev, {
-          id: genMessageId(),
           role: 'assistant',
           content: `✅ Agent created — ${schedule}. You can manage it in the Agents page.`
         }]);
       } catch (err) {
         setChatMessages(prev => [...prev, {
-          id: genMessageId(),
           role: 'assistant',
           content: err.response?.data?.detail || err.message || 'Could not create agent. Try again or create from the Agents page.'
         }]);
@@ -567,53 +348,45 @@ const Dashboard = () => {
 
     // chat — add task (first message) or update existing (continued conversation). Stay on task until user navigates.
     const existingTaskId = chatTaskIdRef.current;
-    const pidFromUrl = searchParams.get('projectId');
-    const taskId = existingTaskId
-      || addTask({
-        name: userPrompt.slice(0, 60),
-        prompt: userPrompt,
-        status: 'completed',
-        type: 'chat',
-        messages: normalizeMessagesForStore([userMsg]),
-        ...(pidFromUrl ? { linkedProjectId: pidFromUrl } : {}),
-      });
+    const taskId = existingTaskId || addTask({ name: userPrompt.slice(0, 60), prompt: userPrompt, status: 'completed', type: 'chat' });
     if (!existingTaskId) {
       chatTaskIdRef.current = taskId;
-      // Keep URL in sync so task context survives refresh (preserve project link from sidebar)
-      const qs = new URLSearchParams({ chatTaskId: taskId });
-      if (pidFromUrl) qs.set('projectId', pidFromUrl);
-      navigate(`/app?${qs.toString()}`, { replace: true });
-    } else if (messagesAfterUser) {
-      updateTask(taskId, { messages: messagesAfterUser, prompt: userPrompt });
+      // Keep URL in sync so task context survives refresh
+      navigate(`/app?chatTaskId=${encodeURIComponent(taskId)}`, { replace: true });
     }
 
     try {
-      const priorTurns = buildPriorTurnsFromMessages(messagesAfterUser);
-      const reply = await requestAssistantReply(taskId, userPrompt, priorTurns, filesToSend)
-        || 'No response from model. Try again.';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const attachments = filesToSend.length > 0 ? filesToSend.map((f) => {
+        const type = f.type?.startsWith('image/') ? 'image' : (f.type === 'application/pdf' ? 'pdf' : 'text');
+        return { type, data: f.data, name: f.name };
+      }) : undefined;
+      const res = await axios.post(`${API}/ai/chat`, {
+        message: userPrompt,
+        session_id: `chat_${taskId}`,
+        model: 'auto',
+        ...(attachments?.length ? { attachments } : {})
+      }, { headers, timeout: 60000 });
+      const reply = res.data?.response || res.data?.message || "Hey! What are we building today?";
       const assistantMsg = { role: 'assistant', content: reply };
-      let afterAssistant;
-      setChatMessages((prev) => {
-        afterAssistant = [...prev, assistantMsg];
-        return afterAssistant;
-      });
-      if (afterAssistant) updateTask(taskId, { messages: afterAssistant, prompt: userPrompt });
+      setChatMessages(prev => [...prev, assistantMsg]);
+      // Persist explicitly: include both user and assistant (don't rely on prev)
+      const task = storeTasks?.find(t => t.id === taskId);
+      const prevMsgs = (task?.messages && Array.isArray(task.messages)) ? task.messages : [];
+      updateTask(taskId, { messages: [...prevMsgs, userMsg, assistantMsg], prompt: userPrompt });
     } catch (err) {
       const is404 = err.response?.status === 404 || err.response?.status === 405;
       const detail = err.response?.data?.detail;
       const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI (see BACKEND_SETUP.md). You can still try \"Build me a landing page\" — it will open the Workspace; the build will need the backend running.";
       const fallback = is404 ? backendUnavailable : "Chat failed. For AI replies, run the backend (e.g. from CrucibAI) with Ollama. See BACKEND_SETUP.md.";
       const assistantMsg = {
-        id: genMessageId(),
         role: 'assistant',
         content: (typeof detail === 'string' && detail && !is404) ? detail : (err.message?.includes('404') ? backendUnavailable : (err.message || fallback))
       };
-      let afterAssistantErr;
-      setChatMessages((prev) => {
-        afterAssistantErr = normalizeMessagesForStore([...prev, assistantMsg]);
-        return afterAssistantErr;
-      });
-      if (afterAssistantErr) updateTask(taskId, { messages: afterAssistantErr, prompt: userPrompt });
+      setChatMessages(prev => [...prev, assistantMsg]);
+      const task = storeTasks?.find(t => t.id === taskId);
+      const prevMsgs = (task?.messages && Array.isArray(task.messages)) ? task.messages : [];
+      updateTask(taskId, { messages: [...prevMsgs, userMsg, assistantMsg], prompt: userPrompt });
     } finally {
       setChatLoading(false);
     }
@@ -632,38 +405,13 @@ const Dashboard = () => {
         return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
       })();
       const taskId = addTask({ name: taskName, prompt: chip.prompt, status: 'pending', type: 'build' });
-      stashWorkspaceAutostartGoal(chip.prompt);
-      const ws = new URLSearchParams();
-      if (taskId) ws.set('taskId', taskId);
-      ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
-        search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({ initialPrompt: chip.prompt, autoStart: true })
+        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+        state: { initialPrompt: chip.prompt, autoStart: true }
       });
     }
   };
-
-  const activateSkillName = (skillName) => {
-    if (!token || !skillName) return;
-    axios.post(`${API}/skills/${skillName}/activate`, {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-  };
-
-  const handleSkillFromMore = (skill) => {
-    setMoreMenuOpen(false);
-    if (!skill?.prompt) return;
-    activateSkillName(skill.skill_name);
-    handleChipClick({ label: skill.name, prompt: skill.prompt });
-  };
-
-  useEffect(() => {
-    if (!moreMenuOpen) return;
-    const onDoc = (e) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) setMoreMenuOpen(false);
-    };
-    document.addEventListener('click', onDoc);
-    return () => document.removeEventListener('click', onDoc);
-  }, [moreMenuOpen]);
 
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -715,15 +463,7 @@ const Dashboard = () => {
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           if (res.data?.text) setPrompt(res.data.text);
-        } catch (err) {
-          setActionFeedback({
-            type: 'mic_error',
-            message: err?.response?.status === 404 || err?.code === 'ERR_NETWORK'
-              ? 'Voice needs the backend. Start the CrucibAI backend (see BACKEND_SETUP.md) and retry.'
-              : (err?.response?.data?.detail || err?.message) || 'Voice transcription failed. Retry or type instead.'
-          });
-          setTimeout(() => setActionFeedback(null), 6000);
-        }
+        } catch (_) {}
         setIsTranscribing(false);
       };
       recorder.start(1000);
@@ -733,9 +473,7 @@ const Dashboard = () => {
     } catch (err) {
       setIsRecording(false);
       if (err?.name === 'NotAllowedError') {
-        // Show as a UI error, not as a chat message from CrucibAI
-        setActionFeedback({ type: 'mic_error', message: 'Microphone blocked. Click the lock icon in your browser address bar → allow Microphone → refresh.' });
-        setTimeout(() => setActionFeedback(null), 6000);
+        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Microphone access denied. Allow it in browser settings.' }]);
       }
     }
   };
@@ -814,88 +552,15 @@ const Dashboard = () => {
   }, [actionFeedback]);
 
   const handleCopyMessage = (index) => {
-    const text = formatChatContent(chatMessages[index]?.content);
-    if (!text) return;
-    const role = chatMessages[index]?.role || 'user';
-    navigator.clipboard?.writeText(text).then(() => setActionFeedback({ type: 'copy', index, role }));
+    const text = chatMessages[index]?.content;
+    if (text == null) return;
+    navigator.clipboard?.writeText(text).then(() => setActionFeedback({ type: 'copy', index }));
   };
 
   const handleEditMessage = (content) => {
     if (content == null) return;
-    setPrompt(formatChatContent(content));
+    setPrompt(String(content));
     inputRef.current?.focus();
-    requestAnimationFrame(() => adjustComposerHeight());
-  };
-
-  const handleRegenerateAssistant = async (assistantIndex) => {
-    if (assistantIndex < 1 || chatLoading) return;
-    const userPrev = chatMessages[assistantIndex - 1];
-    if (!userPrev || userPrev.role !== 'user') return;
-    const taskId = chatTaskIdRef.current;
-    if (!taskId) return;
-    const kept = normalizeMessagesForStore(chatMessages.slice(0, assistantIndex));
-    const userText = formatChatContent(userPrev.content);
-    const priorTurns = buildPriorTurnsFromMessages(kept);
-    stickToBottomRef.current = true;
-    setChatMessages(kept);
-    updateTask(taskId, { messages: kept, prompt: userText });
-    setChatLoading(true);
-    requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
-    try {
-      const reply = await requestAssistantReply(taskId, userText, priorTurns, [])
-        || 'No response from model. Try again.';
-      const after = normalizeMessagesForStore([...kept, { id: genMessageId(), role: 'assistant', content: reply }]);
-      setChatMessages(after);
-      updateTask(taskId, { messages: after, prompt: userText });
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      const fallback = (typeof detail === 'string' && detail) ? detail : (err.message || 'Regenerate failed. Try again.');
-      const after = normalizeMessagesForStore([...kept, { id: genMessageId(), role: 'assistant', content: fallback }]);
-      setChatMessages(after);
-      updateTask(taskId, { messages: after, prompt: userText });
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const handleShareAssistant = async (i) => {
-    const text = formatChatContent(chatMessages[i]?.content);
-    const base = `${window.location.origin}/app`;
-    const tid = chatTaskIdRef.current;
-    const url = tid ? `${base}?chatTaskId=${encodeURIComponent(tid)}` : base;
-    const payload = text ? `${text}\n\n—\n${url}` : url;
-    const done = () => setActionFeedback({ type: 'share', index: i, role: 'assistant' });
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'CrucibAI', text: payload });
-        done();
-        return;
-      } catch (e) {
-        if (e && e.name === 'AbortError') return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(payload);
-      done();
-    } catch (_) { void 0; }
-  };
-
-  const toggleMsgReaction = (i, dir) => {
-    const taskId = chatTaskIdRef.current;
-    if (!taskId) return;
-    let nextMessages;
-    setChatMessages((prev) => {
-      const msg = prev[i];
-      if (!msg || msg.role !== 'assistant') return prev;
-      const cur = msg.reaction;
-      const nextVal = cur === dir ? undefined : dir;
-      const nextMsg = { ...msg };
-      if (nextVal === undefined) delete nextMsg.reaction;
-      else nextMsg.reaction = nextVal;
-      nextMessages = prev.map((m, idx) => (idx === i ? nextMsg : m));
-      return nextMessages;
-    });
-    if (nextMessages) updateTask(taskId, { messages: nextMessages });
   };
 
   const handleStartBuilding = (buildOffer) => {
@@ -907,18 +572,14 @@ const Dashboard = () => {
       return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
     })();
     const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
-    stashWorkspaceAutostartGoal(spec);
-    const ws = new URLSearchParams();
-    if (taskId) ws.set('taskId', taskId);
-    ws.set('autoStart', '1');
     navigate({
       pathname: '/app/workspace',
-      search: `?${ws.toString()}`,
-      state: withWorkspaceHandoffNonce({
+      search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+      state: {
         initialPrompt: spec,
         autoStart: true,
         initialAttachedFiles: buildOffer.attachedFiles?.length ? buildOffer.attachedFiles : undefined
-      })
+      }
     });
   };
 
@@ -939,82 +600,47 @@ const Dashboard = () => {
           ))}
         </div>
       )}
-      <div className={`dashboard-prompt-container ${hasChat ? 'dashboard-prompt-container--stacked dashboard-prompt-container--chat' : ''}`}>
-        <div className="dashboard-prompt-input-wrap">
-          <textarea
-            ref={inputRef}
-            value={prompt}
-            onChange={(e) => {
-              const next = e.target.value;
-              if (next.length >= PROMPT_CONVERT_TO_FILE_LIMIT) {
-                attachTextAsFile(next, 'pasted_content.txt');
-              } else {
-                setPrompt(next);
-              }
-            }}
-            onInput={() => requestAnimationFrame(() => adjustComposerHeight())}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder={hasChat ? 'Ask a follow-up or describe a new idea...' : (location.state?.newProject ? 'Describe your project (e.g. I need a flower website)...' : 'Describe what you want to build or ask anything...')}
-            className="dashboard-prompt-input"
-            rows={1}
-            aria-label="Message"
-          />
+      <div className={`dashboard-prompt-container ${hasChat ? 'dashboard-prompt-container--stacked' : ''}`}>
+        <textarea
+          ref={inputRef}
+          value={prompt}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (next.length >= PROMPT_CONVERT_TO_FILE_LIMIT) {
+              attachTextAsFile(next, 'pasted_content.txt');
+            } else {
+              setPrompt(next);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+          placeholder={hasChat ? 'Ask a follow-up or describe a new idea...' : (location.state?.newProject ? 'Describe your project (e.g. I need a flower website)...' : 'Describe what you want to build or ask anything...')}
+          className="dashboard-prompt-input"
+          rows={1}
+        />
+        <div className="dashboard-prompt-actions">
+          <div className="dashboard-model-badge" title="Auto-selects best model">
+            <Sparkles size={14} />
+          </div>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
+            <Paperclip size={18} />
+          </button>
+          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
+          {isRecording ? (
+            <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
+          ) : (
+            <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
+              {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+            </button>
+          )}
+          <button type="submit" disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading} className="dashboard-prompt-submit" title="Send">
+            {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+          </button>
         </div>
-        <div className="dashboard-prompt-footer">
-          <div className="dashboard-prompt-footer-left" aria-label="Add context">
-            <div className="dashboard-model-badge" title="Auto-selects best model">
-              <Sparkles size={14} />
-            </div>
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
-              <Paperclip size={16} />
-            </button>
-            <button
-              type="button"
-              className="dashboard-prompt-btn"
-              title="Open workspace"
-              onClick={() => navigate({ pathname: '/app/workspace' })}
-            >
-              <Monitor size={16} />
-            </button>
-            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
-          </div>
-          <div className={`dashboard-prompt-footer-right ${isRecording ? 'dashboard-prompt-footer-right--recording' : ''}`} aria-label="Send options">
-            <Link to="/app/templates" className="dashboard-prompt-btn dashboard-prompt-btn--link" title="Templates & gallery">
-              <Globe size={18} />
-            </Link>
-            {isRecording ? (
-              <div className="dashboard-prompt-footer-wave-wrap">
-                <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
-              </div>
-            ) : (
-              <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
-                {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading}
-              className={`dashboard-prompt-submit ${
-                prompt.trim() || attachedFiles.length
-                  ? (chatLoading ? 'dashboard-prompt-submit--busy' : 'dashboard-prompt-submit--ready')
-                  : ''
-              }`}
-              title={chatLoading ? 'Sending…' : 'Send'}
-            >
-              {chatLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.25} />}
-            </button>
-          </div>
-        </div>
-        {actionFeedback?.type === 'mic_error' && (
-          <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#b91c1c', lineHeight: '1.5' }}>
-            🎤 {actionFeedback.message}
-          </div>
-        )}
       </div>
       {hasChat && (
         <div className="dashboard-prompt-convert">
@@ -1031,87 +657,29 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
-      <div ref={homeMessagesRef} className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
+      <div className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
         {!hasChat && (
-          <div className="home-hero-stage">
-            <div className="dashboard-home-column">
+          <>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
+                <span className="dashboard-greeting-name">Hi {firstName}.</span>
                 <span className="dashboard-greeting-sub">{location.state?.newProject ? 'What\'s your new project?' : 'What do you want to build?'}</span>
               </h1>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="dashboard-prompt-inline">
               {inputForm}
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="dashboard-chips" ref={moreMenuRef}>
-              <div className="dashboard-chips-row">
-                <div className="dashboard-chips-grid">
-                  {HOME_PRIMARY_CHIPS.map((chip) => (
-                    <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip">
-                      <chip.icon size={16} className="dashboard-chip-icon" />
-                      <span>{chip.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="dashboard-more-wrap">
-                  <button
-                    type="button"
-                    className={`dashboard-chip dashboard-chip-more ${moreMenuOpen ? 'open' : ''}`}
-                    aria-expanded={moreMenuOpen}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMoreMenuOpen((o) => !o);
-                    }}
-                  >
-                    <span>More</span>
-                    <ChevronDown size={16} className="dashboard-chip-more-chevron" />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="dashboard-chips">
+              <span className="dashboard-chips-label">Quick start:</span>
+              <div className="dashboard-chips-grid">
+                {QUICK_START_CHIPS.map((chip) => (
+                  <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip">
+                    <chip.icon size={16} className="dashboard-chip-icon" />
+                    <span>{chip.label}</span>
                   </button>
-                  {moreMenuOpen && (
-                    <div className="dashboard-more-menu" role="menu">
-                      {QUICK_START_CHIPS.slice(4).map((chip) => (
-                        <button
-                          key={chip.label}
-                          type="button"
-                          role="menuitem"
-                          className="dashboard-more-menu-item"
-                          onClick={() => {
-                            setMoreMenuOpen(false);
-                            handleChipClick(chip);
-                          }}
-                        >
-                          <chip.icon size={14} className="dashboard-chip-icon" />
-                          {chip.label}
-                        </button>
-                      ))}
-                      <div className="dashboard-more-menu-divider" />
-                      {SKILLS.map((skill) => (
-                        <button
-                          key={skill.name}
-                          type="button"
-                          role="menuitem"
-                          className="dashboard-more-menu-item dashboard-more-menu-item-skill"
-                          onClick={() => handleSkillFromMore(skill)}
-                        >
-                          <span className="dashboard-more-skill-emoji" aria-hidden>{skill.icon}</span>
-                          <span>{skill.name}</span>
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="dashboard-more-menu-footer"
-                        onClick={() => {
-                          setMoreMenuOpen(false);
-                          navigate('/app/templates');
-                        }}
-                      >
-                        Browse templates &amp; gallery <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </motion.div>
-            </div>
 
             {/* Live Builds Panel — real-time build progress, polled every 4s when builds are running */}
             {liveProjects.length > 0 && (
@@ -1188,140 +756,59 @@ const Dashboard = () => {
                 </div>
               </motion.div>
             )}
-          </div>
+          </>
         )}
         {hasChat && (
-          <div className="dashboard-chat-shell">
-            <div className="dashboard-chat-inner">
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
-              {chatMessages.map((msg, i) => {
-                const userAskedCode = msg.role === 'assistant' && userRequestedCodeBlock(lastUserContentBeforeIndex(chatMessages, i));
-                const bubbleText = msg.role === 'assistant'
-                  ? sanitizeAssistantDisplay(formatChatContent(msg.content), userAskedCode)
-                  : formatChatContent(msg.content);
-                return (
-                <div
-                  key={msg.id || `row-${i}`}
-                  className={`dashboard-chat-row ${msg.role === 'user' ? 'dashboard-chat-row--user' : 'dashboard-chat-row--assistant'}`}
-                >
-                  <div className="dashboard-chat-cluster">
-                    {msg.role === 'assistant' && (
-                      <div className="dashboard-chat-identifier">
-                        <Logo href={null} showTagline={false} showWordmark={false} height={18} className="dashboard-chat-logo" />
-                        <span className="dashboard-chat-brand">CrucibAI</span>
-                      </div>
-                    )}
-                    {msg.role === 'user' && (
-                      <div className="dashboard-chat-identifier dashboard-chat-identifier--user">
-                        <span className="dashboard-chat-brand">You</span>
-                      </div>
-                    )}
-                    <div className={`dashboard-chat-bubble ${msg.role}`}>
-                      {bubbleText}
-                    </div>
-                    {msg.buildOffer && (
-                      <div className="dashboard-chat-build-offer">
-                        <button type="button" onClick={() => handleStartBuilding(msg.buildOffer)} className="dashboard-chat-start-building-btn">
-                          Start Building →
-                        </button>
-                      </div>
-                    )}
-                    {msg.role === 'assistant' && (
-                      <div className="dashboard-chat-actions dashboard-chat-actions--assistant">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyMessage(i)}
-                          className="dashboard-chat-action"
-                          title={actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? 'Copied!' : 'Copy'}
-                          aria-label="Copy assistant message"
-                        >
-                          {actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          className={`dashboard-chat-action${msg.reaction === 'up' ? ' dashboard-chat-action--active' : ''}`}
-                          title="Helpful"
-                          aria-label="Thumbs up"
-                          aria-pressed={msg.reaction === 'up'}
-                          onClick={() => toggleMsgReaction(i, 'up')}
-                        >
-                          <ThumbsUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`dashboard-chat-action${msg.reaction === 'down' ? ' dashboard-chat-action--active' : ''}`}
-                          title="Not helpful"
-                          aria-label="Thumbs down"
-                          aria-pressed={msg.reaction === 'down'}
-                          onClick={() => toggleMsgReaction(i, 'down')}
-                        >
-                          <ThumbsDown size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="dashboard-chat-action"
-                          title="Share"
-                          aria-label="Share"
-                          onClick={() => handleShareAssistant(i)}
-                        >
-                          {actionFeedback?.type === 'share' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? <Check size={14} /> : <Share2 size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          className="dashboard-chat-action"
-                          title="Regenerate"
-                          aria-label="Regenerate"
-                          disabled={chatLoading}
-                          onClick={() => handleRegenerateAssistant(i)}
-                        >
-                          <RefreshCw size={14} />
-                        </button>
-                      </div>
-                    )}
-                    {msg.role === 'user' && (
-                      <div className="dashboard-chat-actions dashboard-chat-actions--user">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyMessage(i)}
-                          className="dashboard-chat-action"
-                          title={actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'user' ? 'Copied!' : 'Copy'}
-                          aria-label="Copy user message"
-                        >
-                          {actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'user' ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                        <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit" aria-label="Edit">
-                          <Pencil size={14} />
-                        </button>
-                      </div>
-                    )}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={`dashboard-chat-msg ${msg.role}`}>
+                {msg.role === 'assistant' && (
+                  <div className="dashboard-chat-identifier">
+                    <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
                   </div>
+                )}
+                <div className={`dashboard-chat-bubble ${msg.role}`}>
+                  {msg.content}
                 </div>
-                );
-              })}
-              {chatLoading && (
-                <div className="dashboard-chat-row dashboard-chat-row--assistant">
-                  <div className="dashboard-chat-cluster">
-                    <div className="dashboard-chat-identifier">
-                      <Logo href={null} showTagline={false} showWordmark={false} height={18} className="dashboard-chat-logo" />
-                      <span className="dashboard-chat-brand">CrucibAI</span>
-                    </div>
-                    <div className="dashboard-chat-bubble assistant">
-                      <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} aria-hidden />
-                      <span style={{ marginLeft: 8 }}>Thinking...</span>
-                    </div>
+                {msg.buildOffer && (
+                  <div className="dashboard-chat-build-offer">
+                    <button type="button" onClick={() => handleStartBuilding(msg.buildOffer)} className="dashboard-chat-start-building-btn">
+                      Start Building →
+                    </button>
                   </div>
+                )}
+                <div className={`dashboard-chat-actions ${msg.role}`}>
+                  <button type="button" onClick={() => handleCopyMessage(i)} className="dashboard-chat-action" title="Copy">
+                    <Copy size={14} />
+                    {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? ' Copied!' : ' Copy'}
+                  </button>
+                  {msg.role === 'user' && (
+                    <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit">
+                      <Pencil size={14} /> Edit
+                    </button>
+                  )}
                 </div>
-              )}
-              </motion.div>
-            </div>
-          </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="dashboard-chat-msg assistant">
+                <div className="dashboard-chat-identifier">
+                  <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                </div>
+                <div className="dashboard-chat-bubble assistant">
+                  <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} />
+                  <span style={{ marginLeft: 8 }}>Thinking...</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {hasChat && (
         <div className="home-input-bar home-input-bar--chat">
-          <div className="home-prompt-wrapper home-prompt-wrapper--chat">{inputForm}</div>
+          <div className="home-prompt-wrapper">{inputForm}</div>
         </div>
       )}
 

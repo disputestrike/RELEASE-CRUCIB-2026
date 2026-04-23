@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, ExternalLink, FileText, ChevronDown, Globe } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 
 const DEPLOY_INSTRUCTIONS = `# Deploy this project
@@ -122,12 +121,12 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
   );
 
   const options = (
-    <div className="flex flex-col gap-1 py-1 min-w-[200px] text-[#1A1A1A]">
+    <div className="flex flex-col gap-1 py-1 min-w-[200px]">
       <button
         type="button"
         onClick={handleDownloadZip}
         disabled={loading}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-black/5 rounded-lg disabled:opacity-60"
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <Download className="w-4 h-4 shrink-0" />
         {loading ? 'Preparing…' : 'Download Deploy ZIP'}
@@ -136,7 +135,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
         type="button"
         onClick={() => handleOneClickDeploy('vercel')}
         disabled={deploying !== null}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-black/5 rounded-lg disabled:opacity-60"
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <ExternalLink className="w-4 h-4 shrink-0" />
         {deploying === 'vercel' ? 'Deploying…' : 'One-click Deploy to Vercel'}
@@ -145,7 +144,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
         type="button"
         onClick={() => handleOneClickDeploy('netlify')}
         disabled={deploying !== null}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-black/5 rounded-lg disabled:opacity-60"
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <ExternalLink className="w-4 h-4 shrink-0" />
         {deploying === 'netlify' ? 'Deploying…' : 'One-click Deploy to Netlify'}
@@ -153,7 +152,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
       <button
         type="button"
         onClick={() => { window.open(RAILWAY_NEW_URL, '_blank'); setOpen(false); notify('Open Railway, then connect a repo or use CLI with your ZIP.', 'deploy'); }}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-black/5 rounded-lg"
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg"
       >
         <ExternalLink className="w-4 h-4 shrink-0" />
         Deploy to Railway
@@ -161,7 +160,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
       <button
         type="button"
         onClick={() => { setShowInstructions(true); setOpen(false); }}
-        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-black/5 rounded-lg"
+        className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg"
       >
         <FileText className="w-4 h-4 shrink-0" />
         Get Deploy Instructions
@@ -178,7 +177,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             onClick={() => setOpen((o) => !o)}
             className={variant === 'icon'
               ? 'p-2 text-gray-500 hover:text-gray-600 hover:bg-gray-500/10 rounded-lg transition'
-              : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#E5E5E5] hover:bg-[#D4D4D4] border border-black/10 text-[#1A1A1A] font-medium text-sm transition'
+              : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-[#1A1A1A] font-medium text-sm transition'
             }
             title="Deploy (ZIP, Vercel, Netlify)"
           >
@@ -187,7 +186,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
           {open && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 mt-1 z-20 py-1 px-1 rounded-lg border border-black/10 bg-[#F5F5F4] shadow-xl">
+              <div className="absolute right-0 mt-1 z-20 py-1 px-1 rounded-lg border border-white/10 bg-black shadow-xl">
                 {options}
               </div>
             </>
@@ -199,7 +198,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={handleDownloadZip}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E5E5E5] hover:bg-[#D4D4D4] border border-black/10 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             {loading ? 'Preparing…' : 'Download Deploy ZIP'}
@@ -208,7 +207,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={() => handleOneClickDeploy('vercel')}
             disabled={deploying !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E5E5E5] hover:bg-[#D4D4D4] border border-black/10 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
             {deploying === 'vercel' ? 'Deploying…' : 'One-click Vercel'}
@@ -217,7 +216,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={() => handleOneClickDeploy('netlify')}
             disabled={deploying !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#E5E5E5] hover:bg-[#D4D4D4] border border-black/10 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
             {deploying === 'netlify' ? 'Deploying…' : 'One-click Netlify'}
@@ -225,7 +224,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
           <button
             type="button"
             onClick={() => setShowInstructions(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-black/15 hover:bg-black/5 text-sm text-[#1A1A1A]"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/20 hover:bg-white/10 text-sm"
           >
             <FileText className="w-4 h-4" />
             Get instructions
@@ -234,22 +233,22 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
       )}
 
       {showInstructions && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => setShowInstructions(false)}>
-          <div className="bg-[#F5F5F4] border border-black/10 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-black/10 flex items-center justify-between">
-              <h3 className="font-semibold text-[#1A1A1A]">Deploy instructions</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80" onClick={() => setShowInstructions(false)}>
+          <div className="bg-black border border-white/10 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <h3 className="font-semibold">Deploy instructions</h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleCopyInstructions}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-black/10 hover:bg-[#EBEBEA] text-sm text-[#1A1A1A]"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sm"
                 >
                   {instructionsCopied ? 'Copied!' : 'Copy'}
                 </button>
-                <button type="button" onClick={() => setShowInstructions(false)} className="p-1.5 rounded-lg hover:bg-black/5 text-[#1A1A1A]">×</button>
+                <button type="button" onClick={() => setShowInstructions(false)} className="p-1.5 rounded-lg hover:bg-white/10">×</button>
               </div>
             </div>
-            <pre className="p-4 text-sm text-[#444444] whitespace-pre-wrap overflow-auto max-h-[60vh] font-mono">
+            <pre className="p-4 text-sm text-gray-300 whitespace-pre-wrap overflow-auto max-h-[60vh] font-mono">
               {DEPLOY_INSTRUCTIONS}
             </pre>
           </div>

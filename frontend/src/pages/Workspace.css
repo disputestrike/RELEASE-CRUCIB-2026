@@ -6,7 +6,7 @@
 .workspace-right-panel,
 .workspace-right-panel * {
   scrollbar-width: thin;
-  scrollbar-color: var(--theme-muted, #3f3f46) var(--theme-surface, #18181b);
+  scrollbar-color: #3f3f46 #18181b;
 }
 .workspace-right-panel::-webkit-scrollbar,
 .workspace-right-panel *::-webkit-scrollbar {
@@ -15,25 +15,25 @@
 }
 .workspace-right-panel::-webkit-scrollbar-track,
 .workspace-right-panel *::-webkit-scrollbar-track {
-  background: var(--theme-surface, #18181b);
+  background: #18181b;
 }
 .workspace-right-panel::-webkit-scrollbar-thumb,
 .workspace-right-panel *::-webkit-scrollbar-thumb {
-  background: var(--theme-muted, #3f3f46);
+  background: #3f3f46;
   border-radius: 5px;
-  border: 2px solid var(--theme-surface, #18181b);
+  border: 2px solid #18181b;
 }
 .workspace-right-panel::-webkit-scrollbar-thumb:hover,
 .workspace-right-panel *::-webkit-scrollbar-thumb:hover {
-  background: var(--theme-text, #52525b);
+  background: #52525b;
 }
-/* Monaco editor scrollbars — theme-aware (black in dark, white in light) */
+/* Monaco editor scrollbars (class applied by @monaco-editor/react) */
 .workspace-right-panel .monaco-scrollable-element > .scrollbar,
 .workspace-right-panel .monaco-editor .scrollbar {
-  background: var(--theme-surface, #18181b) !important;
+  background: #18181b !important;
 }
 .workspace-right-panel .monaco-scrollable-element > .scrollbar .slider {
-  background: var(--theme-muted, #3f3f46) !important;
+  background: #3f3f46 !important;
   border-radius: 5px;
 }
 
@@ -52,21 +52,21 @@
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
   transition: all 0.15s ease;
-  border: 1px solid var(--theme-border);
-  background: var(--theme-surface);
-  color: var(--theme-muted);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #FFFFFF;
+  color: #6B7280;
   letter-spacing: 0;
 }
 
 .dev-toggle-btn:hover {
-  border-color: var(--theme-text, #1A1A1A);
-  color: var(--theme-text, #1A1A1A);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
   background: rgba(0, 0, 0, 0.04);
 }
 
 .dev-toggle-btn.active {
-  border-color: var(--theme-text, #1A1A1A);
-  color: var(--theme-text, #1A1A1A);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
   background: rgba(0, 0, 0, 0.06);
 }
 
@@ -83,7 +83,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  background: var(--theme-bg);
+  background: #FAFAF8;
 }
 
 /* ============================================================
@@ -92,8 +92,8 @@
 
 /* Make the header background consistent and clean */
 .workspace-header-bar {
-  background: var(--theme-surface) !important;
-  border-bottom: 1px solid var(--theme-border) !important;
+  background: #FFFFFF !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
 /* ============================================================
@@ -102,8 +102,8 @@
 
 /* Outer wrapper */
 .ws-input-zone {
-  background: var(--theme-bg);
-  border-top: 1px solid var(--theme-border);
+  background: #FAFAF8;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding: 12px 16px 16px;
   flex-shrink: 0;
   position: relative;
@@ -116,8 +116,8 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  background: var(--theme-surface);
-  border: 1px solid var(--theme-border);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 14px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
   padding: 10px 12px 10px 16px;
@@ -140,7 +140,7 @@
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: var(--theme-muted);
+  color: #9CA3AF;
   cursor: pointer;
   transition: all 150ms ease;
   flex-shrink: 0;
@@ -148,7 +148,7 @@
 
 .ws-input-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--theme-text);
+  color: #374151;
 }
 
 .ws-input-btn:disabled {
@@ -172,7 +172,7 @@
   padding: 7px 14px;
   border-radius: 10px;
   border: none;
-  background: var(--theme-text, #1A1A1A);
+  background: #1A1A1A;
   color: #FFFFFF;
   font-size: 13px;
   font-weight: 600;
@@ -189,7 +189,7 @@
 
 .ws-submit-btn:disabled {
   background: #E5E5E5;
-  color: var(--theme-muted);
+  color: #9CA3AF;
   cursor: not-allowed;
 }
 
@@ -208,7 +208,7 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   font-size: 12px;
-  color: var(--theme-muted);
+  color: #6B7280;
 }
 
 .ws-api-warning-btn {
@@ -217,17 +217,17 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--theme-border);
-  background: var(--theme-surface);
-  color: var(--theme-text);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #FFFFFF;
+  color: #374151;
   cursor: pointer;
   transition: all 150ms ease;
 }
 
 .ws-api-warning-btn:hover {
-  background: var(--theme-surface2);
-  border-color: var(--theme-text, #1A1A1A);
-  color: var(--theme-text, #1A1A1A);
+  background: #F5F5F4;
+  border-color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 /* ============================================================
@@ -241,9 +241,9 @@
   height: 22px;
   padding: 0 12px;
   font-size: 11px;
-  color: var(--theme-muted);
-  background: var(--theme-surface2);
-  border-top: 1px solid var(--theme-border);
+  color: #9CA3AF;
+  background: #F5F5F4;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
   font-family: 'Fira Code', monospace;
   letter-spacing: 0;
@@ -262,7 +262,7 @@
 
 .ws-status-bar button:hover,
 .ws-status-bar a:hover {
-  color: var(--theme-text);
+  color: #374151;
 }
 
 .ws-status-bar .ws-status-error {
@@ -278,7 +278,7 @@
   align-items: center;
   height: 40px;
   padding: 0 8px;
-  background: var(--theme-surface);
+  background: #FFFFFF;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
   gap: 2px;
@@ -293,7 +293,7 @@
   font-size: 12px;
   font-weight: 500;
   font-family: 'DM Sans', sans-serif;
-  color: var(--theme-muted);
+  color: #9CA3AF;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -303,12 +303,12 @@
 }
 
 .ws-panel-tab:hover {
-  color: var(--theme-text);
+  color: #374151;
   background: rgba(0, 0, 0, 0.04);
 }
 
 .ws-panel-tab.active {
-  color: var(--theme-text, #1A1A1A);
+  color: #1A1A1A;
   background: rgba(0, 0, 0, 0.06);
 }
 
@@ -326,7 +326,7 @@
 
 .ws-progress-bar-fill {
   height: 100%;
-  background: var(--theme-text, #1A1A1A);
+  background: #1A1A1A;
   border-radius: 9999px;
   transition: width 400ms ease;
 }
@@ -336,7 +336,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--theme-muted);
+  color: #6B7280;
   margin-bottom: 6px;
   font-family: 'DM Sans', sans-serif;
 }
@@ -345,7 +345,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--theme-text, #1A1A1A);
+  background: #1A1A1A;
   flex-shrink: 0;
   animation: ws-pulse 1.4s ease-in-out infinite;
 }
@@ -365,10 +365,10 @@
   justify-content: space-between;
   gap: 16px;
   padding: 10px 16px;
-  background: var(--theme-surface2);
+  background: #F5F5F4;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   font-size: 13px;
-  color: var(--theme-text);
+  color: #374151;
   flex-shrink: 0;
 }
 
@@ -385,15 +385,15 @@
   font-size: 12px;
   font-weight: 500;
   background: transparent;
-  border: 1px solid var(--theme-border);
-  color: var(--theme-muted);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #6B7280;
   cursor: pointer;
   transition: all 150ms ease;
 }
 
 .ws-first-run-dismiss:hover {
   background: rgba(0, 0, 0, 0.04);
-  color: var(--theme-text, #1A1A1A);
+  color: #1A1A1A;
 }
 
 /* ============================================================
@@ -420,9 +420,9 @@
   border-radius: 20px;
   font-size: 12px;
   font-family: 'DM Sans', sans-serif;
-  color: var(--theme-muted);
+  color: #6B7280;
   background: transparent;
-  border: 1px solid var(--theme-border);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 150ms ease;
   white-space: nowrap;
@@ -430,8 +430,8 @@
 
 .ws-prompt-chip:hover {
   background: rgba(0, 0, 0, 0.04);
-  border-color: var(--theme-text, #1A1A1A);
-  color: var(--theme-text, #1A1A1A);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 /* ============================================================
@@ -439,60 +439,36 @@
    ============================================================ */
 
 .workspace-console-panel {
-  background: var(--theme-bg);
-  color: var(--theme-text);
+  background: #111113;
+  color: #e4e4e7;
 }
 
 .workspace-console-placeholder {
-  color: var(--theme-muted);
+  color: #71717a;
 }
 
 .workspace-console-line {
-  color: var(--theme-text);
+  color: #a1a1aa;
 }
 
 .workspace-console-time {
-  color: var(--theme-muted);
+  color: #52525b;
   flex-shrink: 0;
 }
 
 .workspace-console-agent {
-  color: var(--theme-muted);
+  color: #71717a;
   flex-shrink: 0;
 }
 
 .workspace-console-message {
-  color: var(--theme-text);
+  color: #e4e4e7;
 }
 
-.workspace-console-line--error .workspace-console-message { color: var(--chat-error, #dc2626); }
-.workspace-console-line--success .workspace-console-message { color: #16a34a; }
-[data-theme="dark"] .workspace-console-line--success .workspace-console-message { color: #86efac; }
-.workspace-console-line--warning .workspace-console-message { color: var(--theme-text); }
-[data-theme="dark"] .workspace-console-line--warning .workspace-console-message { color: #fbbf24; }
-.workspace-console-line--info .workspace-console-message { color: var(--theme-text); }
-
-/* Chat input: legible text and placeholder in both themes */
-.workspace-chat-input {
-  font-size: 15px;
-  line-height: 1.6;
-}
-.workspace-chat-input::placeholder {
-  color: var(--theme-muted);
-}
-
-/* Post-build actions under flat transcript */
-.workspace-code-actions button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-.workspace-code-actions button:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-[data-theme="light"] .workspace-code-actions button:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
+.workspace-console-line--error .workspace-console-message { color: #f87171; }
+.workspace-console-line--success .workspace-console-message { color: #86efac; }
+.workspace-console-line--warning .workspace-console-message { color: #fbbf24; }
+.workspace-console-line--info .workspace-console-message { color: #e4e4e7; }
 
 /* ============================================================
    RESPONSIVE
@@ -516,75 +492,4 @@
     padding: 8px;
     border-radius: 8px;
   }
-}
-
-/* ── Manus-style preview skeleton pulse ── */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ── Workbench tab bar no scrollbar ── */
-.workspace-right-panel .overflow-x-auto::-webkit-scrollbar { display: none; }
-
-/* ── Tab active underline ── */
-.workspace-right-panel button[style*="border-bottom"] {
-  transition: border-color 0.15s ease;
-}
-
-/* ============================================================
-   DARK THEME OVERRIDES — force all legacy light Tailwind classes dark
-   These ensure the workspace always renders in dark mode
-   ============================================================ */
-
-/* Backgrounds */
-.workspace-root .bg-white,
-.workspace-root [class*="bg-white"],
-.workspace-root [class*="bg-gray-50"],
-.workspace-root [class*="bg-gray-100"],
-.workspace-root [class*="bg-\[#FAF9F7\]"],
-.workspace-root [class*="bg-stone"] {
-  background-color: var(--theme-surface) !important;
-}
-
-/* Borders */
-.workspace-root [class*="border-gray-"],
-.workspace-root [class*="border-stone-"] {
-  border-color: var(--theme-border) !important;
-}
-
-/* Text */
-.workspace-root [class*="text-gray-900"],
-.workspace-root [class*="text-gray-800"],
-.workspace-root [class*="text-gray-700"] {
-  color: var(--theme-text) !important;
-}
-
-.workspace-root [class*="text-gray-600"],
-.workspace-root [class*="text-gray-500"],
-.workspace-root [class*="text-gray-400"] {
-  color: var(--theme-muted) !important;
-}
-
-/* Hover states */
-.workspace-root [class*="hover:bg-gray-50"]:hover,
-.workspace-root [class*="hover:bg-gray-100"]:hover {
-  background-color: var(--theme-surface2) !important;
-}
-
-/* Model picker + dropdowns */
-.workspace-root [class*="bg-blue-50"],
-.workspace-root [class*="text-blue-800"] {
-  background-color: rgba(88, 166, 255, 0.1) !important;
-  color: #58A6FF !important;
-}
-
-/* Active file highlight */
-.workspace-root .font-medium[class*="bg-blue-50"] {
-  background-color: rgba(88, 166, 255, 0.08) !important;
-}
-
-/* Shadow for dropdowns */
-.workspace-root .shadow-xl {
-  box-shadow: var(--shadow-panel) !important;
 }

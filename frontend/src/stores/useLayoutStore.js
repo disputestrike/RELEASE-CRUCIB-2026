@@ -3,7 +3,7 @@
  * Mode syncs from user.workspace_mode (backend). Toggle saves via API.
  */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useAuth } from '../authContext';
+import { useAuth } from '../App';
 
 const LayoutContext = createContext(null);
 
@@ -21,7 +21,7 @@ export function LayoutProvider({ children }) {
   useEffect(() => {
     try {
       localStorage.setItem('crucibai_dev_mode', mode === 'dev' ? 'true' : 'false');
-    } catch (_) { void 0; }
+    } catch (_) {}
   }, [mode]);
 
   const setMode = useCallback((next) => {

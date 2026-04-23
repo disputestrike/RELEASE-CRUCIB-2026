@@ -173,7 +173,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin = true }) => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   <span>System Health</span>
-                  <Activity className="w-4 h-4 text-neutral-500" />
+                  <Activity className="w-4 h-4 text-orange-500" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -186,10 +186,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin = true }) => {
 
         {/* Alerts */}
         {alerts.length > 0 && (
-          <Card className="mb-8 border-neutral-200 bg-neutral-50">
+          <Card className="mb-8 border-orange-200 bg-orange-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-neutral-600" />
+                <AlertCircle className="w-5 h-5 text-orange-600" />
                 Active Alerts ({alerts.length})
               </CardTitle>
             </CardHeader>

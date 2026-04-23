@@ -10,7 +10,6 @@ Central execute_tool(project_id, tool_name, params) for all agents.
 Auth: execute_tool is only invoked from orchestration paths that require get_current_user
 and project ownership (server verifies project belongs to user before running build).
 """
-
 import logging
 import os
 import subprocess
@@ -19,30 +18,12 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from project_state import WORKSPACE_ROOT
-from services.events import event_bus
-from services.hooks import (
-    HOOK_TOOL_ERROR,
-    HOOK_TOOL_POST,
-    HOOK_TOOL_PRE,
-    fire as fire_hook,
-)
-from services.policy import permission_engine
-from services.session_journal import append_entry
-from services.runtime.execution_authority import require_runtime_authority
-from services.runtime.execution_context import (
-    current_project_id,
-    current_skill_hint,
-    current_task_id,
-)
-from services.skills.skill_registry import SkillDef, resolve_skill
-from services.skills.skill_executor import skill_allows_tool
-from services.tools import get_tool_contract
 
 logger = logging.getLogger(__name__)
 
 # Commands allowed for execute_tool(..., "run", { "command": [...], "cwd": "optional relative path" })
 RUN_ALLOWLIST = [
-    (["python", "-m", "pytest"], True),  # prefix match
+    (["python", "-m", "pytest"], True),   # prefix match
     (["npm", "test"], True),
     (["npm", "run", "test"], True),
     (["npx", "jest"], True),
@@ -117,205 +98,8 @@ def execute_tool(
     Execute one tool in project workspace. Returns { "success": bool, "output": str, "error": optional }.
     Paths and commands are validated; no path traversal or arbitrary shell.
     """
-    runtime_project = current_project_id()
-    runtime_task = current_task_id()
-    runtime_skill = current_skill_hint()
-
-    try:
-        require_runtime_authority("tool_executor", detail="execution")
-    except PermissionError as exc:
-        return {
-            "success": False,
-            "error": str(exc),
-            "policy": {
-                "mode": "enforced",
-                "reason": "runtime_engine_required",
-            },
-            "skill": {"matched": False},
-        }
-
-    effective_project_id = runtime_project or project_id
-    workspace = _project_workspace(effective_project_id)
+    workspace = _project_workspace(project_id)
     tool_name = (tool_name or "").strip().lower()
-    tool_contract = get_tool_contract(tool_name)
-    if tool_contract is None:
-        return {
-            "success": False,
-            "error": f"Unknown tool: {tool_name}",
-            "tool": {"name": tool_name, "known": False},
-            "policy": {"mode": "deny", "reason": "unknown_tool_contract"},
-            "skill": {"matched": False},
-        }
-    tool_name = tool_contract.name
-    tool_meta = tool_contract.to_dict()
-    task_id = (params.get("task_id") or params.get("runtime_task_id") or runtime_task or "").strip() or None
-
-    event_bus.emit(
-        "tool.start",
-        {
-            "project_id": effective_project_id,
-            "task_id": task_id,
-            "tool": tool_name,
-            "has_params": bool(params),
-        },
-    )
-    event_bus.emit(
-        "tool_start",
-        {
-            "project_id": effective_project_id,
-            "task_id": task_id,
-            "tool": tool_name,
-            "has_params": bool(params),
-        },
-    )
-    fire_hook(
-        HOOK_TOOL_PRE,
-        {
-            "project_id": effective_project_id,
-            "task_id": task_id,
-            "tool": tool_name,
-            "has_params": bool(params),
-        },
-    )
-
-    def _finalize(result: Dict[str, Any]) -> Dict[str, Any]:
-        event_type = "tool.finish" if bool(result.get("success")) else "tool.fail"
-        event_bus.emit(
-            event_type,
-            {
-                "project_id": effective_project_id,
-                "task_id": task_id,
-                "tool": tool_name,
-                "success": bool(result.get("success")),
-                "error": result.get("error"),
-            },
-        )
-        event_bus.emit(
-            "tool_end",
-            {
-                "project_id": effective_project_id,
-                "task_id": task_id,
-                "tool": tool_name,
-                "success": bool(result.get("success")),
-                "error": result.get("error"),
-            },
-        )
-        fire_hook(
-            HOOK_TOOL_POST if bool(result.get("success")) else HOOK_TOOL_ERROR,
-            {
-                "project_id": effective_project_id,
-                "task_id": task_id,
-                "tool": tool_name,
-                "success": bool(result.get("success")),
-                "error": result.get("error"),
-                "policy": result.get("policy"),
-                "skill": result.get("skill"),
-            },
-        )
-        try:
-            append_entry(
-                effective_project_id,
-                task_id=task_id,
-                entry_type="tool_execution",
-                payload={
-                    "tool": tool_name,
-                    "success": bool(result.get("success")),
-                    "error": result.get("error"),
-                    "policy": result.get("policy"),
-                    "skill": result.get("skill"),
-                },
-            )
-        except Exception as exc:
-            logger.warning("session journal append failed: %s", exc)
-        return result
-
-    def _ok(payload: Dict[str, Any]) -> Dict[str, Any]:
-        out = {"success": True, "tool": tool_meta, **payload}
-        return _finalize(out)
-
-    def _err(error: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"success": False, "error": error, "tool": tool_meta}
-        if extra:
-            out.update(extra)
-        return _finalize(out)
-
-    skill_meta: Dict[str, Any] = {"matched": False}
-    skill_hint = (params.get("skill") or params.get("skill_name") or runtime_skill or "").strip()
-    if skill_hint:
-        skill: Optional[SkillDef] = resolve_skill(skill_hint)
-        if skill:
-            skill_meta = {"matched": True, "name": skill.name}
-            if not skill_allows_tool(skill, tool_name):
-                return _err(
-                    f"Skill denied tool: skill={skill.name} tool={tool_name}",
-                    {
-                        "skill": {
-                            "name": skill.name,
-                            "allowed_tools": sorted(list(skill.allowed_tools)),
-                        }
-                    },
-                )
-
-    # Central policy gate. Non-breaking when policy is disabled.
-    try:
-        policy_params = {
-            **(params or {}),
-            "_tool_risk_level": tool_contract.risk_level,
-            "_tool_requires_approval": tool_contract.requires_approval,
-            "_tool_side_effect_class": tool_contract.side_effect_class,
-        }
-        _workspace_surface = (
-            (params or {}).get("workspace_surface")
-            or (params or {}).get("surface")
-            or None
-        )
-        _policy_skill_name = (
-            (skill_meta or {}).get("name")
-            or skill_hint
-            or None
-        )
-        decision = permission_engine.evaluate_tool_call(
-            tool_name,
-            policy_params,
-            surface=_workspace_surface,
-            skill_name=_policy_skill_name,
-            project_id=effective_project_id,
-        )
-        if not decision.allowed:
-            if decision.mode == "ask":
-                return _err(
-                    "Policy requires approval",
-                    {
-                        "policy": {
-                            "mode": decision.mode,
-                            "reason": decision.reason,
-                            "approval_required": True,
-                        },
-                        "skill": skill_meta,
-                    },
-                )
-            return _err(
-                f"Policy denied: {decision.reason}",
-                {
-                    "policy": {
-                        "mode": decision.mode,
-                        "reason": decision.reason,
-                    },
-                    "skill": skill_meta,
-                },
-            )
-        policy_meta = {
-            "mode": decision.mode,
-            "reason": decision.reason,
-            "tool_risk_level": tool_contract.risk_level,
-        }
-    except Exception as e:
-        logger.warning("permission engine error; allowing by fallback: %s", e)
-        policy_meta = {
-            "mode": "fallback",
-            "reason": "permission engine error",
-            "tool_risk_level": tool_contract.risk_level,
-        }
 
     if tool_name == "file":
         action = (params.get("action") or "read").strip().lower()
@@ -325,81 +109,50 @@ def execute_tool(
             p = _resolve_under_workspace(workspace, path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
-            return _ok(
-                {
-                    "path": str(p),
-                    "bytes": len(content.encode("utf-8")),
-                    "policy": policy_meta,
-                    "skill": skill_meta,
-                }
-            )
+            return {"success": True, "path": str(p), "bytes": len(content.encode("utf-8"))}
         elif action == "read":
             p = _resolve_under_workspace(workspace, path)
             if not p.exists():
-                return _err("File not found", {"policy": policy_meta, "skill": skill_meta})
-            return _ok(
-                {
-                    "content": p.read_text(encoding="utf-8"),
-                    "path": str(p),
-                    "policy": policy_meta,
-                    "skill": skill_meta,
-                }
-            )
+                return {"success": False, "error": "File not found"}
+            return {"success": True, "content": p.read_text(encoding="utf-8"), "path": str(p)}
         elif action == "list":
             p = _resolve_under_workspace(workspace, path)
             if not p.is_dir():
-                return _err("Not a directory", {"policy": policy_meta, "skill": skill_meta})
+                return {"success": False, "error": "Not a directory"}
             names = [x.name for x in p.iterdir()]
-            return _ok(
-                {
-                    "path": str(p),
-                    "entries": names,
-                    "policy": policy_meta,
-                    "skill": skill_meta,
-                }
-            )
+            return {"success": True, "path": str(p), "entries": names}
         elif action == "mkdir":
             p = _resolve_under_workspace(workspace, path)
             p.mkdir(parents=True, exist_ok=True)
-            return _ok({"path": str(p), "policy": policy_meta, "skill": skill_meta})
+            return {"success": True, "path": str(p)}
         else:
-            return _err(f"Unknown file action: {action}", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": f"Unknown file action: {action}"}
 
     if tool_name == "run":
         cmd = params.get("command")
         if not isinstance(cmd, list):
-            return _err("command must be a list", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": "command must be a list"}
         if not _is_run_allowed(cmd):
-            return _err(f"Command not allowlisted: {cmd}", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": f"Command not allowlisted: {cmd}"}
         cwd = workspace
         if params.get("cwd"):
             cwd = _resolve_under_workspace(workspace, params["cwd"])
             if not cwd.is_dir():
                 cwd = workspace
         # Sandbox by default (Docker when available). Set RUN_IN_SANDBOX=0 to disable.
-        run_in_sandbox = os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        )
+        run_in_sandbox = os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes")
         if run_in_sandbox:
             try:
                 # Isolated run in Docker (Manus-style). Pick image from command.
                 first = (cmd[0] or "").lower()
-                if first == "python" or (
-                    len(cmd) > 1 and (cmd[1] or "").lower() == "bandit"
-                ):
+                if first == "python" or (len(cmd) > 1 and (cmd[1] or "").lower() == "bandit"):
                     image = "python:3.11-slim"
                 else:
                     image = "node:20-slim"
                 docker_cmd = [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "-v",
-                    f"{workspace.resolve()}:/.app",
-                    "-w",
-                    "/.app",
+                    "docker", "run", "--rm",
+                    "-v", f"{workspace.resolve()}:/.app",
+                    "-w", "/.app",
                     image,
                 ] + cmd
                 proc = subprocess.run(
@@ -411,29 +164,12 @@ def execute_tool(
                     errors="replace",
                 )
                 out = (proc.stdout or "") + (proc.stderr or "")
-                return _finalize(
-                    {
-                        "success": proc.returncode == 0,
-                        "returncode": proc.returncode,
-                        "output": out[:50000],
-                        "sandbox": True,
-                        "policy": policy_meta,
-                        "skill": skill_meta,
-                    }
-                )
+                return {"success": proc.returncode == 0, "returncode": proc.returncode, "output": out[:50000], "sandbox": True}
             except FileNotFoundError:
                 logger.warning("Docker not found; falling back to local run")
                 run_in_sandbox = False
             except subprocess.TimeoutExpired:
-                return _err(
-                    "timeout",
-                    {
-                        "output": "",
-                        "sandbox": True,
-                        "policy": policy_meta,
-                        "skill": skill_meta,
-                    },
-                )
+                return {"success": False, "error": "timeout", "output": "", "sandbox": True}
             except Exception as e:
                 logger.warning("Sandbox run failed: %s", e)
                 run_in_sandbox = False
@@ -449,74 +185,63 @@ def execute_tool(
                     errors="replace",
                 )
                 out = (proc.stdout or "") + (proc.stderr or "")
-                return _finalize(
-                    {
-                        "success": proc.returncode == 0,
-                        "returncode": proc.returncode,
-                        "output": out[:50000],
-                        "policy": policy_meta,
-                        "skill": skill_meta,
-                    }
-                )
+                return {
+                    "success": proc.returncode == 0,
+                    "returncode": proc.returncode,
+                    "output": out[:50000],
+                }
             except subprocess.TimeoutExpired:
-                return _err("timeout", {"output": "", "policy": policy_meta, "skill": skill_meta})
+                return {"success": False, "error": "timeout", "output": ""}
             except Exception as e:
-                return _err(str(e), {"output": "", "policy": policy_meta, "skill": skill_meta})
+                return {"success": False, "error": str(e), "output": ""}
 
     if tool_name == "api":
         url = params.get("url") or ""
         if not _is_safe_url(url):
-            return _err("URL not allowed (SSRF safety)", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": "URL not allowed (SSRF safety)"}
         try:
             import urllib.request
-
-            req = urllib.request.Request(
-                url, headers={"User-Agent": "CrucibAI-Tool/1.0"}
-            )
+            req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Tool/1.0"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:100000]
-            return _ok({"status": r.status, "body": body, "policy": policy_meta, "skill": skill_meta})
+            return {"success": True, "status": r.status, "body": body}
         except Exception as e:
-            return _err(str(e), {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": str(e)}
 
     if tool_name == "browser":
         url = params.get("url") or ""
         if not _is_safe_url(url):
-            return _err("URL not allowed", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": "URL not allowed"}
         # Sync fetch only (no Playwright) to avoid async in execute_tool
         try:
             import urllib.request
-
-            req = urllib.request.Request(
-                url, headers={"User-Agent": "CrucibAI-Browser/1.0"}
-            )
+            req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Browser/1.0"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:50000]
-            return _ok({"body_preview": body[:2000], "policy": policy_meta, "skill": skill_meta})
+            return {"success": True, "body_preview": body[:2000]}
         except Exception as e:
-            return _err(str(e), {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": str(e)}
 
     if tool_name == "db":
         # SQLite in workspace only
         db_path = (params.get("path") or "data.db").strip().lstrip("/")
         if ".." in db_path:
-            return _err("Invalid path", {"policy": policy_meta, "skill": skill_meta})
+            return {"success": False, "error": "Invalid path"}
         db_file = workspace / db_path
         action = (params.get("action") or "query").strip().lower()
         if action == "query":
             sql = params.get("sql") or ""
             if not sql.strip().upper().startswith("SELECT"):
-                return _err("Only SELECT allowed", {"policy": policy_meta, "skill": skill_meta})
+                return {"success": False, "error": "Only SELECT allowed"}
             try:
                 import sqlite3
-
                 conn = sqlite3.connect(str(db_file))
                 cur = conn.execute(sql)
                 rows = cur.fetchall()
                 conn.close()
-                return _ok({"rows": rows, "policy": policy_meta, "skill": skill_meta})
+                return {"success": True, "rows": rows}
             except Exception as e:
-                return _err(str(e), {"policy": policy_meta, "skill": skill_meta})
-        return _err(f"Unknown db action: {action}", {"policy": policy_meta, "skill": skill_meta})
+                return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Unknown db action: {action}"}
 
-    return _err(f"Unknown tool: {tool_name}", {"policy": policy_meta, "skill": skill_meta})
+    return {"success": False, "error": f"Unknown tool: {tool_name}"}

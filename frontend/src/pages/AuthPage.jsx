@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, ArrowLeft, Github } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import Logo from '../components/Logo';
 
 /**
@@ -192,7 +191,7 @@ const AuthPage = () => {
             className="w-full max-w-[380px]"
           >
             {/* Logo — centered above form, 48–64px per spec */}
-            <div className="mb-8 flex justify-center logo-surface-light">
+            <div className="mb-8 flex justify-center">
               <Logo variant="full" height={56} href="/" />
             </div>
 
@@ -285,22 +284,6 @@ const AuthPage = () => {
                     <Github className="w-5 h-5" />
                     Continue with GitHub
                   </button>
-
-                  {isLogin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const email = prompt('Enter your work email to continue with SSO:');
-                        if (email && email.includes('@')) {
-                          window.location.href = `${API}/sso/login?email=${encodeURIComponent(email)}`;
-                        }
-                      }}
-                      className="w-full py-3 bg-white hover:bg-gray-50 border border-dashed border-gray-300 rounded-lg font-medium transition flex items-center justify-center gap-3 text-gray-500 text-sm"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      Continue with SSO (Enterprise)
-                    </button>
-                  )}
                 </div>
 
                 {/* Divider */}
@@ -460,7 +443,7 @@ const AuthPage = () => {
           <p className="text-gray-500 text-lg mb-10 leading-relaxed">
             {isLogin
               ? 'Your projects, agents, and builds are waiting.'
-              : 'A swarm of agents and sub-agents plans, builds, tests, and deploys your app — while you watch every step.'}
+              : '120 AI agents plan, build, test, and deploy your app — while you watch every step.'}
           </p>
 
           {/* Benefits */}
@@ -489,7 +472,7 @@ const AuthPage = () => {
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-6">
             {[
-              { value: 'Swarm', label: 'Agents & sub-agents' },
+              { value: '120', label: 'AI agents' },
               { value: '99.2%', label: 'Success rate' },
               { value: '<72h', label: 'Delivery' },
             ].map((stat, i) => (

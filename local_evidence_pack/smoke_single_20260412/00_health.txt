@@ -1,0 +1,2 @@
+GET /api/health -> 200
+{"status":"healthy","service":"crucibai","timestamp":"2026-04-12T08:52:44.901178+00:00"}

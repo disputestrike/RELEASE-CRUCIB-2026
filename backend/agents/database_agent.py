@@ -1,10 +1,8 @@
 """
 DatabaseAgent: Designs database schema, migrations, and ORM models.
 """
-
-from typing import Any, Dict
-
-from agents.base_agent import AgentValidationError, BaseAgent
+from typing import Dict, Any
+from agents.base_agent import BaseAgent, AgentValidationError
 from agents.registry import AgentRegistry
 
 
@@ -12,63 +10,59 @@ from agents.registry import AgentRegistry
 class DatabaseAgent(BaseAgent):
     """
     Designs database schema, migrations, and ORM models.
-
+    
     Input:
         - user_prompt: str
         - stack_output: dict (optional, from StackSelectorAgent)
-
+    
     Output:
         - schema: dict with tables, relationships
         - migrations: dict with migration files
         - orm_models: dict with ORM model code
     """
-
+    
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
-
+        
         if "user_prompt" not in context:
-            raise AgentValidationError(
-                f"{self.name}: Missing required field 'user_prompt'"
-            )
-
+            raise AgentValidationError(f"{self.name}: Missing required field 'user_prompt'")
+        
         return True
-
+    
     def validate_output(self, result: Dict[str, Any]) -> bool:
         super().validate_output(result)
-
+        
         # Check required fields
         required = ["schema", "migrations", "orm_models"]
         for field in required:
             if field not in result:
-                raise AgentValidationError(
-                    f"{self.name}: Missing required field '{field}'"
-                )
-
+                raise AgentValidationError(f"{self.name}: Missing required field '{field}'")
+        
         # Validate schema has tables
         if "tables" not in result["schema"]:
             raise AgentValidationError(f"{self.name}: schema must have 'tables' field")
-
+        
         if not isinstance(result["schema"]["tables"], list):
             raise AgentValidationError(f"{self.name}: schema tables must be a list")
-
+        
         # Validate at least one table
         if len(result["schema"]["tables"]) == 0:
             raise AgentValidationError(f"{self.name}: Must define at least one table")
-
+        
         # Validate migrations is a dict
         if not isinstance(result["migrations"], dict):
             raise AgentValidationError(f"{self.name}: migrations must be a dictionary")
-
+        
         # Validate orm_models is a dict
         if not isinstance(result["orm_models"], dict):
             raise AgentValidationError(f"{self.name}: orm_models must be a dictionary")
-
+        
         return True
-
+    
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         user_prompt = context.get("user_prompt", "")
         stack_output = context.get("stack_output", {})
-
+        
         # Include stack context if available
         database_type = "PostgreSQL"
         orm_type = "SQLAlchemy"
@@ -77,7 +71,7 @@ class DatabaseAgent(BaseAgent):
             database_type = database.get("primary", "PostgreSQL")
             backend = stack_output.get("backend", {})
             backend_lang = backend.get("language", "Python")
-
+            
             # Determine ORM based on language
             if backend_lang == "Python":
                 orm_type = "SQLAlchemy"
@@ -85,11 +79,9 @@ class DatabaseAgent(BaseAgent):
                 orm_type = "Prisma"
             elif backend_lang == "Go":
                 orm_type = "GORM"
-
-        context_info = (
-            f"\n\nTechnology Context:\nDatabase: {database_type}\nORM: {orm_type}"
-        )
-
+        
+        context_info = f"\n\nTechnology Context:\nDatabase: {database_type}\nORM: {orm_type}"
+        
         system_prompt = f"""You are an expert Database Design agent. Your job is to design a comprehensive, normalized database schema with migrations and ORM models.
 
 Project Requirements:
@@ -153,46 +145,17 @@ Quality expectations:
         response, tokens = await self.call_llm(
             user_prompt=user_prompt + context_info,
             system_prompt=system_prompt,
-            model="claude-haiku-4-5-20251001",
+            model="claude-3-5-haiku-20241022",
             temperature=0.7,
-            max_tokens=2000,
+            max_tokens=2000
         )
-
-        # Parse JSON response, with fallback for raw SQL from Cerebras/other providers
-        try:
-            data = self.parse_json_response(response)
-        except Exception:
-            # LLM returned raw SQL or non-JSON — wrap it into expected structure
-            sql_text = response.strip()
-            # Strip markdown fences if present
-            if sql_text.startswith("```"):
-                sql_text = sql_text.split("\n", 1)[-1]
-                if "```" in sql_text:
-                    sql_text = sql_text.rsplit("```", 1)[0].strip()
-            # Extract table names from CREATE TABLE statements
-            import re as _re
-            table_names = _re.findall(
-                r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?(\w+)[\"']?",
-                sql_text,
-                _re.IGNORECASE,
-            )
-            tables = [
-                {
-                    "name": name,
-                    "columns": [{"name": "id", "type": "SERIAL PRIMARY KEY", "description": "Primary key"}],
-                    "indexes": [],
-                }
-                for name in (table_names or ["entities"])
-            ]
-            data = {
-                "schema": {"tables": tables, "relationships": []},
-                "migrations": {"001_initial_schema": sql_text},
-                "orm_models": {"raw_sql": sql_text},
-            }
-
+        
+        # Parse JSON response
+        data = self.parse_json_response(response)
+        
         # Add metadata
         data["_tokens_used"] = tokens
-        data["_model_used"] = "claude-haiku-4-5-20251001"
+        data["_model_used"] = "claude-3-5-haiku-20241022"
         data["_agent"] = self.name
-
+        
         return data

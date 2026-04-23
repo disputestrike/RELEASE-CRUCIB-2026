@@ -2,7 +2,6 @@
 Legacy: monitoring_events-only schema. For full app (all tables), db_pg.init_schema()
 runs backend/migrations/001_full_schema.sql. The app uses db_pg.get_db() which calls that.
 """
-
 import logging
 
 logger = logging.getLogger(__name__)

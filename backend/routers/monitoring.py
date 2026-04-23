@@ -2,15 +2,13 @@
 Monitoring and metrics router.
 Exposes Prometheus /api/metrics and health-style endpoints.
 """
-
 from fastapi import APIRouter
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import Response, PlainTextResponse
 
 router = APIRouter(prefix="/api", tags=["monitoring"])
 
 try:
-    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
-
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     _metrics_available = True
 except ImportError:
     _metrics_available = False

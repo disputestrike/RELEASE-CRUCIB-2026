@@ -1,12 +1,11 @@
 """
 Schedule: compute next_run_at from cron_expression or run_at (one-time).
 """
-
 from datetime import datetime, timezone
 from typing import Optional
 
 try:
-    from croniter import croniter  # type: ignore[import-untyped]
+    from croniter import croniter
 except ImportError:
     croniter = None
 
@@ -40,6 +39,4 @@ def next_run_at(
 
 def is_one_time(trigger_config: dict) -> bool:
     """True if trigger uses run_at (one-time) only."""
-    return bool(
-        trigger_config.get("run_at") and not trigger_config.get("cron_expression")
-    )
+    return bool(trigger_config.get("run_at") and not trigger_config.get("cron_expression"))

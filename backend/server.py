@@ -64,17 +64,20 @@ CHAT_WITH_SEARCH_SYSTEM = ""
 REAL_AGENT_NO_LLM_KEYS_DETAIL = ""
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
+# Canonical pricing — keep aligned with backend/pricing_plans.py (linear $0.03/credit).
+# The Pricing page /tokens/bundles endpoint reads these values, so they MUST match
+# the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
-    "builder": {"name": "Builder", "tokens": 500_000, "credits": 500, "price": 29},
-    "pro": {"name": "Pro", "tokens": 1_500_000, "credits": 1500, "price": 79},
-    "scale": {"name": "Scale", "tokens": 5_000_000, "credits": 5000, "price": 199},
-    "teams": {"name": "Teams", "tokens": 15_000_000, "credits": 15000, "price": 499},
+    "builder": {"name": "Builder", "tokens": 500_000,  "credits": 500,  "price": 15},
+    "pro":     {"name": "Pro",     "tokens": 1_000_000, "credits": 1000, "price": 15},
+    "scale":   {"name": "Scale",   "tokens": 2_000_000, "credits": 2000, "price": 60},
+    "teams":   {"name": "Teams",   "tokens": 5_000_000, "credits": 5000, "price": 150},
 }
 ANNUAL_PRICES: Dict[str, Any] = {
-    "builder": 290,
-    "pro": 790,
-    "scale": 1990,
-    "teams": 4990,
+    "builder": 149.99,
+    "pro": 299.99,
+    "scale": 599.99,
+    "teams": 1499.99,
 }
 STRIPE_SECRET = os.environ.get("STRIPE_SECRET", "")
 REFERRAL_CAP_PER_MONTH = 10
@@ -440,12 +443,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# WS-I: COOP/COEP headers for WebContainers in-browser preview.
+# Gated by env FEATURE_WEBCONTAINER_COOP (default off) to avoid affecting
+# existing embedding. When on, serves cross-origin-isolated headers required
+# by SharedArrayBuffer / WebContainers API.
+import os as _os_ws_i
+def _webcontainer_coop_coep(request, call_next):
+    pass  # placeholder for type-checkers
+try:
+    from starlette.middleware.base import BaseHTTPMiddleware as _BaseHTTPMiddleware
+    from starlette.responses import Response as _StarletteResponse
+
+    class WebContainerCoopCoepMiddleware(_BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response: _StarletteResponse = await call_next(request)
+            if _os_ws_i.environ.get("FEATURE_WEBCONTAINER_COOP", "").lower() in ("1", "true", "yes", "on"):
+                response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+                response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+                response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+            return response
+
+    # Register as early as possible; FastAPI app object is `app`.
+    try:
+        app.add_middleware(WebContainerCoopCoepMiddleware)  # type: ignore[name-defined]
+    except Exception:
+        # app not yet defined at this import site; will be wired when module reloaded
+        pass
+except Exception:
+    pass
+
 _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.compat", "router", False),
     ("routes.misc", "router", False),
     ("routes.auth", "auth_router", False),
     ("routes.runtime", "router", False),
     ("routes.projects", "projects_router", False),
+    # WS-G: per-project persistent memory (K/V JSONB)
+    ("routes.project_memory", "router", False),
     ("routes.admin", "admin_router", False),
     ("routes.automation", "router", False),
     ("routes.community", "router", False),
@@ -459,6 +494,15 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.mobile", "mobile_router", True),
     ("routes.monitoring", "router", False),
     ("routes.skills", "router", False),
+    # Honesty-bias preamble surfacing (WS-K)
+    ("routes.prompts", "router", False),
+    # WS-F: MCP dispatch layer (Slack / GitHub / Notion)
+    ("routes.mcp", "router", False),
+    # WS-D: RAG / vector memory
+    ("routes.memory", "router", False),
+    ("routes.chat_react", "router", False),
+    ("routes.share", "router", False),
+    ("routes.preview_serve", "router", False),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),
@@ -466,6 +510,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.vibecoding", "router", False),
     ("routes.workflows", "router", False),
     ("routes.workspace", "router", False),
+    ("routes.build_progress", "router", False),
     ("routes.worktrees", "router", False),
     # Phase-1 capability build-out  (engineering/master-list-closeout)
     ("routes.artifacts", "router", False),
@@ -498,6 +543,15 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.orchestrator", "router", False),
     ("routes.jobs", "router", False),
     ("routes.ai", "router", False),
+    # Adapter routes — build-scoped endpoints consumed by the v28 UnifiedWorkspace
+    # These expose /api/builds/{job_id}/{preview,deploy,trust,automation,files,file}
+    # and /api/spawn/{run,scenario}. Optional=True so backend still boots if any fails.
+    ("adapter.routes.preview", "router", True),
+    ("adapter.routes.deploy", "router", True),
+    ("adapter.routes.trust", "router", True),
+    ("adapter.routes.automation", "router", True),
+    ("adapter.routes.files", "router", True),
+    ("adapter.routes.spawn", "router", True),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
@@ -1201,19 +1255,100 @@ def _is_conversational_message(message: str) -> bool:
 
 
 def _needs_live_data(message: str) -> bool:
+    """Heuristic: does the user need real-world / time-sensitive data?
+
+    Broadened from the original narrow keyword list so questions like
+    "who is the US president?", "what day is it?", "what is X worth?" route
+    through the search path instead of the model's stale training data.
+    """
     m = (message or "").lower()
-    return any(
-        k in m
-        for k in ("latest", "today", "current", "news", "price", "weather", "stock", "live")
+    keywords = (
+        # time/date explicit
+        "today", "tonight", "tomorrow", "yesterday", "right now", "currently",
+        "this week", "this month", "this year", "as of", "date", "day is",
+        # freshness adjectives
+        "latest", "current", "recent", "live", "breaking",
+        # market / money
+        "price", "stock", "market", "crypto", "bitcoin", "ethereum", "exchange rate",
+        # world events
+        "news", "weather", "score", "game", "election", "poll", "president",
+        "prime minister", "ceo of", "who is the", "who's the",
+        # version / release
+        "latest version", "release of", "when was", "when did",
     )
+    return any(k in m for k in keywords)
 
 
-async def _fetch_search_context(_message: str) -> str:
-    return ""
+async def _fetch_search_context(message: str) -> str:
+    """Fetch a compact live-search context using the DuckDuckGo HTML endpoint.
+
+    No API key required. Returns a few top result titles + snippets so the
+    model can answer time-sensitive questions ("who is the US president?",
+    "today's date", stock prices, etc.). Fails silently to empty string so
+    the chat never breaks when network / endpoint is unavailable.
+    """
+    q = (message or "").strip()
+    if not q:
+        return ""
+    try:
+        import httpx  # already in backend requirements
+        import re as _re
+        import html as _html
+        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+            resp = await client.post(
+                "https://html.duckduckgo.com/html/",
+                data={"q": q},
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+                    )
+                },
+            )
+            if resp.status_code != 200:
+                return ""
+            text = resp.text
+        results = []
+        # Titles
+        titles = _re.findall(
+            r'<a[^>]+class="[^"]*result__a[^"]*"[^>]*>(.*?)</a>',
+            text, flags=_re.DOTALL,
+        )
+        # Snippets
+        snippets = _re.findall(
+            r'<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>',
+            text, flags=_re.DOTALL,
+        )
+        def _clean(s: str) -> str:
+            s = _re.sub(r"<[^>]+>", "", s or "")
+            s = _html.unescape(s).strip()
+            return _re.sub(r"\s+", " ", s)
+        for i in range(min(3, len(titles))):
+            t = _clean(titles[i])
+            sn = _clean(snippets[i]) if i < len(snippets) else ""
+            if t:
+                results.append(f"- {t}" + (f" — {sn}" if sn else ""))
+        return "\n".join(results)
+    except Exception:
+        return ""
 
 
-async def _build_chat_system_prompt_for_request(_message: str, _user_id: Optional[str]) -> str:
-    return "You are CrucibAI. Be concise, accurate, and action-oriented."
+async def _build_chat_system_prompt_for_request(
+    _message: str, _user_id: Optional[str]
+) -> str:
+    """Default chat system prompt. Injects today's date so the model stops
+    confidently claiming an outdated cutoff for time-sensitive questions."""
+    import datetime as _dt
+    today = _dt.date.today().isoformat()
+    return (
+        "You are CrucibAI. Be concise, accurate, and action-oriented. "
+        f"Today's date is {today}. "
+        "When the user asks about current events, people in positions (e.g. "
+        "presidents, CEOs), prices, or other time-sensitive facts and you "
+        "do not have up-to-date information, answer with what you do know "
+        "and clearly note that the fact may have changed. Never claim a "
+        "knowledge cutoff date that contradicts the Today's date above."
+    )
 
 
 def _extract_pdf_text_from_b64(b64: str) -> str:

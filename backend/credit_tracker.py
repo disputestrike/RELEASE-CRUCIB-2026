@@ -2,60 +2,63 @@
 CrucibAI Credit Tracker
 =======================
 Tracks credit usage per model and user tier.
-Uses the PostgreSQL JSONB wrapper in db_pg.py (not raw asyncpg).
+Integrates with pricing, payment, and LLM routing.
 """
 
-import hashlib
 import logging
-import os
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-
-def _credit_audit_log_enabled() -> bool:
-    return (os.environ.get("CRUCIBAI_CREDIT_BALANCE_LOG") or "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-
-
 class ModelCost(str, Enum):
     """Cost per 1M tokens for each model"""
-
-    LLAMA = 0.0
-    CEREBRAS = 0.27
-    HAIKU = 0.80
+    LLAMA = 0.0          # Free (open-source)
+    CEREBRAS = 0.27      # Cheap
+    HAIKU = 0.80         # Standard
 
 
 class CreditTracker:
-    """Tracks credit usage and deductions based on model used."""
-
+    """
+    Tracks credit usage and deductions based on model used.
+    """
+    
+    # Credit cost per 1M tokens (1 credit = 1000 tokens)
     MODEL_CREDIT_COST = {
-        "llama": 0.0,
-        "cerebras": 0.00027,
-        "haiku": 0.00080,
+        "llama": 0,           # Free
+        "cerebras": 0.00027,  # $0.27 per 1M tokens
+        "haiku": 0.00080,     # $0.80 per 1M tokens
     }
-
+    
     @staticmethod
     def calculate_credit_cost(
-        model_name: str, tokens_used: int, user_tier: str = "free"
+        model_name: str,
+        tokens_used: int,
+        user_tier: str = "free"
     ) -> float:
+        """
+        Calculate credit cost for a request.
+        
+        Args:
+            model_name: "llama", "cerebras", or "haiku"
+            tokens_used: Number of tokens used
+            user_tier: User's subscription tier
+            
+        Returns:
+            Credits to deduct
+        """
+        
+        # Free tier users: only pay for Haiku (if used)
         if user_tier == "free" and model_name != "haiku":
             return 0.0
+        
+        # Builder+ tiers: pay based on model
         base_cost = CreditTracker.MODEL_CREDIT_COST.get(model_name, 0)
         credit_cost = (tokens_used / 1000) * base_cost
-        return max(1, round(credit_cost)) if credit_cost > 0 else 0.0
-
-    @staticmethod
-    def _usage_id_for_idempotency(user_id: str, idempotency_key: str) -> str:
-        h = hashlib.sha256(f"{user_id}\0{idempotency_key}".encode("utf-8")).hexdigest()
-        return f"usage_idem_{h}"
-
+        
+        return max(1, round(credit_cost))  # Minimum 1 credit
+    
     @staticmethod
     async def record_usage(
         db,
@@ -65,42 +68,22 @@ class CreditTracker:
         user_tier: str,
         agent_name: str,
         project_id: str,
-        idempotency_key: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Record LLM usage and deduct credits via db_pg.
-
-        If ``idempotency_key`` is set, the same key for the same ``user_id`` replays without
-        a second deduction (safe for client retries / double-submit).
         """
+        Record LLM usage and deduct credits.
+        
+        Returns:
+            Dict with usage_id, credits_deducted, remaining_credits
+        """
+        
         try:
             credit_cost = CreditTracker.calculate_credit_cost(
                 model_name, tokens_used, user_tier
             )
-
-            if idempotency_key:
-                uid = CreditTracker._usage_id_for_idempotency(user_id, idempotency_key)
-                existing = await db.usage_log.find_one({"_id": uid})
-                if existing:
-                    user = await db.users.find_one(
-                        {"id": user_id}, {"credit_balance": 1}
-                    )
-                    remaining = user.get("credit_balance", 0) if user else 0
-                    return {
-                        "usage_id": uid,
-                        "credits_deducted": 0.0,
-                        "remaining_credits": remaining,
-                        "model": model_name,
-                        "replay": True,
-                    }
-
-            usage_id = (
-                CreditTracker._usage_id_for_idempotency(user_id, idempotency_key)
-                if idempotency_key
-                else f"usage_{user_id}_{datetime.now(timezone.utc).timestamp()}"
-            )
-
+            
+            # Record in usage log
             usage_record = {
-                "_id": usage_id,
+                "_id": f"usage_{user_id}_{datetime.now(timezone.utc).timestamp()}",
                 "user_id": user_id,
                 "model": model_name,
                 "tokens_used": tokens_used,
@@ -110,69 +93,29 @@ class CreditTracker:
                 "project_id": project_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
-            if idempotency_key:
-                usage_record["idempotency_key"] = idempotency_key
-
-            try:
-                await db.usage_log.insert_one(usage_record)
-            except Exception as exc:
-                # Concurrent duplicate submit with same idempotency key
-                err = str(exc).lower()
-                if idempotency_key and ("duplicate" in err or "e11000" in err):
-                    user = await db.users.find_one(
-                        {"id": user_id}, {"credit_balance": 1}
-                    )
-                    remaining = user.get("credit_balance", 0) if user else 0
-                    return {
-                        "usage_id": CreditTracker._usage_id_for_idempotency(
-                            user_id, idempotency_key
-                        ),
-                        "credits_deducted": 0.0,
-                        "remaining_credits": remaining,
-                        "model": model_name,
-                        "replay": True,
-                    }
-                raise
-
+            
+            await db.usage_log.insert_one(usage_record)
+            
+            # Deduct credits from user
             if credit_cost > 0:
                 await db.users.update_one(
-                    {"id": user_id}, {"$inc": {"credit_balance": -credit_cost}}
+                    {"id": user_id},
+                    {"$inc": {"credit_balance": -credit_cost}}
                 )
-
+            
+            # Get updated balance
             user = await db.users.find_one({"id": user_id}, {"credit_balance": 1})
-            remaining = user.get("credit_balance", 0) if user else 0
-
-            if remaining < 0:
-                logger.warning(
-                    "credit_balance_negative user_id=%s balance=%s model=%s deducted=%s",
-                    user_id,
-                    remaining,
-                    model_name,
-                    credit_cost,
-                )
-            if _credit_audit_log_enabled():
-                logger.info(
-                    "credit_balance_event user_id=%s delta=%s balance_after=%s model=%s tokens=%s",
-                    user_id,
-                    -float(credit_cost),
-                    remaining,
-                    model_name,
-                    tokens_used,
-                )
-            elif remaining >= 0:
-                logger.info(
-                    "Usage recorded: %s used %s, deducted %s credits",
-                    user_id,
-                    model_name,
-                    credit_cost,
-                )
+            remaining_credits = user.get("credit_balance", 0) if user else 0
+            
+            logger.info(f"Usage recorded: {user_id} used {model_name}, deducted {credit_cost} credits")
+            
             return {
                 "usage_id": usage_record["_id"],
                 "credits_deducted": credit_cost,
-                "remaining_credits": remaining,
+                "remaining_credits": remaining_credits,
                 "model": model_name,
             }
-
+        
         except Exception as e:
             logger.error(f"Failed to record usage: {e}")
             return {
@@ -181,21 +124,31 @@ class CreditTracker:
                 "remaining_credits": 0,
                 "error": str(e),
             }
-
+    
     @staticmethod
-    async def get_user_usage_stats(db, user_id: str, days: int = 30) -> Dict[str, Any]:
-        """Get user LLM usage stats."""
+    async def get_user_usage_stats(
+        db,
+        user_id: str,
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Get user's LLM usage statistics.
+        
+        Returns:
+            Dict with usage by model, total tokens, total credits spent
+        """
+        
         try:
             from datetime import timedelta
-
-            cutoff_date = (
-                datetime.now(timezone.utc) - timedelta(days=days)
-            ).isoformat()
-            usage_records = await db.usage_log.find(
-                {"user_id": user_id, "timestamp": {"$gte": cutoff_date}}
-            ).to_list(1000)
-
-            stats: Dict[str, Any] = {
+            
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+            
+            usage_records = await db.usage_log.find({
+                "user_id": user_id,
+                "timestamp": {"$gte": cutoff_date}
+            }).to_list(1000)
+            
+            stats = {
                 "total_tokens": 0,
                 "total_credits": 0,
                 "by_model": {
@@ -205,32 +158,32 @@ class CreditTracker:
                 },
                 "by_agent": {},
             }
-
+            
             for record in usage_records:
                 model = record.get("model", "unknown")
                 tokens = record.get("tokens_used", 0)
                 credits = record.get("credits_deducted", 0)
                 agent = record.get("agent_name", "unknown")
-
+                
                 stats["total_tokens"] += tokens
                 stats["total_credits"] += credits
-
+                
                 if model in stats["by_model"]:
                     stats["by_model"][model]["tokens"] += tokens
                     stats["by_model"][model]["credits"] += credits
                     stats["by_model"][model]["count"] += 1
-
+                
                 if agent not in stats["by_agent"]:
                     stats["by_agent"][agent] = {"tokens": 0, "credits": 0}
                 stats["by_agent"][agent]["tokens"] += tokens
                 stats["by_agent"][agent]["credits"] += credits
-
+            
             return stats
-
+        
         except Exception as e:
             logger.error(f"Failed to get usage stats: {e}")
             return {}
 
 
-# Singleton
+# Singleton instance
 tracker = CreditTracker()

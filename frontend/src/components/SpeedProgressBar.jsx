@@ -12,14 +12,14 @@ export default function SpeedProgressBar({ speedTier, progress, isBuilding }) {
     pro: {
       label: 'Pro Mode — Haiku parallel',
       flames: 2,
-      color: 'text-neutral-600',
-      bgColor: 'bg-neutral-200'
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-100'
     },
     max: {
-      label: 'Max Mode — Haiku full agent swarm',
+      label: 'Max Mode — Haiku full swarm — all 123 agents',
       flames: 3,
-      color: 'text-neutral-800',
-      bgColor: 'bg-neutral-200'
+      color: 'text-red-500',
+      bgColor: 'bg-red-100'
     }
   };
 
@@ -53,8 +53,8 @@ export default function SpeedProgressBar({ speedTier, progress, isBuilding }) {
         <div
           className={`h-full transition-all duration-300 ${
             speedTier === 'lite' ? 'bg-gray-500' :
-            speedTier === 'pro' ? 'bg-neutral-600' :
-            'bg-neutral-900'
+            speedTier === 'pro' ? 'bg-orange-500' :
+            'bg-red-500'
           }`}
           style={{ width: `${Math.min(progress, 100)}%` }}
         />

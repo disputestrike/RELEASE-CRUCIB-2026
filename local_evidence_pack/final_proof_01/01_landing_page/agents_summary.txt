@@ -1,0 +1,43 @@
+agents.planner	Planner	failed
+agents.requirements_clarifier	Requirements Clarifier	blocked
+agents.content_agent	Content Agent	blocked
+agents.stack_selector	Stack Selector	blocked
+agents.frontend_generation	Frontend Generation	blocked
+agents.backend_generation	Backend Generation	blocked
+agents.design_agent	Design Agent	blocked
+agents.seo_agent	SEO Agent	blocked
+agents.brand_agent	Brand Agent	blocked
+agents.dark_mode_agent	Dark Mode Agent	blocked
+agents.animation_agent	Animation Agent	blocked
+agents.responsive_breakpoints_agent	Responsive Breakpoints Agent	blocked
+agents.typography_system_agent	Typography System Agent	blocked
+agents.ux_auditor	UX Auditor	blocked
+agents.build_validator_agent	Build Validator Agent	blocked
+agents.css_modern_standards_agent	CSS Modern Standards Agent	blocked
+agents.database_agent	Database Agent	blocked
+agents.security_checker	Security Checker	blocked
+agents.performance_analyzer	Performance Analyzer	blocked
+agents.deployment_agent	Deployment Agent	blocked
+agents.code_review_agent	Code Review Agent	blocked
+agents.file_tool_agent	File Tool Agent	blocked
+agents.image_generation	Image Generation	blocked
+agents.color_palette_system_agent	Color Palette System Agent	blocked
+agents.icon_system_agent	Icon System Agent	blocked
+agents.compilation_dry_run_agent	Compilation Dry-Run Agent	blocked
+agents.security_scanning_agent	Security Scanning Agent	blocked
+agents.memory_agent	Memory Agent	blocked
+agents.lighthouse_performance_agent	Lighthouse Performance Agent	blocked
+agents.code_quality_gate_agent	Code Quality Gate Agent	blocked
+agents.layout_agent	Layout Agent	blocked
+agents.image_optimization_agent	Image Optimization Agent	blocked
+agents.build_orchestrator_agent	Build Orchestrator Agent	blocked
+agents.deployment_safety_agent	Deployment Safety Agent	blocked
+agents.quality_metrics_aggregator_agent	Quality Metrics Aggregator Agent	blocked
+implementation.delivery_manifest	Delivery	blocked
+verification.compile	Verifier	blocked
+verification.api_smoke	Verifier	blocked
+verification.preview	Verifier	blocked
+verification.security	Security Checker	blocked
+verification.elite_builder	Verifier	blocked
+deploy.build	Deployment Agent	blocked
+deploy.publish	Deployment Agent	blocked

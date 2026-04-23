@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
+import { useAuth } from '../App';
 import {
   BookOpen, Search, Code, Zap, Shield, Database, Users,
   FileText, Terminal, ChevronRight, Copy, Check, ExternalLink,
@@ -41,7 +41,7 @@ const API_SECTIONS = [
     id: 'ai',
     title: 'AI & Orchestration',
     icon: Layers,
-    description: 'Chat, build, and orchestrate the agent swarm.',
+    description: 'Chat, build, and orchestrate the 120-agent swarm.',
     endpoints: [
       { method: 'POST', path: '/api/ai/chat', desc: 'Send a chat message (streaming SSE)', body: '{ "message": "...", "session_id": "...", "mode": "build" }', response: 'SSE stream of agent responses' },
       { method: 'POST', path: '/api/ai/build', desc: 'Trigger full orchestration build', body: '{ "prompt": "Build a todo app", "project_type": "fullstack" }', response: '{ "build_id": "...", "status": "running" }' },
@@ -73,8 +73,6 @@ const API_SECTIONS = [
       { method: 'POST', path: '/api/deploy/one-click/vercel', desc: 'Deploy to Vercel', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
       { method: 'POST', path: '/api/deploy/one-click/netlify', desc: 'Deploy to Netlify', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
       { method: 'GET', path: '/api/projects/:id/export/zip', desc: 'Download deploy-ready ZIP', body: null, response: 'Binary ZIP file' },
-      { method: 'GET', path: '/api/jobs/:job_id/export', desc: 'Auto-Runner: JSON discovery for workspace export (ZIP URL + META flags)', body: null, response: '{ "href_full_zip": "...", "meta": {...} }' },
-      { method: 'GET', path: '/api/jobs/:job_id/export/full.zip', desc: 'Auto-Runner: workspace ZIP; ?profile=handoff omits outputs/ dumps; ?profile=full is complete tree', body: null, response: 'Binary ZIP (Bearer)' },
       { method: 'GET', path: '/api/users/me/deploy-tokens', desc: 'Check deploy token status', body: null, response: '{ "has_vercel": true, "has_netlify": false }' },
       { method: 'PATCH', path: '/api/users/me/deploy-tokens', desc: 'Set deploy tokens', body: '{ "vercel_token": "...", "netlify_token": "..." }', response: '{ "ok": true }' },
     ]
@@ -315,7 +313,7 @@ export default function DocsPage() {
         {/* Footer CTA */}
         <div className="mt-16 text-center p-8 rounded-2xl border border-zinc-800 bg-zinc-900/50">
           <h3 className="text-xl font-bold mb-2">Ready to build?</h3>
-          <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with our agent swarm.</p>
+          <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with 120 agents.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => navigate('/app/workspace')}

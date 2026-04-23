@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Verify linear pricing implementation: CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan, optional API checks."""
-
 import os
 import sys
 
@@ -9,7 +8,6 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 os.chdir(BACKEND)
-
 
 def main():
     from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan
@@ -34,13 +32,9 @@ def main():
         else:
             c = CREDIT_PLANS[plan]
             if c.get("credits") != credits:
-                errors.append(
-                    f"CREDIT_PLANS['{plan}'].credits = {c.get('credits')}, expected {credits}"
-                )
+                errors.append(f"CREDIT_PLANS['{plan}'].credits = {c.get('credits')}, expected {credits}")
             if c.get("price") != price:
-                errors.append(
-                    f"CREDIT_PLANS['{plan}'].price = {c.get('price')}, expected {price}"
-                )
+                errors.append(f"CREDIT_PLANS['{plan}'].price = {c.get('price')}, expected {price}")
 
     # TOKEN_BUNDLES keys exactly builder, pro, scale, teams
     want_bundles = {"builder", "pro", "scale", "teams"}
@@ -59,9 +53,7 @@ def main():
     for plan, expected_speed in speed_checks:
         got = _speed_from_plan(plan)
         if got != expected_speed:
-            errors.append(
-                f"_speed_from_plan('{plan}') = '{got}', expected '{expected_speed}'"
-            )
+            errors.append(f"_speed_from_plan('{plan}') = '{got}', expected '{expected_speed}'")
 
     if errors:
         for e in errors:
@@ -70,7 +62,6 @@ def main():
 
     print("OK: CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan verified.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

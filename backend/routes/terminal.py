@@ -148,3 +148,136 @@ async def terminal_audit(
             "command_deny_policy": "enabled",
         },
     }
+
+
+@router.websocket("/ws/terminal/{session_id}/stream")
+async def terminal_stream_ws(websocket: WebSocket, session_id: str):
+    """
+    WebSocket endpoint for real-time terminal output streaming.
+    
+    Authentication: Pass JWT token in query param (?token=...)
+    
+    Message format sent to client:
+    {
+        "type": "output",
+        "stdout": "command output...",
+        "stderr": ""
+    }
+    """
+    import asyncio
+    from fastapi import WebSocket, WebSocketDisconnect
+    from server import JWT_ALGORITHM, JWT_SECRET
+    import jwt as pyjwt
+    
+    # Authenticate via token query param
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="No token provided")
+        return
+    
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+    except Exception as e:
+        logger.warning(f"Invalid token for terminal stream: {e}")
+        await websocket.close(code=4001, reason="Invalid token")
+        return
+    
+    await websocket.accept()
+    
+    # Keep connection open and simulate streaming
+    # In a real implementation, this would connect to the terminal subprocess
+    try:
+        while True:
+            # Wait for client to send command
+            data = await websocket.receive_text()
+            
+            # Execute command and stream output
+            from terminal_integration import terminal_manager
+            
+            try:
+                # Execute command with streaming
+                result = await terminal_manager.execute(
+                    session_id,
+                    data,
+                    timeout=30,
+                    user_id=user_id,
+                )
+                
+                # Send result
+                await websocket.send_json({
+                    "type": "output",
+                    "stdout": result.get("stdout", ""),
+                    "stderr": result.get("stderr", ""),
+                    "returncode": result.get("returncode"),
+                })
+            except Exception as e:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": str(e),
+                })
+    
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected from terminal stream {session_id}")
+    except Exception as e:
+        logger.error(f"Terminal stream error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+
+
+@router.post("/terminal/{session_id}/stream")
+async def terminal_stream_http(
+    session_id: str,
+    body: TerminalExecuteRequest,
+    user: dict = Depends(_get_auth()),
+):
+    """
+    HTTP endpoint for streaming terminal output using Server-Sent Events (SSE).
+    Returns output as it becomes available.
+    """
+    if not _terminal_execution_allowed(user):
+        raise HTTPException(status_code=403, detail="Terminal execution is disabled")
+    
+    from fastapi.responses import StreamingResponse
+    from terminal_integration import terminal_manager
+    import asyncio
+    
+    async def output_generator():
+        """Generate terminal output as it becomes available."""
+        try:
+            # Execute command and stream output
+            result = await terminal_manager.execute(
+                session_id,
+                body.command,
+                body.timeout or 60,
+                user_id=user["id"],
+            )
+            
+            if result.get("stderr") == "Session not found":
+                yield f"data: {{'error': 'Session not found'}}\n\n"
+                return
+            
+            # Stream stdout
+            if result.get("stdout"):
+                yield f"data: {{'type': 'stdout', 'content': {repr(result['stdout'])}}}\n\n"
+            
+            # Stream stderr
+            if result.get("stderr"):
+                yield f"data: {{'type': 'stderr', 'content': {repr(result['stderr'])}}}\n\n"
+            
+            # Send completion
+            yield f"data: {{'type': 'complete', 'returncode': {result.get('returncode')}}}\n\n"
+        
+        except Exception as e:
+            yield f"data: {{'type': 'error', 'message': {repr(str(e))}}}\n\n"
+    
+    return StreamingResponse(
+        output_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

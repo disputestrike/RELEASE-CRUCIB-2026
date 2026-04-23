@@ -12,6 +12,9 @@ export default function PublicFooter() {
           <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition border border-black/10">
             Make It Inevitable
           </button>
+          <Link to="/auth?mode=register" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
+            Sign up
+          </Link>
           <Link to="/auth" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
             Log in
           </Link>
@@ -32,7 +35,7 @@ export default function PublicFooter() {
           <div>
             <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/our-projects#solutions" className="text-kimi-muted hover:text-kimi-text transition">Our solution</Link></li>
+              <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
               <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
               <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
               <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
@@ -42,10 +45,7 @@ export default function PublicFooter() {
           <div>
             <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/get-help" className="text-kimi-muted hover:text-kimi-text transition">Get help</Link></li>
-              <li><Link to="/contact" className="text-kimi-muted hover:text-kimi-text transition">Contact us</Link></li>
-              <li><Link to="/changelog" className="text-kimi-muted hover:text-kimi-text transition">Changelog</Link></li>
-              <li><Link to="/status" className="text-kimi-muted hover:text-kimi-text transition">Status</Link></li>
+              <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
               <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
               <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
               <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>

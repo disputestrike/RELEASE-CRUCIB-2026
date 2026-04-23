@@ -1,15 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
   Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye, ShieldCheck, Star
 } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
-import { fetchAllWorkspaceFilePaths } from '../workspace/workspaceFileUtils';
 import BuildProgress from '../components/BuildProgress';
 import QualityScore from '../components/QualityScore';
 
@@ -34,7 +32,6 @@ const AgentMonitor = () => {
   const [buildHistory, setBuildHistory] = useState([]);
   const [publishExampleLoading, setPublishExampleLoading] = useState(false);
   const [publishExampleError, setPublishExampleError] = useState(null);
-  const wsRef = useRef(null);
 
   const agentLayers = {
     planning: ['Planner', 'Requirements Clarifier', 'Stack Selector'],
@@ -78,10 +75,8 @@ const AgentMonitor = () => {
           setBuildHistory([]);
         }
         try {
-          const listUrl = `${API}/projects/${id}/workspace/files`;
-          const headers = { Authorization: `Bearer ${token}` };
-          const paths = await fetchAllWorkspaceFilePaths(listUrl, headers);
-          setWorkspaceFiles(paths);
+          const filesRes = await axios.get(`${API}/projects/${id}/workspace/files`, { headers: { Authorization: `Bearer ${token}` } });
+          setWorkspaceFiles(filesRes.data?.files || []);
         } catch (e) {
           logApiError('AgentMonitor workspace/files', e);
           setWorkspaceFiles([]);
@@ -112,62 +107,6 @@ const AgentMonitor = () => {
       .then((r) => setPreviewUrl(r.data?.url || null))
       .catch((e) => { logApiError('AgentMonitor preview-token', e); setPreviewUrl(null); });
   }, [id, project?.id, token]);
-
-
-  // WebSocket for real-time build events (replaces polling when running)
-  useEffect(() => {
-    if (!id || !token) return;
-    if (project?.status !== 'running') return;
-
-    const wsBase = (API || '').replace(/^https?:/, (m) => m === 'https:' ? 'wss:' : 'ws:').replace(/\/api\/?$/, '');
-    const wsUrl = `${wsBase}/ws/projects/${id}/progress?token=${encodeURIComponent(token)}`;
-    
-    let ws;
-    try {
-      ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-      
-      ws.onopen = () => {
-        // Stop polling once WS connects
-        setPolling(false);
-      };
-      
-      ws.onmessage = (e) => {
-        try {
-          const ev = JSON.parse(e.data);
-          setBuildEvents((prev) => {
-            const exists = prev.some((p) => p.id === ev.id && p.ts === ev.ts);
-            if (exists) return prev;
-            return [...prev, ev].slice(-500);
-          });
-          // If build completed/failed, update project status
-          if (ev.type === 'build_completed' || ev.type === 'job_completed') {
-            setPolling(false);
-          }
-        } catch (_) { void 0; }
-      };
-      
-      ws.onerror = () => {
-        // Fall back to polling silently
-        setPolling(true);
-        wsRef.current = null;
-      };
-      
-      ws.onclose = () => {
-        wsRef.current = null;
-        // Resume polling if project still running
-        setPolling((prev) => project?.status === 'running' ? true : prev);
-      };
-    } catch (_) {
-      // WS not supported, fall back to polling
-      setPolling(true);
-    }
-    
-    return () => {
-      if (ws && ws.readyState < 2) ws.close();
-      wsRef.current = null;
-    };
-  }, [id, token, project?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getAgentStatus = (agentName) => {
     return agents.find(a => a.agent_name === agentName) || { status: 'idle', progress: 0, tokens_used: 0 };
@@ -417,7 +356,7 @@ const AgentMonitor = () => {
                 }
               }}
               disabled={publishExampleLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg font-medium transition border border-neutral-200 text-neutral-800 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 rounded-lg font-medium transition border border-amber-200 text-amber-800 disabled:opacity-50"
             >
               <Star className="w-4 h-4" />
               {publishExampleLoading ? 'Publishing…' : 'Publish as example'}
@@ -456,7 +395,7 @@ const AgentMonitor = () => {
                 <span className="text-[#666666]">
                   {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
                 </span>
-                <span className={`font-medium ${entry.status === 'completed' ? 'text-[#1A1A1A]' : 'text-neutral-600'}`}>
+                <span className={`font-medium ${entry.status === 'completed' ? 'text-[#1A1A1A]' : 'text-amber-600'}`}>
                   {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
                 </span>
                 {entry.quality_score != null && (
@@ -613,29 +552,7 @@ const AgentMonitor = () => {
         {statePanelOpen && (
           <div className="mt-4 space-y-4 text-sm border-t border-black/10 pt-4">
             {!projectState ? (
-              <>
-                <p className="text-gray-500">No state yet. State is written as agents run (plan, requirements, stack, tool results).</p>
-                {workspaceFiles.length > 0 && (
-                  <div>
-                    <h4 className="text-[#666666] font-medium mb-1">Files in workspace</h4>
-                    <ul className="text-[#666666] text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
-                      {workspaceFiles.slice(0, 50).map((f) => (
-                        <li key={f}>
-                          <Link
-                            to={`/app/workspace?projectId=${encodeURIComponent(id)}`}
-                            state={{ openWorkspacePath: f }}
-                            className="text-[#1A1A1A] hover:underline break-all"
-                            data-testid="agent-monitor-workspace-file-link"
-                          >
-                            {f}
-                          </Link>
-                        </li>
-                      ))}
-                      {workspaceFiles.length > 50 && <li className="text-gray-500">… +{workspaceFiles.length - 50} more</li>}
-                    </ul>
-                  </div>
-                )}
-              </>
+              <p className="text-gray-500">No state yet. State is written as agents run (plan, requirements, stack, tool results).</p>
             ) : (
               <>
                 {Array.isArray(projectState.plan) && projectState.plan.length > 0 && (
@@ -688,13 +605,13 @@ const AgentMonitor = () => {
                     <h4 className="text-[#666666] font-medium mb-1">Reports</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {projectState.security_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-neutral-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
                       )}
                       {projectState.ux_report && (
                         <p className="text-[#666666] text-xs"><strong className="text-[#1A1A1A]">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
                       )}
                       {projectState.performance_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-neutral-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-green-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
                       )}
                     </div>
                   </div>
@@ -703,17 +620,8 @@ const AgentMonitor = () => {
                   <div>
                     <h4 className="text-[#666666] font-medium mb-1">Files in workspace</h4>
                     <ul className="text-[#666666] text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
-                      {workspaceFiles.slice(0, 50).map((f) => (
-                        <li key={f}>
-                          <Link
-                            to={`/app/workspace?projectId=${encodeURIComponent(id)}`}
-                            state={{ openWorkspacePath: f }}
-                            className="text-[#1A1A1A] hover:underline break-all"
-                            data-testid="agent-monitor-workspace-file-link"
-                          >
-                            {f}
-                          </Link>
-                        </li>
+                      {workspaceFiles.slice(0, 50).map((f, i) => (
+                        <li key={i}>{f}</li>
                       ))}
                       {workspaceFiles.length > 50 && <li className="text-gray-500">… +{workspaceFiles.length - 50} more</li>}
                     </ul>

@@ -1,0 +1,1 @@
+ports: postgres 5434 + redis 6381 reachable

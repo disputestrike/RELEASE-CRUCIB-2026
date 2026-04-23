@@ -2,7 +2,6 @@
 SSRF and URL validation for tool agents (API, Browser).
 Blocks private IPs, localhost, file:, and optionally restricts to allowlist.
 """
-
 import ipaddress
 import re
 from typing import Optional, Set
@@ -10,14 +9,14 @@ from urllib.parse import urlparse
 
 # Private/unroutable ranges per RFC 1918, RFC 4193, link-local, loopback, etc.
 _PRIVATE_NETWORKS = (
-    "127.0.0.0/8",  # loopback
-    "10.0.0.0/8",  # private
-    "172.16.0.0/12",  # private
-    "192.168.0.0/16",  # private
-    "169.254.0.0/16",  # link-local
-    "::1/128",  # IPv6 loopback
-    "fc00::/7",  # IPv6 unique local
-    "fe80::/10",  # IPv6 link-local
+    "127.0.0.0/8",      # loopback
+    "10.0.0.0/8",       # private
+    "172.16.0.0/12",    # private
+    "192.168.0.0/16",   # private
+    "169.254.0.0/16",   # link-local
+    "::1/128",          # IPv6 loopback
+    "fc00::/7",         # IPv6 unique local
+    "fe80::/10",        # IPv6 link-local
 )
 _BLOCKED_HOSTS = {"localhost", "localhost.localdomain", "0.0.0.0"}
 _BLOCKED_SCHEMES = {"file", "ftp", "gopher"}

@@ -1,0 +1,7 @@
+Commands (this run):
+  docker compose up -d postgres redis
+  docker compose ps
+  docker compose exec -T postgres sh -c "pg_isready -U crucibai -d crucibai"
+  docker compose exec -T redis sh -c "redis-cli ping"
+  cd backend && set PYTHONPATH=. && set DATABASE_URL=... && set REDIS_URL=... && python -m uvicorn server:app --host 127.0.0.1 --port 8000
+  python C:\Users\benxp\OneDrive\Desktop\CRUCIBAI2026\crucib\scripts\run_local_evidence_pack.py

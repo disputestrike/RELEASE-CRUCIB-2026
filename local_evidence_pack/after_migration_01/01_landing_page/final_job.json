@@ -1,0 +1,22 @@
+{
+  "id": "1cc29d0f-4a8f-4cbf-907b-c204c635bde3",
+  "project_id": "3a642178-58ec-4847-af11-f74e069954fb",
+  "user_id": "cc2832de-0b0c-4f21-9ce8-2caf5c164b08",
+  "status": "failed",
+  "mode": "guided",
+  "goal": "Build a simple one-page marketing landing page for a local coffee shop with hero, menu section, and contact. Static content only.",
+  "current_phase": "orchestrator_error",
+  "retry_count": 0,
+  "quality_score": 0,
+  "created_at": "2026-04-12T08:55:39.045304+00:00",
+  "updated_at": "2026-04-12T08:55:45.351726+00:00",
+  "started_at": "2026-04-12T08:55:42.028328+00:00",
+  "completed_at": "2026-04-12T08:55:45.351739+00:00",
+  "error_message": null,
+  "error_details": null,
+  "blocked_steps": null,
+  "failed_step_keys": null,
+  "non_completed": null,
+  "failure_reason": "orchestrator_error",
+  "failure_details": "DataError: invalid input for query argument $9: ['src/App.jsx', 'src/main.jsx'] (expected str, got list)"
+}

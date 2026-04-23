@@ -1,9 +1,8 @@
 """
-PostgreSQL / JSONB index helpers for CrucibAI tables.
+MongoDB index creation for CrucibAI collections.
 Called at app startup to keep queries fast at scale.
 Failures are logged but do not crash the app (e.g. missing perms).
 """
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -55,4 +54,4 @@ async def ensure_indexes(db):
     except Exception as e:
         logger.warning("Index project_logs: %s", e)
 
-    logger.info("PostgreSQL indexes ensured (or skipped if already exist).")
+    logger.info("MongoDB indexes ensured (or skipped if already exist).")

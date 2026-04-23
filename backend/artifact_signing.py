@@ -12,9 +12,9 @@ Implements:
 import hashlib
 import json
 import logging
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

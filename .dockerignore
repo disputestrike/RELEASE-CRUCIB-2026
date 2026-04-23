@@ -1,5 +1,6 @@
 # Dependencies and build outputs (rebuilt in image)
 frontend/node_modules
+frontend/build
 backend/__pycache__
 **/__pycache__
 .git
@@ -7,6 +8,4 @@ backend/__pycache__
 .env
 .env.*
 *.md
-!proof/benchmarks/repeatability_v1/PASS_FAIL.md
-!proof/full_systems/PASS_FAIL.md
 node_modules

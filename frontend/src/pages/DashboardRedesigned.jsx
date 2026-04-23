@@ -7,8 +7,7 @@ import {
   Share2, Copy, Bookmark, Upload, X, Github, Settings,
   Eye, Code, Download
 } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import Layout3Column from '../components/Layout3Column';
 import Sidebar from '../components/Sidebar';

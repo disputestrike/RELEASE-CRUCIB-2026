@@ -1,0 +1,43 @@
+agents.planner	Planner	failed
+agents.requirements_clarifier	Requirements Clarifier	pending
+agents.content_agent	Content Agent	pending
+agents.stack_selector	Stack Selector	pending
+agents.frontend_generation	Frontend Generation	pending
+agents.backend_generation	Backend Generation	pending
+agents.design_agent	Design Agent	pending
+agents.seo_agent	SEO Agent	pending
+agents.brand_agent	Brand Agent	pending
+agents.dark_mode_agent	Dark Mode Agent	pending
+agents.animation_agent	Animation Agent	pending
+agents.responsive_breakpoints_agent	Responsive Breakpoints Agent	pending
+agents.typography_system_agent	Typography System Agent	pending
+agents.ux_auditor	UX Auditor	pending
+agents.build_validator_agent	Build Validator Agent	pending
+agents.css_modern_standards_agent	CSS Modern Standards Agent	pending
+agents.database_agent	Database Agent	pending
+agents.security_checker	Security Checker	pending
+agents.performance_analyzer	Performance Analyzer	pending
+agents.deployment_agent	Deployment Agent	pending
+agents.code_review_agent	Code Review Agent	pending
+agents.file_tool_agent	File Tool Agent	pending
+agents.image_generation	Image Generation	pending
+agents.color_palette_system_agent	Color Palette System Agent	pending
+agents.icon_system_agent	Icon System Agent	pending
+agents.compilation_dry_run_agent	Compilation Dry-Run Agent	pending
+agents.security_scanning_agent	Security Scanning Agent	pending
+agents.memory_agent	Memory Agent	pending
+agents.lighthouse_performance_agent	Lighthouse Performance Agent	pending
+agents.code_quality_gate_agent	Code Quality Gate Agent	pending
+agents.layout_agent	Layout Agent	pending
+agents.image_optimization_agent	Image Optimization Agent	pending
+agents.build_orchestrator_agent	Build Orchestrator Agent	pending
+agents.deployment_safety_agent	Deployment Safety Agent	pending
+agents.quality_metrics_aggregator_agent	Quality Metrics Aggregator Agent	pending
+implementation.delivery_manifest	Delivery	pending
+verification.compile	Verifier	pending
+verification.api_smoke	Verifier	pending
+verification.preview	Verifier	pending
+verification.security	Security Checker	pending
+verification.elite_builder	Verifier	pending
+deploy.build	Deployment Agent	pending
+deploy.publish	Deployment Agent	pending

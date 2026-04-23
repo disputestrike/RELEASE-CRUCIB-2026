@@ -4,7 +4,7 @@ import { Clock, Zap, Flame } from 'lucide-react';
 export default function WorkspaceHeaderSpeed({ speedTier }) {
   const speedLabels = {
     lite: { label: 'Lite', icon: Clock, color: 'text-gray-500' },
-    pro: { label: 'Pro', icon: Zap, color: 'text-neutral-500' },
+    pro: { label: 'Pro', icon: Zap, color: 'text-orange-500' },
     max: { label: 'Max', icon: Flame, color: 'text-red-500' }
   };
 

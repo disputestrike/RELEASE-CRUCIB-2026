@@ -1,0 +1,1 @@
+Build a simple one-page marketing landing page for a local coffee shop with hero, menu section, and contact. Static content only.

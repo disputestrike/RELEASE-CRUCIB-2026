@@ -1,12 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { API } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDEProfiler() {
-  const { token } = useAuth();
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState("test-project");
   const [sessionId, setSessionId] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -15,9 +13,8 @@ export default function IDEProfiler() {
   const startProfiler = () => {
     setLoading(true);
     setSummary(null);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/ide/profiler/start`, null, { params: { project_id: projectId }, headers })
+      .post(`${API}/ide/profiler/start`, null, { params: { project_id: projectId } })
       .then((r) => setSessionId(r.data.session_id))
       .catch((e) => logApiError("IDEProfiler start", e))
       .finally(() => setLoading(false));
@@ -26,9 +23,8 @@ export default function IDEProfiler() {
   const stopProfiler = () => {
     if (!sessionId) return;
     setStopLoading(true);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/ide/profiler/stop`, null, { params: { session_id: sessionId }, headers })
+      .post(`${API}/ide/profiler/stop`, null, { params: { session_id: sessionId } })
       .then((r) => {
         setSummary(r.data.summary || r.data);
         setSessionId(null);
@@ -49,7 +45,7 @@ export default function IDEProfiler() {
         placeholder="Project ID"
       />
       <div className="flex gap-2 mb-4">
-        <button type="button" onClick={startProfiler} disabled={loading || sessionId || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50">
+        <button type="button" onClick={startProfiler} disabled={loading || sessionId} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50">
           {loading ? "Starting…" : "Start profiler"}
         </button>
         {sessionId && (

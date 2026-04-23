@@ -1,0 +1,608 @@
+[
+  {
+    "id": "eac27fac-8614-4fa0-9a3c-1c40ccb02a14",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3077}",
+    "created_at": "2026-04-12T09:00:25.594560+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3077
+    }
+  },
+  {
+    "id": "d2d4ba50-f8a1-4f90-8b48-58609f71039d",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984425598, \"duration_ms\": 3077, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 0, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:25.598458+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984425598,
+      "duration_ms": 3077,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 0,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "cb61012b-70cc-43e0-bc91-e91a0d2e8a24",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3110}",
+    "created_at": "2026-04-12T09:00:28.788152+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3110
+    }
+  },
+  {
+    "id": "a6242af1-7c47-4755-9d5e-ac95a18a0cc4",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984428795, \"duration_ms\": 3110, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 1, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:28.796045+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984428795,
+      "duration_ms": 3110,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 1,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "dc82e971-a782-4d7c-ab52-15d0b4279cb6",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3096}",
+    "created_at": "2026-04-12T09:00:32.003147+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3096
+    }
+  },
+  {
+    "id": "9c0475f4-0a5a-46b6-98f5-44aad468ac7b",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984432009, \"duration_ms\": 3096, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 2, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:32.009697+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984432009,
+      "duration_ms": 3096,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 2,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "f006c16a-b5b6-4013-9e11-3ef88fcc84c1",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3089}",
+    "created_at": "2026-04-12T09:00:35.192721+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3089
+    }
+  },
+  {
+    "id": "34e61593-84ed-4819-87dc-9187aecb7523",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984435197, \"duration_ms\": 3089, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 3, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:35.197592+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984435197,
+      "duration_ms": 3089,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 3,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "38cb67eb-c14a-4f3b-aa6f-8ae5774cf568",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3077}",
+    "created_at": "2026-04-12T09:00:38.349864+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3077
+    }
+  },
+  {
+    "id": "45dd3782-8519-48ef-b08b-af159e4dd948",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984438355, \"duration_ms\": 3077, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 4, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:38.355244+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984438355,
+      "duration_ms": 3077,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 4,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "10b2a16a-6e8c-43ea-86f7-d56e4c27ae7f",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3093}",
+    "created_at": "2026-04-12T09:00:41.536719+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3093
+    }
+  },
+  {
+    "id": "8692027e-b4e9-4598-ac51-5cb40acd2766",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984441548, \"duration_ms\": 3093, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 5, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:41.548555+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984441548,
+      "duration_ms": 3093,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 5,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "bcac5892-4662-444d-b6d7-27218de62686",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3085}",
+    "created_at": "2026-04-12T09:00:44.759239+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3085
+    }
+  },
+  {
+    "id": "d3ad973f-6a7e-485e-99d5-ac020e18fc29",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984444764, \"duration_ms\": 3085, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 6, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:44.764737+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984444764,
+      "duration_ms": 3085,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 6,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "c09f9399-1ce5-4b74-a2e4-4cacb280af9a",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3076}",
+    "created_at": "2026-04-12T09:00:47.945443+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3076
+    }
+  },
+  {
+    "id": "262cb4f5-dd84-4e36-93e5-06f35b32955e",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984447950, \"duration_ms\": 3076, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 7, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:47.950382+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984447950,
+      "duration_ms": 3076,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 7,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "45ede8a9-2577-45e7-86d4-e93c38f5ca06",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "step_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"error\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"duration_ms\": 3103}",
+    "created_at": "2026-04-12T09:00:51.137017+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "error": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "duration_ms": 3103
+    }
+  },
+  {
+    "id": "a1e3b2ea-0092-4a13-b190-11dd58b93d08",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+    "event_type": "dag_node_failed",
+    "payload_json": "{\"step_key\": \"agents.planner\", \"step_id\": \"9dfd174d-9c4c-4636-aecb-6200c302397e\", \"ended_at_ms\": 1775984451143, \"duration_ms\": 3103, \"failure_reason\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\", \"retry_count\": 8, \"execution_mode\": \"executed\"}",
+    "created_at": "2026-04-12T09:00:51.143952+00:00",
+    "narrative": "",
+    "payload": {
+      "step_key": "agents.planner",
+      "step_id": "9dfd174d-9c4c-4636-aecb-6200c302397e",
+      "ended_at_ms": 1775984451143,
+      "duration_ms": 3103,
+      "failure_reason": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.",
+      "retry_count": 8,
+      "execution_mode": "executed"
+    }
+  },
+  {
+    "id": "a22ae0da-d0bb-4675-9c8c-a4d5e548194d",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+    "step_id": null,
+    "event_type": "job_failed",
+    "payload_json": "{\"reason\": \"dependency_blocked\", \"blocked_step_keys\": [\"agents.requirements_clarifier\", \"agents.content_agent\", \"agents.stack_selector\", \"agents.frontend_generation\", \"agents.backend_generation\", \"agents.design_agent\", \"agents.seo_agent\", \"agents.brand_agent\", \"agents.dark_mode_agent\", \"agents.animation_agent\", \"agents.responsive_breakpoints_agent\", \"agents.typography_system_agent\", \"agents.ux_auditor\", \"agents.build_validator_agent\", \"agents.css_modern_standards_agent\", \"agents.database_agent\", \"agents.security_checker\", \"agents.performance_analyzer\", \"agents.deployment_agent\", \"agents.code_review_agent\", \"agents.file_tool_agent\", \"agents.image_generation\", \"agents.color_palette_system_agent\", \"agents.icon_system_agent\", \"agents.compilation_dry_run_agent\", \"agents.security_scanning_agent\", \"agents.memory_agent\", \"agents.lighthouse_performance_agent\", \"agents.code_quality_gate_agent\", \"agents.layout_agent\", \"agents.image_optimization_agent\", \"agents.build_orchestrator_agent\", \"agents.deployment_safety_agent\", \"agents.quality_metrics_aggregator_agent\", \"implementation.delivery_manifest\", \"verification.compile\", \"verification.api_smoke\", \"verification.preview\", \"verification.security\", \"verification.elite_builder\", \"deploy.build\", \"deploy.publish\"], \"blocked_step_details\": [{\"step_key\": \"agents.requirements_clarifier\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.planner\"}, {\"step_key\": \"agents.content_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.planner\"}, {\"step_key\": \"agents.stack_selector\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.requirements_clarifier\"}, {\"step_key\": \"agents.frontend_generation\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.backend_generation\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.design_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.seo_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.brand_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.dark_mode_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.animation_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.responsive_breakpoints_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.typography_system_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.ux_auditor\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.build_validator_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.css_modern_standards_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.database_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.backend_generation\"}, {\"step_key\": \"agents.security_checker\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.performance_analyzer\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.deployment_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.backend_generation\"}, {\"step_key\": \"agents.code_review_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.file_tool_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.image_generation\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.design_agent\"}, {\"step_key\": \"agents.color_palette_system_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.design_agent\"}, {\"step_key\": \"agents.icon_system_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.design_agent\"}, {\"step_key\": \"agents.compilation_dry_run_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.build_validator_agent\"}, {\"step_key\": \"agents.security_scanning_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.security_checker\"}, {\"step_key\": \"agents.memory_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.deployment_agent\"}, {\"step_key\": \"agents.lighthouse_performance_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.deployment_agent\"}, {\"step_key\": \"agents.code_quality_gate_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.code_review_agent\"}, {\"step_key\": \"agents.layout_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.image_optimization_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.image_generation\"}, {\"step_key\": \"agents.build_orchestrator_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.build_validator_agent\"}, {\"step_key\": \"agents.deployment_safety_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.security_scanning_agent\"}, {\"step_key\": \"agents.quality_metrics_aggregator_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.security_scanning_agent\"}, {\"step_key\": \"implementation.delivery_manifest\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.build_orchestrator_agent\"}, {\"step_key\": \"verification.compile\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: implementation.delivery_manifest\"}, {\"step_key\": \"verification.api_smoke\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: verification.compile\"}, {\"step_key\": \"verification.preview\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: verification.compile\"}, {\"step_key\": \"verification.security\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: verification.api_smoke\"}, {\"step_key\": \"verification.elite_builder\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: verification.api_smoke\"}, {\"step_key\": \"deploy.build\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: verification.elite_builder\"}, {\"step_key\": \"deploy.publish\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: deploy.build\"}], \"failed_step_details\": [{\"step_key\": \"agents.planner\", \"status\": \"failed\", \"retry_count\": 8, \"error_message\": \"swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.\"}]}",
+    "created_at": "2026-04-12T09:00:51.946146+00:00",
+    "narrative": "",
+    "payload": {
+      "reason": "dependency_blocked",
+      "blocked_step_keys": [
+        "agents.requirements_clarifier",
+        "agents.content_agent",
+        "agents.stack_selector",
+        "agents.frontend_generation",
+        "agents.backend_generation",
+        "agents.design_agent",
+        "agents.seo_agent",
+        "agents.brand_agent",
+        "agents.dark_mode_agent",
+        "agents.animation_agent",
+        "agents.responsive_breakpoints_agent",
+        "agents.typography_system_agent",
+        "agents.ux_auditor",
+        "agents.build_validator_agent",
+        "agents.css_modern_standards_agent",
+        "agents.database_agent",
+        "agents.security_checker",
+        "agents.performance_analyzer",
+        "agents.deployment_agent",
+        "agents.code_review_agent",
+        "agents.file_tool_agent",
+        "agents.image_generation",
+        "agents.color_palette_system_agent",
+        "agents.icon_system_agent",
+        "agents.compilation_dry_run_agent",
+        "agents.security_scanning_agent",
+        "agents.memory_agent",
+        "agents.lighthouse_performance_agent",
+        "agents.code_quality_gate_agent",
+        "agents.layout_agent",
+        "agents.image_optimization_agent",
+        "agents.build_orchestrator_agent",
+        "agents.deployment_safety_agent",
+        "agents.quality_metrics_aggregator_agent",
+        "implementation.delivery_manifest",
+        "verification.compile",
+        "verification.api_smoke",
+        "verification.preview",
+        "verification.security",
+        "verification.elite_builder",
+        "deploy.build",
+        "deploy.publish"
+      ],
+      "blocked_step_details": [
+        {
+          "step_key": "agents.requirements_clarifier",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.planner"
+        },
+        {
+          "step_key": "agents.content_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.planner"
+        },
+        {
+          "step_key": "agents.stack_selector",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.requirements_clarifier"
+        },
+        {
+          "step_key": "agents.frontend_generation",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.backend_generation",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.design_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.seo_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.brand_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.dark_mode_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.animation_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.responsive_breakpoints_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.typography_system_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.stack_selector"
+        },
+        {
+          "step_key": "agents.ux_auditor",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.build_validator_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.css_modern_standards_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.database_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.backend_generation"
+        },
+        {
+          "step_key": "agents.security_checker",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.performance_analyzer",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.deployment_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.backend_generation"
+        },
+        {
+          "step_key": "agents.code_review_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.file_tool_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.image_generation",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.design_agent"
+        },
+        {
+          "step_key": "agents.color_palette_system_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.design_agent"
+        },
+        {
+          "step_key": "agents.icon_system_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.design_agent"
+        },
+        {
+          "step_key": "agents.compilation_dry_run_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.build_validator_agent"
+        },
+        {
+          "step_key": "agents.security_scanning_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.security_checker"
+        },
+        {
+          "step_key": "agents.memory_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.deployment_agent"
+        },
+        {
+          "step_key": "agents.lighthouse_performance_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.deployment_agent"
+        },
+        {
+          "step_key": "agents.code_quality_gate_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.code_review_agent"
+        },
+        {
+          "step_key": "agents.layout_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.frontend_generation"
+        },
+        {
+          "step_key": "agents.image_optimization_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.image_generation"
+        },
+        {
+          "step_key": "agents.build_orchestrator_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.build_validator_agent"
+        },
+        {
+          "step_key": "agents.deployment_safety_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.security_scanning_agent"
+        },
+        {
+          "step_key": "agents.quality_metrics_aggregator_agent",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.security_scanning_agent"
+        },
+        {
+          "step_key": "implementation.delivery_manifest",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: agents.build_orchestrator_agent"
+        },
+        {
+          "step_key": "verification.compile",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: implementation.delivery_manifest"
+        },
+        {
+          "step_key": "verification.api_smoke",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: verification.compile"
+        },
+        {
+          "step_key": "verification.preview",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: verification.compile"
+        },
+        {
+          "step_key": "verification.security",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: verification.api_smoke"
+        },
+        {
+          "step_key": "verification.elite_builder",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: verification.api_smoke"
+        },
+        {
+          "step_key": "deploy.build",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: verification.elite_builder"
+        },
+        {
+          "step_key": "deploy.publish",
+          "status": "blocked",
+          "retry_count": 0,
+          "error_message": "Blocked by failed dep: deploy.build"
+        }
+      ],
+      "failed_step_details": [
+        {
+          "step_key": "agents.planner",
+          "status": "failed",
+          "retry_count": 8,
+          "error_message": "swarm_agent_failed:Planner:No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY."
+        }
+      ]
+    }
+  }
+]

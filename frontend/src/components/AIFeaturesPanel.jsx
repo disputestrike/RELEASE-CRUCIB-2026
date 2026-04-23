@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { API_BASE as API } from '../apiBase';
+import { API } from "../App";
 import { logApiError } from "../utils/apiError";
 
 const SECTIONS = [

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Library, Lock, CreditCard, Code, Globe, Database, Zap, TrendingUp, ArrowRight } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
@@ -78,11 +77,11 @@ export default function PatternsPublic() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="p-5 rounded-xl border border-black/10 bg-[#F5F5F4]"
+              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30"
             >
-              <h2 className="font-semibold mb-1 text-[#1A1A1A]">{p.name}</h2>
-              <p className="text-sm text-[#666666] mb-1">{p.desc}</p>
-              <p className="text-xs text-[#666666] capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
+              <h2 className="font-semibold mb-1">{p.name}</h2>
+              <p className="text-sm text-zinc-500 mb-1">{p.desc}</p>
+              <p className="text-xs text-zinc-600 capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
             </motion.div>
           ))}
         </div>

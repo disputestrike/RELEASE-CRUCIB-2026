@@ -1,0 +1,198 @@
+.bpm-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.bpm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 12px;
+}
+
+.bpm-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.bpm-connection-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.bpm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ccc;
+  transition: background-color 0.3s ease;
+}
+
+.bpm-status-dot.connected {
+  background-color: #4caf50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+}
+
+.bpm-current-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bpm-phase-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.bpm-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bpm-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  transition: width 0.3s ease;
+}
+
+.bpm-progress-text {
+  font-size: 12px;
+  color: #666;
+  text-align: right;
+}
+
+.bpm-events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.bpm-events::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bpm-events::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bpm-events::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+.bpm-empty {
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.bpm-event {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background-color: white;
+  border-left: 3px solid #4caf50;
+  border-radius: 4px;
+  font-size: 12px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bpm-event-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.bpm-event-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bpm-event-message {
+  color: #333;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.bpm-event-time {
+  color: #999;
+  font-size: 11px;
+}
+
+/* Event type specific styling */
+.bpm-event--build_started {
+  border-left-color: #2196f3;
+}
+
+.bpm-event--build_phase_started {
+  border-left-color: #ff9800;
+}
+
+.bpm-event--build_phase_completed {
+  border-left-color: #4caf50;
+}
+
+.bpm-event--agent_started {
+  border-left-color: #9c27b0;
+}
+
+.bpm-event--agent_completed {
+  border-left-color: #4caf50;
+}
+
+.bpm-event--agent_error {
+  border-left-color: #f44336;
+}
+
+.bpm-event--file_generated {
+  border-left-color: #00bcd4;
+}
+
+.bpm-event--validation_completed {
+  border-left-color: #4caf50;
+}
+
+.bpm-event--build_completed {
+  border-left-color: #8bc34a;
+  background-color: #f1f8e9;
+}
+
+.bpm-event--build_failed {
+  border-left-color: #f44336;
+  background-color: #ffebee;
+}

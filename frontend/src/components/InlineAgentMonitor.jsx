@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckCircle, Clock, AlertCircle, Zap,
+  Bot, CheckCircle, Clock, AlertCircle, Zap,
   ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck
 } from 'lucide-react';
 import './InlineAgentMonitor.css';
@@ -9,7 +9,7 @@ import './InlineAgentMonitor.css';
 /**
  * InlineAgentMonitor — Shows agent activity inline in the center panel during BUILD state
  * 
- * This is the differentiator: full visibility into the agent swarm working live.
+ * This is the differentiator: no competitor shows 120+ agents working live.
  * Displays:
  *   - Overall progress bar with phase name
  *   - Agent grid organized by layer (Planning, Execution, Validation, Deployment)

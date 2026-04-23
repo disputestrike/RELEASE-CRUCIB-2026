@@ -1,52 +1,243 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ArrowRight, Check, Menu, X, Play, ArrowUpRight, FileCode, GitFork } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { ChevronDown, Send, Loader2, ArrowRight, Check, Menu, X, Play, ArrowUpRight, Paperclip, Image, FileText, Mic, MicOff, FileCode, GitFork } from 'lucide-react';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
-import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../components/SolutionsNavDropdown';
 
 const OurProjectsPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [openWhere, setOpenWhere] = useState(null);
+  
+  // Build state
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [buildProgress, setBuildProgress] = useState(0);
+  const [generatedCode, setGeneratedCode] = useState(null);
+  const [sessionId] = useState(() => `session_${Date.now()}`);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [voiceLanguage, setVoiceLanguage] = useState('en');
   const [liveExamples, setLiveExamples] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+  const chatEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const voiceStreamRef = useRef(null);
+  const voiceChunksRef = useRef([]);
 
   useEffect(() => {
     axios.get(`${API}/examples`).then((r) => setLiveExamples((r.data.examples || []).slice(0, 3))).catch((e) => { logApiError('LandingPage examples', e); setLiveExamples([]); });
   }, [API]);
 
   useEffect(() => {
-    const id = (location.hash || '').replace(/^#/, '');
-    if (!id || location.pathname !== '/our-projects') return undefined;
-    const t = window.setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [location.hash, location.pathname]);
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const startBuild = (promptText, filesOverride = null) => {
-    const prompt = (promptText || '').trim();
-    if (!prompt) return;
+  const startBuild = async (promptOverride = null, filesOverride = null) => {
+    const prompt = (promptOverride ?? input).trim();
+    if (!prompt || isBuilding) return;
     const q = `prompt=${encodeURIComponent(prompt)}`;
     const workspacePath = `/app/workspace?${q}`;
-    const state = filesOverride?.length ? { initialAttachedFiles: filesOverride } : undefined;
+    const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
     navigate(workspacePath, { state });
   };
 
+  const handleLandingFileSelect = (e) => {
+    const selected = Array.from(e.target.files || []);
+    const valid = selected.filter(f =>
+      f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/') ||
+      f.type === 'application/zip' || f.name?.toLowerCase().endsWith('.zip') || f.type.startsWith('audio/')
+    );
+    valid.forEach(file => {
+      const isZip = file.type === 'application/zip' || file.name?.toLowerCase().endsWith('.zip');
+      const isAudio = file.type.startsWith('audio/');
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = isZip ? btoa(String.fromCharCode(...new Uint8Array(ev.target.result))) : ev.target.result;
+        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data, size: file.size }]);
+      };
+      if (file.type.startsWith('image/') || file.type === 'application/pdf' || isAudio) reader.readAsDataURL(file);
+      else if (isZip) reader.readAsArrayBuffer(file);
+      else reader.readAsText(file);
+    });
+    e.target.value = '';
+  };
+
+  const removeLandingFile = (index) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVoiceTranscribed = (text) => {
+    setInput(prev => (prev ? prev + ' ' : '') + text);
+  };
+
+  const startVoiceRecording = async () => {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      voiceStreamRef.current = stream;
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      voiceChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) voiceChunksRef.current.push(e.data); };
+      recorder.onerror = () => { setVoiceError('Recording error'); setIsRecording(false); };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch (err) {
+      setVoiceError(err.name === 'NotAllowedError' ? 'Microphone access denied.' : err.message || 'Could not start recording.');
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+    setIsRecording(false);
+    setIsTranscribing(true);
+    setVoiceError(null);
+    mediaRecorderRef.current.onstop = async () => {
+      try {
+        const blob = new Blob(voiceChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/webm' });
+        if (blob.size < 100) {
+          setVoiceError('Recording too short. Speak at least 1 second.');
+          setIsTranscribing(false);
+          return;
+        }
+        const ext = (mediaRecorderRef.current.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+        const formData = new FormData();
+        formData.append('audio', blob, `recording.${ext}`);
+        formData.append('language', voiceLanguage);
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.post(`${API}/voice/transcribe`, formData, {
+          headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        });
+        const text = res.data?.text?.trim();
+        if (text) handleVoiceTranscribed(text);
+        else setVoiceError('No text from transcription.');
+      } catch (err) {
+        setVoiceError(err.response?.data?.detail || err.message || 'Transcription failed.');
+      } finally {
+        setIsTranscribing(false);
+        if (voiceStreamRef.current) {
+          voiceStreamRef.current.getTracks().forEach(t => t.stop());
+          voiceStreamRef.current = null;
+        }
+      }
+    };
+    mediaRecorderRef.current.stop();
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    let hasInput = input.trim();
+    const hasImageOnly = attachedFiles.length > 0 && attachedFiles.every(f => f.type?.startsWith('image/'));
+    let filesToSend = attachedFiles.length ? [...attachedFiles] : null;
+    const audioFiles = (filesToSend || []).filter(f => f.type?.startsWith?.('audio/'));
+    if (audioFiles.length > 0) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      for (const att of audioFiles) {
+        try {
+          const blob = await (await fetch(att.data)).blob();
+          const formData = new FormData();
+          formData.append('audio', blob, att.name || 'audio.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
+          const text = res.data?.text?.trim();
+          if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
+        } catch (_) {}
+      }
+      if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
+    }
+    if (!hasInput && !hasImageOnly) return;
+    if (generatedCode) {
+      modifyCode(hasInput || 'Convert image to code');
+    } else {
+      startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
+    }
+  };
+
+  const modifyCode = async (request) => {
+    if (!request.trim() || isBuilding) return;
+
+    setInput('');
+    setIsBuilding(true);
+    setMessages(prev => [...prev, { role: 'user', content: request }]);
+    setMessages(prev => [...prev, { role: 'assistant', content: 'Updating...', isBuilding: true }]);
+
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const response = await axios.post(`${API}/ai/chat`, {
+        message: `Current code:\n\n${generatedCode.code}\n\nModify it to: "${request}"\n\nRespond with ONLY the complete updated code.`,
+        session_id: sessionId,
+        model: 'auto'
+      }, { headers, timeout: 60000 });
+
+      const newCode = response.data.response.replace(/```jsx?/g, '').replace(/```/g, '').trim();
+
+      if (newCode.includes('import') || newCode.includes('function') || newCode.includes('const')) {
+        setGeneratedCode(prev => ({ ...prev, code: newCode }));
+        setMessages(prev => prev.map((msg, i) => 
+          i === prev.length - 1 ? { role: 'assistant', content: `Updated. What else?`, hasCode: true } : msg
+        ));
+      } else {
+        setMessages(prev => prev.map((msg, i) => 
+          i === prev.length - 1 ? { role: 'assistant', content: response.data.response } : msg
+        ));
+      }
+    } catch (error) {
+      setMessages(prev => prev.map((msg, i) => 
+        i === prev.length - 1 ? { role: 'assistant', content: 'Error. Try again.', error: true } : msg
+      ));
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  const downloadCode = () => {
+    if (!generatedCode) return;
+    const blob = new Blob([generatedCode.code], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'app.jsx';
+    a.click();
+  };
+
+  const whatAreYouBuilding = [
+    { title: 'Reporting Dashboard', desc: 'Charts, stats, and data views', prompt: 'Create a reporting dashboard with sidebar, stat cards, and chart placeholders. React and Tailwind.' },
+    { title: 'Task Manager', desc: 'Add, complete, filter tasks', prompt: 'Create a task manager with add, complete, delete, and filter by status. React and Tailwind.' },
+    { title: 'E-commerce Store', desc: 'Product list, cart, checkout', prompt: 'Build a modern e-commerce product list with add-to-cart, cart sidebar, and checkout button. React and Tailwind.' },
+    { title: 'Landing + Waitlist', desc: 'Hero, features, email signup', prompt: 'Build a landing page with hero, features section, and email waitlist signup. React and Tailwind.' },
+    { title: 'Auth + Dashboard', desc: 'Login and main app shell', prompt: 'Create a login page and a dashboard with sidebar navigation. React, Tailwind, and local state for auth.' },
+    { title: 'SaaS Pricing Page', desc: 'Plans and Stripe-ready', prompt: 'Build a SaaS landing page with pricing cards and Stripe Checkout integration for subscription. React and Tailwind.' },
+    { title: 'Portfolio Site', desc: 'Projects and contact', prompt: 'Build a personal portfolio with project grid, about section, and contact form. React and Tailwind.' },
+    { title: 'Onboarding Portal', desc: 'Steps and progress', prompt: 'Create an onboarding flow with step progress, back/next, and completion screen. React and Tailwind.' },
+    { title: 'Blog', desc: 'Post list and detail view', prompt: 'Build a blog with a list of posts and a post detail view. React and Tailwind.' },
+    { title: 'Internal Tool', desc: 'Admin table and filters', prompt: 'Build an internal admin tool with a data table, filters, and search. React and Tailwind.' },
+    { title: 'Custom Web Tool', desc: 'Calculator, converter, etc.', prompt: 'Build a custom web tool (e.g. calculator or unit converter) with a clean UI. React and Tailwind.' },
+    { title: 'Event or Booking', desc: 'Calendar and booking flow', prompt: 'Create an event or booking page with date selection and confirmation. React and Tailwind.' },
+  ];
+
   const faqs = [
-    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a swarm of agents and sub-agents. Full transparency: every phase, every agent, no black boxes.' },
-    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 200 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (100–10,000 at $0.03/credit, same rate as plans).' },
+    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a 100+ specialized agents. Full transparency: every phase, every agent, no black boxes.' },
+    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 100 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (100–5,000 at $0.06/credit). Unused credits roll over.' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
-    { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Attach it from the Workspace composer or Dashboard prompt.' },
-    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our agent swarm and sub-agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
+    { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },
+    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our 100+ specialized agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
     { q: 'How do I make changes?', a: 'Just ask in the chat. Say "make it dark mode", "add a sidebar", or "change the colors" and we update the code instantly.' },
     { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. We give you the files; you deploy to Vercel, Netlify, or any host. You own the code.' },
     { q: 'Is my data secure?', a: 'Yes. We use industry-standard practices. Your API keys stay in your environment; we don’t store them. See our Privacy and Terms for details.' },
@@ -62,25 +253,25 @@ const OurProjectsPage = () => {
     { q: 'How does plan-first work?', a: 'For larger prompts we first call a planning agent that returns a structured plan (features, components, design notes) and optional suggestions. You see the plan, then we generate code. This reduces backtracking and improves quality.' },
     { q: 'What is Swarm mode?', a: "Swarm (Beta) runs selected agents in parallel instead of sequentially, so multi-step builds can complete faster. It's available on paid plans." },
     { q: 'Can I collaborate with my team?', a: 'You can share exported code or push to a shared GitHub repo. Team and org features are on our roadmap.' },
-    { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone in the Workspace or Dashboard composer; we transcribe and insert your words into the prompt.' },
-    { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the attach control in the Workspace composer.' },
+    { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone button on the landing or in the workspace to record; we transcribe and insert your words into the prompt.' },
+    { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the paperclip on the input bar.' },
     { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
     { q: 'Can I build mobile apps?', a: 'Currently we focus on web apps (React). Mobile and PWA support are on the roadmap.' },
     { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
-    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, a swarm of agents and sub-agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
+    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 100+ specialized agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
   ];
   const allFaqs = [...faqs, ...faqsExtra];
 
   const whereItems = [
-    { title: 'Web app', desc: 'Use CrucibAI in your browser. Open the workspace (or home dashboard) to describe your idea, build, iterate, and export. No setup required.' },
+    { title: 'Web app', desc: 'Use CrucibAI in your browser. Describe your idea on the landing page or open the workspace to build, iterate, and export. No setup required.' },
     { title: 'API', desc: 'Integrate via API for prompt → plan and prompt → code. Billing by token usage.' },
     { title: 'Export & deploy', desc: 'Download your project as a ZIP or push to GitHub. Deploy to Vercel, Netlify, or any host. You own the code and can customize anything.' }
   ];
 
   const comparisonData = {
-    crucibai: { buildWeb: true, buildMobile: true, runAutomations: true, sameAI: true, importCode: true, ideExtensions: true, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: true, appStorePack: true, pricePer100: '$15' },
+    crucibai: { buildWeb: true, buildMobile: true, runAutomations: true, sameAI: true, importCode: true, ideExtensions: true, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: true, appStorePack: true, pricePer100: '$12.99' },
     lovable: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '$25' },
     bolt: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '~$20' },
     n8n: { buildWeb: false, buildMobile: false, runAutomations: true, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: false, approvalWorkflows: true, qualityScore: false, appStorePack: false, pricePer100: 'N/A' },
@@ -106,19 +297,19 @@ const OurProjectsPage = () => {
     <div className="marketing-page min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-6">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <Logo variant="full" height={32} href="/" className="shrink-0" />
-          <div className="hidden md:flex flex-1 items-center justify-center gap-8 min-w-0">
-            <SolutionsNavDropdown />
+          <div className="hidden md:flex items-center gap-6">
+            <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
-          </div>
-          <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
-            <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
-            {!user && (
-              <Link to="/auth" className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
+            <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
+            {user ? (
+              <button onClick={() => navigate('/app')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
+            ) : (
+              <button onClick={() => navigate('/app')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
             )}
-            <button type="button" onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get started</button>
+            <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -131,25 +322,18 @@ const OurProjectsPage = () => {
         {mobileMenuOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
-              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Our solution — who it&apos;s for</p>
-              <div className="flex flex-col gap-2 pl-2 border-l border-gray-200">
-                {SOLUTION_LINKS.map((item) => (
-                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
-                ))}
-              </div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Use cases</p>
-              <div className="flex flex-col gap-2 pl-2 border-l border-gray-200">
-                {USE_CASE_LINKS.map((item) => (
-                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
-                ))}
-              </div>
+              <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
-              {!user && (
-                <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+              <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
+              {user ? (
+                <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
+              ) : (
+                <>
+                  <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg py-2">Dashboard</button>
+                  <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
+                </>
               )}
-              <button type="button" onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
-              <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get started</button>
             </div>
           </motion.div>
         )}
@@ -159,7 +343,7 @@ const OurProjectsPage = () => {
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-kimi-muted mb-4">
-            Agentic · Swarm of agents &amp; sub-agents · High success rate · Full transparency
+            Agentic · 100+ specialized agents · High success rate · Full transparency
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
             Describe it now. Ship it today.
@@ -178,6 +362,193 @@ const OurProjectsPage = () => {
           )}
         </div>
 
+        {/* Hero stats — 4 items, remove 72 hours */}
+        <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
+          <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-gray-200 bg-kimi-bg-elevated/50">
+            <span className="text-sm font-medium text-kimi-text">100+ agents in parallel</span>
+            <span className="text-sm font-medium text-kimi-text">Production-grade output</span>
+            <span className="text-sm font-medium text-kimi-text">Half the price of Lovable</span>
+            <span className="text-sm font-medium text-kimi-text">Web · Mobile · Automation</span>
+          </div>
+          <p className="text-center text-xs text-kimi-muted mt-2">Not promises. Every number is measured.</p>
+        </motion.section>
+
+        {/* Main Input — extra space + glass */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="max-w-2xl mx-auto mt-16">
+          <p className="text-center text-sm font-medium text-kimi-accent mb-3">Agentic: describe it — we build it. Full automation, minimal supervision.</p>
+          <div className="glass-kimi-panel rounded-2xl overflow-hidden">
+            {/* Messages */}
+            {messages.length > 0 && (
+              <div className="max-h-80 overflow-y-auto p-5 space-y-4">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
+                      msg.role === 'user' 
+                        ? 'bg-white text-gray-900' 
+                        : msg.error 
+                          ? 'bg-[#F5F5F4] text-[#666666]'
+                          : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {msg.isBuilding ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                          <span>{msg.content}</span>
+                        </div>
+                      ) : (
+                        <span>{msg.content}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+
+            {/* Progress */}
+            {isBuilding && (
+              <div className="px-5 pb-2">
+                <div className="h-0.5 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-white"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${buildProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Generated Code */}
+            {generatedCode && !isBuilding && (
+              <div className="px-5 pb-4">
+                <div className="bg-kimi-bg rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
+                    <span className="text-xs text-kimi-muted font-mono">app.jsx</span>
+                    <button onClick={downloadCode} className="text-xs text-kimi-muted hover:text-kimi-text transition">
+                      Download
+                    </button>
+                  </div>
+                  <pre className="p-4 text-xs text-kimi-muted font-mono overflow-x-auto max-h-48 overflow-y-auto">
+                    <code>{generatedCode.code.slice(0, 800)}{generatedCode.code.length > 800 ? '\n...' : ''}</code>
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Attached files */}
+            {attachedFiles.length > 0 && (
+              <div className="px-4 pb-2 flex flex-wrap gap-2">
+                {attachedFiles.map((file, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
+                    {file.type?.startsWith('image/') ? (
+                      <Image className="w-4 h-4 text-kimi-accent shrink-0" />
+                    ) : file.type?.startsWith('audio/') ? (
+                      <Mic className="w-4 h-4 text-gray-500 shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                    )}
+                    <span className="text-gray-500 max-w-[180px] truncate">{file.name}</span>
+                    <button type="button" onClick={() => removeLandingFile(i)} className="text-kimi-muted hover:text-kimi-text p-0.5">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input — same options as workspace: big box, attach, submit */}
+            <form onSubmit={handleSubmit} className="p-4">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex gap-2 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus-within:ring-1 focus-within:ring-gray-300 transition min-h-[160px]">
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder={messages.length > 0 ? "Ask for changes..." : "What do you want to build?"}
+                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[120px] text-base leading-relaxed"
+                      disabled={isBuilding}
+                      rows={5}
+                    />
+                    <button
+                      type="button"
+                      onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+                      disabled={isBuilding || isTranscribing}
+                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-[#EBE8E2] text-[#1A1A1A] ring-2 ring-black/10' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
+                      title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
+                    >
+                      {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 rounded-lg text-kimi-muted hover:text-kimi-text hover:bg-gray-100 transition self-end shrink-0"
+                      title="Attach image or file"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
+                    onChange={handleLandingFileSelect}
+                    className="hidden"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding}
+                  className="px-6 py-4 bg-white text-gray-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shrink-0"
+                >
+                  {isBuilding ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+
+              {/* Voice status: Listening / Transcribing / Error */}
+              {(isRecording || isTranscribing || voiceError) && (
+                <div className="mt-3 flex items-center gap-2 min-h-[24px]">
+                  {isRecording && (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-[#666666] animate-pulse" aria-hidden />
+                      <span className="text-sm text-[#666666] font-medium">Listening… click the mic again to stop and see your text here.</span>
+                    </>
+                  )}
+                  {isTranscribing && !isRecording && (
+                    <>
+                      <Loader2 className="w-4 h-4 text-kimi-accent animate-spin shrink-0" />
+                      <span className="text-sm text-kimi-muted">Transcribing… your words will appear above when ready.</span>
+                    </>
+                  )}
+                  {voiceError && !isRecording && !isTranscribing && (
+                    <span className="text-sm text-[#666666]">{voiceError}</span>
+                  )}
+                </div>
+              )}
+              
+              {messages.length === 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-kimi-muted mb-2">Not sure where to start? Try one of these:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {['Reporting Dashboard', 'Task manager', 'E-commerce store', 'Landing + waitlist', 'Auth + Dashboard', 'Portfolio site', 'Pricing page', 'Blog', 'Internal tool'].map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setInput(s)}
+                        className="px-3 py-1.5 text-xs text-kimi-muted bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-kimi-text transition border border-gray-200"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+        </motion.div>
       </section>
 
       {/* The Bridge — moat section */}
@@ -189,7 +560,7 @@ const OurProjectsPage = () => {
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Build</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
-                Describe your app in plain language. Our swarm of agents and sub-agents plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
+                Describe your app in plain language. Our 100+ specialized agents plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
               </p>
             </div>
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
@@ -217,7 +588,7 @@ const OurProjectsPage = () => {
           <div className="grid sm:grid-cols-3 gap-6 mb-10">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Per-agent visibility</h4>
-              <p className="text-sm text-kimi-muted">See exactly which agent in the swarm is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
+              <p className="text-sm text-kimi-muted">See exactly which of the 100+ agents is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Quality score</h4>
@@ -251,7 +622,7 @@ const OurProjectsPage = () => {
               <span className="text-kimi-accent font-mono shrink-0">Tue–Wed</span>
               <div>
                 <h4 className="font-semibold text-kimi-text mb-1">Build</h4>
-                <p className="text-sm text-kimi-muted">Our agent swarm runs in parallel. Frontend, backend, database, tests, security, deployment — each phase handled by dedicated agents and sub-agents. You watch the AgentMonitor. You see every step.</p>
+                <p className="text-sm text-kimi-muted">Our 100+ specialized agents runs in parallel. Frontend, backend, database, tests, security, deployment — each phase handled by dedicated agents. You watch the AgentMonitor. You see every step.</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -272,60 +643,32 @@ const OurProjectsPage = () => {
         </div>
       </section>
 
-      {/* Who it's for — anchor targets for header "Our solution" menu */}
-      <section id="solutions" className="py-20 px-6 bg-kimi-bg-elevated/50">
-        <div className="max-w-6xl mx-auto">
-          <span className="text-xs uppercase tracking-wider text-kimi-muted">Our solution</span>
-          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4 text-center">Who it&apos;s for</h2>
-          <p className="text-center text-kimi-muted max-w-2xl mx-auto mb-12 text-sm leading-relaxed">
-            One platform for web, mobile, and automation. Plan-first builds, full transparency, production-ready code you own — no matter your title.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <article id="solution-everyone" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Everyone &amp; non-builders</h3>
-              <p className="text-sm text-kimi-muted mb-4">You don&apos;t need to write code. Describe what you want — landing pages, internal tools, and automations ship with AgentMonitor so you always see what&apos;s happening.</p>
-              <button type="button" onClick={() => startBuild('Landing page and a weekly summary automation')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Start from plain language</button>
-            </article>
-            <article id="solution-founders" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Founders</h3>
-              <p className="text-sm text-kimi-muted mb-4">Idea to deployed MVP without hiring a bench. Web, mobile Expo projects, and the same AI for follow-up automations — ship this week, iterate next week.</p>
-              <button type="button" onClick={() => startBuild('MVP')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build your MVP</button>
-            </article>
-            <article id="solution-enterprise" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Enterprise</h3>
-              <p className="text-sm text-kimi-muted mb-4">Quality scores, phase retry, audit trails, and security scans on import. Procurement-friendly transparency — every agent and phase is visible before you ship.</p>
-              <Link to="/enterprise" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Enterprise programs</Link>
-            </article>
-            <article id="solution-pm" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Project &amp; product managers</h3>
-              <p className="text-sm text-kimi-muted mb-4">Plan-first flow: approve structure before code. Monday describe, Tue–Wed build with parallel phases, Thursday automate, Friday export or deploy — one timeline your stakeholders can follow.</p>
-              <button type="button" onClick={() => startBuild('Internal approval tool with dashboard')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Prototype with approvals</button>
-            </article>
-            <article id="solution-designers" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Designers</h3>
-              <p className="text-sm text-kimi-muted mb-4">Design-to-code from screenshots or references. Hero, features, pricing, and responsive layouts wired into real components — not static mocks.</p>
-              <button type="button" onClick={() => startBuild('Design system landing page from my screenshot')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Turn visuals into UI</button>
-            </article>
-            <article id="solution-sales" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Sales teams</h3>
-              <p className="text-sm text-kimi-muted mb-4">Microsites, leave-behinds, and pricing pages in hours. Chain the same AI into webhook or digest automations for lead follow-up and pipeline updates.</p>
-              <button type="button" onClick={() => startBuild('Sales one-pager and ROI calculator')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Ship sales collateral</button>
-            </article>
-            <article id="solution-marketers" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Marketers &amp; growth</h3>
-              <p className="text-sm text-kimi-muted mb-4">Landing pages, blogs, funnels, and SEO-ready sections. Automate lead digests, content refresh, and campaign hooks with the same platform — no hand-off to engineering for every launch.</p>
-              <button type="button" onClick={() => startBuild('Landing page')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build marketing stacks</button>
-            </article>
-            <article id="solution-ops" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
-              <h3 className="font-semibold text-kimi-text mb-2">Ops &amp; RevOps</h3>
-              <p className="text-sm text-kimi-muted mb-4">Internal admin tables, CRUD, webhooks, and scheduled agents. Daily digests, SLA trackers, and handoffs your team can run without a separate automation-only product.</p>
-              <button type="button" onClick={() => startBuild('Operations dashboard with alerts')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Automate operations</button>
-            </article>
-            <article id="solution-developers" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
+      {/* Built for — 4 personas (replaces For everyone) */}
+      <section className="py-20 px-6 bg-kimi-bg-elevated/50">
+        <div className="max-w-5xl mx-auto">
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Built for</span>
+          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-12 text-center">Whether you write code or not.</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="font-semibold text-kimi-text mb-2">Marketers &amp; Agencies</h3>
+              <p className="text-sm text-kimi-muted mb-4">Build landing pages, funnels, and blogs in hours. Automate lead digests, follow-up sequences, and content pipelines with the same AI. Monday prompt, Friday launch. No dev dependency.</p>
+              <button onClick={() => startBuild('Landing page')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Start building marketing stacks</button>
+            </div>
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="font-semibold text-kimi-text mb-2">Founders &amp; Startups</h3>
+              <p className="text-sm text-kimi-muted mb-4">Idea to deployed MVP without a dev team. Import existing code or start from scratch. Get web, mobile, and automation in one platform. Ship this week, iterate next week.</p>
+              <button onClick={() => startBuild('MVP')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build your MVP</button>
+            </div>
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Developers</h3>
-              <p className="text-sm text-kimi-muted mb-4">IDE extensions, import via paste / ZIP / Git, Stripe injection, README and API docs. The swarm handles the heavy lifting; you keep full code ownership.</p>
-              <Link to="/learn" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Docs &amp; API</Link>
-            </article>
+              <p className="text-sm text-kimi-muted mb-4">Your IDE, our AI. Extensions for VSCode, JetBrains, Sublime, and Vim. Inject Stripe checkout in one command. Auto-generate README, API docs, and FAQ schema. Import any codebase — paste, ZIP, or Git URL.</p>
+              <Link to="/features" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Extend your workflow</Link>
+            </div>
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="font-semibold text-kimi-text mb-2">Product Teams</h3>
+              <p className="text-sm text-kimi-muted mb-4">Prototype to production with approval workflows, step chaining, and webhook triggers. Every build has an audit trail and quality score. Enterprise-grade security without enterprise complexity.</p>
+              <button onClick={() => startBuild('Internal tool')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build for your team</button>
+            </div>
           </div>
         </div>
       </section>
@@ -336,7 +679,7 @@ const OurProjectsPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Already have code?</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Bring it. We&apos;ll keep building.</h2>
           <p className="text-kimi-muted text-center mb-10 max-w-2xl mx-auto">
-            Paste your code. Upload a ZIP. Drop a Git URL. We stand up your existing project in the workspace, run a security scan and accessibility check, and you keep building — with the full agent swarm behind you.
+            Paste your code. Upload a ZIP. Drop a Git URL. We stand up your existing project in the workspace, run a security scan and accessibility check, and you keep building — with the full 100+ specialized agents behind you.
           </p>
           <div className="grid sm:grid-cols-3 gap-6">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -349,7 +692,7 @@ const OurProjectsPage = () => {
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Keep building with AI</h4>
-              <p className="text-sm text-kimi-muted">Your existing codebase, our agent swarm. Ask for features, fixes, or a full rebuild. You own the code throughout.</p>
+              <p className="text-sm text-kimi-muted">Your existing codebase, our 100+ agents. Ask for features, fixes, or a full rebuild. You own the code throughout.</p>
             </div>
           </div>
           <div className="mt-10 text-center">
@@ -365,23 +708,6 @@ const OurProjectsPage = () => {
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Use cases</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-8 text-center">Just about everything.</h2>
-          <div className="grid md:grid-cols-3 gap-6 mb-14">
-            <article id="use-case-poc" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h3 className="text-lg font-semibold text-kimi-text mb-2">Proof of concept</h3>
-              <p className="text-sm text-kimi-muted mb-4">Validate an idea in days: scoped UI, API sketch, and demo data. Approve the plan, watch the swarm build, export or deploy when stakeholders say go.</p>
-              <button type="button" onClick={() => startBuild('Proof of concept demo app')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Run a POC</button>
-            </article>
-            <article id="use-case-full-app" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h3 className="text-lg font-semibold text-kimi-text mb-2">Full apps &amp; SaaS</h3>
-              <p className="text-sm text-kimi-muted mb-4">Auth, database, Stripe, dashboards, and mobile-ready Expo paths. Same pipeline from landing to production — quality score and phase retry included.</p>
-              <button type="button" onClick={() => startBuild('Full-stack SaaS with auth and Stripe')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build a full product</button>
-            </article>
-            <article id="use-case-automation" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h3 className="text-lg font-semibold text-kimi-text mb-2">Automation &amp; agents</h3>
-              <p className="text-sm text-kimi-muted mb-4">Schedules, webhooks, and run_agent steps that call the same AI that built your app. Daily digests, lead follow-up, and content pipelines without a second tool.</p>
-              <button type="button" onClick={() => startBuild('Automation: daily digest to Slack')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Create an agent</button>
-            </article>
-          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Real-time data, admin controls, export to PDF and Excel.', cta: 'Build a dashboard' },
@@ -412,7 +738,7 @@ const OurProjectsPage = () => {
             {[
               { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
               { step: '2', title: 'Plan & approve', desc: 'For every build, we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
-              { step: '3', title: 'Swarm builds in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents and sub-agents running in parallel. Watch them work in AgentMonitor.' },
+              { step: '3', title: '100+ agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
               { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
             ].map((item, i) => (
               <div key={i} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -430,7 +756,7 @@ const OurProjectsPage = () => {
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Live Examples</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">See What CrucibAI Built</h2>
-          <p className="text-kimi-muted mb-8">Real apps from our agent swarm. Inevitable outcomes — fork any example to open it in your workspace.</p>
+          <p className="text-kimi-muted mb-8">Real apps from our 100+ specialized agents. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
             {liveExamples.length > 0 ? liveExamples.map((ex) => (
               <div key={ex.name} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
@@ -505,6 +831,27 @@ const OurProjectsPage = () => {
         </div>
       </section>
 
+      {/* How It Works — 4 steps */}
+      <section id="how" className="py-24 px-6 bg-kimi-bg-elevated/50">
+        <div className="max-w-4xl mx-auto">
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Under the hood</span>
+          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Plan-first. Agent-powered. Fully transparent.</h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            {[
+              { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
+              { step: '2', title: 'Plan & approve', desc: 'For every build, we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
+              { step: '3', title: '100+ agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
+              { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
+                <div className="text-xl font-mono text-kimi-accent mb-2">{item.step}</div>
+                <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
+                <p className="text-sm text-kimi-muted leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CrucibAI vs Others — checkmark comparison */}
       <section className="py-20 px-6 bg-kimi-bg-elevated/50">
@@ -547,7 +894,7 @@ const OurProjectsPage = () => {
         <div className="max-w-3xl mx-auto text-center">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Trust</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6">We Build CrucibAI Using CrucibAI</h2>
-          <p className="text-kimi-muted mb-8">We dogfood our own platform. Every feature we ship is built and tested with the same agent swarm our customers use.</p>
+          <p className="text-kimi-muted mb-8">We dogfood our own platform. Every feature we ship is built and tested with the same 100+ specialized agents our customers use.</p>
           <div className="flex flex-wrap justify-center gap-8 text-sm">
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
@@ -575,7 +922,7 @@ const OurProjectsPage = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">Better</h3>
-              <p className="text-sm text-kimi-muted mb-3">Structured plans, verifiable swarm agents, quality score, and full audit trail. You see every step and every artifact.</p>
+              <p className="text-sm text-kimi-muted mb-3">Structured plans, 100+ verifiable agents, quality score, and full audit trail. You see every step and every artifact.</p>
               <p className="text-xs text-kimi-accent font-medium">CrucibAI → structure, visibility, verifiable steps</p>
             </div>
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
@@ -694,7 +1041,7 @@ const OurProjectsPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/our-projects#solutions" className="text-kimi-muted hover:text-kimi-text transition">Our solution</Link></li>
+                <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
                 <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
                 <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
                 <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
@@ -704,6 +1051,7 @@ const OurProjectsPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
               <ul className="space-y-3 text-sm">
+                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
                 <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
                 <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
                 <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>

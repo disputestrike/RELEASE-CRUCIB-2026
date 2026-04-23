@@ -1,35 +1,36 @@
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
+import { useAuth } from '../App';
 import Logo from './Logo';
-import SolutionsNavDropdown from './SolutionsNavDropdown';
 
 export default function PublicNav() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const navBg = 'marketing-top-nav bg-[var(--kimi-bg)] border-b border-white/10';
+  const navBg = 'bg-[var(--kimi-bg)] border-b border-white/10';
   const linkClass = 'text-kimi-nav text-kimi-muted hover:text-kimi-text transition flex items-center gap-2';
-  const quietClass = 'text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition';
-  const ctaPrimary = 'px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-200 transition';
+  const ctaClass = 'px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-200 transition';
 
   return (
     <nav className={navBg}>
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-6">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         <Logo variant="full" height={32} href="/" className="shrink-0" />
-        <div className="hidden sm:flex flex-1 items-center justify-center gap-8 min-w-0">
-          <SolutionsNavDropdown />
-          <Link to="/pricing" className={linkClass}>Pricing</Link>
-          <Link to="/our-projects" className={linkClass}>Our Project</Link>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
-          <Link to="/app" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
-          {!user && (
-            <Link to="/auth" className={`${quietClass} hidden sm:inline`}>Log in</Link>
+        <div className="flex items-center gap-6">
+          <Link to="/features" className={`${linkClass} hidden sm:flex`}>Features</Link>
+          <Link to="/pricing" className={`${linkClass} hidden sm:flex`}>Pricing</Link>
+          <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Project</Link>
+          <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
+          {user ? (
+            <>
+              <Link to="/app" className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition">Dashboard</Link>
+              <button onClick={() => navigate('/app/workspace')} className={ctaClass}>Get Started</button>
+            </>
+          ) : (
+            <>
+              <Link to="/auth" className={`${linkClass} hidden sm:flex`}>Log in</Link>
+              <Link to="/auth?mode=register" className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition">Sign up</Link>
+              <button onClick={() => navigate('/app/workspace')} className={ctaClass}>Get Started</button>
+            </>
           )}
-          <button type="button" onClick={() => navigate('/app/workspace')} className={ctaPrimary}>
-            Get started
-          </button>
         </div>
       </div>
     </nav>

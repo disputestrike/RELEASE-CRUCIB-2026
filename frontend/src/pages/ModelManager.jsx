@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { Cpu, Zap, CheckCircle, AlertCircle, RefreshCw, Info } from 'lucide-react';
@@ -43,8 +42,8 @@ const MODELS = [
     speed: 'Ultra Fast',
     quality: 'Good',
     best_for: 'Simple tasks, formatting, quick fixes',
-    color: 'bg-neutral-100 border-neutral-200 text-neutral-800',
-    badge: 'bg-neutral-200 text-neutral-700',
+    color: 'bg-amber-50 border-amber-200 text-amber-800',
+    badge: 'bg-amber-100 text-amber-700',
   },
 ];
 
@@ -157,7 +156,7 @@ export default function ModelManager() {
           <div>
             <p className="text-sm font-medium text-blue-900 mb-1">How CrucibAI routing works</p>
             <p className="text-xs text-blue-700 leading-relaxed">
-              Each agent in CrucibAI&apos;s swarm is classified by task complexity: Critical (architecture, security, database design) → Claude Sonnet. Moderate (component generation, API integration) → Claude Haiku or Llama 70B. Simple (formatting, style changes, comments) → Cerebras Llama. This hybrid approach gives you Claude-quality output on the decisions that matter, at 40-60% lower cost than using Claude for everything.
+              Each of CrucibAI's 123 agents is classified by task complexity: Critical (architecture, security, database design) → Claude Sonnet. Moderate (component generation, API integration) → Claude Haiku or Llama 70B. Simple (formatting, style changes, comments) → Cerebras Llama. This hybrid approach gives you Claude-quality output on the decisions that matter, at 40-60% lower cost than using Claude for everything.
             </p>
           </div>
         </div>

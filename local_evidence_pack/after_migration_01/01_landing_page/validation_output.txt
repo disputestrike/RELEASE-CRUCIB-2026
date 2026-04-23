@@ -1,0 +1,2 @@
+GET /api/orchestrator/runtime-health -> 200
+{"success":true,"ok":true,"issues":[],"runtimes":{"python":{"available":true,"executable":"C:\\Users\\benxp\\AppData\\Local\\Programs\\Python\\Python313\\python.exe","version":"3.13.7"},"node":{"available":true,"path":"C:\\Program Files\\nodejs\\node.EXE","version":"v24.14.0"},"npm":{"available":true,"path":"C:\\Program Files\\nodejs\\npm.CMD"},"checks_passed":true},"node_verify_enforced":true}

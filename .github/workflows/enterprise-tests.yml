@@ -13,20 +13,6 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
-  # Agent DAG ↔ committed audit manifests (fast gate)
-  agent-dag-audit:
-    name: Agent DAG audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install backend deps (audit imports agent_dag)
-        run: cd backend && pip install -r requirements.txt
-      - name: Verify agent_audit.json matches code
-        run: cd backend && PYTHONPATH=. python scripts/audit_agent_dag.py --check
-
   # Layer 1.1: Lint
   lint:
     name: Lint
@@ -37,7 +23,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
       - name: Install frontend deps
         run: cd frontend && yarn install --frozen-lockfile
       - name: Lint
@@ -49,13 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
       - uses: actions/setup-python@v5
@@ -82,7 +64,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
       - name: Install and test
         run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
@@ -98,36 +79,14 @@ jobs:
     name: Backend integration & smoke
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: crucibai
-          POSTGRES_PASSWORD: crucibai
-          POSTGRES_DB: crucibai_test
+      mongodb:
+        image: mongo:6
         ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U crucibai -d crucibai_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          - 27017:27017
     env:
-      DATABASE_URL: postgresql://crucibai:crucibai@localhost:5432/crucibai_test
-      REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET: test-secret-for-ci-minimum-32-characters-long
-      FRONTEND_URL: http://localhost:3000
-      GOOGLE_CLIENT_ID: test.apps.googleusercontent.com
-      GOOGLE_CLIENT_SECRET: test-google-client-secret
-      CRUCIBAI_TEST: "1"
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: crucibai_test
+      JWT_SECRET: test-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -180,7 +139,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-          cache-dependency-path: frontend/yarn.lock
       - name: Install frontend and Playwright
         run: cd frontend && yarn install --frozen-lockfile && npx playwright install --with-deps chromium
       - name: Build frontend

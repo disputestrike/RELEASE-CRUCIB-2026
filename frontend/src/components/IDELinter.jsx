@@ -1,12 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { API } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDELinter() {
-  const { token } = useAuth();
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState("test-project");
   const [filePath, setFilePath] = useState("");
   const [code, setCode] = useState("");
   const [issues, setIssues] = useState([]);
@@ -17,9 +15,8 @@ export default function IDELinter() {
     const params = { project_id: projectId };
     if (filePath) params.file_path = filePath;
     if (code) params.code = code.slice(0, 4000);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/ide/lint`, null, { params, headers })
+      .post(`${API}/ide/lint`, null, { params })
       .then((r) => setIssues(r.data.issues || []))
       .catch((e) => {
         logApiError("IDELinter", e);
@@ -52,14 +49,14 @@ export default function IDELinter() {
         className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2 font-mono min-h-[80px]"
         placeholder="Or paste code to lint (optional)"
       />
-      <button type="button" onClick={runLint} disabled={loading || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
+      <button type="button" onClick={runLint} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
         {loading ? "Running…" : "Run lint"}
       </button>
       {issues.length > 0 ? (
         <ul className="border border-gray-200 rounded bg-white divide-y divide-gray-100">
           {issues.map((issue, i) => (
             <li key={i} className="px-3 py-2 text-sm">
-              <span className={`font-medium ${issue.severity === "error" ? "text-red-600" : issue.severity === "warning" ? "text-neutral-600" : "text-[#666]"}`}>{issue.severity}</span>{" "}
+              <span className={`font-medium ${issue.severity === "error" ? "text-red-600" : issue.severity === "warning" ? "text-amber-600" : "text-[#666]"}`}>{issue.severity}</span>{" "}
               {issue.file_path && `${issue.file_path}:`}{issue.line}:{issue.column} — {issue.message}
             </li>
           ))}

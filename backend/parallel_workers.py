@@ -3,10 +3,9 @@ Parallel workers for CrucibAI — parallel execution for build/agent phases.
 Enables shorter build times when phases run agents in parallel (orchestration already uses asyncio.gather).
 This module provides a structured pool and batch runner for use by orchestration or other callers.
 """
-
 import asyncio
+from typing import List, Callable, Any, TypeVar, Coroutine
 import logging
-from typing import Any, Callable, Coroutine, List, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,6 @@ async def run_phase_parallel(
     Run a list of agents in parallel. run_fn(agent_name) is awaited for each agent.
     Returns list of (agent_name, result_or_exception).
     """
-
     async def run_one(name: str):
         try:
             return await asyncio.wait_for(run_fn(name), timeout=timeout_per_agent)

@@ -261,7 +261,7 @@ export const VoiceInput = ({
           transition-all duration-200
           ${isRecording 
             ? 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A] animate-pulse' 
-            : 'bg-gray-200 hover:bg-neutral-300 text-[#1A1A1A]'
+            : 'bg-gray-200 hover:bg-black text-[#1A1A1A]'
           }
           ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
@@ -318,7 +318,7 @@ export const VoiceInput = ({
       {!isRecording && (
         <select
           value={language}
-          onChange={() => {
+          onChange={(e) => {
             // Language change handler would be passed from parent
           }}
           className="text-xs px-2 py-1 border rounded bg-white"

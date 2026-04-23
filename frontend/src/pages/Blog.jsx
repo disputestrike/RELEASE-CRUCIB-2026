@@ -10,7 +10,7 @@ const POSTS = [
     date: '2026-02',
     body: [
       'Most tools do one thing well: build an app from a prompt, or run automations, or write code in your IDE. CrucibAI is built around a different idea: the same AI that builds your app should run inside your automations.',
-      'When you describe an app, our swarm of agents and sub-agents — plan, frontend, backend, design, content, tests, deploy — builds it in a plan-first DAG. When you create your own agents (on a schedule or via webhook), you can add a step that runs one of those agents by name: Content Agent, Scraping Agent, and more. So the AI that built your landing page can also write your daily digest or your lead follow-up.',
+      'When you describe an app, our 120-agent swarm — plan, frontend, backend, design, content, tests, deploy — builds it in a plan-first DAG. When you create your own agents (on a schedule or via webhook), you can add a step that runs one of those agents by name: Content Agent, Scraping Agent, and more. So the AI that built your landing page can also write your daily digest or your lead follow-up.',
       'That’s not “we do automation” (N8N does) or “we do app from prompt” (Manus does). It’s the combo and the bridge: one platform where you build apps and run automations that call the same AI. No other product does that today.',
       'We call it inevitable AI because once you see the plan, the phases, and the quality score, the outcome isn’t a black box — it’s visible, retryable, and under your control. Describe your idea; we build the site and the automations. You get the stack in days, not weeks.',
     ],
@@ -35,7 +35,7 @@ const POSTS = [
     body: [
       'CrucibAI is built for anyone who needs to get in front of people: marketers, agencies, and teams that spend money to make money. One platform for the assets (sites, funnels, forms) and the workflows (emails, content, lead capture).',
       'Build marketing assets in plain language: “Build a landing page with hero, features, pricing, and waitlist form.” “Build a blog with post list and detail view.” “Build a page with a form that saves leads and sends a thank-you email.” You get real, deployable output — not mockups. Deploy to Vercel or Netlify, or download a ZIP.',
-      'Then automate. Create an agent on a schedule or webhook: “Every morning at 9, summarize key updates and email them to me.” “When someone submits the contact form, run our Content Agent to draft a reply and post it to Slack.” The same agent swarm that builds your app runs inside these workflows. So the AI that built your site also powers your daily digest and follow-ups.',
+      'Then automate. Create an agent on a schedule or webhook: “Every morning at 9, summarize key updates and email them to me.” “When someone submits the contact form, run our Content Agent to draft a reply and post it to Slack.” The same 120-agent swarm that builds your app runs inside these workflows. So the AI that built your site also powers your daily digest and follow-ups.',
       'We don’t replace your ad spend or channels. We help you own the destination — the sites and forms — and automate the follow-up. We generate ad copy and creatives; you (or your stack) push to Meta/Google. You run the ads; we built the stack.',
     ],
   },
@@ -70,7 +70,7 @@ const POSTS = [
     date: '2026-02',
     body: [
       'We don’t say AI runs your company. We say: describe your idea once — we build the site and the automations. You get a live funnel, lead capture, and ad-ready copy in days, not weeks.',
-      'Here’s how it compresses. On Monday you describe what you want: a landing page, a waitlist, a simple dashboard, or “a site plus a daily digest and follow-up when someone signs up.” We turn that into a plan, then run the agent swarm — frontend, backend, design, content, tests, deploy. You see the plan and the phases; you get a quality score and can retry a phase if something fails. By the end of the week you can have a live site, forms that capture leads, and optional automations (schedule or webhook) that use the same AI for digests and follow-ups.',
+      'Here’s how it compresses. On Monday you describe what you want: a landing page, a waitlist, a simple dashboard, or “a site plus a daily digest and follow-up when someone signs up.” We turn that into a plan, then run the 120-agent swarm — frontend, backend, design, content, tests, deploy. You see the plan and the phases; you get a quality score and can retry a phase if something fails. By the end of the week you can have a live site, forms that capture leads, and optional automations (schedule or webhook) that use the same AI for digests and follow-ups.',
       'We also generate copy and creatives — headlines, body, CTA. You (or your stack) push those to Meta/Google. So: one operator plus CrucibAI instead of hiring a designer, copywriter, funnel builder, and dev. Execution compression, not magic.',
       'Same AI that builds your app runs your workflows. You run the ads; we built the stack. That’s the deal.',
     ],

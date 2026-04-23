@@ -1,0 +1,13 @@
+[
+  {
+    "slug": "01_landing_page",
+    "ok": false,
+    "project_id": "8284d154-26b0-482f-9b7f-ac96bd1c3641",
+    "zip_entries": 6,
+    "zip_has_meta": false,
+    "zip_non_meta_files": 6,
+    "workspace_file_count": 6,
+    "final_status": "failed",
+    "job_id": "846de7e9-9077-4743-bb97-6592d9679cf3"
+  }
+]

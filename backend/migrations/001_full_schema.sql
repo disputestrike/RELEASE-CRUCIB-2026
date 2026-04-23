@@ -117,13 +117,6 @@ CREATE TABLE IF NOT EXISTS enterprise_inquiries (
     doc JSONB NOT NULL DEFAULT '{}'
 );
 
--- Contact form submissions (general /footer, pricing "Contact us")
-CREATE TABLE IF NOT EXISTS contact_submissions (
-    id TEXT PRIMARY KEY,
-    doc JSONB NOT NULL DEFAULT '{}'
-);
-CREATE INDEX IF NOT EXISTS idx_contact_submissions_created ON contact_submissions ((doc->>'created_at'));
-
 -- Backup codes (MFA) – use serial _id for update_one({"_id": ...})
 CREATE TABLE IF NOT EXISTS backup_codes (
     _id SERIAL PRIMARY KEY,

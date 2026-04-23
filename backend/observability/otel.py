@@ -10,24 +10,24 @@ Implements:
 """
 
 import logging
-import time
+from typing import Optional, Dict, Any, Callable
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+import time
 
-from opentelemetry import metrics, trace
+from opentelemetry import trace, metrics
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.exporter.prometheus import PrometheusMetricReader
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.propagate import set_global_textmap
-from opentelemetry.propagators.b3 import B3Format
-from opentelemetry.propagators.jaeger.jaeger import JaegerPropagator
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.propagate import set_global_textmap
+from opentelemetry.propagators.jaeger.jaeger import JaegerPropagator
+from opentelemetry.propagators.b3 import B3Format
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,9 @@ class OpenTelemetrySetup:
 
         # Create tracer provider
         self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
+        self.tracer_provider.add_span_processor(
+            BatchSpanProcessor(jaeger_exporter)
+        )
 
         # Set global tracer provider
         trace.set_tracer_provider(self.tracer_provider)

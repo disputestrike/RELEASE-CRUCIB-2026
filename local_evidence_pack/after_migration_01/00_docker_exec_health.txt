@@ -1,0 +1,2 @@
+postgres: exit=0 stdout='/var/run/postgresql:5432 - accepting connections' stderr=''
+redis: exit=0 stdout='PONG' stderr=''

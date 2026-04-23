@@ -76,12 +76,6 @@ class MetricsCollector:
             "Total errors",
             ["error_type"],
         )
-        self.verification_runs_total = Counter(
-            "crucibai_verification_runs_total",
-            "Auto-Runner verify_step outcomes per step_key",
-            ["step_key", "outcome"],
-        )
-
         self.error_rate = Gauge(
             "crucibai_error_rate_percent",
             "Current error rate as percentage",
@@ -150,56 +144,40 @@ class MetricsCollector:
         """Record start of a build."""
         self.build_queue_depth.inc()
 
-    def record_build_complete(
-        self,
-        build_id: str,
-        duration_seconds: float,
-        status: str,
-        cost_dollars: float = 0.0,
-    ):
+    def record_build_complete(self, build_id: str, duration_seconds: float, status: str, cost_dollars: float = 0.0):
         """Record completion of a build."""
         self.builds_total.labels(status=status).inc()
         self.build_duration_seconds.observe(duration_seconds)
         self.build_queue_depth.dec()
         self.build_cost_dollars.observe(cost_dollars)
 
-        self.build_history.append(
-            {
-                "build_id": build_id,
-                "timestamp": datetime.utcnow().isoformat(),
-                "duration_seconds": duration_seconds,
-                "status": status,
-                "cost_dollars": cost_dollars,
-            }
-        )
+        self.build_history.append({
+            "build_id": build_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "duration_seconds": duration_seconds,
+            "status": status,
+            "cost_dollars": cost_dollars,
+        })
 
-    def record_agent_execution(
-        self, agent_name: str, duration_seconds: float, status: str
-    ):
+    def record_agent_execution(self, agent_name: str, duration_seconds: float, status: str):
         """Record agent execution."""
         self.agent_executions_total.labels(agent_name=agent_name, status=status).inc()
-        self.agent_duration_seconds.labels(agent_name=agent_name).observe(
-            duration_seconds
-        )
+        self.agent_duration_seconds.labels(agent_name=agent_name).observe(duration_seconds)
 
-        self.agent_history.append(
-            {
-                "agent_name": agent_name,
-                "timestamp": datetime.utcnow().isoformat(),
-                "duration_seconds": duration_seconds,
-                "status": status,
-            }
-        )
+        self.agent_history.append({
+            "agent_name": agent_name,
+            "timestamp": datetime.utcnow().isoformat(),
+            "duration_seconds": duration_seconds,
+            "status": status,
+        })
 
     def record_error(self, error_type: str):
         """Record an error."""
         self.errors_total.labels(error_type=error_type).inc()
-        self.error_history.append(
-            {
-                "error_type": error_type,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-        )
+        self.error_history.append({
+            "error_type": error_type,
+            "timestamp": datetime.utcnow().isoformat(),
+        })
 
     def set_active_agents(self, count: int):
         """Set the number of active agents."""
@@ -221,16 +199,10 @@ class MetricsCollector:
         """Record database query duration."""
         self.database_query_duration_seconds.observe(duration_seconds)
 
-    def record_api_request(
-        self, method: str, endpoint: str, status_code: int, duration_seconds: float
-    ):
+    def record_api_request(self, method: str, endpoint: str, status_code: int, duration_seconds: float):
         """Record API request."""
-        self.api_requests_total.labels(
-            method=method, endpoint=endpoint, status=status_code
-        ).inc()
-        self.api_request_duration_seconds.labels(
-            method=method, endpoint=endpoint
-        ).observe(duration_seconds)
+        self.api_requests_total.labels(method=method, endpoint=endpoint, status=status_code).inc()
+        self.api_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration_seconds)
 
     def record_cache_hit(self):
         """Record cache hit."""
@@ -251,10 +223,8 @@ class MetricsCollector:
 
     def get_error_rate(self) -> float:
         """Get error rate as percentage."""
-        total_builds = (
-            self.builds_total.labels(status="success")._value.get()
-            + self.builds_total.labels(status="failure")._value.get()
-        )
+        total_builds = self.builds_total.labels(status="success")._value.get() + \
+                       self.builds_total.labels(status="failure")._value.get()
         if total_builds == 0:
             return 0.0
         failed_builds = self.builds_total.labels(status="failure")._value.get()
@@ -268,21 +238,13 @@ class MetricsCollector:
 
         # Calculate average build time
         if self.build_history:
-            avg_build_time = (
-                sum(b["duration_seconds"] for b in self.build_history)
-                / len(self.build_history)
-                * 1000
-            )
+            avg_build_time = sum(b["duration_seconds"] for b in self.build_history) / len(self.build_history) * 1000
         else:
             avg_build_time = 0.0
 
         # Calculate average agent time
         if self.agent_history:
-            avg_agent_time = (
-                sum(a["duration_seconds"] for a in self.agent_history)
-                / len(self.agent_history)
-                * 1000
-            )
+            avg_agent_time = sum(a["duration_seconds"] for a in self.agent_history) / len(self.agent_history) * 1000
         else:
             avg_agent_time = 0.0
 

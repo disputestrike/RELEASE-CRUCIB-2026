@@ -6,8 +6,8 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  background: var(--theme-bg, #111113);
-  color: var(--theme-text, #e4e4e7);
+  background: #111113;
+  color: #e4e4e7;
   overflow: hidden;
 }
 
@@ -16,8 +16,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--theme-surface, #fafaf8);
-  color: var(--theme-text, #1a1a1a);
+  background: #FAFAF8;
   gap: 12px;
 }
 
@@ -35,7 +34,7 @@
   border: none;
   cursor: pointer;
   padding: 8px;
-  color: var(--theme-text, #1a1a1a);
+  color: #1A1A1A;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,7 +44,7 @@
 
 .layout-toggle-sidebar:hover,
 .layout-toggle-panel:hover {
-  background: var(--theme-surface2, #f3f1ed);
+  background: #F3F1ED;
 }
 
 /* Main Container */
@@ -64,21 +63,46 @@
   position: relative;
 }
 
-/* Left Sidebar — dark, collapsible; thin single-line border (Manus-like) */
+/* Left Sidebar — dark, collapsible */
 .layout-sidebar {
   width: 300px;
   min-width: 300px;
-  background: var(--theme-surface);
+  background: #18181B;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: width 200ms ease, min-width 200ms ease;
-  border-right: 1px solid var(--theme-border);
 }
 
 .layout-sidebar.closed {
   width: 56px;
   min-width: 56px;
+}
+
+/* Collapse/expand toggle — always visible on right edge of sidebar column */
+.layout-sidebar-toggle {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #27272a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.layout-sidebar-toggle:hover {
+  background: #3f3f46;
+  color: #e4e4e7;
+}
+
+.layout-sidebar.closed + .layout-sidebar-toggle {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 8px 8px 0;
 }
 
 .layout-sidebar-content {
@@ -98,7 +122,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--theme-bg, #111113);
+  background: #111113;
 }
 
 /* Main content full width when right panel is hidden (e.g. Dashboard) */
@@ -119,26 +143,15 @@
   flex-direction: column;
 }
 
-/* Dashboard /app: hide main-column scrollbar chrome (feels like a “grid line”) */
-.layout-shell--dash-home .layout-main-content {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.layout-shell--dash-home .layout-main-content::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
 /* Right Panel — same tone as main canvas */
 .layout-right-panel {
   width: 420px;
-  background: var(--theme-surface, #18181B);
+  background: #18181B;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--theme-border, rgba(255,255,255,0.07));
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .layout-panel-content {
@@ -171,7 +184,7 @@
 .layout-sidebar::-webkit-scrollbar-track,
 .layout-main-content::-webkit-scrollbar-track,
 .layout-right-panel::-webkit-scrollbar-track {
-  background: var(--theme-bg, #111113);
+  background: #111113;
 }
 
 .layout-sidebar::-webkit-scrollbar-thumb,
@@ -179,7 +192,7 @@
 .layout-right-panel::-webkit-scrollbar-thumb {
   background: #3f3f46;
   border-radius: 5px;
-  border: 2px solid var(--theme-bg, #111113);
+  border: 2px solid #111113;
 }
 
 .layout-sidebar::-webkit-scrollbar-thumb:hover,
@@ -191,7 +204,7 @@
 .layout-sidebar::-webkit-scrollbar-corner,
 .layout-main-content::-webkit-scrollbar-corner,
 .layout-right-panel::-webkit-scrollbar-corner {
-  background: var(--theme-bg, #111113);
+  background: #111113;
 }
 
 /* ============================================
@@ -357,5 +370,3 @@
     padding: 0;
   }
 }
-
-/* Workspace uses the same app sidebar as other /app routes (no sidebar-hidden). */

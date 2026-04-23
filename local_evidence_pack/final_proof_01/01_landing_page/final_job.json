@@ -1,0 +1,22 @@
+{
+  "id": "846de7e9-9077-4743-bb97-6592d9679cf3",
+  "project_id": "8284d154-26b0-482f-9b7f-ac96bd1c3641",
+  "user_id": "5ae19834-6a98-4228-8ad6-6afb5c17ebf4",
+  "status": "failed",
+  "mode": "guided",
+  "goal": "Build a simple one-page marketing landing page for a local coffee shop with hero, menu section, and contact. Static content only.",
+  "current_phase": "dependency_blocked",
+  "retry_count": 0,
+  "quality_score": 0,
+  "created_at": "2026-04-12T09:00:21.013816+00:00",
+  "updated_at": "2026-04-12T09:00:51.922904+00:00",
+  "started_at": "2026-04-12T09:00:48.020963+00:00",
+  "completed_at": "2026-04-12T09:00:51.922923+00:00",
+  "error_message": null,
+  "error_details": null,
+  "blocked_steps": "[\"agents.requirements_clarifier\", \"agents.content_agent\", \"agents.stack_selector\", \"agents.frontend_generation\", \"agents.backend_generation\", \"agents.design_agent\", \"agents.seo_agent\", \"agents.brand_agent\", \"agents.dark_mode_agent\", \"agents.animation_agent\", \"agents.responsive_breakpoints_agent\", \"agents.typography_system_agent\", \"agents.ux_auditor\", \"agents.build_validator_agent\", \"agents.css_modern_standards_agent\", \"agents.database_agent\", \"agents.security_checker\", \"agents.performance_analyzer\", \"agents.deployment_agent\", \"agents.code_review_agent\", \"agents.file_tool_agent\", \"agents.image_generation\", \"agents.color_palette_system_agent\", \"agents.icon_system_agent\", \"agents.compilation_dry_run_agent\", \"agents.security_scanning_agent\", \"agents.memory_agent\", \"agents.lighthouse_performance_agent\", \"agents.code_quality_gate_agent\", \"agents.layout_agent\", \"agents.image_optimization_agent\", \"agents.build_orchestrator_agent\", \"agents.deployment_safety_agent\", \"agents.quality_metrics_aggregator_agent\", \"implementation.delivery_manifest\", \"verification.compile\", \"verification.api_smoke\", \"verification.preview\", \"verification.security\", \"verification.elite_builder\", \"deploy.build\", \"deploy.publish\"]",
+  "failed_step_keys": null,
+  "non_completed": null,
+  "failure_reason": "dependency_blocked",
+  "failure_details": "{\"blocked_steps\": [{\"step_key\": \"agents.requirements_clarifier\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.planner\"}, {\"step_key\": \"agents.content_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.planner\"}, {\"step_key\": \"agents.stack_selector\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.requirements_clarifier\"}, {\"step_key\": \"agents.frontend_generation\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.backend_generation\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.design_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.seo_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.brand_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.dark_mode_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.animation_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.responsive_breakpoints_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.typography_system_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.stack_selector\"}, {\"step_key\": \"agents.ux_auditor\", \"status\": \"blocked\", \"retry_count\": 0, \"error_message\": \"Blocked by failed dep: agents.frontend_generation\"}, {\"step_key\": \"agents.build_validator_agent\", \"status\": \"blocked\", \"retry_count\": 0, \"error_messa"
+}

@@ -1,0 +1,4 @@
+app/readme.txt
+proof/ELITE_EXECUTION_DIRECTIVE.md
+src/App.jsx
+src/main.jsx

@@ -299,7 +299,7 @@
 }
 
 .terminal-line.error .terminal-text { color: #EF4444; }
-.terminal-line.warning .terminal-text { color: #a3a3a3; }
+.terminal-line.warning .terminal-text { color: #F59E0B; }
 .terminal-line.success .terminal-text { color: #059669; }
 .terminal-line.info .terminal-text { color: #60A5FA; }
 

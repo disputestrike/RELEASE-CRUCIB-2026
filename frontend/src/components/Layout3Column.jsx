@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Logo from './Logo';
 import './Layout3Column.css';
 
@@ -25,7 +25,6 @@ export const Layout3Column = ({
   sidebarOpen: controlledSidebarOpen,
   onToggleSidebar,
   setSidebarOpen: setControlledSidebarOpen,
-  hideSidebarToggle: _hideSidebarToggle = false,
 }) => {
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -57,7 +56,7 @@ export const Layout3Column = ({
 
       {/* Main Layout Container */}
       <div className="layout-container">
-        {/* Left Sidebar — collapsible; collapse button is inside sidebar at top (Manus-like); thin 1px border only */}
+        {/* Left Sidebar — collapsible; toggle handle always visible */}
         <div className="layout-sidebar-wrapper">
           <aside
             className={`layout-sidebar ${sidebarOpen ? 'open' : 'closed'}`}
@@ -67,6 +66,15 @@ export const Layout3Column = ({
               {sidebar}
             </div>
           </aside>
+          <button
+            type="button"
+            className="layout-sidebar-toggle"
+            onClick={handleToggleSidebar}
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
         </div>
 
         {/* Main Content Area (Flexible) — full width when no right panel */}

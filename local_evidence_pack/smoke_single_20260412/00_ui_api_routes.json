@@ -1,0 +1,16 @@
+{
+  "routes": [
+    "GET /api/health",
+    "GET /api/orchestrator/runtime-health",
+    "POST /api/orchestrator/plan",
+    "POST /api/orchestrator/run-auto",
+    "GET /api/jobs/{job_id}",
+    "GET /api/jobs/{job_id}/steps",
+    "GET /api/jobs/{job_id}/events",
+    "GET /api/jobs/{job_id}/proof",
+    "GET /api/jobs/{job_id}/export/full.zip",
+    "GET /api/projects/{project_id}/state",
+    "POST /api/projects/import"
+  ],
+  "note": "Browser UI not automated here; these are the API surfaces the Unified Workspace uses for plan/run, proof, and exports."
+}

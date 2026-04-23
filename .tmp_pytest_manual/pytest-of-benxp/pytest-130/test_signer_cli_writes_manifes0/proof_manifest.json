@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "bytes": 10,
+      "path": "BENCHMARK_REPORT.md",
+      "sha256": "e6d1e24cac7e6315635bda01484e0c3aae8485d1829186e8fe8271265b4c86ac"
+    },
+    {
+      "bytes": 11,
+      "path": "summary.json",
+      "sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93"
+    }
+  ],
+  "generated_at": "2026-04-20T18:48:03.979254+00:00",
+  "manifest_id": "run-cli-1776710883",
+  "meta": {
+    "source": "scripts/sign-proof-manifest.py"
+  },
+  "payload_sha256": "a6ebaec49907aeb066a356452fc53d0684c07a57045dc10e55835df746f7c6bc",
+  "project_id": "proj-cli",
+  "run_id": "run-cli",
+  "signature": "19e6eceaa40c7e9b3b42f5cb62765430f8579a6b5986f33a5a5837873ba4bd32",
+  "signature_algorithm": "hmac-sha256",
+  "signed_at": "2026-04-20T18:48:03.992167+00:00"
+}

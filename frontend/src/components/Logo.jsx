@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 
 /**
  * Logo — Your icon + "CrucibAI — Inevitable AI" (or name only when showTagline=false).
- * Uses your logo image from public/logo.png when present; otherwise shows
+ * Uses your logo image from public/logo-icon.png when present; otherwise shows
  * an inline version of your icon (dark rounded square with 2×2 grid).
  */
-const LOGO_ICON = '/logo.png';
+const LOGO_ICON = '/logo-icon.png';
 
 /** Your icon: dark rounded square with 2×2 grid of white squares (shows when image missing) */
 function YourIconSvg({ size }) {
@@ -30,26 +30,19 @@ function YourIconSvg({ size }) {
 }
 
 export function Logo({
-  variant: _variant = 'full',
-  /**
-   * Force light ink on a fixed dark background (hero strip, etc.).
-   * Default: follow `data-theme` via `.logo-wordmark` / `.logo-tagline` in index.css.
-   */
+  variant = 'full',
   dark = false,
   height = 32,
   href,
   className = '',
   alt = 'CrucibAI logo',
   showTagline = true,
-  /** When false, show mark only (no "CrucibAI" wordmark). Tagline is hidden regardless of `showTagline`. */
-  showWordmark = true,
-  /** Optional class on the "CrucibAI" wordmark (e.g. sidebar typography). */
-  nameClassName = '',
+  ...rest
 }) {
   const [iconError, setIconError] = useState(false);
 
-  const wordmarkClass = ['logo-wordmark', dark ? 'logo-wordmark--force-light' : '', nameClassName].filter(Boolean).join(' ');
-  const taglineClass = ['logo-tagline', dark ? 'logo-tagline--force-light' : ''].filter(Boolean).join(' ');
+  const textColor = dark ? '#fff' : '#1A1A1A';
+  const mutedColor = dark ? 'rgba(255,255,255,0.8)' : '#6B7280';
 
   const contentInner = (
     <>
@@ -72,31 +65,29 @@ export function Logo({
       ) : (
         <YourIconSvg size={height} />
       )}
-      {showWordmark && (
-        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>
+        <span
+          style={{
+            fontSize: Math.round(height * 0.5),
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: textColor,
+          }}
+        >
+          CrucibAI
+        </span>
+        {showTagline && (
           <span
-            className={wordmarkClass}
             style={{
-              fontSize: Math.round(height * 0.5),
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
+              fontSize: Math.round(height * 0.4),
+              fontWeight: 400,
+              color: mutedColor,
             }}
           >
-            CrucibAI
+            — Inevitable AI
           </span>
-          {showTagline && (
-            <span
-              className={taglineClass}
-              style={{
-                fontSize: Math.round(height * 0.4),
-                fontWeight: 400,
-              }}
-            >
-              — Inevitable AI
-            </span>
-          )}
-        </span>
-      )}
+        )}
+      </span>
     </>
   );
 

@@ -1,14 +1,11 @@
 import React from 'react';
 
 const SUGGESTIONS = [
-  { icon: '🌐', label: 'Build website', prompt: 'Build a multi-page website with hero, features, pricing, and contact sections' },
-  { icon: '⚙️', label: 'Develop app', prompt: 'Build a full-stack web app with user authentication and dashboard' },
-  { icon: '📱', label: 'Mobile app', prompt: 'Build a React Native mobile app with navigation and multiple screens' },
-  { icon: '🛒', label: 'E-commerce store', prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
-  { icon: '🤖', label: 'AI chatbot', prompt: 'Build an AI chatbot with a knowledge base and multi-agent support' },
-  { icon: '📊', label: 'SaaS MVP', prompt: 'Build a SaaS MVP with authentication, Stripe billing, and user dashboard' },
-  { icon: '⚡', label: 'Automation', prompt: 'Build an automation that runs daily and sends results to Slack or email' },
-  { icon: '🛠️', label: 'Internal tool', prompt: 'Build an internal admin tool with data tables, forms, and approval workflows' },
+  { icon: '📊', label: 'Create slides', prompt: 'Create a presentation about...' },
+  { icon: '🌐', label: 'Build website', prompt: 'Build a website for...' },
+  { icon: '📱', label: 'Develop apps', prompt: 'Develop a mobile app for...' },
+  { icon: '🎨', label: 'Design', prompt: 'Design a logo for...' },
+  { icon: '📄', label: 'Landing page', prompt: 'Build a landing page with hero, features, and CTA...' },
 ];
 
 const SuggestionChips = ({ onSelect, disabled }) => {

@@ -36,7 +36,7 @@ jobs:
           echo "✅ Python version verified: $ACTUAL"
       
       - name: Cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -72,13 +72,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: |
-          pip install --no-cache-dir -r requirements.txt
-          pip install mypy
+        run: pip install --no-cache-dir -r requirements.txt
       
       - name: Run MyPy type checking
         run: |
-          mypy backend/ --ignore-missing-imports
+          mypy backend/ --strict --ignore-missing-imports
       
       - name: Report type check results
         if: failure()
@@ -100,9 +98,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: |
-          pip install --no-cache-dir -r requirements.txt
-          pip install black isort flake8
+        run: pip install --no-cache-dir -r requirements.txt
       
       - name: Check formatting (Black)
         run: black --check backend/ || (echo "❌ Code not formatted" && exit 1)
@@ -128,9 +124,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: |
-          pip install --no-cache-dir -r requirements.txt
-          pip install bandit safety
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run Bandit security check
         run: |
           bandit -r backend/ -f json -o bandit-report.json
           bandit -r backend/ -f txt
@@ -141,7 +137,7 @@ jobs:
       
       - name: Upload security report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: security-reports
           path: bandit-report.json
@@ -184,7 +180,7 @@ jobs:
           echo "✅ Coverage threshold met: ${COVERAGE}%"
       
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-reports
           path: |

@@ -80,7 +80,7 @@ export const ExampleLayout = () => {
         <div className="content-card">
           <h2>Features</h2>
           <ul>
-            <li>Agent swarm &amp; sub-agents</li>
+            <li>115 AI agents</li>
             <li>Real-time preview</li>
             <li>Code generation</li>
             <li>One-click deployment</li>
@@ -128,8 +128,8 @@ function App() {
 
 export default ExampleLayout;
 
-// Styles for example (reference / future injection)
-const _exampleStyles = `
+// Styles for example
+const exampleStyles = `
 .main-content-example {
   display: flex;
   flex-direction: column;

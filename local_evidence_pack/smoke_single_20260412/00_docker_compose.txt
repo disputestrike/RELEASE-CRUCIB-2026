@@ -1,0 +1,7 @@
+docker compose up: exit=0
+Container crucib-redis-1 Running 
+ Container crucib-postgres-1 Running
+docker compose ps: exit=0
+NAME                IMAGE                COMMAND                  SERVICE    CREATED      STATUS                    PORTS
+crucib-postgres-1   postgres:15-alpine   "docker-entrypoint.sâ€¦"   postgres   7 days ago   Up 10 minutes (healthy)   0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp
+crucib-redis-1      redis:7-alpine       "docker-entrypoint.sâ€¦"   redis      7 days ago   Up 10 minutes (healthy)   0.0.0.0:6381->6379/tcp, [::]:6381->6379/tcp

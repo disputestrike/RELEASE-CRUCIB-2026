@@ -13,70 +13,33 @@ Usage:
     executor = SandboxExecutor()
     result = await executor.execute("print('hello')", language="python", timeout=30)
 """
-
 import asyncio
-import json
-import logging
-import os
-import shutil
+import resource
 import subprocess
-import sys
 import tempfile
+import os
+import logging
+import shutil
+import json
 import time
+from typing import Dict, Any, Optional, List
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 # Dangerous imports that should be blocked in sandbox
 BLOCKED_IMPORTS = {
-    "subprocess",
-    "os.system",
-    "shutil.rmtree",
-    "importlib",
-    "__import__",
-    "eval(",
-    "exec(",
-    "compile(",
-    "open('/etc",
-    "open('/proc",
-    "open('/sys",
+    "subprocess", "os.system", "shutil.rmtree", "importlib",
+    "__import__", "eval(", "exec(", "compile(",
+    "open('/etc", "open('/proc", "open('/sys",
 }
 
-# Resource limits (defaults; override in production via CRUCIBAI_SANDBOX_* — see get_sandbox_resource_limits)
-MAX_OUTPUT_SIZE = 100_000  # bytes
-MAX_FILE_SIZE = 500_000  # bytes
-MAX_MEMORY_MB = 512  # MB
-MAX_CPU_SECONDS = 30  # seconds
+# Resource limits
+MAX_OUTPUT_SIZE = 100_000       # bytes
+MAX_FILE_SIZE = 500_000         # bytes
+MAX_MEMORY_MB = 512             # MB
+MAX_CPU_SECONDS = 30            # seconds
 SANDBOX_DIR = "/tmp/crucibai_sandbox"
-
-
-def _env_int_bounded(name: str, default: int, *, lo: int, hi: int) -> int:
-    try:
-        v = int(os.environ.get(name, str(default)))
-        return max(lo, min(hi, v))
-    except (ValueError, TypeError):
-        return default
-
-
-def get_sandbox_resource_limits() -> Dict[str, int]:
-    """
-    Effective rlimits for the sandbox child (Linux preexec_fn).
-    Env: CRUCIBAI_SANDBOX_MAX_MEMORY_MB, CRUCIBAI_SANDBOX_CPU_SECONDS,
-    CRUCIBAI_SANDBOX_MAX_NPROC, CRUCIBAI_SANDBOX_MAX_FSIZE_MB.
-    """
-    return {
-        "max_memory_mb": _env_int_bounded(
-            "CRUCIBAI_SANDBOX_MAX_MEMORY_MB", MAX_MEMORY_MB, lo=16, hi=8192
-        ),
-        "max_cpu_seconds": _env_int_bounded(
-            "CRUCIBAI_SANDBOX_CPU_SECONDS", MAX_CPU_SECONDS, lo=1, hi=7200
-        ),
-        "max_nproc": _env_int_bounded("CRUCIBAI_SANDBOX_MAX_NPROC", 10, lo=1, hi=512),
-        "max_fsize_mb": _env_int_bounded(
-            "CRUCIBAI_SANDBOX_MAX_FSIZE_MB", 50, lo=1, hi=4096
-        ),
-    }
 
 
 def _set_resource_limits():
@@ -85,33 +48,29 @@ def _set_resource_limits():
     Called via preexec_fn in subprocess — runs in the child before exec.
     """
     try:
-        import resource as _res
-    except ImportError:
-        return  # Windows: no resource module
-
-    limits = get_sandbox_resource_limits()
-    mem_bytes = limits["max_memory_mb"] * 1024 * 1024
-    try:
-        _res.setrlimit(_res.RLIMIT_AS, (mem_bytes, mem_bytes))
-    except (ValueError, OSError):
+        # Limit virtual memory to 512MB
+        mem_bytes = MAX_MEMORY_MB * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
+    except (ValueError, resource.error):
         pass  # Some systems don't support RLIMIT_AS
 
-    cpu = limits["max_cpu_seconds"]
     try:
-        _res.setrlimit(_res.RLIMIT_CPU, (cpu, cpu))
-    except (ValueError, OSError):
+        # Limit CPU time to 30 seconds
+        resource.setrlimit(resource.RLIMIT_CPU, (MAX_CPU_SECONDS, MAX_CPU_SECONDS))
+    except (ValueError, resource.error):
         pass
 
-    nproc = limits["max_nproc"]
     try:
-        _res.setrlimit(_res.RLIMIT_NPROC, (nproc, nproc))
-    except (ValueError, OSError):
+        # Limit number of child processes to 10
+        resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))
+    except (ValueError, resource.error):
         pass
 
-    file_limit = limits["max_fsize_mb"] * 1024 * 1024
     try:
-        _res.setrlimit(_res.RLIMIT_FSIZE, (file_limit, file_limit))
-    except (ValueError, OSError):
+        # Limit file size to 50MB
+        file_limit = 50 * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_FSIZE, (file_limit, file_limit))
+    except (ValueError, resource.error):
         pass
 
 
@@ -257,9 +216,8 @@ class SandboxExecutor:
 
     def _build_command(self, language: str, code_file: str) -> list:
         """Build the execution command for the given language."""
-        py = sys.executable or "python"
         commands = {
-            "python": [py, "-u", code_file],
+            "python": ["python3", "-u", code_file],
             "node": ["node", code_file],
             "bash": ["bash", code_file],
         }
@@ -300,7 +258,6 @@ class SandboxExecutor:
         if language == "python":
             try:
                 import ast as _ast
-
                 _ast.parse(code)
                 return {"valid": True, "language": language, "issues": []}
             except SyntaxError as e:

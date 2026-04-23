@@ -1,13 +1,15 @@
 """Truth module for adversarial self-critique"""
-
 import json
 import os
 from typing import Dict, List
 
-
-async def truth_check(project_id: str, build_output: dict, llm_caller) -> dict:
+async def truth_check(
+    project_id: str,
+    build_output: dict,
+    llm_caller
+) -> dict:
     """Adversarial self-critique on build output"""
-
+    
     prompt = f"""You are an adversarial reviewer. Examine this build output and identify:
 
 1. Placeholder functions that don't actually implement logic
@@ -32,15 +34,15 @@ Respond with JSON:
     "recommendations": ["..."]
 }}
 """
-
+    
     try:
         response = await llm_caller(
             message=prompt,
             system_message="You are a critical code reviewer focused on honesty and accuracy.",
             session_id=f"truth_check_{project_id}",
-            model_chain="pro",
+            model_chain="pro"
         )
-
+        
         # Parse JSON response
         result = json.loads(response)
         return {
@@ -48,22 +50,30 @@ Respond with JSON:
             "honest_score": result.get("honest_score", 0),
             "issues": result.get("issues", []),
             "verdict": result.get("verdict", "UNKNOWN"),
-            "recommendations": result.get("recommendations", []),
+            "recommendations": result.get("recommendations", [])
         }
     except json.JSONDecodeError:
         return {
             "success": False,
             "error": "Failed to parse LLM response",
             "honest_score": 0,
-            "verdict": "FAIL",
+            "verdict": "FAIL"
         }
     except Exception as e:
-        return {"success": False, "error": str(e), "honest_score": 0, "verdict": "FAIL"}
+        return {
+            "success": False,
+            "error": str(e),
+            "honest_score": 0,
+            "verdict": "FAIL"
+        }
 
-
-async def verify_code_honesty(code_content: str, file_path: str, llm_caller) -> dict:
+async def verify_code_honesty(
+    code_content: str,
+    file_path: str,
+    llm_caller
+) -> dict:
     """Verify that code claims match implementation"""
-
+    
     prompt = f"""Review this code for honesty. Check if:
 1. Comments accurately describe what the code does
 2. Function names match their behavior
@@ -81,21 +91,24 @@ Respond with JSON:
     "confidence": 0-100
 }}
 """
-
+    
     try:
         response = await llm_caller(
             message=prompt,
             system_message="You are a code honesty auditor.",
             session_id=f"honesty_{file_path}",
-            model_chain="pro",
+            model_chain="pro"
         )
-
+        
         result = json.loads(response)
         return {
             "success": True,
             "is_honest": result.get("is_honest", False),
             "issues": result.get("issues", []),
-            "confidence": result.get("confidence", 0),
+            "confidence": result.get("confidence", 0)
         }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e)
+        }

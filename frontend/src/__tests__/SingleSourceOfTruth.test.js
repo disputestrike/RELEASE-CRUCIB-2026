@@ -45,11 +45,11 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/state:\s*\{\s*addon:\s*key\s*\}/);
       expect(source).toMatch(/\/app\/tokens/);
     });
-    it('Pricing page source navigates to tokens with addon query when not logged in', () => {
+    it('Pricing page source uses redirect with addon query when not logged in', () => {
       const pricingPath = path.join(__dirname, '../pages/Pricing.jsx');
       const source = fs.readFileSync(pricingPath, 'utf8');
+      expect(source).toMatch(/redirect.*addon/);
       expect(source).toMatch(/\/app\/tokens\?addon=/);
-      expect(source).toMatch(/encodeURIComponent\(key\)/);
     });
     it('TokenCenter source reads addon from location.state or searchParams', () => {
       const tokenPath = path.join(__dirname, '../pages/TokenCenter.jsx');

@@ -1,17 +1,14 @@
-import { AuthContext, useAuth as _useAuth } from "./authContext";
 import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
 
-// Theme system — respects user preference stored in localStorage
-const THEME_KEY = 'crucibai-theme';
-const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'light';
-const applyTheme = (theme) => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(THEME_KEY, theme);
+// Force light theme — no dark mode anywhere in the app
+const ForceLightTheme = () => {
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('crucibai-theme', 'light');
+  }, []);
+  return null;
 };
-// Apply immediately on load (before React renders)
-applyTheme(getInitialTheme());
-
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 // Error boundary so blank screen shows a message
@@ -47,7 +44,6 @@ import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import Builder from "./pages/Builder";
 import Workspace from "./pages/Workspace";
-import WorkspaceManus from "./pages/WorkspaceManus";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -66,8 +62,6 @@ import Cookies from "./pages/Cookies";
 import About from "./pages/About";
 import Pricing from "./pages/Pricing";
 import Enterprise from "./pages/Enterprise";
-import Contact from "./pages/Contact";
-import GetHelp from "./pages/GetHelp";
 import Features from "./pages/Features";
 import TemplatesPublic from "./pages/TemplatesPublic";
 import PatternsPublic from "./pages/PatternsPublic";
@@ -75,8 +69,6 @@ import LearnPublic from "./pages/LearnPublic";
 import DocsPage from "./pages/DocsPage";
 import TutorialsPage from "./pages/TutorialsPage";
 import ShortcutsPublic from "./pages/ShortcutsPublic";
-import Changelog from "./pages/Changelog";
-import Status from "./pages/Status";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
 import Blog from "./pages/Blog";
@@ -96,27 +88,19 @@ import ModelManager from "./pages/ModelManager";
 import FineTuning from "./pages/FineTuning";
 import SafetyDashboard from "./pages/SafetyDashboard";
 import UnifiedIDEPage from "./pages/UnifiedIDEPage";
-import StudioPage from "./pages/StudioPage";
-import KnowledgePage from "./pages/KnowledgePage";
-import ChannelsPage from "./pages/ChannelsPage";
-import SessionsPage from "./pages/SessionsPage";
-import CommerceManagePage from "./pages/CommerceManagePage";
-import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
-import SkillsPage from "./pages/SkillsPage";
-import SkillsMarketplace from "./pages/SkillsMarketplace";
-import UnifiedWorkspace from "./pages/UnifiedWorkspace";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
-import { API_BASE } from "./apiBase";
-
-// Same-origin /api when unset (CRA dev proxy to backend).
-export const API = API_BASE;
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-console.log("API configured as:", API, "BACKEND_URL:", BACKEND_URL || "(same-origin / proxy to :8000 in dev)");
+// Empty or unset REACT_APP_BACKEND_URL => same-origin /api (Railway single-URL deploy). Must treat '' explicitly so we don't fall back to localhost.
+const _raw = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = (_raw === '' || _raw === undefined) ? '' : (_raw || process.env.REACT_APP_API_URL || 'http://localhost:3001');
+export const API = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : '/api';
+console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL);
 
 // Auth Context
-export const useAuth = _useAuth; // re-export from authContext
+const AuthContext = createContext(null);
+
+export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -131,22 +115,6 @@ const AuthProvider = ({ children }) => {
     }
     return u;
   };
-
-  // SSO callback — loginWithToken from URL param (?sso_token=...)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const ssoToken = urlParams.get('sso_token');
-    if (ssoToken) {
-      // Remove the param from URL without reload
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete('sso_token');
-      clean.searchParams.delete('email');
-      window.history.replaceState({}, '', clean.pathname + (clean.search || '') + (clean.hash || ''));
-      // Log in with the SSO token
-      localStorage.setItem('token', ssoToken);
-      setToken(ssoToken);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -234,21 +202,11 @@ const AuthProvider = ({ children }) => {
   };
 
   const refreshUser = async () => {
-    if (!token) return;
-    try {
+    if (token) {
       const res = await axios.get(`${API}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(mergeWorkspaceMode(res.data));
-    } catch (e) {
-      // 429: global API rate limit — do not surface as uncaught runtime error (Layout/Workspace call this often)
-      if (e.response?.status === 429) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[auth/me] rate limited (429). Set CRUCIBAI_DEV=1 on backend for local dev, or raise RATE_LIMIT_PER_MINUTE).");
-        }
-        return;
-      }
-      throw e;
     }
   };
 
@@ -261,9 +219,7 @@ const AuthProvider = ({ children }) => {
         setUser(mergeWorkspaceMode(res.data.user));
         return true;
       }
-    } catch {
-      // Guest bootstrap is optional; caller falls back to demo / retry UI.
-    }
+    } catch (e) {}
     return false;
   }, []);
 
@@ -286,6 +242,7 @@ const AuthProvider = ({ children }) => {
 // Onboarding route — authenticated only; if workspace_mode set, redirect to /app
 const OnboardingRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
@@ -378,12 +335,6 @@ function RedirectWorkspaceToApp() {
   return <Navigate to={`/app/workspace${search}`} replace />;
 }
 
-/** Deep links to /app/auto-runner land on the unified workspace (same shell, query preserved). */
-function AutoRunnerRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} replace />;
-}
-
 // On route change: scroll to top so new page starts at top. When URL has a hash, scroll to that section so "go to" links land in the right place.
 function ScrollToPlace() {
   const { pathname, hash } = useLocation();
@@ -412,6 +363,7 @@ function App() {
     <AppErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+        <ForceLightTheme />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -430,8 +382,6 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/enterprise" element={<Enterprise />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/get-help" element={<GetHelp />} />
           <Route path="/features" element={<Features />} />
           <Route path="/templates" element={<TemplatesPublic />} />
           <Route path="/patterns" element={<PatternsPublic />} />
@@ -444,14 +394,10 @@ function App() {
           <Route path="/benchmarks" element={<Benchmarks />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
-          <Route path="/changelog" element={<Changelog />} />
-          <Route path="/status" element={<Status />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
-            <Route path="workspace" element={<UnifiedWorkspace />} />
-            <Route path="workspace-manus" element={<WorkspaceManus />} />
-            <Route path="workspace-classic" element={<Workspace />} />
+            <Route path="workspace" element={<Workspace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
@@ -481,15 +427,6 @@ function App() {
             <Route path="admin/billing" element={<AdminRoute><AdminBilling /></AdminRoute>} />
             <Route path="admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
             <Route path="admin/legal" element={<AdminRoute><AdminLegal /></AdminRoute>} />
-            <Route path="studio" element={<StudioPage />} />
-            <Route path="knowledge" element={<KnowledgePage />} />
-            <Route path="channels" element={<ChannelsPage />} />
-            <Route path="sessions" element={<SessionsPage />} />
-            <Route path="commerce" element={<CommerceManagePage />} />
-            <Route path="members" element={<WorkspaceMembersPage />} />
-            <Route path="skills" element={<SkillsPage />} />
-            <Route path="skills/marketplace" element={<SkillsMarketplace />} />
-            <Route path="auto-runner" element={<AutoRunnerRedirect />} />
           </Route>
         </Routes>
         </BrowserRouter>

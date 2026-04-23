@@ -4,23 +4,22 @@ Handles PostgreSQL setup, schema creation, and data initialization
 """
 
 import asyncio
-import logging
 import os
-from datetime import datetime
+import logging
 from typing import Optional
-
 import asyncpg
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseInitializer:
     """Handles database initialization and migrations"""
-
+    
     def __init__(self, database_url: str):
         self.database_url = database_url
         self.pool: Optional[asyncpg.Pool] = None
-
+    
     async def connect(self):
         """Create connection pool"""
         try:
@@ -29,19 +28,19 @@ class DatabaseInitializer:
                 min_size=2,
                 max_size=20,
                 command_timeout=30,
-                record_class=dict,
+                record_class=dict
             )
             logger.info("✅ Database connection pool created")
         except Exception as e:
             logger.error(f"❌ Failed to create connection pool: {e}")
             raise
-
+    
     async def disconnect(self):
         """Close connection pool"""
         if self.pool:
             await self.pool.close()
             logger.info("✅ Database connection pool closed")
-
+    
     async def execute_migration(self, sql: str, description: str):
         """Execute a migration script"""
         try:
@@ -52,14 +51,13 @@ class DatabaseInitializer:
         except Exception as e:
             logger.error(f"❌ Migration failed ({description}): {e}")
             return False
-
+    
     async def create_schema(self) -> bool:
         """Create all database tables"""
-
+        
         migrations = [
             # Users table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS users (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -81,12 +79,10 @@ class DatabaseInitializer:
             );
             CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
             CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-            """,
-                "Create users table",
-            ),
+            """, "Create users table"),
+            
             # Projects table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS projects (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -101,12 +97,10 @@ class DatabaseInitializer:
             );
             CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
             CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-            """,
-                "Create projects table",
-            ),
+            """, "Create projects table"),
+            
             # Builds table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS builds (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -124,12 +118,10 @@ class DatabaseInitializer:
             CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id);
             CREATE INDEX IF NOT EXISTS idx_builds_user_id ON builds(user_id);
             CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status);
-            """,
-                "Create builds table",
-            ),
+            """, "Create builds table"),
+            
             # API Keys table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -140,12 +132,10 @@ class DatabaseInitializer:
                 expires_at TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
-            """,
-                "Create api_keys table",
-            ),
+            """, "Create api_keys table"),
+            
             # Audit logs table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS audit_logs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -160,12 +150,10 @@ class DatabaseInitializer:
             CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
             CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
             CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-            """,
-                "Create audit_logs table",
-            ),
+            """, "Create audit_logs table"),
+            
             # Payments table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS payments (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -179,12 +167,10 @@ class DatabaseInitializer:
             );
             CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
             CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
-            """,
-                "Create payments table",
-            ),
+            """, "Create payments table"),
+            
             # Tokens/Credits table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS user_tokens (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -194,12 +180,10 @@ class DatabaseInitializer:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
-            """,
-                "Create user_tokens table",
-            ),
+            """, "Create user_tokens table"),
+            
             # Backups table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS backups (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 backup_type VARCHAR(50),
@@ -213,12 +197,10 @@ class DatabaseInitializer:
             );
             CREATE INDEX IF NOT EXISTS idx_backups_status ON backups(status);
             CREATE INDEX IF NOT EXISTS idx_backups_created_at ON backups(created_at);
-            """,
-                "Create backups table",
-            ),
+            """, "Create backups table"),
+            
             # Email logs table
-            (
-                """
+            ("""
             CREATE TABLE IF NOT EXISTS email_logs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -232,42 +214,34 @@ class DatabaseInitializer:
             );
             CREATE INDEX IF NOT EXISTS idx_email_logs_user_id ON email_logs(user_id);
             CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);
-            """,
-                "Create email_logs table",
-            ),
+            """, "Create email_logs table"),
         ]
-
+        
         all_success = True
         for sql, description in migrations:
             success = await self.execute_migration(sql, description)
             if not success:
                 all_success = False
-
+        
         return all_success
-
+    
     async def seed_data(self) -> bool:
         """Seed initial data"""
         try:
             async with self.pool.acquire() as conn:
                 # Create admin user if not exists
-                await conn.execute(
-                    """
+                await conn.execute("""
                     INSERT INTO users (email, username, role, status)
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (email) DO NOTHING
-                """,
-                    "admin@crucibai.app",
-                    "admin",
-                    "admin",
-                    "active",
-                )
-
+                """, "admin@crucibai.app", "admin", "admin", "active")
+            
             logger.info("✅ Initial data seeded")
             return True
         except Exception as e:
             logger.error(f"❌ Seeding failed: {e}")
             return False
-
+    
     async def verify_connection(self) -> bool:
         """Verify database connection"""
         try:
@@ -279,7 +253,7 @@ class DatabaseInitializer:
         except Exception as e:
             logger.error(f"❌ Database connection verification failed: {e}")
         return False
-
+    
     async def get_database_stats(self) -> dict:
         """Get database statistics"""
         try:
@@ -289,40 +263,40 @@ class DatabaseInitializer:
                     "projects": await conn.fetchval("SELECT COUNT(*) FROM projects"),
                     "builds": await conn.fetchval("SELECT COUNT(*) FROM builds"),
                     "backups": await conn.fetchval("SELECT COUNT(*) FROM backups"),
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now().isoformat()
                 }
                 return stats
         except Exception as e:
             logger.error(f"❌ Failed to get database stats: {e}")
             return {}
-
+    
     async def initialize(self) -> bool:
         """Run full initialization"""
         logger.info("🚀 Starting database initialization...")
-
+        
         try:
             # Connect
             await self.connect()
-
+            
             # Verify connection
             if not await self.verify_connection():
                 return False
-
+            
             # Create schema
             if not await self.create_schema():
                 return False
-
+            
             # Seed data
             if not await self.seed_data():
                 return False
-
+            
             # Get stats
             stats = await self.get_database_stats()
             logger.info(f"📊 Database stats: {stats}")
-
+            
             logger.info("✅ Database initialization complete!")
             return True
-
+            
         except Exception as e:
             logger.error(f"❌ Initialization failed: {e}")
             return False
@@ -333,15 +307,15 @@ class DatabaseInitializer:
 async def main():
     """Main entry point"""
     logging.basicConfig(level=logging.INFO)
-
+    
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         logger.error("❌ DATABASE_URL environment variable not set")
         return False
-
+    
     initializer = DatabaseInitializer(database_url)
     success = await initializer.initialize()
-
+    
     return success
 
 

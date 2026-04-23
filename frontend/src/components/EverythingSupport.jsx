@@ -7,9 +7,10 @@
 import React, { useState } from 'react';
 import {
   FileCode, FileText, Presentation, Sheet3, Download, Github,
-  Zap, CheckCircle, AlertCircle, Loader2,
+  Zap, CheckCircle, AlertCircle, Loader2, Copy, Eye
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 /**
  * Everything Support Menu Component
@@ -21,7 +22,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Code',
       icon: FileCode,
       description: 'Generate full-stack code',
-      color: 'from-[#F3F1ED] to-[#E8E6E1]',
+      color: 'from-#000000 to-#000000',
       examples: ['React components', 'API endpoints', 'Database schemas'],
     },
     {
@@ -29,7 +30,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Documentation',
       icon: FileText,
       description: 'Auto-generate docs',
-      color: 'from-[#EBEBEA] to-[#D4D4D4]',
+      color: 'from-gray-600 to-gray-700',
       examples: ['README', 'API docs', 'User guides'],
     },
     {
@@ -37,7 +38,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Presentations',
       icon: Presentation,
       description: 'Create slide decks',
-      color: 'from-[#F3F1ED] to-[#E8E6E1]',
+      color: 'from-#000000 to-#000000',
       examples: ['Pitch decks', 'Tutorials', 'Reports'],
     },
     {
@@ -45,7 +46,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Spreadsheets',
       icon: Sheet3,
       description: 'Generate data sheets',
-      color: 'from-[#F3F1ED] to-[#E8E6E1]',
+      color: 'from-#000000 to-#000000',
       examples: ['Data tables', 'Analytics', 'Reports'],
     },
     {
@@ -68,21 +69,21 @@ export const EverythingSupportMenu = ({ onSelect }) => {
             onClick={() => onSelect(option.id)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`relative overflow-hidden p-6 rounded-lg bg-gradient-to-br ${option.color} text-[#1A1A1A] border border-black/10 transition-all hover:shadow-lg`}
+            className={`relative overflow-hidden p-6 rounded-lg bg-gradient-to-br ${option.color} text-[#1A1A1A] transition-all hover:shadow-lg`}
           >
             {/* Background glow */}
-            <div className="absolute inset-0 opacity-0 hover:opacity-30 bg-white transition-opacity" />
+            <div className="absolute inset-0 opacity-0 hover:opacity-20 bg-white transition-opacity" />
 
             {/* Content */}
             <div className="relative space-y-3">
               <Icon size={32} className="mb-2" />
               <h3 className="font-bold text-lg">{option.name}</h3>
-              <p className="text-sm text-[#444444]">{option.description}</p>
+              <p className="text-sm opacity-90">{option.description}</p>
 
               {/* Examples */}
-              <div className="space-y-1 pt-2 border-t border-black/10">
+              <div className="space-y-1 pt-2 border-t border-white/20">
                 {option.examples.map((example, idx) => (
-                  <div key={idx} className="text-xs text-[#666666]">• {example}</div>
+                  <div key={idx} className="text-xs opacity-75">• {example}</div>
                 ))}
               </div>
             </div>
@@ -107,7 +108,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-[#F5F5F4] border border-black/10 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileCode size={20} />
         Code Generation
@@ -120,14 +121,14 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
             onClick={() => setSelectedStack(stack.id)}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedStack === stack.id
-                ? 'border-black/25 bg-white text-[#1A1A1A]'
-                : 'border-black/10 bg-white/80 text-[#666666] hover:border-black/20'
+                ? 'border-gray-300 bg-gray-200/10 text-gray-500'
+                : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
             }`}
           >
             <div className="font-medium text-sm">{stack.name}</div>
             <div className="text-xs mt-2 space-y-1">
               {stack.techs.map((tech, idx) => (
-                <div key={idx} className="text-[#666666]">{tech}</div>
+                <div key={idx} className="opacity-75">{tech}</div>
               ))}
             </div>
           </button>
@@ -137,7 +138,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('code', selectedStack)}
         disabled={isLoading}
-        className="w-full bg-[#1A1A1A] hover:bg-black disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-black hover:bg-black disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -169,7 +170,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-[#F5F5F4] border border-black/10 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileText size={20} />
         Documentation
@@ -182,8 +183,8 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
             onClick={() => setDocType(doc.id)}
             className={`p-4 rounded-lg border-2 transition-all text-center ${
               docType === doc.id
-                ? 'border-black/25 bg-white text-[#1A1A1A]'
-                : 'border-black/10 bg-white/80 text-[#666666] hover:border-black/20'
+                ? 'border-gray-500 bg-gray-500/10'
+                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
             }`}
           >
             <div className="text-2xl mb-2">{doc.icon}</div>
@@ -195,7 +196,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('docs', docType)}
         disabled={isLoading}
-        className="w-full bg-[#1A1A1A] hover:bg-black disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -227,7 +228,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-[#F5F5F4] border border-black/10 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <Presentation size={20} />
         Presentations
@@ -235,7 +236,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-[#666666] mb-2 block">Number of Slides</label>
+          <label className="text-sm text-gray-400 mb-2 block">Number of Slides</label>
           <input
             type="range"
             min="5"
@@ -244,7 +245,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             onChange={(e) => setSlideCount(parseInt(e.target.value))}
             className="w-full"
           />
-          <div className="text-sm text-[#1A1A1A] mt-1">{slideCount} slides</div>
+          <div className="text-sm text-gray-300 mt-1">{slideCount} slides</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -252,7 +253,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             <button
               key={preset.name}
               onClick={() => setSlideCount(preset.slides)}
-              className="p-2 text-sm bg-white border border-black/10 hover:bg-[#EBEBEA] rounded transition-colors text-[#1A1A1A]"
+              className="p-2 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors text-gray-300"
             >
               {preset.name} ({preset.slides})
             </button>
@@ -263,7 +264,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('slides', slideCount)}
         disabled={isLoading}
-        className="w-full bg-[#1A1A1A] hover:bg-black disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-black hover:bg-black disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -291,21 +292,21 @@ export const ExportOptions = ({ onExport, isLoading }) => {
       name: 'ZIP Archive',
       icon: Download,
       description: 'Download as ZIP file',
-      color: 'bg-[#F5F5F4] hover:bg-[#EBEBEA] border border-black/10',
+      color: 'bg-black hover:bg-black',
     },
     {
       id: 'github',
       name: 'GitHub',
       icon: Github,
       description: 'Push to GitHub repo',
-      color: 'bg-[#F5F5F4] hover:bg-[#EBEBEA] border border-black/10',
+      color: 'bg-gray-700 hover:bg-gray-800',
     },
     {
       id: 'deploy',
       name: 'Deploy',
       icon: Zap,
       description: 'Deploy to production',
-      color: 'bg-[#F5F5F4] hover:bg-[#EBEBEA] border border-black/10',
+      color: 'bg-gray-600 hover:bg-gray-700',
     },
   ];
 

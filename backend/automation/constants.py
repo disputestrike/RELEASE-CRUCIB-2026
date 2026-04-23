@@ -1,7 +1,6 @@
 """
 Constants for agents & automation: credits, limits, timeouts.
 """
-
 # Credits deducted per agent run (one run = one deduction regardless of action count for simplicity)
 CREDITS_PER_AGENT_RUN = 5
 

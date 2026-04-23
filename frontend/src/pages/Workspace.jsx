@@ -13,7 +13,6 @@ import './Workspace.css';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import Logo from '../components/Logo';
-import ChatMessageManus from '../components/ChatMessageManus';
 import {
   ChevronDown,
   ChevronRight,
@@ -64,21 +63,8 @@ import {
   Rocket,
   RotateCcw,
   Share2,
-  Folder,
-  Database,
-  BarChart3,
-  BookOpen,
-  GitBranch,
-  Layers,
-  Cpu,
-  Globe2,
-  Activity,
-  Network,
-  CheckCircle2,
-  ArrowUp,
 } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
@@ -87,12 +73,8 @@ import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
-import { KanbanBoard } from '../components/orchestration';
-import DeployProgressPanel from '../components/DeployProgressPanel';
-import WorkspaceEmptyState from '../components/WorkspaceEmptyState';
-import ActionableError from '../components/ActionableError';
 
-/** Format message content â€” avoid [object Object] */
+/** Format message content — avoid [object Object] */
 function formatMsgContent(c) {
   if (c == null) return '';
   if (typeof c === 'string') return c;
@@ -102,315 +84,20 @@ function formatMsgContent(c) {
   return typeof c === 'object' ? JSON.stringify(c) : String(c);
 }
 
-/** Chat message — flat block: assistant left, user right; Show more for long text */
+/** Chat message — user on right, long messages with Show more */
 function ChatMessage({ msg }) {
   const [expanded, setExpanded] = useState(false);
   const content = formatMsgContent(msg.content);
   const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
-  const user = msg.role === 'user';
-  
-  // ULTRA-DEBUG: Log EVERYTHING about this message
-  console.log('🔴 CHATMESSAGE ULTRA-DEBUG:', {
-    hasMsg: !!msg,
-    msgKeys: msg ? Object.keys(msg).sort() : 'NO MSG',
-    msgRole: msg?.role,
-    msgType: msg?.type,
-    user,
-    hasContent: !!msg?.content,
-    willHitTier1: !!(msg && !user && (msg.task_cards || msg.action_chips || msg.current_step)),
-    willHitTier2: !!(msg && !user && msg.type === 'status'),
-    willHitTier3: !!(msg && !user && msg.type === 'status' && msg.role === 'assistant'),
-    willHitTier4: !!(msg && !user && msg.role === 'assistant' && msg.content),
-  });
-  
-  // DIAGNOSTIC: Log all messages
-  console.log('🔍 CHATMESSAGE RENDERING:', {
-    msgType: msg.type,
-    msgRole: msg.role,
-    user,
-    hasManus: !!(msg.task_cards || msg.action_chips || msg.current_step),
-    task_cards_present: !!msg.task_cards,
-    action_chips_present: !!msg.action_chips,
-    current_step_present: !!msg.current_step,
-  });
-  
-  // Manus-style rendering for messages with task_cards, action_chips, or current_step
-  if (!user && (msg.task_cards || msg.action_chips || msg.current_step)) {
-    console.log('✨ RENDERING MANUS-STYLE MESSAGE (TIER 1):', {
-      content: msg.content?.substring(0, 50),
-      has_task_cards: !!msg.task_cards,
-      has_action_chips: !!msg.action_chips,
-      has_current_step: !!msg.current_step,
-    });
-    return (
-      <div className="flex w-full max-w-[720px] mx-auto justify-start">
-        <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
-          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1 w-full text-left" style={{ color: 'var(--theme-muted, #71717a)' }}>
-            CrucibAI
-          </div>
-          
-          {/* Conversational message text */}
-          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 text-left" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-            {showContent}
-          </pre>
-          
-          {/* Action chips */}
-          {msg.action_chips && msg.action_chips.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {msg.action_chips.map((chip, i) => {
-                const statusIcon = chip.status === 'completed' ? '✓' : chip.status === 'running' ? '⟳' : '◯';
-                const statusColor = chip.status === 'completed' ? '#10b981' : chip.status === 'running' ? '#3b82f6' : '#6b7280';
-                return (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: statusColor }}>
-                    <span>{statusIcon}</span>
-                    <span>{chip.action}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* Task progress card */}
-          {msg.task_cards && (
-            <div className="mt-3 w-full p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                Task progress {msg.task_cards.current} / {msg.task_cards.total}
-              </div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {msg.task_cards.tasks && msg.task_cards.tasks.map((task, i) => {
-                  const icon = task.status === 'completed' ? '✓' : task.status === 'running' ? '⟳' : '◯';
-                  const color = task.status === 'completed' ? '#10b981' : task.status === 'running' ? '#3b82f6' : '#6b7280';
-                  const bg = task.status === 'running' ? 'rgba(59,130,246,0.1)' : 'transparent';
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded" style={{ color, backgroundColor: bg }}>
-                      <span>{icon}</span>
-                      <span className={task.status === 'completed' ? 'line-through' : ''}>{task.description}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          
-          {/* Current step indicator */}
-          {msg.current_step && (
-            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border: '2px solid #3b82f6', backgroundColor: 'rgba(59,130,246,0.05)' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3b82f6' }}></div>
-              <div className="flex-1 text-xs" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-                <div className="font-semibold">{msg.current_step.name}</div>
-                <div style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                  {msg.current_step.position} {msg.current_step.elapsed && `• ${msg.current_step.elapsed}`}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // Debug: Log force-enable condition check
-  if (!user && msg.type === 'status') {
-    console.log('🔍 FORCE-ENABLE CONDITION CHECK:', {
-      user: user,
-      type: msg.type,
-      role: msg.role,
-      willRender: msg.role === 'assistant',
-    });
-  }
-  
-  // FORCE-ENABLE: If message type is "status" and role is "assistant", render as Manus style
-  // This catches cases where fields might be present but not properly detected, or where
-  // the backend sends status without the explicit Manus fields (we can still show UI)
-  if (!user && msg.type === 'status' && msg.role === 'assistant') {
-    console.log('🔥 FORCE-ENABLING MANUS RENDERING FOR STATUS MESSAGE:', {
-      content: msg.content?.substring(0, 50),
-      messageKeys: Object.keys(msg).sort(),
-      msgType: msg.type,
-      msgRole: msg.role,
-    });
-    
-    // Extract or build Manus components from available data
-    const task_cards = msg.task_cards || msg.tasks || null;
-    const action_chips = msg.action_chips || msg.actions || [];
-    const current_step = msg.current_step || msg.step || null;
-    
-    console.log('🔥 EXTRACTED FIELDS:', {
-      has_task_cards: !!task_cards,
-      has_action_chips: !!action_chips,
-      has_current_step: !!current_step,
-    });
-    
-    return (
-      <div className="flex w-full max-w-[720px] mx-auto justify-start">
-        <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
-          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1 w-full text-left" style={{ color: 'var(--theme-muted, #71717a)' }}>
-            CrucibAI
-          </div>
-          
-          {/* Conversational message text */}
-          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 text-left" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-            {showContent}
-          </pre>
-          
-          {/* Action chips - flexible extraction */}
-          {action_chips && action_chips.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {action_chips.map((chip, i) => {
-                const chipText = typeof chip === 'string' ? chip : chip.action || chip.name || 'Task';
-                const chipStatus = chip.status || 'pending';
-                const statusIcon = chipStatus === 'completed' ? '✓' : chipStatus === 'running' ? '⟳' : '◯';
-                const statusColor = chipStatus === 'completed' ? '#10b981' : chipStatus === 'running' ? '#3b82f6' : '#6b7280';
-                return (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: statusColor }}>
-                    <span>{statusIcon}</span>
-                    <span>{chipText}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* Task progress card - flexible extraction */}
-          {task_cards && (
-            <div className="mt-3 w-full p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                Task progress {task_cards.current || 0} / {task_cards.total || 0}
-              </div>
-              {task_cards.tasks && task_cards.tasks.length > 0 && (
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {task_cards.tasks.map((task, i) => {
-                    const taskDesc = typeof task === 'string' ? task : task.description || task.name || 'Task';
-                    const taskStatus = task.status || 'pending';
-                    const icon = taskStatus === 'completed' ? '✓' : taskStatus === 'running' ? '⟳' : '◯';
-                    const color = taskStatus === 'completed' ? '#10b981' : taskStatus === 'running' ? '#3b82f6' : '#6b7280';
-                    const bg = taskStatus === 'running' ? 'rgba(59,130,246,0.1)' : 'transparent';
-                    return (
-                      <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded" style={{ color, backgroundColor: bg }}>
-                        <span>{icon}</span>
-                        <span className={taskStatus === 'completed' ? 'line-through' : ''}>{taskDesc}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Current step indicator - flexible extraction */}
-          {current_step && (
-            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border: '2px solid #3b82f6', backgroundColor: 'rgba(59,130,246,0.05)' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3b82f6' }}></div>
-              <div className="flex-1 text-xs" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-                <div className="font-semibold">{current_step.name || 'Processing'}</div>
-                <div style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                  {current_step.position || 'step'} {current_step.elapsed && `• ${current_step.elapsed}`}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // FALLBACK: Render ANY assistant message with conversational Manus style if no other condition matched
-  // This is the safety net - ensures something renders even if conditions don't match
-  if (!user && msg.role === 'assistant' && msg.content) {
-    console.log('🆘 FALLBACK RENDERING ANY ASSISTANT MESSAGE:', {
-      type: msg.type,
-      contentLength: msg.content.length,
-      hasAnyManus: !!(msg.task_cards || msg.action_chips || msg.current_step),
-    });
-    
-    // Extract any available Manus fields
-    const task_cards = msg.task_cards || msg.tasks || null;
-    const action_chips = msg.action_chips || msg.actions || [];
-    const current_step = msg.current_step || msg.step || null;
-    
-    return (
-      <div className="flex w-full max-w-[720px] mx-auto justify-start">
-        <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
-          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1 w-full text-left" style={{ color: 'var(--theme-muted, #71717a)' }}>
-            CrucibAI
-          </div>
-          
-          {/* Conversational message text */}
-          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 text-left" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-            {showContent}
-          </pre>
-          
-          {/* Action chips - if available */}
-          {action_chips && action_chips.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {action_chips.map((chip, i) => {
-                const chipText = typeof chip === 'string' ? chip : chip.action || chip.name || 'Task';
-                const chipStatus = chip.status || 'pending';
-                const statusIcon = chipStatus === 'completed' ? '✓' : chipStatus === 'running' ? '⟳' : '◯';
-                const statusColor = chipStatus === 'completed' ? '#10b981' : chipStatus === 'running' ? '#3b82f6' : '#6b7280';
-                return (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: statusColor }}>
-                    <span>{statusIcon}</span>
-                    <span>{chipText}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* Task progress card - if available */}
-          {task_cards && (
-            <div className="mt-3 w-full p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                Task progress {task_cards.current || 0} / {task_cards.total || 0}
-              </div>
-              {task_cards.tasks && task_cards.tasks.length > 0 && (
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {task_cards.tasks.map((task, i) => {
-                    const taskDesc = typeof task === 'string' ? task : task.description || task.name || 'Task';
-                    const taskStatus = task.status || 'pending';
-                    const icon = taskStatus === 'completed' ? '✓' : taskStatus === 'running' ? '⟳' : '◯';
-                    const color = taskStatus === 'completed' ? '#10b981' : taskStatus === 'running' ? '#3b82f6' : '#6b7280';
-                    const bg = taskStatus === 'running' ? 'rgba(59,130,246,0.1)' : 'transparent';
-                    return (
-                      <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded" style={{ color, backgroundColor: bg }}>
-                        <span>{icon}</span>
-                        <span className={taskStatus === 'completed' ? 'line-through' : ''}>{taskDesc}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Current step indicator - if available */}
-          {current_step && (
-            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border: '2px solid #3b82f6', backgroundColor: 'rgba(59,130,246,0.05)' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3b82f6' }}></div>
-              <div className="flex-1 text-xs" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
-                <div className="font-semibold">{current_step.name || 'Processing'}</div>
-                <div style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                  {current_step.position || 'step'} {current_step.elapsed && `• ${current_step.elapsed}`}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // Default rendering for regular messages
   return (
-
-    <div className={`flex w-full max-w-[720px] mx-auto ${user ? 'justify-end' : 'justify-start'}`}>
-      <div className={`min-w-0 ${user ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}>
-        <div className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${user ? 'text-right' : 'text-left'}`} style={{ color: 'var(--theme-muted, #71717a)' }}>
-          {user ? 'You' : 'CrucibAI'}
-        </div>
-        <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] ${user ? 'text-right' : 'text-left'}`} style={{ color: 'var(--theme-text, #e4e4e7)' }}>{showContent}</pre>
+    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
+        msg.role === 'user'
+          ? 'bg-gray-100 text-gray-900'
+          : 'bg-white border border-gray-200 text-gray-800'
+      }`}>
+        <pre className="whitespace-pre-wrap font-sans">{showContent}</pre>
         {isLong && (
           <button
             type="button"
@@ -425,21 +112,21 @@ function ChatMessage({ msg }) {
   );
 }
 
-/** Compact collapsible build progress card â€” Manus-style step bar */
+/** Compact collapsible build progress card — Manus-style step bar */
 function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, lastTokensUsed, projectBuildProgress, qualityScore, agentsActivityLength, children }) {
   const tokens = lastTokensUsed || projectBuildProgress?.tokens_used || 0;
   return (
-    <div className="border-b flex-shrink-0" style={{borderColor:'var(--theme-border)',background:'var(--theme-surface)'}}>
+    <div className="border-b border-stone-200 bg-white flex-shrink-0">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition" style={{color:'var(--theme-text)'}}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
       >
-        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-text, #1A1A1A)' }} />
+        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
         <span className="text-sm font-medium text-gray-900 flex-1 truncate">
-          {currentPhase || 'Building...'} â€” {Math.round(buildProgress)}%
+          {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
         </span>
-        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents Â· {(tokens / 1000).toFixed(0)}k tokens</span>
+        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents · {(tokens / 1000).toFixed(0)}k tokens</span>
         {qualityScore != null && <span className="text-xs text-gray-600 shrink-0">Quality: {qualityScore}%</span>}
         {expanded ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
       </button>
@@ -447,7 +134,7 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
         <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: 'var(--theme-text, #1A1A1A)' }}
+            style={{ background: '#1A1A1A' }}
             initial={{ width: 0 }}
             animate={{ width: `${buildProgress}%` }}
             transition={{ duration: 0.3 }}
@@ -473,7 +160,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center', padding: '2rem' }}>
         <div style={{ width: 64, height: 64, background: '#3b82f6', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-          <span style={{ fontSize: 28 }}>âš¡</span>
+          <span style={{ fontSize: 28 }}>⚡</span>
         </div>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
           Welcome to CrucibAI
@@ -482,7 +169,7 @@ export default function App() {
           Describe what you want to build in the chat
         </p>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 1rem', color: '#64748b', fontSize: '0.875rem' }}>
-          <span>ðŸ’¬</span> Type a prompt to get started
+          <span>💬</span> Type a prompt to get started
         </div>
       </div>
     </div>
@@ -518,7 +205,7 @@ const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onO
   const getFileIcon = (name) => {
     if (/\.(jsx?|tsx?)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />;
     if (/\.css$/.test(name)) return <FileText className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />;
-    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-accent)' }} />;
+    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />;
     if (/\.json$/.test(name)) return <FileText className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />;
     if (/\.(py|c|cpp|h)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
     if (/\.(md|txt)$/.test(name)) return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
@@ -548,8 +235,8 @@ const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onO
   return (
     <div className="text-sm flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b flex-shrink-0" style={{borderColor:'var(--theme-border)',background:'var(--theme-surface2)'}}>
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{color:'var(--theme-muted)'}}>Explorer</span>
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-[#FAF9F7] flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Explorer</span>
         <div className="flex items-center gap-0.5">
           {onAddFile && (
             <button onClick={onAddFile} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New file">
@@ -637,7 +324,7 @@ const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onO
   );
 };
 
-// Console/Logs component (Terminal) â€” dark theme to match app
+// Console/Logs component (Terminal) — dark theme to match app
 const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. Run a build to see logs." }) => {
   const consoleRef = useRef(null);
 
@@ -667,7 +354,7 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
   );
 };
 
-// LLM Selector dropdown â€“ Cursor-style: next to chat, opens upward
+// LLM Selector dropdown – Cursor-style: next to chat, opens upward
 const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isChat = variant === 'chat';
@@ -687,10 +374,9 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         data-testid="model-selector"
-        className={`flex items-center gap-1.5 rounded-lg border transition ${
+        className={`flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 transition ${
           isChat ? 'h-[42px] px-3 py-2 text-sm' : 'px-3 py-1.5 text-sm'
         }`}
-        style={{borderColor:'var(--theme-border)',background:'var(--theme-surface2)',color:'var(--theme-text)'}}
       >
         <selected.icon className="w-4 h-4 shrink-0" />
         <span className="truncate max-w-[100px]">{isChat ? selected.name : selected.name}</span>
@@ -705,8 +391,7 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
-              className="absolute left-0 bottom-full mb-1.5 w-56 rounded-lg overflow-hidden z-50"
-              style={{background:'var(--theme-surface)',border:'1px solid var(--theme-border)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}
+              className="absolute left-0 bottom-full mb-1.5 w-56 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden z-50"
             >
               <div className="py-1">
                 {models.map((model) => (
@@ -715,8 +400,9 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
                     type="button"
                     onClick={() => { onSelectModel(model.id); setIsOpen(false); }}
                     data-testid={`model-option-${model.id}`}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition"
-                    style={{background: selectedModel === model.id ? 'var(--theme-surface2)' : 'transparent', color: selectedModel === model.id ? 'var(--theme-text)' : 'var(--theme-muted)'}}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition ${
+                      selectedModel === model.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     <model.icon className="w-4 h-4 shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -771,7 +457,7 @@ const VersionHistory = ({ versions, onRestore, currentVersion }) => {
   );
 };
 
-// Build History Panel (Item 17) â€” fetch prior builds from API, click to view in Agent Monitor
+// Build History Panel (Item 17) — fetch prior builds from API, click to view in Agent Monitor
 const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
   if (loading) {
     return (
@@ -794,10 +480,10 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
         <div key={i} className="p-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800/50 transition">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-zinc-400">
-              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : 'â€”'}
+              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
             </span>
-            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-neutral-400'}`}>
-              {entry.status === 'completed' ? 'Completed' : (entry.status || 'â€”')}
+            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
+              {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
             </span>
           </div>
           {entry.quality_score != null && <p className="text-xs text-zinc-500">Quality: {Number(entry.quality_score).toFixed(0)}</p>}
@@ -816,142 +502,6 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
   );
 };
 
-// â”€â”€ PassesTab: loads real pass data from /api/passes/:taskId â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const PASS_COLORS = ['#525252', '#737373', '#a3a3a3', '#d4d4d4', '#404040', '#6b7280'];
-
-const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding }) => {
-  const [passData, setPassData] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!taskId || !token || !API) return;
-    setLoading(true);
-    axios.get(`${API}/passes/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => setPassData(r.data))
-      .catch(() => setPassData(null))
-      .finally(() => setLoading(false));
-  }, [taskId, token, API]);
-
-  // Prefer live steps during/after build (they have real timing + file counts)
-  // Fall back to API data, then empty
-  const passes = liveSteps?.length > 0
-    ? liveSteps.map((s, i) => ({
-        pass: i + 1,
-        label: s.name,
-        desc: s.filesCount ? `${s.filesCount} files generated` : (s.desc || ''),
-        color: PASS_COLORS[i % PASS_COLORS.length],
-        status: s.status,
-        duration_ms: s.durationMs,
-        files_count: s.filesCount,
-      }))
-    : passData?.passes || [];
-
-  const totalFiles = passData?.total_files || liveSteps?.filter(s => s.filesCount)?.at(-1)?.filesCount || Object.keys(files).length;
-  const buildKind = passData?.build_kind || 'fullstack';
-  const completedCount = passes.filter(p => p.status === 'complete').length;
-  const pct = passes.length > 0 ? Math.round(completedCount / passes.length * 100) : 0;
-
-  return (
-    <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--theme-muted)' }}>Multi-Pass Build</div>
-          <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>{passes.length} passes Â· {totalFiles} files Â· {buildKind}</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {loading && <Loader2 style={{ width: 12, height: 12, color: 'var(--theme-muted)' }} className="animate-spin" />}
-          {passes.length > 0 && (
-            <div style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? '#4ade80' : 'var(--theme-muted)' }}>{pct}%</div>
-          )}
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      {passes.length > 0 && (
-        <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#4ade80' : '#3b82f6', transition: 'width 0.6s ease' }} />
-        </div>
-      )}
-
-      {/* Pass list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {passes.length > 0 ? passes.map((p, i) => (
-          <div key={i} style={{
-            padding: '11px 14px', borderRadius: 10, border: '1px solid var(--theme-border)',
-            background: p.status === 'running' ? 'rgba(59,130,246,0.05)'
-              : p.status === 'complete' ? 'rgba(74,222,128,0.03)'
-              : 'rgba(255,255,255,0.02)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-              {/* Status icon */}
-              <div style={{ width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                background: p.status === 'complete' ? 'rgba(74,222,128,0.15)' : p.status === 'running' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)' }}>
-                {p.status === 'complete'
-                  ? <Check style={{ width: 10, height: 10, color: '#4ade80' }} />
-                  : p.status === 'running'
-                  ? <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
-                  : <div style={{ width: 6, height: 6, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
-                }
-              </div>
-              {/* Pass label */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: p.color, opacity: 0.8, flexShrink: 0 }}>P{p.pass || i+1}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: p.status === 'complete' ? 'var(--theme-text)' : p.status === 'running' ? '#93c5fd' : 'var(--theme-muted)', truncate: true }}>{p.label}</span>
-              </div>
-              {/* Duration */}
-              {p.duration_ms > 0 && (
-                <span style={{ fontSize: 10, color: 'var(--theme-muted)', flexShrink: 0, opacity: 0.6 }}>{(p.duration_ms/1000).toFixed(1)}s</span>
-              )}
-            </div>
-            {p.desc && (
-              <div style={{ fontSize: 10, color: 'var(--theme-muted)', paddingLeft: 30, opacity: 0.7 }}>{p.desc}</div>
-            )}
-          </div>
-        )) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 10, color: 'var(--theme-muted)', paddingTop: 40 }}>
-            <Layers style={{ width: 32, height: 32, opacity: 0.25 }} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>No build yet</div>
-              <div style={{ fontSize: 11, opacity: 0.6 }}>Run a build to see real-time pass data</div>
-            </div>
-          </div>
-        )}
-
-        {/* Completed summary */}
-        {passes.length > 0 && !isBuilding && pct === 100 && (
-          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(74,222,128,0.2)', background: 'rgba(74,222,128,0.05)', textAlign: 'center' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 3 }}>Build Complete</div>
-            <div style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{totalFiles} files Â· {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// â”€â”€ Skill auto-detection (mirrors backend SKILL_TRIGGERS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SKILL_TRIGGERS_JS = {
-  'Web App Builder': ['web app', 'full-stack', 'webapp', 'react app', 'crud app', 'portal'],
-  'Mobile App': ['mobile app', 'ios app', 'android app', 'react native', 'expo', 'phone app'],
-  'SaaS MVP': ['saas', 'subscription', 'stripe billing', 'mvp with billing', 'paid app'],
-  'E-Commerce': ['e-commerce', 'ecommerce', 'online store', 'shop', 'sell products', 'product catalog'],
-  'AI Chatbot': ['chatbot', 'ai assistant', 'chat interface', 'knowledge base bot', 'streaming chat'],
-  'Landing Page': ['landing page', 'marketing page', 'product page', 'waitlist', 'hero section'],
-  'Automation': ['automate', 'automation', 'workflow', 'cron job', 'daily digest', 'pipeline'],
-  'Internal Tool': ['admin panel', 'internal tool', 'back office', 'crud interface', 'approval workflow'],
-  'Data Dashboard': ['dashboard', 'analytics', 'charts', 'kpi', 'metrics dashboard', 'recharts'],
-};
-
-function detectSkillFromPrompt(prompt) {
-  if (!prompt) return null;
-  const p = prompt.toLowerCase();
-  for (const [skillName, triggers] of Object.entries(SKILL_TRIGGERS_JS)) {
-    if (triggers.some(t => p.includes(t))) return skillName;
-  }
-  return null;
-}
-
 // Main Workspace Component
 const Workspace = () => {
   const navigate = useNavigate();
@@ -962,9 +512,9 @@ const Workspace = () => {
   const [files, setFiles] = useState(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('/App.js');
 
-  // Files safe to pass to Sandpack â€” exclude backend/test/config files.
-  // Sandpack React template expects /src/index.js and /src/App.js; map root-level App.js, index.js, styles.css into /src/ so preview runs.
-  // Also post-process: BrowserRouter â†’ MemoryRouter, inject Tailwind CDN into styles.css.
+  // Files safe to pass to Sandpack — exclude backend/test/config files.
+  // Also post-process: BrowserRouter → MemoryRouter (BrowserRouter breaks in iframes),
+  // and inject Tailwind CDN into styles.css so classes render correctly.
   const sandpackFiles = useMemo(() => {
     const EXCLUDED = /\.(test|spec)\.[jt]sx?$|Dockerfile|docker-compose|\.md$|\.sh$|\.ya?ml$|\.env|\.gitignore|server\.(js|ts)$|express|mongoose/i;
     const ALLOWED  = /\.(jsx?|tsx?|css|html|json)$/i;
@@ -972,36 +522,15 @@ const Workspace = () => {
 
     const filtered = Object.entries(files).filter(([path, f]) => {
       if (!ALLOWED.test(path) || EXCLUDED.test(path)) return false;
+      // Drop files that are clearly Node/Express backend
       if (f?.code && BACKEND_CODE.test(f.code)) return false;
       return true;
     });
 
-    // Normalize root-level files to /src/ for Sandpack; handle both JS and TS
-    const ROOT_TO_SRC = {
-      '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx',
-      '/App.ts': '/src/App.js', '/App.tsx': '/src/App.jsx',  // transpile TSâ†’JS path for Sandpack
-      '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx',
-      '/index.ts': '/src/index.js', '/index.tsx': '/src/index.jsx',
-      '/styles.css': '/src/styles.css',
-    };
-
-    const result = Object.fromEntries(
+    return Object.fromEntries(
       filtered.map(([path, f]) => {
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        // Map .tsx â†’ .jsx, .ts â†’ .js for Sandpack (it runs in JSX mode)
-        let sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
-        sandpackPath = sandpackPath.replace(/\.tsx$/, '.jsx').replace(/(?<!\.d)\.ts$/, '.js');
         let code = f?.code || '';
-        // Strip TypeScript type annotations that Sandpack can't handle
-        // Remove type imports: import type {...} from '...'
-        code = code.replace(/^import\s+type\s+.*?;?$/mg, '');
-        // Remove generic type params in JSX context <Component<T> -> <Component
-        // Remove React.FC<Props>, (): ReturnType annotations etc (light strip)
-        code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
-        code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
-        // eslint-disable-next-line no-useless-escape -- `[\]` are literal brackets inside the class
-        code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
-        // BrowserRouter â†’ MemoryRouter for Sandpack
+        // Fix: BrowserRouter doesn't work in Sandpack iframes → use MemoryRouter
         code = code
           .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
           .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
@@ -1009,47 +538,15 @@ const Workspace = () => {
           .replace(/<BrowserRouter>/g, '<MemoryRouter>')
           .replace(/<\/BrowserRouter>/g, '</MemoryRouter>')
           .replace(/BrowserRouter\b/g, 'MemoryRouter');
-        if (sandpackPath === '/src/index.js' || sandpackPath === '/src/index.jsx') {
-          code = code.replace(/from\s+['"]\.\/App['"]/g, "from './App'");
-        }
-        if ((sandpackPath.includes('styles.css') || sandpackPath.includes('index.css') || sandpackPath.includes('App.css')) && !code.includes('tailwindcss') && !code.includes('tailwind')) {
+
+        // Inject Tailwind CDN into styles.css if not already present
+        if ((path === '/styles.css' || path === 'styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
           code = `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');\n\n` + code;
         }
-        return [sandpackPath, { ...f, code }];
+
+        return [path, { ...f, code }];
       })
     );
-
-    // Detect entry point (supports TSX builds mapped to JSX)
-    const hasAppJsx = !!(result['/src/App.jsx'] || result['/App.jsx']);
-    const hasAppJs = !!(result['/src/App.js'] || result['/App.js']);
-    const hasApp = hasAppJsx || hasAppJs;
-    const existingIndex = result['/src/index.js']?.code || result['/src/index.jsx']?.code || '';
-    const indexValid = existingIndex.includes("getElementById('root')") && (existingIndex.includes('createRoot') || existingIndex.includes('render('));
-    if (Object.keys(result).length > 0 && hasApp && (!result['/src/index.js'] && !result['/src/index.jsx'] || !indexValid)) {
-      const appImport = hasAppJsx ? "import App from './App.jsx';" : "import App from './App.js';";
-      result['/src/index.js'] = {
-        code: `import React from 'react';
-import ReactDOM from 'react-dom/client';
-${appImport}
-${result['/src/styles.css'] || result['/src/App.css'] ? "import './styles.css';" : ''}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);`,
-      };
-    }
-    // If no App entry but we have files, try to create a minimal preview
-    if (Object.keys(result).length > 0 && !hasApp && !result['/src/index.js']) {
-      const firstJsx = Object.keys(result).find(k => k.endsWith('.jsx') || k.endsWith('.js'));
-      if (firstJsx) {
-        const compName = firstJsx.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
-        result['/src/index.js'] = { code: `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import ${compName} from '${firstJsx.replace('/src/', './')}';
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<${compName} />);` };
-      }
-    }
-    return result;
   }, [files]);
 
   // Parse dependencies from package.json if the AI generated one
@@ -1062,16 +559,6 @@ root.render(<${compName} />);` };
       recharts: '^2.8.0',
       'framer-motion': '^10.16.4',
       clsx: '^2.0.0',
-      'class-variance-authority': '^0.7.0',
-      'tailwind-merge': '^2.0.0',
-      '@radix-ui/react-dialog': '^1.0.5',
-      '@radix-ui/react-dropdown-menu': '^2.0.6',
-      '@radix-ui/react-select': '^2.0.0',
-      '@radix-ui/react-tabs': '^1.0.4',
-      '@radix-ui/react-tooltip': '^1.0.7',
-      zustand: '^4.4.1',
-      'react-hook-form': '^7.47.0',
-      zod: '^3.22.4',
     };
     try {
       const pkgJson = files['/package.json']?.code || files['package.json']?.code;
@@ -1079,79 +566,12 @@ root.render(<${compName} />);` };
         const pkg = JSON.parse(pkgJson);
         return { ...base, ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
       }
-    } catch (_) { void 0; }
+    } catch (_) {}
     return base;
   }, [files]);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
-  const buildAbortRef = useRef(null); // AbortController for cancelling active build
-
-  // Live build timeline â€” step_started + step_complete events
-  const [liveSteps, setLiveSteps] = useState([]); // [{name, status:'pending'|'running'|'complete', filesCount, duration}]
-
-  // Resizable panes â€” persisted to localStorage
-  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
-    const saved = localStorage.getItem('crucibai_left_panel_width');
-    return saved ? parseInt(saved, 10) : 208;
-  }); // 52 * 4 = 208px (w-52)
-  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
-    const saved = localStorage.getItem('crucibai_right_panel_width');
-    return saved ? parseInt(saved, 10) : null;
-  }); // null = 44% default
-  const isDraggingLeft = useRef(false);
-  const isDraggingRight = useRef(false);
-  const dragStartX = useRef(0);
-  const dragStartWidth = useRef(0);
-
-  const handleLeftDragStart = (e) => {
-    isDraggingLeft.current = true;
-    dragStartX.current = e.clientX;
-    dragStartWidth.current = leftPanelWidth;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    const onMove = (ev) => {
-      if (!isDraggingLeft.current) return;
-      const delta = ev.clientX - dragStartX.current;
-      const newW = Math.max(140, Math.min(400, dragStartWidth.current + delta));
-      setLeftPanelWidth(newW);
-      localStorage.setItem('crucibai_left_panel_width', String(newW));
-    };
-    const onUp = () => {
-      isDraggingLeft.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  };
-
-  const handleRightDragStart = (e) => {
-    isDraggingRight.current = true;
-    dragStartX.current = e.clientX;
-    const containerWidth = e.currentTarget.closest('.flex-1')?.offsetWidth || window.innerWidth - leftPanelWidth - 60;
-    dragStartWidth.current = rightPanelWidth || containerWidth * 0.44;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    const onMove = (ev) => {
-      if (!isDraggingRight.current) return;
-      const delta = dragStartX.current - ev.clientX;
-      const newRW = Math.max(280, Math.min(900, dragStartWidth.current + delta));
-      setRightPanelWidth(newRW);
-      localStorage.setItem('crucibai_right_panel_width', String(newRW));
-    };
-    const onUp = () => {
-      isDraggingRight.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  };
   const [buildProgress, setBuildProgress] = useState(0);
   const [sessionId, setSessionId] = useState(() => `session_${Date.now()}`);
   const [selectedModel, setSelectedModel] = useState('auto');
@@ -1163,9 +583,6 @@ root.render(<${compName} />);` };
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
-  const [filesReadyKey, setFilesReadyKey] = useState('default');
-  const [lastBuildKind, setLastBuildKind] = useState('fullstack'); // web=Sandpack preview, mobile=Expo Snack iframe
-  const [expandedFolders, setExpandedFolders] = useState({}); // tracks open/closed folders in Explorer // triggers Sandpack remount only when files are truly committed
   
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1193,7 +610,7 @@ root.render(<${compName} />);` };
   });
   const setRightSidebarOpenPersisted = useCallback((value) => {
     setRightSidebarOpen(value);
-    try { localStorage.setItem('crucibai_workspace_right_panel', String(value)); } catch (_) { void 0; }
+    try { localStorage.setItem('crucibai_workspace_right_panel', String(value)); } catch (_) {}
   }, []);
   const resetLayout = useCallback(() => {
     setLeftSidebarOpen(true);
@@ -1221,13 +638,13 @@ root.render(<${compName} />);` };
         await axios.post(`${API}/user/workspace-mode`, { mode: backendMode }, { headers: { Authorization: `Bearer ${token}` } });
         if (refreshUser) await refreshUser();
       }
-    } catch (_) { void 0; }
+    } catch (_) {}
   };
   const { addTask, updateTask, tasks: storeTasks } = useTaskStore();
 
-  // Section 06: parseMultiFileOutput â€” extract fenced code blocks with file paths
+  // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
-    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./-]+)\n([\s\S]*?)```/g;
+    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
     const parsedFiles = {};
     let match;
     while ((match = filePattern.exec(responseText)) !== null) {
@@ -1246,45 +663,16 @@ root.render(<${compName} />);` };
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const [showVibeInput, setShowVibeInput] = useState(false);
-  // Issue #4: Dashboard live data
-  const [dashboardData, setDashboardData] = useState(null);
-  // Issue #5: Database live schema
-  const [appDbSchema, setAppDbSchema] = useState(null);
-  // Issue #6: Agents live history
-  const [agentHistory, setAgentHistory] = useState([]);
-  // Task 6: Active skill name for agent monitor display
-  const [activeSkillName, setActiveSkillName] = useState(null);
-  // Task 5: Deploy steps tracking
-  const [deployZipDone, setDeployZipDone] = useState(false);
-  const [deploySteps, setDeploySteps] = useState(null);
-  // Native deploy state machine: idle | checking | deploying | deployed | error
-  const [deployState, setDeployState] = useState('idle');
-  const [deployResult, setDeployResult] = useState(null); // { url, ... }
-  const [deployError, setDeployError] = useState(null);
-  const [deployHasToken, setDeployHasToken] = useState(null); // null=unknown, true/false
-  const [showDeployPanel, setShowDeployPanel] = useState(false); // progress panel visible
-  const [deployPanelJobId, setDeployPanelJobId] = useState(null); // job id for live log stream
-  const [deployTokenStatus, setDeployTokenStatus] = useState({}); // { has_vercel, has_railway, has_github }
-  const [customDomain, setCustomDomain] = useState('');
-  const [customDomainResult, setCustomDomainResult] = useState(null);
-  const [customDomainSaving, setCustomDomainSaving] = useState(false);
-  // Git sync state
-  const [gitSyncState, setGitSyncState] = useState('idle'); // idle | syncing | synced | error
-  const [gitSyncResult, setGitSyncResult] = useState(null);
-  const [showGitSyncModal, setShowGitSyncModal] = useState(false);
-  const [gitSyncPrivate, setGitSyncPrivate] = useState(true);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
-  const jobIdFromUrl = searchParams.get('jobId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
-  const [currentJobId, setCurrentJobId] = useState(() => jobIdFromUrl || null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const zipInputRef = useRef(null);
   const chatInputRef = useRef(null);
   const chatEndRef = useRef(null);
 
-  // Zone 3: resize textarea 48pxâ€“120px, collapse on send
+  // Zone 3: resize textarea 48px–120px, collapse on send
   const resizeChatInput = useCallback(() => {
     const el = chatInputRef.current;
     if (!el) return;
@@ -1298,76 +686,10 @@ root.render(<${compName} />);` };
     } else resizeChatInput();
   }, [input, resizeChatInput]);
   const workspaceFilesLoadedForProject = useRef(null);
-  // Task 2A: track previous files snapshot for race-condition-safe preview trigger
-  const prevFilesRef = useRef(null);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
-
-  // Task 2A: Two-step Sandpack remount â€” trigger filesReadyKey only after files are confirmed updated
-  // Auto-correct activeFile when it doesn't exist in files (e.g., files are .tsx but activeFile is /App.js)
-  useEffect(() => {
-    if (Object.keys(files).length > 0 && !files[activeFile]) {
-      // Prefer App.tsx > App.jsx > App.js > first key
-      const preferred = ['/src/App.tsx', '/App.tsx', '/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
-                         '/src/main.tsx', '/src/index.tsx', '/Home.tsx'];
-      const found = preferred.find(k => files[k]) || Object.keys(files).sort()[0];
-      if (found) setActiveFile(found);
-    }
-  }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    // Check for ANY app entry point â€” jsx, tsx, js, ts
-    const APP_KEYS = ['/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
-                      '/src/App.tsx', '/App.tsx', '/src/main.tsx', '/src/main.jsx',
-                      '/src/index.tsx', '/index.tsx', '/src/index.js', '/index.js',
-                      '/Home.tsx', '/src/screens/HomeScreen.tsx', '/screens/HomeScreen.tsx'];
-    const hasApp = APP_KEYS.some(k => files[k]) || Object.keys(files).some(k => k.match(/App\.(jsx?|tsx?)$/));
-    const prevHasApp = prevFilesRef.current && (
-      APP_KEYS.some(k => prevFilesRef.current[k]) ||
-      Object.keys(prevFilesRef.current || {}).some(k => k.match(/App\.(jsx?|tsx?)$/))
-    );
-    // Trigger on any new files arriving (not just App) when isBuilding just finished
-    const hasFiles = Object.keys(files).length > 1;
-    const prevHadFiles = Object.keys(prevFilesRef.current || {}).length > 1;
-    const shouldTrigger = (hasApp && !prevHasApp) || (hasFiles && !prevHadFiles && isBuilding === false);
-    if (shouldTrigger && isBuilding === false) {
-      const newKey = `fk_ready_${Date.now()}`;
-      setTimeout(() => setFilesReadyKey(newKey), 300);
-    }
-    prevFilesRef.current = files;
-  }, [files]);
-
-  // â”€â”€ Issue #4: Dashboard â€” fetch live task data when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    if (activePanel !== 'dashboard' || !taskIdFromUrl || !token) return;
-    axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        const doc = r.data?.doc || r.data || {};
-        setDashboardData(doc);
-      })
-      .catch(() => {});
-  }, [activePanel, taskIdFromUrl, token, API]);
-
-  // â”€â”€ Issue #5: Database â€” fetch live schema when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    if (activePanel !== 'database' || !taskIdFromUrl || !token) return;
-    axios.get(`${API}/app-db/task/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => setAppDbSchema(r.data?.schema || null))
-      .catch(() => setAppDbSchema(null));
-  }, [activePanel, taskIdFromUrl, token, API]);
-
-  // â”€â”€ Issue #6: Agents â€” fetch live agent history when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    if (activePanel !== 'agents' || !taskIdFromUrl || !token) return;
-    axios.get(`${API}/agents/activity?session_id=${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        const acts = r.data?.agents || r.data?.activities || r.data?.activity || [];
-        if (acts.length > 0) setAgentHistory(acts);
-      })
-      .catch(() => {});
-  }, [activePanel, taskIdFromUrl, token, API]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -1390,87 +712,6 @@ root.render(<${compName} />);` };
       .catch(() => setBuildHistoryList([]))
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (jobIdFromUrl) {
-      setCurrentJobId(jobIdFromUrl);
-    }
-  }, [jobIdFromUrl]);
-
-  useEffect(() => {
-    if (!token || !API) return;
-    const headers = { Authorization: `Bearer ${token}` };
-    axios.get(`${API}/orchestrator/build-jobs?limit=25`, { headers })
-      .then((res) => {
-        const jobs = Array.isArray(res.data?.jobs) ? res.data.jobs : [];
-        if (jobs.length === 0) return;
-        const normalizeStatus = (job) => String(job?.status || '').toLowerCase();
-        const timestamp = (job) => Date.parse(job?.updated_at || job?.created_at || 0) || 0;
-        const projectJobs = projectIdFromUrl
-          ? jobs.filter((job) => String(job?.project_id || job?.projectId || '') === String(projectIdFromUrl))
-          : jobs;
-        const sortNewest = (list) => [...list].sort((a, b) => timestamp(b) - timestamp(a));
-        const newestProjectJobs = sortNewest(projectJobs);
-        const newestJobs = sortNewest(jobs);
-        const preferred =
-          (jobIdFromUrl && jobs.find((job) => job.id === jobIdFromUrl)) ||
-          newestProjectJobs.find((job) => ['queued', 'running', 'verifying'].includes(normalizeStatus(job))) ||
-          newestProjectJobs[0] ||
-          newestJobs.find((job) => ['queued', 'running', 'verifying'].includes(normalizeStatus(job))) ||
-          newestJobs[0];
-        if (preferred?.id) {
-          setCurrentJobId(preferred.id);
-        }
-      })
-      .catch(() => {});
-  }, [token, API, projectIdFromUrl, jobIdFromUrl, buildHistoryList.length, isBuilding]);
-
-  // Reconnect recovery â€” check for in-progress builds when workspace loads
-  useEffect(() => {
-    if (!token || !API) return;
-    axios.get(`${API}/jobs`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
-        const jobs = res.data?.jobs || [];
-        const running = jobs.find(j => j.status === 'running' || j.status === 'queued');
-        if (running) {
-          setIsBuilding(true);
-          setBuildProgress(running.progress || 0);
-          addLog(`Reconnected to in-progress build: ${running.message || running.name}`, 'info', 'build');
-          const sessionId = running.payload?.session_id;
-          pollJobStatus(running.id, sessionId);
-        }
-      })
-      .catch(() => {});
-  }, [token, API]);
-
-  // Load task files when opening with taskId (returning users - Q122 FIX)
-  useEffect(() => {
-    if (!taskIdFromUrl || !token || !API) return;
-    axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        const task = r.data?.task || r.data;
-        const taskFiles = task?.files || task?.doc?.files;
-        if (!taskFiles || Object.keys(taskFiles).length === 0) return;
-        // Convert stored format to Sandpack format
-        const loaded = Object.entries(taskFiles).reduce((acc, [path, content]) => {
-          const key = path.startsWith('/') ? path : `/${path}`;
-          acc[key] = { code: typeof content === 'string' ? content : (content?.code || '') };
-          return acc;
-        }, {});
-        if (Object.keys(loaded).length > 0) {
-          setFiles(loaded);
-          setActiveFile(Object.keys(loaded).sort().find(k => k.includes('App')) || Object.keys(loaded).sort()[0]);
-          // Trigger Sandpack remount so preview loads â€” THE CRITICAL FIX for Q122
-          setTimeout(() => {
-            const vId = `task_${taskIdFromUrl}_${Date.now()}`;
-            setCurrentVersion(vId);
-            setFilesReadyKey(`fk_${vId}`);
-            setActivePanel('preview');
-          }, 500);
-        }
-      })
-      .catch(() => {});
-  }, [taskIdFromUrl, token, API]);
 
   // Load imported project files from workspace when opening with projectId (e.g. after Import)
   useEffect(() => {
@@ -1496,13 +737,6 @@ root.render(<${compName} />);` };
           if (Object.keys(loaded).length > 0) {
             setFiles(loaded);
             setActiveFile((current) => (current && loaded[current] ? current : Object.keys(loaded).sort()[0]));
-            // FIX Q122: trigger Sandpack remount after workspace reload so preview works on return
-            setTimeout(() => {
-              const vId = `reload_${projectIdFromUrl}_${Date.now()}`;
-              setCurrentVersion(vId);
-              setFilesReadyKey(`fk_${vId}`);
-              setActivePanel('preview');
-            }, 500);
           }
         });
       })
@@ -1520,9 +754,9 @@ root.render(<${compName} />);` };
   // Wire real build progress when opened with projectId (from AgentMonitor "Open in Workspace")
   // Phase 3: Auto-reconnect on disconnect with exponential backoff
   useEffect(() => {
-    if (!projectIdFromUrl || !API || !token) return;
+    if (!projectIdFromUrl || !API) return;
     const wsBase = (API || '').replace(/^http/, 'ws').replace(/\/api\/?$/, '');
-    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress?token=${encodeURIComponent(token)}`;
+    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress`;
     let ws;
     let reconnectTimeout;
     let reconnectAttempts = 0;
@@ -1535,58 +769,6 @@ root.render(<${compName} />);` };
         ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
-          // COMPREHENSIVE DIAGNOSTIC LOGGING
-          console.log('📨 RAW WEBSOCKET MESSAGE:', {
-            type: data.type,
-            role: data.role,
-            hasContent: !!data.content,
-            hasTaskCards: !!data.task_cards,
-            hasActionChips: !!data.action_chips,
-            hasCurrentStep: !!data.current_step,
-            allKeys: Object.keys(data).sort(),
-          });
-          
-          // MANUS-STYLE: Add conversational messages with task cards, action chips, and step indicator
-          if (data.type && data.content && data.role) {
-            const msg = {
-              id: `msg_${Date.now()}`,
-              role: data.role,
-              type: data.type,
-              content: data.content,
-              task_cards: data.task_cards,
-              action_chips: data.action_chips,
-              current_step: data.current_step,
-              metadata: data.metadata,
-              timestamp: new Date().toISOString(),
-            };
-            // DEBUG: Log message to verify Manus fields
-            if (data.task_cards || data.action_chips || data.current_step) {
-              console.log('🎯 MANUS MESSAGE CAPTURED:', {
-                type: msg.type,
-                has_task_cards: !!msg.task_cards,
-                has_action_chips: !!msg.action_chips,
-                has_current_step: !!msg.current_step,
-                task_cards_count: msg.task_cards?.tasks?.length || 0,
-                action_chips_count: msg.action_chips?.length || 0,
-              });
-            } else {
-              console.log('📝 REGULAR MESSAGE (no Manus fields):', {
-                type: msg.type,
-                contentLength: msg.content?.length || 0,
-              });
-            }
-            setMessages(prev => {
-              const updated = [...prev, msg];
-              console.log('📊 MESSAGES STATE UPDATED:', {
-                totalMessages: updated.length,
-                lastMessageType: updated[updated.length - 1].type,
-                lastMessageHasManus: !!(updated[updated.length - 1].task_cards || updated[updated.length - 1].action_chips),
-              });
-              return updated;
-            });
-          }
-          
           setProjectBuildProgress({
             phase: data.phase ?? 0,
             agent: data.agent ?? '',
@@ -1627,7 +809,6 @@ root.render(<${compName} />);` };
               setActivePanel('preview'); // Auto-switch to preview
               setBuildProgress(100);
               setIsBuilding(false);
-              if (refreshUser) refreshUser(); // refresh credit balance
             } else {
               // Fallback: fetch deploy_files from API
               const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1653,7 +834,7 @@ root.render(<${compName} />);` };
               setIsBuilding(false);
             }
           }
-        } catch (_) { void 0; }
+        } catch (_) {}
       };
         ws.onclose = () => {
           if (reconnectAttempts < maxReconnectAttempts) {
@@ -1662,16 +843,16 @@ root.render(<${compName} />);` };
             reconnectTimeout = setTimeout(connect, delay);
           }
         };
-        ws.onerror = () => { try { ws?.close(); } catch (_) { void 0; } };
+        ws.onerror = () => { try { ws?.close(); } catch (_) {} };
         reconnectAttempts = 0;
-      } catch (_) { void 0; }
+      } catch (_) {}
     };
     connect();
     return () => {
       clearTimeout(reconnectTimeout);
-      try { if (ws) ws.close(); } catch (_) { void 0; }
+      try { if (ws) ws.close(); } catch (_) {}
     };
-  }, [projectIdFromUrl, API, token]);
+  }, [projectIdFromUrl, API]);
 
   // Wire GET /ai/chat/history so session history can be loaded (e.g. on "New Agent" we keep sessionId; history loads for current session)
   useEffect(() => {
@@ -1724,7 +905,7 @@ root.render(<${compName} />);` };
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
 
-  // Restore existing task workspace when opening by taskId â€” load files + messages.
+  // Restore existing task workspace when opening by taskId — load files + messages.
   // Pre-fill input with task.prompt when task has no build yet so user can click Submit/Go to run.
   const taskRestoredRef = useRef(null);
   useEffect(() => {
@@ -1749,23 +930,8 @@ root.render(<${compName} />);` };
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Pending prompt from landing (user said "build me X" then signed up) â€” restore and start building
-  const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
-  const pendingPromptAppliedRef = useRef(false);
-  useEffect(() => {
-    if (pendingPromptAppliedRef.current) return;
-    const hasStatePrompt = location.state?.initialPrompt || searchParams.get('prompt');
-    if (hasStatePrompt) return; // URL/state already has a prompt; let the auto-start effect handle it
-    const fromStorage = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(PENDING_PROMPT_KEY) : null;
-    if (!fromStorage?.trim()) return;
-    pendingPromptAppliedRef.current = true;
-    sessionStorage.removeItem(PENDING_PROMPT_KEY);
-    sessionStorage.removeItem(PENDING_PROMPT_KEY + '_hasFiles');
-    setInput(fromStorage);
-    handleBuild(fromStorage);
-  }, [location.state, searchParams]);
-
-  // Auto-start build when user explicitly clicks "Start Building" / "Go" (Dashboard or Landing with auth)
+  // Auto-start build ONLY when user explicitly clicks "Start Building" / "Go" (e.g. from Dashboard).
+  // Opening a task from the sidebar just loads the task; execution happens on Submit/Go/Update.
   const autoStartedRef = useRef(null);
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt || searchParams.get('prompt');
@@ -1775,7 +941,6 @@ root.render(<${compName} />);` };
     if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}`) return;
     autoStartedRef.current = `${location.key}-${taskIdFromUrl}`;
     if (initialFiles?.length) setAttachedFiles(initialFiles);
-    setInput(statePrompt);
     handleBuild(statePrompt, initialFiles || undefined);
   }, [location.key, location.state, taskIdFromUrl]);
 
@@ -1783,163 +948,61 @@ root.render(<${compName} />);` };
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // â”€â”€ Async job polling (Q121 fix â€” build survives browser close) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const pollJobStatus = async (jobId, sessionId) => {
-    const maxPolls = 180;
-    let polls = 0;
-    const interval = setInterval(async () => {
-      try {
-        polls++;
-        if (polls > maxPolls) { clearInterval(interval); return; }
-        const res = await axios.get(`${API}/jobs/${jobId}`,
-          token ? { headers: { Authorization: `Bearer ${token}` } } : {});
-        const job = res.data;
-        if (job.progress) setBuildProgress(job.progress);
-        if (job.message) addLog(job.message, 'info', 'build');
-        if (job.status === 'complete') {
-          clearInterval(interval);
-          if (sessionId && token) {
-            try {
-              const taskRes = await axios.get(`${API}/tasks/${sessionId}`,
-                { headers: { Authorization: `Bearer ${token}` } });
-              const taskFiles = taskRes.data?.task?.files || taskRes.data?.files || taskRes.data?.doc?.files;
-              if (taskFiles && Object.keys(taskFiles).length > 0) {
-                const fileEntries = Object.fromEntries(
-                  Object.entries(taskFiles).map(([k, v]) => [k, { code: typeof v === 'string' ? v : v?.code || '' }])
-                );
-                setFiles(prev => ({ ...prev, ...fileEntries }));
-                setTimeout(() => {
-                  const vId = `async_${Date.now()}`;
-                  setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview');
-                }, 500);
-                addLog(`Build complete: ${Object.keys(fileEntries).length} files`, 'success', 'deploy');
-                if (refreshUser) refreshUser();
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('taskId', sessionId);
-                window.history.replaceState({}, '', newUrl.toString());
-              }
-            } catch (_) { void 0; }
-          }
-          setIsBuilding(false); setBuildProgress(100);
-        }
-        if (job.status === 'failed') {
-          clearInterval(interval);
-          addLog(`Build failed: ${job.error}`, 'error', 'deploy');
-          setIsBuilding(false);
-        }
-      } catch (_) { clearInterval(interval); setIsBuilding(false); }
-    }, 1000);
-  };
-
   const addLog = (message, type = 'info', agent = null) => {
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
     setLogs(prev => [...prev, { message, type, time, agent }]);
   };
 
-  // â”€â”€ Voice: Web Speech API (Chrome/Edge/Safari) or fallback to record + backend /voice/transcribe â”€â”€
+  // ── Voice input via Web Speech API (browser-native, no API key needed) ──
   const speechRecognitionRef = useRef(null);
-  const voiceChunksRef = useRef([]);
 
-  const startRecording = async () => {
-    // First request mic permission explicitly so browser shows the permission prompt
-    if (navigator.mediaDevices?.getUserMedia) {
-      try {
-        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        testStream.getTracks().forEach(t => t.stop()); // just checking permission, stop immediately
-      } catch (permErr) {
-        const msg = permErr?.name === 'NotAllowedError'
-          ? 'Microphone blocked. Click the ðŸ”’ icon in your browser address bar and allow microphone access, then refresh.'
-          : permErr?.name === 'NotFoundError'
-          ? 'No microphone found. Plug in a microphone and try again.'
-          : `Microphone error: ${permErr?.message}`;
-        addLog(msg, 'error', 'voice');
-        return;
-      }
-    }
+  const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        recognition.maxAlternatives = 1;
-        recognition.onstart = () => { setIsRecording(true); addLog('Listening...', 'info', 'voice'); };
-        recognition.onresult = (e) => {
-          const transcript = e.results[0][0].transcript.trim();
-          setInput(prev => (prev ? prev + ' ' + transcript : transcript));
-          setIsRecording(false);
-          addLog(`Voice: "${transcript}"`, 'success', 'voice');
-        };
-        recognition.onerror = (e) => {
-          setIsRecording(false);
-          const msg = e.error === 'not-allowed'
-            ? 'Microphone access denied. Allow mic in your browser, then try again.'
-            : e.error === 'no-speech'
-            ? 'No speech detected. Try again.'
-            : `Voice error: ${e.error}`;
-          addLog(msg, 'error', 'voice');
-        };
-        recognition.onend = () => { setIsRecording(false); speechRecognitionRef.current = null; };
-        speechRecognitionRef.current = recognition;
-        recognition.start();
-        return;
-      } catch (err) {
-        addLog(`Voice failed: ${err.message}`, 'error', 'voice');
-      }
-    }
-    // Fallback: record with MediaRecorder, then send to backend /voice/transcribe (works in all browsers)
-    if (!navigator.mediaDevices?.getUserMedia) {
-      addLog('Microphone not supported in this browser.', 'error', 'voice');
+    if (!SpeechRecognition) {
+      addLog('Voice input not supported. Please use Chrome, Edge, or Safari.', 'error', 'voice');
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Voice input requires Chrome, Edge, or Safari.', error: true }]);
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      voiceChunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) voiceChunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setAudioStream(null);
-        mediaRecorderRef.current = null;
-        setIsRecording(false);
-        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        if (blob.size < 100) { addLog('Recording too short. Speak longer.', 'error', 'voice'); return; }
-        setIsTranscribing(true);
-        addLog('Transcribing...', 'info', 'voice');
-        try {
-          const formData = new FormData();
-          formData.append('audio', blob, 'recording.webm');
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
-          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 60000 });
-          const text = (res.data?.text || '').trim();
-          if (text) {
-            setInput(prev => (prev ? prev + ' ' + text : text));
-            addLog(`Voice: "${text.slice(0, 60)}${text.length > 60 ? '...' : ''}"`, 'success', 'voice');
-          } else addLog('No text from transcription.', 'error', 'voice');
-        } catch (err) {
-          const msg = err?.response?.status === 503
-            ? 'Voice needs OPENAI_API_KEY on the server. Add it in Railway or .env.'
-            : err?.code === 'ERR_NETWORK' || err?.response?.status >= 500
-            ? 'Backend not available. Start the CrucibAI backend for voice transcription.'
-            : (err?.response?.data?.detail || err?.message) || 'Transcription failed.';
-          addLog(msg, 'error', 'voice');
-        } finally {
-          setIsTranscribing(false);
-        }
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        addLog('Listening...', 'info', 'voice');
       };
-      recorder.start(500);
-      mediaRecorderRef.current = { recorder, stream };
-      setAudioStream(stream);
-      setIsRecording(true);
-      addLog('Recording... (stop to transcribe)', 'info', 'voice');
+
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript.trim();
+        setInput(prev => (prev ? prev + ' ' + transcript : transcript));
+        setIsRecording(false);
+        addLog(`Voice: "${transcript}"`, 'success', 'voice');
+      };
+
+      recognition.onerror = (e) => {
+        setIsRecording(false);
+        const msg = e.error === 'not-allowed'
+          ? 'Microphone access denied. Please allow mic in your browser settings.'
+          : e.error === 'no-speech'
+          ? 'No speech detected. Please try again.'
+          : `Voice error: ${e.error}`;
+        addLog(msg, 'error', 'voice');
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        speechRecognitionRef.current = null;
+      };
+
+      speechRecognitionRef.current = recognition;
+      recognition.start();
     } catch (err) {
-      const msg = err?.name === 'NotAllowedError'
-        ? 'Microphone access denied. Allow mic in your browser settings and refresh.'
-        : err?.message || 'Could not start recording.';
-      addLog(msg, 'error', 'voice');
+      setIsRecording(false);
+      addLog(`Voice failed: ${err.message}`, 'error', 'voice');
     }
   };
 
@@ -1948,22 +1011,22 @@ root.render(<${compName} />);` };
       speechRecognitionRef.current.stop();
       speechRecognitionRef.current = null;
     }
+    // Also stop old MediaRecorder if any
     const ref = mediaRecorderRef.current;
-    if (ref?.recorder?.state === 'recording') ref.recorder.stop();
-    else if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
-    if (ref && !ref.recorder?.state || ref?.recorder?.state === 'inactive') {
-      mediaRecorderRef.current = null;
-      setAudioStream(null);
-    }
+    if (ref?.recorder?.state !== 'inactive') ref?.recorder?.stop();
+    if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
+    mediaRecorderRef.current = null;
+    setAudioStream(null);
     setIsRecording(false);
   };
 
   const confirmRecording = () => {
+    // Legacy — just stop
     stopRecording();
   };
 
   const transcribeAudio = async () => {
-    // Used for attached audio files; keep for compatibility
+    // No-op: replaced by Web Speech API
   };
 
   const handleFileSelect = async (e) => {
@@ -2043,7 +1106,7 @@ root.render(<${compName} />);` };
             prompt = (prompt ? prompt + ' ' : '') + text;
             addLog(`Voice note: "${text.slice(0, 60)}..."`, 'info', 'voice');
           }
-        } catch (_) { void 0; }
+        } catch (_) {}
       }
       filesToUse = filesToUse.filter(f => !f.type?.startsWith?.('audio/'));
     }
@@ -2055,9 +1118,6 @@ root.render(<${compName} />);` };
     setInput('');
     setNextSuggestions([]);
     setIsBuilding(true);
-    setLiveSteps([]); // reset live timeline
-    // Task 6: detect and display active skill
-    setActiveSkillName(detectSkillFromPrompt(prompt));
     setBuildProgress(0);
     setLastError(null);
     setQualityGateResult(null);
@@ -2085,17 +1145,7 @@ root.render(<${compName} />);` };
       if (isBigBuild) {
         try {
           const useSwarm = buildMode === 'swarm' && !!token;
-          const p = (prompt || '').toLowerCase();
-          const buildKind = /mobile|react native|flutter|ios app|android app|build me a mobile/i.test(p) ? 'mobile'
-            : /build me an agent|automation|cron|webhook agent|build agent/i.test(p) ? 'ai_agent'
-            : /landing page|one-page|marketing page/i.test(p) ? 'landing'
-            : /website|build me a web/i.test(p) ? 'fullstack'
-            : /saas|subscription|stripe|billing/i.test(p) ? 'saas'
-            : /slack bot|discord bot|telegram bot|chatbot/i.test(p) ? 'bot'
-            : /game|2d game|3d game|browser game/i.test(p) ? 'game'
-            : /trading|stock|crypto|forex|order book/i.test(p) ? 'trading'
-            : 'fullstack';
-          const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm, build_kind: buildKind }, { headers, timeout: 45000 });
+          const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm }, { headers, timeout: 45000 });
           const planText = (planRes.data.plan_text || '').trim();
           planSuggestions = planRes.data.suggestions || [];
           const planTokens = planRes.data.plan_tokens ?? planRes.data.tokens_estimate ?? 0;
@@ -2152,7 +1202,7 @@ root.render(<${compName} />);` };
         { id: 'validating', name: 'Validating' },
         { id: 'deployment', name: 'Deployment' }
       ];
-      // â”€â”€ Detect if the request is for native code (C, Python, algorithm, CLI) â”€â”€
+      // ── Detect if the request is for native code (C, Python, algorithm, CLI) ──
       const nativeLangMap = {
         python: /\bpython\b/i,
         c:      /\b(c\s+program|in\s+c\b|\.c\b|c\s+code|write\s+c\b)/i,
@@ -2172,7 +1222,7 @@ root.render(<${compName} />);` };
       const langExt = { python: 'py', c: 'c', cpp: 'cpp', bash: 'sh', java: 'java' };
       const ext = langExt[nativeLang] || 'c';
 
-      // â”€â”€ Choose agent set based on request type â”€â”€
+      // ── Choose agent set based on request type ──
       const agents = isNativeCode ? [
         { name: 'Planner',   delay: 200, phase: phaseLabels[0]?.name || 'Planning',   desc: `Analyzing ${nativeLang} requirements...` },
         { name: 'Coder',     delay: 350, phase: phaseLabels[1]?.name || 'Generating', desc: `Writing ${nativeLang} source code...` },
@@ -2204,7 +1254,7 @@ root.render(<${compName} />);` };
       }
       setCurrentPhase('');
 
-      // â”€â”€ Build generation prompt â”€â”€
+      // ── Build generation prompt ──
       let messageContent;
 
       if (isNativeCode) {
@@ -2212,11 +1262,11 @@ root.render(<${compName} />);` };
 
 Create a complete, working ${nativeLang} program for: "${prompt}"
 
-OUTPUT FORMAT â€” generate ONLY these files:
+OUTPUT FORMAT — generate ONLY these files:
 
 1. The main source file:
 \`\`\`${nativeLang}:/main.${ext}
-// complete ${nativeLang} source code here â€” NO placeholders
+// complete ${nativeLang} source code here — NO placeholders
 \`\`\`
 
 2. If more source files are needed, add them:
@@ -2237,72 +1287,66 @@ export default function App() {
       <div className="bg-gray-800 rounded-lg p-4 overflow-auto">
         <pre className="text-sm text-green-300 whitespace-pre-wrap">{SOURCE}</pre>
       </div>
-      <p className="mt-4 text-gray-400 text-sm">Click Run â–¶ in the terminal below to execute this program.</p>
+      <p className="mt-4 text-gray-400 text-sm">Click Run ▶ in the terminal below to execute this program.</p>
     </div>
   );
 }
 \`\`\`
 
 RULES:
-- Write COMPLETE, compilable/runnable code â€” no placeholders, no "// TODO"
+- Write COMPLETE, compilable/runnable code — no placeholders, no "// TODO"
 - Include all necessary headers/imports
 - Add comments explaining the algorithm
 - Handle edge cases`;
       } else {
-        messageContent = `You are CrucibAI. Build a COMPLETE, PRODUCTION-QUALITY, MULTI-FILE React application for: "${prompt}"
+        messageContent = `You are CrucibAI. Build a COMPLETE, BEAUTIFUL, MULTI-PAGE React application for: "${prompt}"
 
-OUTPUT ALL FILES IN THIS EXACT ORDER â€” do not skip any:
+⚠️ CRITICAL RULES — THIS IS A BROWSER-ONLY SANDPACK PREVIEW:
 
+❌ ABSOLUTELY FORBIDDEN (will break the preview):
+   - NO Node.js, Express, Koa, Fastify or any backend server
+   - NO MongoDB, Mongoose, PostgreSQL, MySQL or any database
+   - NO require('...') CommonJS imports — use ES module imports only
+   - NO server.js, api.js, app.listen(), mongoose.connect()
+   - NO Dockerfile, .env, .yml, CI/CD, deployment scripts
+   - NO next.js, remix, or any SSR framework
+   - NO BrowserRouter — use MemoryRouter (BrowserRouter breaks in iframes)
+
+✅ REQUIRED:
+1. ROUTING: Use react-router-dom with MemoryRouter (NOT BrowserRouter):
+   import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
+   <Router><Routes><Route path="/" element={<Home />} /></Routes></Router>
+   Build 3-5 meaningful pages. Example "flower website": Home, Shop, Gallery, About, Contact.
+
+2. COMPONENTS: Always create:
+   - /components/Navbar.js — navigation links using <Link to="...">
+   - /components/Footer.js — footer section
+
+3. PAGES: One file per page under /pages/:
+   /pages/Home.js, /pages/About.js, /pages/[relevant].js, etc.
+
+4. STYLING — all Tailwind classes (loaded via CDN, no config needed):
+   - Bold hero sections, gradient backgrounds, card grids
+   - lucide-react icons, framer-motion entrance animations
+   - Realistic hardcoded data (no "Lorem ipsum", real product names, prices, etc.)
+   - Use inline styles for dynamic values, Tailwind for everything else
+
+5. DATA: Use hardcoded JavaScript arrays/objects — no API calls, no fetch()
+
+6. OUTPUT FORMAT — every file on its own fenced block:
 \`\`\`jsx:/App.js
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Home from './pages/Home';
-// import all pages...
-export default function App() {
-  return (
-    <Router>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        {/* all routes */}
-      </Routes>
-      <Footer />
-    </Router>
-  );
-}
+// ... rest of App
 \`\`\`
-
-\`\`\`css:/styles.css
-/* Global styles, fonts, CSS variables */
-\`\`\`
-
 \`\`\`jsx:/components/Navbar.js
-/* Full responsive navigation with logo, links, mobile menu */
+// ...
 \`\`\`
-
-\`\`\`jsx:/components/Footer.js
-/* Full footer with links, socials, copyright */
-\`\`\`
-
 \`\`\`jsx:/pages/Home.js
-/* Hero section, features grid, CTA â€” full content, NO placeholders */
+// ...
 \`\`\`
 
-Then add ALL other relevant pages (About, Services, Pricing, Contact, etc.) â€” one \`\`\`jsx:/pages/PageName.js\`\`\` block each.
-
-RULES:
-- MemoryRouter only (NOT BrowserRouter â€” breaks in preview iframe)
-- Tailwind CSS classes for ALL styling (loaded via CDN)
-- lucide-react for icons, framer-motion for animations
-- Real hardcoded data â€” NO "Lorem ipsum", NO placeholder text
-- NO backend code, NO fetch(), NO require(), NO Node.js
-- COMPLETE code in every file â€” no "// TODO", no "// add here", no truncation
-- Every component fully implemented with real content
-
-Allowed imports: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
-
-BUILD IT NOW â€” output every file completely:`;
+Allowed imports ONLY: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
+Build it NOW — no placeholders, no TODOs, no backend code:`;
       }
 
       if (imagesToSend.length > 0) {
@@ -2319,110 +1363,6 @@ BUILD IT NOW â€” output every file completely:`;
       const wantsDB = /database|db|data|crud|list|todo|tasks?|store/i.test(prompt);
       if (wantsDB) {
         messageContent += `\n\n- Include localStorage-based data persistence with full CRUD operations.`;
-      }
-
-      // Clear stale default files before new build â€” Explorer should show ONLY built files
-      setFiles({});
-      setExpandedFolders({});
-
-      // â”€â”€ ITERATIVE BUILD (multi-turn, 15-30 files) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      const iterativeBuildKinds = ['fullstack','saas','landing','ai_agent','game','mobile'];
-      const shouldUseIterative = !isNativeCode && !useImageToCode && !!token;
-      // Detect build kind for preview routing
-      const detectedBuildKind = /mobile|react native|expo|ios app|android/i.test(prompt) ? 'mobile'
-        : /saas|dashboard|admin/i.test(prompt) ? 'saas'
-        : /landing page|one.?page|marketing/i.test(prompt) ? 'landing'
-        : /agent|automation|chatbot/i.test(prompt) ? 'ai_agent'
-        : /game|2d game/i.test(prompt) ? 'game'
-        : 'fullstack';
-      setLastBuildKind(detectedBuildKind);
-
-      if (shouldUseIterative) {
-        addLog('Starting iterative multi-file build...', 'info', 'planner');
-        try {
-          const iterRes = await fetch(`${API}/ai/build/iterative`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...headers },
-            body: JSON.stringify({ message: messageContent, session_id: sessionId }),
-          });
-          if (!iterRes.ok) throw new Error(`Iterative build failed: ${iterRes.status}`);
-          const reader2 = iterRes.body.getReader();
-          const decoder2 = new TextDecoder();
-          let iterDone = false;
-          while (!iterDone) {
-            const { done, value } = await reader2.read();
-            if (done) break;
-            const lines = decoder2.decode(value, { stream: true }).split('\n').filter(Boolean);
-            for (const line of lines) {
-              try {
-                const ev = JSON.parse(line);
-                if (ev.type === 'start') {
-                  addLog(`Building ${ev.build_kind} app in ${ev.total_steps} passes...`, 'info', 'planner');
-                  setBuildProgress(10);
-                  setLiveSteps([]); // will be populated by step_started events
-                }
-                if (ev.type === 'step_started') {
-                  // Mark this step as running, all others remain pending/complete
-                  setLiveSteps(prev => {
-                    const exists = prev.find(s => s.name === ev.step);
-                    if (exists) {
-                      return prev.map(s => s.name === ev.step ? { ...s, status: 'running' } : s);
-                    }
-                    // First time seeing steps â€” build full list
-                    return prev.length === 0
-                      ? [{ name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }]
-                      : [...prev, { name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }];
-                  });
-                  setCurrentPhase(ev.step);
-                }
-                if (ev.type === 'step_complete') {
-                  const stepFiles = ev.files || {};
-                  const count = Object.keys(stepFiles).length;
-                  addLog(`âœ“ ${ev.step}: ${count} files generated`, 'success', ev.step);
-                  setFiles(prev => ({ ...prev, ...Object.fromEntries(Object.entries(stepFiles).map(([k, v]) => [k, { code: v }])) }));
-                  setBuildProgress(prev => Math.min(prev + Math.floor(80 / (ev.total_steps || 6)), 90));
-                  // Mark step complete in live timeline
-                  setLiveSteps(prev => prev.map(s =>
-                    s.name === ev.step
-                      ? { ...s, status: 'complete', filesCount: ev.files_count || count, durationMs: ev.duration_ms }
-                      : s
-                  ));
-                }
-                if (ev.type === 'done') {
-                  iterDone = true;
-                  const allFiles = ev.files || {};
-                  const fileEntries = Object.fromEntries(Object.entries(allFiles).map(([k, v]) => [k, { code: v }]));
-                  const totalCount = Object.keys(fileEntries).length;
-                  addLog(`Build complete: ${totalCount} files`, 'success', 'deploy');
-                  setBuildProgress(100);
-                  if (refreshUser) refreshUser();
-                  const vId = `v_${Date.now()}`;
-                  setFiles(prev => ({ ...prev, ...fileEntries }));
-                  setVersions(prev => [{ id: vId, prompt, files: { ...files, ...fileEntries }, time: new Date().toLocaleTimeString() }, ...prev]);
-                  setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: `Done! Built ${totalCount} files.`, hasCode: true, planSuggestions } : msg));
-                  setTimeout(() => { setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview'); }, 500);
-                  setIsBuilding(false);
-                  setActiveSkillName(null); // clear skill indicator when build ends
-                  setAgentsActivity([]);
-                  // PERSISTENCE FIX (Q122): store taskId in URL so returning users reload their workspace
-                  const savedTaskId = ev.task_id || sessionId;
-                  if (savedTaskId && !window.location.search.includes('taskId=')) {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('taskId', savedTaskId);
-                    window.history.replaceState({}, '', newUrl.toString());
-                  }
-                }
-                if (ev.type === 'error') {
-                  throw new Error(ev.error);
-                }
-              } catch (_) { void 0; }
-            }
-          }
-        } catch (iterErr) {
-          addLog(`Iterative build failed: ${iterErr.message} â€” falling back to single call`, 'warn', 'deploy');
-          // Fall through to single-call path below
-        }
-        if (!isBuilding) return; // iterative build finished
       }
 
       if (useStreaming) {
@@ -2444,17 +1384,11 @@ BUILD IT NOW â€” output every file completely:`;
             setBuildProgress(100);
             if (response.data.tokens_used != null) { setLastTokensUsed(response.data.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: response.data.tokens_used })); }
             addLog('Build completed successfully!', 'success', 'deploy');
-            if (refreshUser) refreshUser(); // refresh credit balance
             const parsedFiles = parseMultiFileOutput(response.data.response || response.data.message || '');
             const newFiles = { ...files, ...parsedFiles };
-            const vId = `v_${Date.now()}`;
             setFiles(newFiles);
-            setVersions(prev => [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
-            setTimeout(() => {
-            setCurrentVersion(vId);
-            setFilesReadyKey(`fk_${vId}`);
-            setActivePanel("preview");
-          }, 500);
+            setVersions(prev => [{ id: `v_${Date.now()}`, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
+            setCurrentVersion(`v_${Date.now()}`);
             setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
             setTimeout(() => fetchSuggestNext(), 400);
             const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -2504,28 +1438,21 @@ BUILD IT NOW â€” output every file completely:`;
           for (const line of lines) {
             try {
               const obj = JSON.parse(line);
-              if (obj.error) {
-                const errMsg = obj.error;
-                if (errMsg.includes('rate limit') || errMsg.includes('Rate limit') || errMsg.includes('RATE_LIMITED') || errMsg.includes('429')) {
-                  throw new Error('â± AI rate limit reached â€” wait 60 seconds and try again.');
-                }
-                throw new Error(errMsg);
-              }
+              if (obj.error) throw new Error(obj.error);
               if (obj.chunk) {
                 accumulated += obj.chunk;
-                // Don't update files mid-stream with raw text - wait for parse at done
+                setFiles(prev => ({ ...prev, '/App.js': { code: accumulated } }));
               }
               if (obj.done) {
                 streamDone = true;
                 setBuildProgress(100);
                 if (obj.tokens_used != null) { setLastTokensUsed(obj.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: obj.tokens_used })); }
                 addLog('Build completed successfully!', 'success', 'deploy');
-                if (refreshUser) refreshUser(); // refresh credit balance in sidebar
                 const parsedFiles = parseMultiFileOutput(accumulated);
-                const versionId = `v_${Date.now()}`;
                 setFiles(prev => {
                   const next = { ...prev, ...parsedFiles };
-                  setVersions(v => [{ id: versionId, prompt, files: next, time: new Date().toLocaleTimeString() }, ...v]);
+                  setVersions(v => [{ id: `v_${Date.now()}`, prompt, files: next, time: new Date().toLocaleTimeString() }, ...v]);
+                  setCurrentVersion(`v_${Date.now()}`);
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions } : msg));
                   setTimeout(() => fetchSuggestNext(), 400);
                   const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -2534,12 +1461,6 @@ BUILD IT NOW â€” output every file completely:`;
                   axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHeaders }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
-                // Set version AFTER files are committed so Sandpack remounts with correct files
-                setTimeout(() => {
-                  setCurrentVersion(versionId);
-                  setFilesReadyKey(`fk_${versionId}`);
-                  setActivePanel("preview");
-                }, 500);
                 // AUTO-RUN: if native code files were generated, compile + run them
                 const nativeFileKeys = Object.keys(parsedFiles).filter(p => /\.(c|cpp|py|sh|rb|go|rs|java)$/i.test(p));
                 if (nativeFileKeys.length > 0) {
@@ -2564,7 +1485,7 @@ BUILD IT NOW â€” output every file completely:`;
                 } else {
                   setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
                 }
-                // PHASE 7: Single task authority â€” update existing task or add new
+                // PHASE 7: Single task authority — update existing task or add new
                 if (taskIdFromUrl) {
                   const merged = { ...files, ...parsedFiles };
                   const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions }];
@@ -2601,7 +1522,7 @@ BUILD IT NOW â€” output every file completely:`;
                 }
                 break;
               }
-            } catch (_) { void 0; }
+            } catch (_) {}
           }
         }
       }
@@ -2626,7 +1547,7 @@ BUILD IT NOW â€” output every file completely:`;
         const qgHdrs = token ? { Authorization: `Bearer ${token}` } : {};
         axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHdrs }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-        // PHASE 7: Single task authority â€” update existing task or add new
+        // PHASE 7: Single task authority — update existing task or add new
         if (taskIdFromUrl) {
           const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions }];
           const vId = `v_${Date.now()}`;
@@ -2670,12 +1591,9 @@ BUILD IT NOW â€” output every file completely:`;
       setLastError(is404 || isHtmlError ? 'Backend endpoint unavailable' : error.message);
       const detail = String(error.response?.data?.detail || '');
       const is402 = error.response?.status === 402;
-      const is429 = error.response?.status === 429 || rawMsg.includes('Rate limit') || rawMsg.includes('rate limit') || rawMsg.includes('RATE_LIMITED');
       const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || (error.message && error.message.toLowerCase().includes('key'));
       let friendlyMessage;
-      if (is429) {
-        friendlyMessage = 'â± AI rate limit reached â€” wait 60 seconds and try again. This happens when too many builds run at once.';
-      } else if (is402) {
+      if (is402) {
         friendlyMessage = detail || 'Insufficient tokens. Buy more in Token Center to keep building.';
       } else if (is404 || isHtmlError || (error.message && (error.message.includes('Cannot POST') || error.message.includes('<!DOCTYPE') || error.message.includes('status code 404')))) {
         friendlyMessage = backendUnavailable;
@@ -2686,15 +1604,7 @@ BUILD IT NOW â€” output every file completely:`;
       } else {
         friendlyMessage = `Build failed: ${detail || (isHtmlError ? "Backend returned an error. See BACKEND_SETUP.md." : rawMsg) || 'Unknown error. Please try again.'}`;
       }
-      setMessages(prev => {
-        const next = prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg);
-        if (friendlyMessage === backendUnavailable || friendlyMessage.startsWith('Backend not available.')) {
-          const dupIndices = next.map((m, i) => i).filter(i => next[i].role === 'assistant' && next[i].content?.startsWith?.('Backend not available.'));
-          const keepLastOnly = dupIndices.length > 1 ? dupIndices[dupIndices.length - 1] : null;
-          if (keepLastOnly != null) return next.filter((m, i) => m.role !== 'assistant' || !m.content?.startsWith?.('Backend not available.') || i === keepLastOnly);
-        }
-        return next;
-      });
+      setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg));
     } finally {
       setIsBuilding(false);
     }
@@ -2758,16 +1668,9 @@ BUILD IT NOW â€” output every file completely:`;
       const is404 = error.response?.status === 404 || error.response?.status === 405;
       const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI build (see BACKEND_SETUP.md).";
       addLog(`Modification failed: ${is404 ? 'Backend endpoint unavailable' : error.message}`, 'error', 'system');
-      const friendlyMessage = is404 ? backendUnavailable : (error.response?.data?.detail || 'Error updating. Try again.');
-      setMessages(prev => {
-        const next = prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg);
-        if (friendlyMessage.startsWith('Backend not available.')) {
-          const dupIndices = next.map((m, i) => i).filter(i => next[i].role === 'assistant' && next[i].content?.startsWith?.('Backend not available.'));
-          const keepLastOnly = dupIndices.length > 1 ? dupIndices[dupIndices.length - 1] : null;
-          if (keepLastOnly != null) return next.filter((m, i) => m.role !== 'assistant' || !m.content?.startsWith?.('Backend not available.') || i === keepLastOnly);
-        }
-        return next;
-      });
+      setMessages(prev => prev.map((msg, i) => 
+        i === prev.length - 1 ? { role: 'assistant', content: is404 ? backendUnavailable : (error.response?.data?.detail || 'Error updating. Try again.'), error: true } : msg
+      ));
     } finally {
       setIsBuilding(false);
     }
@@ -2858,7 +1761,7 @@ BUILD IT NOW â€” output every file completely:`;
     e.target.value = '';
   };
 
-  // Item 31 â€” Bring your code: ZIP upload â†’ parse and setFiles()
+  // Item 31 — Bring your code: ZIP upload → parse and setFiles()
   const handleZipUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !file.name.toLowerCase().endsWith('.zip')) {
@@ -2893,7 +1796,7 @@ BUILD IT NOW â€” output every file completely:`;
 
   const runCurrentCode = async () => {
     const code = files[activeFile]?.code ?? '';
-    if (!code.trim()) { addLog('No code to run â€” open a file first', 'warning', 'system'); return; }
+    if (!code.trim()) { addLog('No code to run — open a file first', 'warning', 'system'); return; }
     const lang = /\.py$/.test(activeFile) ? 'python'
                : /\.(c)$/.test(activeFile) ? 'c'
                : /\.cpp$/.test(activeFile) ? 'cpp'
@@ -3213,19 +2116,19 @@ BUILD IT NOW â€” output every file completely:`;
 
 
   return (
-    <div className="workspace-root h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: 'var(--theme-bg, #111113)', color: 'var(--theme-text, #e4e4e7)' }}>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: '#111113', color: 'white' }}>
 
-      {/* â”€â”€ Command Palette (Ctrl+K) â”€â”€ */}
+      {/* ── Command Palette (Ctrl+K) ── */}
       {commandPaletteOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setCommandPaletteOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #71717a)' }}>Command palette</div>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Command palette</div>
             <div className="max-h-80 overflow-y-auto py-1">
               {[
                 { id: 'newAgent', label: 'New chat (Ctrl+Shift+L)', icon: Plus },
                 { id: 'searchFiles', label: 'Open file (Ctrl+P)', icon: Search },
                 { id: 'terminal', label: 'Show Console', icon: Terminal },
-                { id: 'deploy', label: 'Deploy (ZIP â†’ Vercel/Netlify)', icon: ExternalLink },
+                { id: 'deploy', label: 'Deploy (ZIP → Vercel/Netlify)', icon: ExternalLink },
                 { id: 'export', label: 'Download code', icon: Download },
                 { id: 'github', label: 'Push to GitHub', icon: Github },
                 ...(lastError ? [{ id: 'autofix', label: 'Auto-fix errors', icon: RefreshCw }] : []),
@@ -3233,8 +2136,8 @@ BUILD IT NOW â€” output every file completely:`;
                 { id: 'settings', label: 'Settings', icon: Settings },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => runCommand(id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5">
-                  <Icon className="w-4 h-4" style={{ color: 'var(--theme-muted, #71717a)' }} />
-                  <span style={{ color: 'var(--theme-text, #e4e4e7)' }}>{label}</span>
+                  <Icon className="w-4 h-4" style={{ color: '#71717a' }} />
+                  <span style={{ color: '#e4e4e7' }}>{label}</span>
                 </button>
               ))}
             </div>
@@ -3242,16 +2145,16 @@ BUILD IT NOW â€” output every file completely:`;
         </div>
       )}
 
-      {/* â”€â”€ File Search (Ctrl+P) â”€â”€ */}
+      {/* ── File Search (Ctrl+P) ── */}
       {fileSearchOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setFileSearchOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #71717a)' }}>Open file</div>
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Open file</div>
             <div className="max-h-64 overflow-y-auto py-1">
               {Object.keys(files).sort().map((filename) => (
                 <button key={filename} onClick={() => { setActiveFile(filename); setActivePanel('code'); setFileSearchOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition hover:bg-white/5">
                   <FileCode className="w-4 h-4" style={{ color: '#eab308' }} />
-                  <span style={{ color: 'var(--theme-text, #d4d4d8)' }}>{filename.replace(/^\//, '')}</span>
+                  <span style={{ color: '#d4d4d8' }}>{filename.replace(/^\//, '')}</span>
                 </button>
               ))}
             </div>
@@ -3259,20 +2162,20 @@ BUILD IT NOW â€” output every file completely:`;
         </div>
       )}
 
-      {/* â”€â”€ Header â”€â”€ */}
-      <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #71717a)' }} title="Back">
+      {/* ── Header ── */}
+      <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#71717a' }} title="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <Logo variant="mark" height={22} href="/app" className="shrink-0" />
         <div className="h-4 w-px shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
-        <span className="text-sm truncate max-w-xs" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+        <span className="text-sm truncate max-w-xs" style={{ color: '#a1a1aa' }}>
           {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 55) || 'New project'}
         </span>
         {isBuilding && (
           <div className="flex items-center gap-2 ml-1">
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--theme-accent)" }} />
-            <span className="text-xs">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            <span className="text-xs text-orange-400">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
         )}
         {qualityGateResult && !isBuilding && (
@@ -3285,7 +2188,7 @@ BUILD IT NOW â€” output every file completely:`;
           <button
             onClick={resetLayout}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
-            style={{ color: 'var(--theme-muted, #71717a)' }}
+            style={{ color: '#71717a' }}
             title="Reset layout (show Explorer, Preview panel, default view)"
             aria-label="Reset layout"
           >
@@ -3297,8 +2200,8 @@ BUILD IT NOW â€” output every file completely:`;
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border"
             style={{
               background: devMode ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: devMode ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)',
-              borderColor: 'var(--theme-border, rgba(255,255,255,0.1))',
+              color: devMode ? '#e4e4e7' : '#71717a',
+              borderColor: 'rgba(255,255,255,0.1)',
             }}
             title={devMode ? 'Switch to Simple view' : 'Switch to Code view'}
           >
@@ -3306,56 +2209,9 @@ BUILD IT NOW â€” output every file completely:`;
             {devMode ? 'Code' : 'Simple'}
           </button>
           <button
-            onClick={() => {
-              setShowDeployModal(true);
-              setDeployState('idle');
-              setDeployResult(null);
-              setDeployError(null);
-              setDeployHasToken(null);
-              setCustomDomain('');
-              setCustomDomainResult(null);
-              // Check token on open
-              if (token) {
-                axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
-                  .then(r => { setDeployTokenStatus(r.data || {}); setDeployHasToken(r.data?.has_vercel || r.data?.has_railway || false); })
-                  .catch(() => setDeployHasToken(false));
-              } else {
-                setDeployHasToken(false);
-              }
-            }}
-            disabled={Object.keys(files).length === 0}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 8,
-              background: Object.keys(files).length > 0 ? 'var(--theme-accent)' : 'var(--theme-surface)',
-              color: Object.keys(files).length > 0 ? 'white' : 'var(--theme-muted)',
-              border: 'none', cursor: Object.keys(files).length > 0 ? 'pointer' : 'not-allowed',
-              fontSize: 13, fontWeight: 600,
-            }}
-            title="Deploy your app"
-          >
-            <Rocket size={14} /> Deploy
-          </button>
-          {Object.keys(files).length > 0 && (
-            <button
-              onClick={() => setShowGitSyncModal(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px', borderRadius: 8,
-                background: gitSyncState === 'synced' ? 'rgba(74,222,128,0.12)' : 'var(--theme-surface)',
-                color: gitSyncState === 'synced' ? '#4ade80' : 'var(--theme-muted)',
-                border: '1px solid var(--theme-border)', cursor: 'pointer',
-                fontSize: 13, fontWeight: 500,
-              }}
-              title="Push to GitHub"
-            >
-              <Github size={14} /> {gitSyncState === 'synced' ? 'Synced' : 'GitHub'}
-            </button>
-          )}
-          <button
             onClick={() => setCommandPaletteOpen(true)}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
-            style={{ color: 'var(--theme-muted, #71717a)' }}
+            style={{ color: '#71717a' }}
             title="Command palette (Ctrl+K)"
           >
             <Settings className="w-4 h-4" />
@@ -3363,302 +2219,174 @@ BUILD IT NOW â€” output every file completely:`;
         </div>
       </header>
 
-      {/* â”€â”€ Token low banner â”€â”€ */}
+      {/* ── Token low banner ── */}
       {user && user.token_balance === 0 && (
-        <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: 'var(--theme-surface2)', borderBottom: '1px solid var(--theme-border)' }}>
-          <span className="text-sm" style={{ color: 'var(--theme-accent)' }}>Out of tokens â€” get more to keep building.</span>
-          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium underline" style={{ color: 'var(--theme-accent)' }}>Buy tokens</button>
+        <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: '#292524', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <span className="text-sm text-orange-300">Out of tokens — get more to keep building.</span>
+          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-orange-300 underline">Buy tokens</button>
         </div>
       )}
 
-      {/* â”€â”€ Main 3-panel layout â”€â”€ */}
+      {/* ── Main 3-panel layout ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* â”€â”€ Left: File Explorer â”€â”€ */}
+        {/* ── Left: File Explorer ── */}
         {leftSidebarOpen ? (
-          <div className="flex flex-col shrink-0 border-r" style={{ width: leftPanelWidth, minWidth: 140, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
             <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipUpload} className="hidden" />
             {/* Explorer header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted, #52525b)' }}>Explorer</span>
+            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#52525b' }}>Explorer</span>
               <div className="flex items-center gap-0.5">
-                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
-                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
-                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
+                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
+                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="New file"><Plus className="w-3 h-3" /></button>
+                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
               </div>
             </div>
             {/* Project name */}
-            <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.05))' }}>
-              <span className="text-xs truncate block" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
+            <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              <span className="text-xs truncate block" style={{ color: '#3f3f46' }}>
                 {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
               </span>
             </div>
-            {/* File list â€” Manus-style nested tree (src/, public/, server/, shared/, etc.) */}
+            {/* File list */}
             <div className="flex-1 overflow-y-auto py-1">
-              {(() => {
-                // Build nested tree from all file paths (any depth)
-                const tree = {};
-                const addPath = (path) => {
-                  const clean = path.replace(/^\//, '');
-                  const parts = clean.split('/').filter(Boolean);
-                  let current = tree;
-                  for (let i = 0; i < parts.length; i++) {
-                    const seg = parts[i];
-                    const isLast = i === parts.length - 1;
-                    if (isLast) {
-                      current[seg] = { type: 'file', path: path.startsWith('/') ? path : `/${path}` };
-                    } else {
-                      if (!current[seg] || current[seg].type !== 'folder') {
-                        current[seg] = { type: 'folder', pathPrefix: parts.slice(0, i + 1).join('/'), children: {} };
-                      }
-                      current = current[seg].children;
-                    }
-                  }
-                };
-                Object.keys(files).sort().forEach(addPath);
-
-                const getIcon = (name) => {
-                  const ext = (name || '').split('.').pop();
-                  const color = ext === 'jsx' || ext === 'js' || ext === 'tsx' || ext === 'ts' ? '#eab308'
-                    : ext === 'css' ? '#ec4899' : ext === 'html' ? 'var(--theme-accent)'
-                    : ext === 'json' ? '#a78bfa' : ext === 'py' ? '#60a5fa' : ext === 'md' ? '#94a3b8' : ext === 'yml' || ext === 'yaml' ? '#64748b' : 'var(--theme-muted)';
-                  return <FileCode className="w-3 h-3 shrink-0" style={{ color }} />;
-                };
-
-                const renderNode = (key, node, depth) => {
-                  const indent = 12 + depth * 14;
-                  if (node.type === 'file') {
-                    const path = node.path;
-                    const name = key;
-                    const isActive = activeFile === path;
-                    return (
-                      <div key={path} className="group flex items-center">
-                        <button
-                          onClick={() => { setActiveFile(path); setActivePanel('code'); }}
-                          className="flex-1 flex items-center gap-1.5 py-1 text-left text-xs transition hover:bg-white/5 min-w-0"
-                          style={{ paddingLeft: `${indent}px`, background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? 'var(--theme-text)' : 'var(--theme-muted)' }}
-                        >
-                          {getIcon(name)}
-                          <span className="truncate">{name}</span>
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
-                      </div>
-                    );
-                  }
-                  // folder
-                  const pathPrefix = node.pathPrefix || key;
-                  const folderKey = `folder_${pathPrefix}`;
-                  const isOpen = expandedFolders[folderKey] !== false;
-                  const childKeys = Object.keys(node.children || {}).sort();
-                  const count = childKeys.length;
-                  return (
-                    <div key={folderKey}>
-                      <button
-                        onClick={() => setExpandedFolders(prev => ({ ...prev, [folderKey]: !isOpen }))}
-                        className="w-full flex items-center gap-1.5 py-1 text-xs hover:bg-white/5 transition min-w-0"
-                        style={{ paddingLeft: `${indent}px`, color: 'var(--theme-muted)' }}
-                      >
-                        {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
-                        <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa' }} />
-                        <span className="font-medium truncate">{key}</span>
-                        {count > 0 && <span className="ml-auto text-[10px] opacity-50 shrink-0">{count}</span>}
-                      </button>
-                      {isOpen && childKeys.map(childKey => renderNode(childKey, node.children[childKey], depth + 1))}
-                    </div>
-                  );
-                };
-
-                const rootKeys = Object.keys(tree).sort();
-                if (rootKeys.length === 0) {
-                  return isBuilding ? (
-                    <div className="px-3 py-4 space-y-2">
-                      <div className="text-[10px] uppercase tracking-wider mb-2 font-semibold" style={{ color: 'var(--theme-muted)' }}>Generating files...</div>
-                      {['src/', 'components/', 'api/', 'styles/'].map((f, i) => (
-                        <div key={f} className="flex items-center gap-2 py-1 animate-pulse" style={{ animationDelay: `${i * 150}ms` }}>
-                          <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa', opacity: 0.5 }} />
-                          <span className="text-xs" style={{ color: 'var(--theme-muted)', opacity: 0.5 }}>{f}</span>
-                        </div>
-                      ))}
-                      {['App.tsx', 'server.ts', 'schema.sql'].map((f, i) => (
-                        <div key={f} className="flex items-center gap-2 py-1 pl-3 animate-pulse" style={{ animationDelay: `${(i + 4) * 150}ms` }}>
-                          <FileCode className="w-3 h-3 shrink-0" style={{ color: '#4ade80', opacity: 0.4 }} />
-                          <span className="text-xs" style={{ color: 'var(--theme-muted)', opacity: 0.4 }}>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-3 py-4 text-center text-xs flex flex-col items-center gap-2" style={{ color: 'var(--theme-muted)' }}>
-                      {isBuilding
-                        ? <><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--theme-accent)' }} /><span>Generating files...</span></>
-                        : <><FileCode className="w-5 h-5 opacity-40" /><span>Describe an app and press Build</span></>}
-                    </div>
-                  );
-                }
-                return rootKeys.map(key => renderNode(key, tree[key], 0));
-              })()}
+              {Object.keys(files).sort().map(fp => {
+                const name = fp.replace(/^\//, '');
+                const isActive = activeFile === fp;
+                const ext = name.split('.').pop();
+                const iconColor = ext === 'jsx' || ext === 'js' ? '#eab308' : ext === 'css' ? '#ec4899' : ext === 'html' ? '#f97316' : ext === 'json' ? '#a78bfa' : '#71717a';
+                return (
+                  <div key={fp} className="group flex items-center">
+                    <button
+                      onClick={() => { setActiveFile(fp); setActivePanel('code'); }}
+                      className="flex-1 flex items-center gap-2 px-3 py-1.5 text-left text-xs transition"
+                      style={{ background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? '#e4e4e7' : '#a1a1aa' }}
+                    >
+                      <FileCode className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
+                      <span className="truncate">{name}</span>
+                    </button>
+                    <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2 transition" style={{ color: '#52525b' }} title="Delete">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             {/* Versions */}
             {versions.length > 0 && (
-              <div className="border-t px-3 py-2" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--theme-muted, #52525b)' }}>History</div>
+              <div className="border-t px-3 py-2" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#52525b' }}>History</div>
                 {versions.slice(0, 4).map((v, i) => (
-                  <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2 py-1 text-left text-xs transition hover:bg-white/5 rounded px-1" style={{ color: currentVersion === v.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)' }}>
+                  <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2 py-1 text-left text-xs transition hover:bg-white/5 rounded px-1" style={{ color: currentVersion === v.id ? '#e4e4e7' : '#71717a' }}>
                     <History className="w-3 h-3 shrink-0" />
-                    <span className="truncate">v{versions.length - i} â€” {v.time}</span>
+                    <span className="truncate">v{versions.length - i} — {v.time}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
         ) : (
-          <div
-            onClick={() => setLeftSidebarOpen(true)}
-            className="flex flex-col items-center pt-3 shrink-0 border-r cursor-pointer transition hover:bg-white/5"
-            style={{ width: 28, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))', color: 'var(--theme-muted, #52525b)' }}
-            title="Open explorer"
-          >
-            <PanelRightOpen className="w-3.5 h-3.5" />
-          </div>
+          <button onClick={() => setLeftSidebarOpen(true)} className="w-8 flex items-center justify-center shrink-0 border-r transition hover:bg-white/5" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)', color: '#52525b' }} title="Show files">
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
         )}
 
-        {/* â”€â”€ Left/Center drag handle â”€â”€ */}
-        {leftSidebarOpen && (
-          <div
-            onMouseDown={handleLeftDragStart}
-            onDoubleClick={() => { setLeftPanelWidth(208); localStorage.setItem('crucibai_left_panel_width', '208'); }}
-            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10, position: 'relative' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize Â· Double-click to reset"
-          />
-        )}
-
-        {/* â”€â”€ Center: Chat / Build Steps â”€â”€ */}
-        <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--theme-bg, #111113)' }}>
-
-          {/* â”€â”€ Manus-style task header â”€â”€ */}
-          {(isBuilding || messages.length > 0) && (
-            <div className="shrink-0 px-4 py-2.5 border-b flex items-center gap-3" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', background: 'var(--theme-surface, #18181B)' }}>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate" style={{ color: 'var(--theme-text)' }}>
-                  {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 60) || 'New task'}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {isBuilding ? (
-                    <>
-                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
-                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
-                    </>
-                  ) : versions.length > 0 ? (
-                    <>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#4ade80' }} />
-                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>Complete Â· {Object.keys(files).length} files Â· v{versions.length}</span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              {/* Progress bar */}
-              {(isBuilding || buildProgress > 0) && (
-                <div className="w-20 h-1 rounded-full overflow-hidden shrink-0" style={{ background: 'var(--theme-input)' }}>
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${buildProgress}%`, background: buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)' }} />
-                </div>
-              )}
-              {/* Mode badge */}
-              <div className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--theme-muted)' }}>
-                {devMode ? 'âš™ Pro' : 'âœ¦ Guided'}
-              </div>
-            </div>
-          )}
-
-          {/* Messages area — flat transcript, centered column */}
-          <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6 min-h-0">
+        {/* ── Center: Chat / Build Steps ── */}
+        <div className="flex-1 flex flex-col min-w-0" style={{ background: '#111113' }}>
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
-              <WorkspaceEmptyState
-                projectType={null}
-                onPromptSelect={(prompt) => { setInput(prompt); setTimeout(() => chatInputRef.current?.focus(), 0); }}
-                disabled={isBuilding}
-              />
+              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: '#3f3f46' }}>
+                <Sparkles className="w-10 h-10" style={{ color: '#27272a' }} />
+                <p className="text-sm">Describe what you want to build...</p>
+              </div>
             )}
 
-            {/* â”€â”€ Manus-style grouped execution cards â”€â”€ */}
+            {/* ── Agent steps card (Manus-style) ── */}
             {isBuilding && (
-              <div className="space-y-2">
-                {/* Main progress card */}
-                <div className="rounded-2xl p-4 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
-                    <span className="text-sm font-medium" style={{ color: 'var(--theme-text, #ffffff)' }}>{currentPhase || 'Building your app...'}</span>
-                    <span className="ml-auto text-xs font-mono" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
-                  </div>
-                  {/* Segmented progress */}
-                  <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
-                    {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
-                      <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
-                        background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
-                      }} />
-                    ))}
-                  </div>
-                  {/* Agent steps */}
-                  <div className="space-y-1.5">
-                    {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
-                      <div key={i} className="flex items-center gap-2.5 text-xs py-1">
-                        {a.status === 'done' ? (
-                          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
-                            <Check className="w-2.5 h-2.5 text-green-400" />
-                          </div>
-                        ) : a.status === 'running' ? (
-                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-                        )}
-                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#d4d4d4' : 'var(--theme-muted, #52525b)' }}>
-                          {a.name}
-                        </span>
-                        <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
-                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>âœ“</span>}
-                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>â—</span>}
-                      </div>
-                    )) : (
-                      /* Phase placeholders when no agent data yet */
-                      ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
-                        <div key={name} className="flex items-center gap-2.5 text-xs py-1">
-                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                            {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-                          </div>
-                          <span style={{ color: i === 0 ? '#d4d4d4' : 'var(--theme-muted, #52525b)' }}>{name}</span>
-                          <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
-                            {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+              <div className="rounded-2xl p-4 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                  <span className="text-sm font-medium text-white">{currentPhase || 'Building your app...'}</span>
+                  <span className="ml-auto text-xs" style={{ color: '#52525b' }}>{Math.round(buildProgress)}%</span>
                 </div>
+                {/* Progress bar */}
+                <div className="h-0.5 rounded-full mb-3 overflow-hidden" style={{ background: '#27272a' }}>
+                  <div className="h-full rounded-full bg-orange-400 transition-all duration-500" style={{ width: `${buildProgress}%` }} />
+                </div>
+                {/* Agent steps */}
+                <div className="space-y-2">
+                  {agentsActivity.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-xs">
+                      {a.status === 'done' ? (
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                          <Check className="w-2.5 h-2.5 text-green-400" />
+                        </div>
+                      ) : a.status === 'running' ? (
+                        <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                          <Loader2 className="w-3.5 h-3.5 text-orange-400 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: '#3f3f46' }} />
+                      )}
+                      <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : '#52525b' }}>
+                        {a.name}
+                      </span>
+                      <span className="truncate" style={{ color: '#3f3f46' }}>{a.phase}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                {/* Step count badge */}
-                {agentsActivity.length > 0 && (
-                  <div className="flex items-center gap-2 px-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
-                    <span>{agentsActivity.filter(a => a.status === 'done').length}/{agentsActivity.length} steps complete</span>
-                    <div className="flex-1 h-px" style={{ background: 'var(--theme-border)' }} />
+            {/* Chat messages */}
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5" style={{ background: '#27272a' }}>
+                    <Sparkles className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
                   </div>
                 )}
+                <div
+                  className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
+                  style={{
+                    background: msg.role === 'user' ? '#3f3f46' : '#1c1c1e',
+                    border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                    color: msg.error ? '#f87171' : '#e4e4e7',
+                  }}
+                >
+                  {msg.isBuilding ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
+                      <span style={{ color: '#a1a1aa' }}>{formatMsgContent(msg.content)}</span>
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{formatMsgContent(msg.content)}</pre>
+                  )}
+                  {msg.hasCode && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <button onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <Eye className="w-3 h-3" /> Preview
+                      </button>
+                      <button onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <FileCode className="w-3 h-3" /> Code
+                      </button>
+                      <button onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <Download className="w-3 h-3" /> Export
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-
-            {/* Chat messages — ChatMessageManus is EXACT Manus UI replica */}
-            {messages.map((msg, i) => (
-              <ChatMessageManus key={i} msg={msg} />
             ))}
-
 
             {/* Next suggestions */}
             {nextSuggestions.length > 0 && !isBuilding && (
-              <div className="flex flex-wrap gap-2 w-full max-w-[720px] mx-auto">
+              <div className="flex flex-wrap gap-2 pl-9">
                 {nextSuggestions.slice(0, 4).map((s, i) => (
-                  <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-muted, #71717a)' }}>
+                  <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#71717a' }}>
                     {s}
                   </button>
                 ))}
@@ -3668,127 +2396,71 @@ BUILD IT NOW â€” output every file completely:`;
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input bar — separated from transcript (spacing only, no divider) */}
-          <div className="px-4 pt-2 pb-4 shrink-0 mt-10">
-            {/* Guided mode: Quick Build chips */}
-            {!devMode && !isBuilding && versions.length === 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {['Landing page', 'Dashboard', 'Mobile app', 'E-commerce store', 'AI chatbot', 'Blog'].map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => { setInput(chip); setTimeout(() => chatInputRef.current?.focus(), 0); }}
-                    style={{ padding: '5px 13px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'var(--theme-muted, #71717a)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s', whiteSpace: 'nowrap' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* ── Input bar ── */}
+          <div className="px-4 pb-4 shrink-0">
             {/* Attached files preview */}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {attachedFiles.map((f, i) => (
-                  <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)' }}>
+                  <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: '#3f3f46', color: '#d4d4d8' }}>
                     {f.type?.startsWith('image/') ? <Image className="w-3 h-3" /> : f.type?.startsWith('audio/') ? <Mic className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                     {f.name}
-                    <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: 'var(--theme-muted, #71717a)' }}><X className="w-3 h-3" /></button>
+                    <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: '#71717a' }}><X className="w-3 h-3" /></button>
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="rounded-2xl border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>
+            <div className="rounded-2xl border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }}>
               <form onSubmit={handleSubmit}>
                 <textarea
                   ref={chatInputRef}
                   value={input}
                   onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
-                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? (devMode ? 'What would you like to modify or fix?' : 'Describe changes you want...') : (devMode ? 'What would you like to build or modify?' : 'Describe the app you want to build...'))}
+                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? 'Describe changes, fix bugs, add features...' : 'Describe what you want to build...')}
                   rows={1}
                   disabled={isBuilding}
-                  className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1 workspace-chat-input"
-                  style={{ minHeight: 52, maxHeight: 140, color: 'var(--theme-text)', caretColor: 'var(--theme-text)' }}
+                  className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1"
+                  style={{ minHeight: 52, maxHeight: 140, color: 'white', caretColor: 'white' }}
                 />
                 <div className="flex items-center gap-2 px-3 pb-3">
                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Attach file">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Attach file">
                     <Paperclip className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={isTranscribing ? undefined : (isRecording ? stopRecording : startRecording)}
-                    disabled={isTranscribing}
+                    onClick={isRecording ? stopRecording : startRecording}
                     className="p-1.5 rounded-lg transition hover:bg-white/10"
-                    style={{ color: isRecording ? '#f87171' : 'var(--theme-muted, #52525b)' }}
-                    title={isTranscribing ? 'Transcribing...' : (isRecording ? 'Stop voice' : 'Voice input (dictate or record â†’ transcribe)')}
+                    style={{ color: isRecording ? '#f87171' : '#52525b' }}
+                    title={isRecording ? 'Stop voice' : 'Voice input (Chrome/Edge/Safari)'}
                   >
-                    {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { addLog('Recent builds feature coming soon', 'info', 'system'); }}
-                    className="p-1.5 rounded-lg transition hover:bg-white/10"
-                    style={{ color: 'var(--theme-muted, #52525b)' }}
-                    title="View recent builds"
-                  >
-                    <History className="w-4 h-4" />
+                    {isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
-                    {devMode && (
-                      <select
-                        value={buildMode}
-                        onChange={(e) => setBuildMode(e.target.value)}
-                        className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-                        style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)', border: 'none' }}
-                      >
-                        <option value="agent">Auto</option>
-                        <option value="quick">Quick</option>
-                        <option value="plan">Plan</option>
-                        <option value="swarm">Swarm</option>
-                      </select>
-                    )}
-                    {isBuilding ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Cancel the in-flight build
-                          if (buildAbortRef.current) {
-                            buildAbortRef.current.abort();
-                            buildAbortRef.current = null;
-                          }
-                          setIsBuilding(false);
-                          setBuildProgress(0);
-                          setCurrentPhase('');
-                          addLog('Build cancelled by user.', 'warn', 'system');
-                          setMessages(prev => prev.map((m, i) =>
-                            i === prev.length - 1 && m.isBuilding
-                              ? { ...m, content: 'Build cancelled.', isBuilding: false }
-                              : m
-                          ));
-                        }}
-                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition"
-                        style={{ background: '#ef4444', color: 'white', padding: devMode ? '6px 16px' : '9px 22px', fontSize: devMode ? undefined : 14 }}
-                        title="Stop build"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                        Stop
-                      </button>
-                    ) : (
-                      <button
-                        type="submit"
-                        disabled={!input.trim() && attachedFiles.length === 0}
-                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
-                        style={{ background: 'white', color: 'black', padding: devMode ? '6px 14px' : '9px 20px', fontSize: devMode ? undefined : 14 }}
-                        title="Send (Enter)"
-                      >
-                        <ArrowUp className="w-4 h-4" />
-                        {versions.length > 0 ? (devMode ? 'Update' : 'Update') : (devMode ? 'Build' : 'Build')}
-                      </button>
-                    )}
+                    <select
+                      value={buildMode}
+                      onChange={(e) => setBuildMode(e.target.value)}
+                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+                      style={{ background: '#3f3f46', color: '#d4d4d8', border: 'none' }}
+                    >
+                      <option value="agent">Auto</option>
+                      <option value="quick">Quick</option>
+                      <option value="plan">Plan</option>
+                      <option value="swarm">Swarm</option>
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={(!input.trim() && attachedFiles.length === 0) || isBuilding}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                      style={{ background: 'white', color: 'black' }}
+                    >
+                      {isBuilding
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Send className="w-3.5 h-3.5" />}
+                      {isBuilding ? 'Building...' : versions.length > 0 ? 'Update' : 'Build'}
+                    </button>
                   </div>
                 </div>
               </form>
@@ -3796,80 +2468,47 @@ BUILD IT NOW â€” output every file completely:`;
           </div>
         </div>
 
-        {/* â”€â”€ Center/Right drag handle â”€â”€ */}
-        {rightSidebarOpen && (
-          <div
-            onMouseDown={handleRightDragStart}
-            onDoubleClick={() => { setRightPanelWidth(null); localStorage.removeItem('crucibai_right_panel_width'); }}
-            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10 }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize Â· Double-click to reset"
-          />
-        )}
-        {/* â”€â”€ Right: Preview + Code Editor (collapsible) â”€â”€ */}
+        {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
-        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ position: 'relative', width: rightPanelWidth ? rightPanelWidth : '44%', minWidth: 280, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-
-          {/* Manus-style tab bar */}
-          <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', position: 'relative', overflow: 'hidden' }}>
-            {/* Scrollable tabs â€” constrained to leave room for action icons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none', paddingRight: 120, flex: 1 }}>
-            {(devMode
-              ? [
-                  { id: 'preview', label: 'Preview', icon: Eye },
-                  { id: 'code', label: 'Code', icon: FileCode },
-                  { id: 'console', label: 'Console', icon: Terminal },
-                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
-                  { id: 'database', label: 'Database', icon: Database },
-                  { id: 'agents', label: 'Agents', icon: Network },
-                  { id: 'passes', label: 'Passes', icon: Layers },
-                  ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
-                ]
-              : [
-                  { id: 'preview', label: 'Preview', icon: Eye },
-                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
-                  { id: 'passes', label: 'Passes', icon: Layers },
-                ]
-            ).map(tab => (
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
+          {/* Tab bar */}
+          <div className="h-11 flex items-center px-3 border-b shrink-0 gap-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            {[
+              { id: 'preview', label: 'Preview', icon: Eye },
+              { id: 'code', label: 'Code', icon: FileCode },
+              { id: 'console', label: 'Console', icon: Terminal },
+              ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
+            ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
-                title={tab.label}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition"
                 style={{
                   background: activePanel === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: activePanel === tab.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #52525b)',
-                  borderBottom: activePanel === tab.id ? '1.5px solid var(--theme-accent, #3b82f6)' : '1.5px solid transparent',
-                  borderRadius: activePanel === tab.id ? '8px 8px 0 0' : '8px',
-                  whiteSpace: 'nowrap',
+                  color: activePanel === tab.id ? '#e4e4e7' : '#52525b',
                 }}
               >
-                <tab.icon className="w-3.5 h-3.5 shrink-0" />
-                <span style={{ fontSize: 10.5 }}>{tab.label}</span>
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
               </button>
             ))}
-            </div>{/* end scrollable tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'absolute', right: 4, top: 0, bottom: 0, background: 'var(--theme-surface, #18181B)', paddingLeft: 8, borderLeft: '1px solid var(--theme-border, rgba(255,255,255,0.06))' }}>
+            <div className="ml-auto flex items-center gap-1">
               {activePanel === 'preview' && (
                 <>
-                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
+                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
                     {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
                   </button>
-                  <button onClick={() => {
-                    const newKey = `fk_refresh_${Date.now()}`;
-                    setFilesReadyKey(newKey);
-                  }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
+                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Refresh preview">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </>
               )}
               {activePanel === 'code' && (
-                <button onClick={copyCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: copied ? '#86efac' : 'var(--theme-muted, #52525b)' }} title="Copy">
+                <button onClick={copyCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: copied ? '#86efac' : '#52525b' }} title="Copy">
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               )}
-              <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Download">
+              <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Download">
                 <Download className="w-3.5 h-3.5" />
               </button>
               <button
@@ -3883,16 +2522,23 @@ BUILD IT NOW â€” output every file completely:`;
                   }
                 }}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
-                style={{ color: 'var(--theme-muted, #52525b)' }}
+                style={{ color: '#52525b' }}
                 title="Copy share link"
               >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
-
+              <button
+                onClick={() => setShowDeployModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
+                style={{ background: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}
+              >
+                <Rocket className="w-3 h-3" />
+                Deploy
+              </button>
               <button
                 onClick={() => setRightSidebarOpenPersisted(false)}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
-                style={{ color: 'var(--theme-muted, #52525b)' }}
+                style={{ color: '#52525b' }}
                 title="Hide panel (Preview / Code / Console)"
                 aria-label="Hide right panel"
               >
@@ -3903,115 +2549,10 @@ BUILD IT NOW â€” output every file completely:`;
 
           {/* Panel content */}
           <div className="flex-1 overflow-hidden">
-            {/* Guided mode Build Guide panel */}
-            {!devMode && activePanel === 'guide' && (
-              <div style={{ height: '100%', overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ marginBottom: 4 }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>Build Guide</p>
-                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0 }}>Follow these steps to create your app</p>
-                </div>
-                {[
-                  { step: 1, title: 'Describe your app', desc: 'Type what you want to build in the chat. Be as specific as you like â€” mention features, colors, or styles.', done: false },
-                  { step: 2, title: 'Review the preview', desc: 'Your app will appear in the Preview tab as it builds. You can watch it come together in real time.', done: false },
-                  { step: 3, title: 'Download or Deploy', desc: 'When you\u2019re happy with the result, download the code or click Deploy to publish it live.', done: false },
-                ].map(({ step, title, desc, done }) => (
-                  <div key={step} style={{ background: 'var(--theme-surface)', borderRadius: 12, padding: '16px 18px', border: '1.5px solid rgba(255,255,255,0.1)', display: 'flex', gap: 14 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? '#10b981' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: done ? '#fff' : 'var(--theme-muted)', flexShrink: 0 }}>
-                      {step}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>{title}</p>
-                      <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Preview â€” always mounted so Sandpack never loses files on tab switch */}
-            <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
-              {/* Show placeholder when no build yet */}
-              {Object.keys(files).length <= 1 && !isBuilding ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
-                  <p style={{ fontSize: 13 }}>Build something to see the preview</p>
-                </div>
-              ) : Object.keys(files).length <= 1 && isBuilding ? (
-                /* â”€â”€ BUILDING SKELETON â€” Manus-style live preview placeholder â”€â”€ */
-                <div style={{ flex: 1, background: 'var(--theme-bg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-                    <div style={{ width: 180, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.2s' }} />
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ height: 120, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.1s' }} />
-                      <div style={{ height: 80, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.3s' }} />
-                      <div style={{ height: 60, borderRadius: 8, background: 'rgba(255,255,255,0.02)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.5s' }} />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-muted)', paddingTop: 8 }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--theme-accent)', display: 'inline-block', animation: 'pulse 1s ease-in-out infinite' }} />
-                      Building your app â€” preview loads when complete
-                    </span>
-                  </div>
-                </div>
-              ) : lastBuildKind === 'mobile' ? (
-                /* â”€â”€ MOBILE PREVIEW: Expo Snack iframe â”€â”€ */
-                (() => {
-                  const mobileCode = files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '';
-                  const snackUrl = mobileCode.length < 3000
-                    ? `https://snack.expo.dev/embedded?code=${encodeURIComponent(mobileCode)}&platform=ios&preview=true&theme=dark`
-                    : 'https://snack.expo.dev/embedded?platform=ios&preview=true&theme=dark';
-                  const snackOpenUrl = `https://snack.expo.dev/?code=${encodeURIComponent(mobileCode.slice(0, 3000))}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`;
-                  return (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
-                      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                        <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview â€” Expo Snack</span>
-                        {mobileCode.length >= 3000 && (
-                          <span style={{ fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 4 }}>App too large for inline preview</span>
-                        )}
-                        <a
-                          href={snackOpenUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
-                        >
-                          Open in Expo Snack â†—
-                        </a>
-                      </div>
-                      {mobileCode.length >= 3000 ? (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--theme-muted)', padding: 24 }}>
-                          <Smartphone style={{ width: 40, height: 40, opacity: 0.3 }} />
-                          <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>App code too large for inline preview</p>
-                            <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16, maxWidth: 280 }}>Your app has {mobileCode.length.toLocaleString()} characters. Open in Expo Snack to preview on a simulated device.</p>
-                            <a
-                              href={snackOpenUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
-                            >
-                              Open in Expo Snack <ExternalLink style={{ width: 13, height: 13 }} />
-                            </a>
-                          </div>
-                        </div>
-                      ) : (
-                        <iframe
-                          src={snackUrl}
-                          style={{ flex: 1, border: 'none', width: '100%' }}
-                          allow="accelerometer; camera; geolocation; gyroscope; microphone"
-                          title="Mobile Preview"
-                        />
-                      )}
-                    </div>
-                  );
-                })()
-              ) : (
+            {activePanel === 'preview' && (
               <SandpackProvider
-                key={filesReadyKey !== 'default' ? filesReadyKey : (Object.keys(files).length > 1 ? `fk_auto_${Object.keys(files).length}_${Object.keys(files).join('').length}` : 'default')}
                 files={sandpackFiles}
-                theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'}
+                theme="dark"
                 template="react"
                 customSetup={{ dependencies: sandpackDeps }}
                 options={{
@@ -4025,35 +2566,31 @@ BUILD IT NOW â€” output every file completely:`;
                 }}
               >
                 <SandpackErrorBoundary onError={(e) => { setLastError(e); addLog(`Preview error: ${e}`, 'error', 'preview'); }}>
-                  <div style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column', background: 'var(--theme-surface2)' }}>
-                    <SandpackPreview
-                      showOpenInCodeSandbox={false}
-                      style={{
-                        flex: 1,
-                        minHeight: 300,
-                        width: mobileView ? '390px' : '100%',
-                        margin: mobileView ? '0 auto' : '0',
-                      }}
-                    />
-                  </div>
+                  <SandpackPreview
+                    showOpenInCodeSandbox={false}
+                    style={{
+                      height: '100%',
+                      width: mobileView ? '390px' : '100%',
+                      margin: mobileView ? '0 auto' : '0',
+                    }}
+                  />
                 </SandpackErrorBoundary>
               </SandpackProvider>
-              )}
-            </div>
+            )}
 
             {activePanel === 'code' && (
               <div className="flex flex-col h-full">
                 {/* File tabs */}
-                <div className="flex overflow-x-auto shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+                <div className="flex overflow-x-auto shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
                   {Object.keys(files).map(fp => (
                     <button
                       key={fp}
                       onClick={() => setActiveFile(fp)}
                       className="px-3 py-2 text-xs whitespace-nowrap shrink-0 border-r transition"
                       style={{
-                        background: activeFile === fp ? 'var(--theme-bg, #111113)' : 'transparent',
-                        color: activeFile === fp ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)',
-                        borderColor: 'var(--theme-border, rgba(255,255,255,0.06))',
+                        background: activeFile === fp ? '#111113' : 'transparent',
+                        color: activeFile === fp ? '#e4e4e7' : '#71717a',
+                        borderColor: 'rgba(255,255,255,0.06)',
                       }}
                     >
                       {fp.replace(/^\//, '')}
@@ -4074,7 +2611,7 @@ BUILD IT NOW â€” output every file completely:`;
                   }
                   value={files[activeFile]?.code || ''}
                   onChange={handleCodeChange}
-                  theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'vs' : 'vs-dark'}
+                  theme="vs-dark"
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,
@@ -4095,322 +2632,13 @@ BUILD IT NOW â€” output every file completely:`;
             {activePanel === 'history' && projectIdFromUrl && (
               <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
             )}
-
-            {/* â”€â”€ Dashboard tab (Manus-style project ops) â”€â”€ */}
-            {activePanel === 'dashboard' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {/* Project header â€” uses live dashboardData if available */}
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2, #111)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Project</div>
-                      <div className="font-semibold text-sm" style={{ color: 'var(--theme-text)' }}>
-                        {dashboardData?.title || dashboardData?.prompt?.slice(0, 40) || messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{
-                      background: (dashboardData?.status === 'complete' || versions.length > 0) ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
-                      color: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)'
-                    }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)' }} />
-                      {dashboardData?.status || (versions.length > 0 ? 'Built' : 'Not built')}
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t flex gap-4 text-xs" style={{ borderColor: 'var(--theme-border)' }}>
-                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{dashboardData?.total_files || Object.keys(files).length}</span></div>
-                    <div><span style={{ color: 'var(--theme-muted)' }}>Versions</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{versions.length}</span></div>
-                    <div><span style={{ color: 'var(--theme-muted)' }}>Progress</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Math.round(buildProgress)}%</span></div>
-                  </div>
-                </div>
-
-                {/* Feature badges */}
-                {versions.length > 0 && (
-                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Features Detected</div>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { label: 'Frontend', check: Object.keys(files).some(f => f.includes('App') || f.includes('.jsx') || f.includes('.tsx')) },
-                        { label: 'Backend', check: Object.keys(files).some(f => f.includes('server') || f.includes('api') || f.includes('routes')) },
-                        { label: 'Database', check: Object.keys(files).some(f => f.includes('schema') || f.includes('db') || f.includes('migration')) },
-                        { label: 'Auth', check: Object.keys(files).some(f => f.includes('auth') || f.includes('login')) },
-                        { label: 'TypeScript', check: Object.keys(files).some(f => f.endsWith('.ts') || f.endsWith('.tsx')) },
-                        { label: 'Docker', check: Object.keys(files).some(f => f.includes('Dockerfile') || f.includes('docker-compose')) },
-                        { label: 'CI/CD', check: Object.keys(files).some(f => f.includes('.github') || f.includes('deploy.yml')) },
-                      ].filter(f => f.check).map(({ label }) => (
-                        <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(59,130,246,0.15)', color: '#93c5fd' }}>{label}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Quality score */}
-                {qualityGateResult && (
-                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Quality Score</div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-3xl font-bold" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>{qualityGateResult.score}%</div>
-                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--theme-input)' }}>
-                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${qualityGateResult.score}%`, background: qualityGateResult.score >= 70 ? '#4ade80' : '#737373' }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Deploy actions */}
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Publish & Deploy</div>
-                  <div className="space-y-2">
-                    <button onClick={downloadCode} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition hover:bg-white/5 border disabled:opacity-40" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
-                      <Download className="w-3.5 h-3.5" /> Download ZIP
-                    </button>
-                    <button onClick={() => setShowDeployModal(true)} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition disabled:opacity-40" style={{ background: 'var(--theme-accent)', color: 'white' }}>
-                      <Rocket className="w-3.5 h-3.5" /> Deploy App
-                    </button>
-                  </div>
-                </div>
-
-                {/* Version history */}
-                {versions.length > 0 && (
-                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Version History</div>
-                    <div className="space-y-1.5">
-                      {versions.slice(0, 5).map((v, i) => (
-                        <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition hover:bg-white/5 text-left" style={{ color: currentVersion === v.id ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
-                          <History className="w-3 h-3 shrink-0" />
-                          <span className="truncate">v{versions.length - i} â€” {v.prompt?.slice(0, 30) || 'Build'}</span>
-                          <span className="ml-auto shrink-0 opacity-60">{v.time}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* â”€â”€ Database tab (Manus-style) â”€â”€ */}
-            {activePanel === 'database' && (
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Issue #5: Use live appDbSchema if available, fall back to local files */}
-                {(appDbSchema || Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0) ? (
-                  <div className="space-y-3">
-                    {appDbSchema && (
-                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Live Schema ({(appDbSchema.tables || []).length} tables)</div>
-                        {(appDbSchema.tables || []).map(t => (
-                          <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs mb-1" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
-                            <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
-                            {t}
-                          </div>
-                        ))}
-                        {appDbSchema.tables_sql && (
-                          <details className="mt-3">
-                            <summary className="text-xs cursor-pointer" style={{ color: 'var(--theme-muted)' }}>View Full Schema SQL</summary>
-                            <pre className="mt-2 p-3 rounded-lg text-[10px] overflow-x-auto" style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--theme-text)', whiteSpace: 'pre-wrap' }}>{appDbSchema.tables_sql}</pre>
-                          </details>
-                        )}
-                      </div>
-                    )}
-                    {!appDbSchema && (
-                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
-                        <div className="space-y-2">
-                          {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
-                            <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
-                              <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
-                              <span className="truncate">{f.replace(/^\//, '')}</span>
-                              <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* Show table names extracted from local schema if no live schema */}
-                    {!appDbSchema && (() => {
-                      const schemaContent = Object.entries(files).filter(([k]) => k.includes('schema') || k.includes('.sql')).map(([,v]) => v?.code || '').join('\n');
-                      const tables = [...schemaContent.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?/gi)].map(m => m[1]);
-                      return tables.length > 0 ? (
-                        <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Tables ({tables.length})</div>
-                          <div className="space-y-1.5">
-                            {tables.map(t => (
-                              <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
-                                <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
-                                {t}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full gap-3 py-12" style={{ color: 'var(--theme-muted)' }}>
-                    <Database className="w-8 h-8 opacity-30" />
-                    <div className="text-center">
-                      <div className="text-sm font-medium mb-1">No database schema yet</div>
-                      <div className="text-xs opacity-70">Build a fullstack or SaaS app to generate DB schema</div>
-                    </div>
-                    {taskIdFromUrl && token && (
-                      <button
-                        onClick={() => axios.post(`${API}/app-db/provision`, { task_id: taskIdFromUrl, prompt: messages.find(m => m.role === 'user')?.content || '' }, { headers: { Authorization: `Bearer ${token}` } }).then(() => {}).catch(() => {})}
-                        className="px-4 py-2 rounded-lg text-xs font-medium transition" style={{ background: 'var(--theme-accent)', color: 'white' }}
-                      >Generate Schema</button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* â”€â”€ Agent Graph tab â€” CrucibAI unique â”€â”€ */}
-            {activePanel === 'agents' && (
-              <div className="flex-1 overflow-y-auto" style={{ padding: 0 }}>
-                {/* Header strip */}
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--theme-surface2)' }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--theme-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Live Execution</div>
-                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>237 agents · dependency-aware swarm · live controller</div>
-                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>
-                      {currentJobId ? `Attached to job ${currentJobId}` : 'Waiting for a live orchestrator job.'}
-                    </div>
-                  </div>
-                  {isBuilding && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(59,130,246,0.12)', borderRadius: 20, border: '1px solid rgba(59,130,246,0.25)' }}>
-                      <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
-                      <span style={{ fontSize: 10, color: '#93c5fd', fontWeight: 600 }}>BUILDING</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Active skill banner */}
-                {isBuilding && activeSkillName && (
-                  <div style={{ padding: '8px 16px', background: 'rgba(59,130,246,0.08)', borderBottom: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12 }}>âš¡</span>
-                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Skill:</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd' }}>{activeSkillName}</span>
-                  </div>
-                )}
-
-                {/* LIVE TIMELINE â€” shows step_started/step_complete events in real-time */}
-                {currentJobId ? (
-                  <KanbanBoard jobId={currentJobId} />
-                ) : liveSteps.length > 0 ? (
-                  <div style={{ padding: '12px 16px' }}>
-                    <div style={{ marginBottom: 12, fontSize: 11, color: 'var(--theme-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Phase execution</span>
-                      <span>{liveSteps.filter(s => s.status === 'complete').length}/{liveSteps.length} done</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {liveSteps.map((step, i) => (
-                        <div key={step.name || i} style={{
-                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                          borderRadius: 10, border: '1px solid var(--theme-border)',
-                          background: step.status === 'running'
-                            ? 'rgba(59,130,246,0.06)'
-                            : step.status === 'complete'
-                            ? 'rgba(74,222,128,0.04)'
-                            : 'rgba(255,255,255,0.02)',
-                          transition: 'all 0.3s ease',
-                        }}>
-                          {/* Status icon */}
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                            background: step.status === 'complete' ? 'rgba(74,222,128,0.15)'
-                              : step.status === 'running' ? 'rgba(59,130,246,0.15)'
-                              : 'rgba(255,255,255,0.05)'
-                          }}>
-                            {step.status === 'complete'
-                              ? <Check style={{ width: 12, height: 12, color: '#4ade80' }} />
-                              : step.status === 'running'
-                              ? <Loader2 style={{ width: 12, height: 12, color: '#60a5fa' }} className="animate-spin" />
-                              : <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
-                            }
-                          </div>
-                          {/* Step info */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: step.status === 'running' ? 700 : 500,
-                              color: step.status === 'complete' ? '#86efac'
-                                : step.status === 'running' ? '#93c5fd'
-                                : 'var(--theme-muted)',
-                              marginBottom: 1
-                            }}>
-                              {step.name}
-                            </div>
-                            {(step.desc || step.filesCount) && (
-                              <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>
-                                {step.status === 'complete' && step.filesCount ? `${step.filesCount} files` : (step.desc || '')}
-                                {step.status === 'complete' && step.durationMs ? ` Â· ${(step.durationMs/1000).toFixed(1)}s` : ''}
-                              </div>
-                            )}
-                          </div>
-                          {/* Step number badge */}
-                          <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5, flexShrink: 0 }}>
-                            {step.stepNum || i+1}/{step.total || liveSteps.length}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Progress bar */}
-                    <div style={{ marginTop: 16, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 2, transition: 'width 0.5s ease',
-                        width: `${Math.round(liveSteps.filter(s => s.status === 'complete').length / Math.max(liveSteps.length, 1) * 100)}%`,
-                        background: 'linear-gradient(90deg, #3b82f6, #4ade80)'
-                      }} />
-                    </div>
-                  </div>
-                ) : (
-                  /* Pre-build: show static DAG phase map */
-                  <div style={{ padding: '12px 16px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginBottom: 10 }}>
-                      {isBuilding ? 'Initializing build phases...' : 'Run a build to see live execution'}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {[
-                        { name: 'Planner', desc: 'Intent parsing, task decomposition', color: '#a78bfa' },
-                        { name: 'Architect', desc: 'System design, component structure', color: '#60a5fa' },
-                        { name: 'Frontend', desc: 'UI components, pages, styling', color: '#34d399' },
-                        { name: 'Backend', desc: 'API routes, services, middleware', color: '#34d399' },
-                        { name: 'Database', desc: 'Schema, migrations, ORM', color: '#60a5fa' },
-                        { name: 'Validator', desc: 'Syntax checking, type safety', color: '#fbbf24' },
-                      ].map((a, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8,
-                          background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--theme-text)' }}>{a.name}</div>
-                            <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>{a.desc}</div>
-                          </div>
-                          {isBuilding && <Loader2 style={{ width: 10, height: 10, color: 'var(--theme-muted)' }} className="animate-pulse" />}
-                        </div>
-                      ))}
-                      <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5 }}>
-                        + selective specialist routing across all swarm families
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* â”€â”€ Pass History tab â€” CrucibAI unique â”€â”€ */}
-            {activePanel === 'passes' && (
-              <PassesTab
-                taskId={taskIdFromUrl}
-                files={files}
-                versions={versions}
-                token={token}
-                API={API}
-                liveSteps={liveSteps}
-                isBuilding={isBuilding}
-              />
-            )}
           </div>
         </div>
         ) : (
           <button
             onClick={() => setRightSidebarOpenPersisted(true)}
             className="flex flex-col items-center justify-center shrink-0 w-10 border-l transition hover:bg-white/5 self-stretch"
-            style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #52525b)' }}
+            style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)', color: '#52525b' }}
             title="Show Preview / Code / Console"
             aria-label="Show right panel"
           >
@@ -4420,419 +2648,32 @@ BUILD IT NOW â€” output every file completely:`;
         )}
       </div>
 
-      {/* â”€â”€ Deploy modal â€” Native one-click deploy â”€â”€ */}
+      {/* ── Deploy modal ── */}
       {showDeployModal && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.75)' }}
-          onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
-        >
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
-            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Rocket style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Deploy your app</h3>
-              </div>
-              <button
-                onClick={() => { setShowDeployModal(false); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}
-              >Ã—</button>
-            </div>
-
-            {/* Checking state */}
-            {deployHasToken === null && (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--theme-muted)', fontSize: 13 }}>
-                <Loader2 className="w-5 h-5 animate-spin" style={{ margin: '0 auto 8px', color: 'var(--theme-accent)' }} />
-                Checking deploy configuration...
-              </div>
-            )}
-
-            {/* No Vercel token â€” show connect section */}
-            {deployHasToken === false && deployState === 'idle' && (
-              <div>
-                <div style={{ padding: '16px', background: 'rgba(224,90,37,0.08)', borderRadius: 12, border: '1px solid rgba(224,90,37,0.25)', marginBottom: 16 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>Connect Vercel to deploy</p>
-                  <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 12 }}>Add your Vercel API token in Settings to enable one-click deployment.</p>
-                  <button
-                    onClick={() => { setShowDeployModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >
-                    Settings â†’ Deploy Integrations
-                  </button>
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16 }}>Or download your code and deploy manually:</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button onClick={() => { downloadCode(); setDeployZipDone(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded âœ“' : 'Download ZIP'}
-                  </button>
-                  <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#000', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Open Vercel â†’
-                  </a>
-                  <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#00AD9F', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Netlify Drop
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Token exists â€” show one-click deploy button */}
-            {deployHasToken === true && deployState === 'idle' && (
-              <div>
-                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy your app with one click.</p>
-                <button
-                  onClick={async () => {
-                    setDeployState('deploying');
-                    setDeployError(null);
-                    setShowDeployPanel(true);
-                    setDeployPanelJobId(null);
-                    try {
-                      const res = await axios.post(
-                        `${API}/projects/${projectIdFromUrl}/deploy/vercel`,
-                        { task_id: taskIdFromUrl },
-                        { headers: { Authorization: `Bearer ${token}` } }
-                      );
-                      setDeployResult(res.data);
-                      setDeployState('deployed');
-                      if (res.data?.job_id) setDeployPanelJobId(res.data.job_id);
-                      addLog(`Deployed to Vercel: ${res.data?.deploy_url || res.data?.url || ''}`, 'success', 'deploy');
-                    } catch (err) {
-                      setDeployError(err.response?.data?.detail || err.message || 'Deploy failed');
-                      setDeployState('error');
-                    }
-                  }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
-                >
-                  <Rocket style={{ width: 16, height: 16 }} /> Deploy to Vercel
-                </button>
-                {deployTokenStatus?.has_railway && (
-                  <button
-                    onClick={async () => {
-                      setDeployState('deploying');
-                      setDeployError(null);
-                      setShowDeployPanel(true);
-                      setDeployPanelJobId(null);
-                      try {
-                        const res = await axios.post(
-                          `${API}/deploy/railway`,
-                          { project_id: projectIdFromUrl, task_id: taskIdFromUrl },
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        );
-                        setDeployResult({ deploy_url: res.data?.deploy_url, url: res.data?.deploy_url });
-                        if (res.data?.job_id) setDeployPanelJobId(res.data.job_id);
-                        setDeployState('deployed');
-                        addLog('Deployed to Railway: ' + (res.data?.deploy_url || ''), 'success', 'deploy');
-                      } catch (err) {
-                        setDeployError(err.response?.data?.detail || err.message || 'Railway deploy failed');
-                        setDeployState('error');
-                      }
-                    }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#0B0D0E', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
-                  >
-                    <Rocket style={{ width: 16, height: 16 }} /> Deploy to Railway
-                  </button>
-                )}
-                <button onClick={() => { downloadCode(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
-                  <Download className="w-4 h-4" /> Download ZIP
-                </button>
-              </div>
-            )}
-
-            {/* Deploying state */}
-            {deployState === 'deploying' && (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Deploying to Vercel...</p>
-                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>This usually takes 30-60 seconds</p>
-              </div>
-            )}
-
-            {/* Deployed state */}
-            {deployState === 'deployed' && deployResult && (
-              <div>
-                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Deployed successfully!</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
-                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>
-                      {deployResult?.deploy_url || deployResult?.url || 'Deployment complete'}
-                    </code>
-                    {(deployResult?.deploy_url || deployResult?.url) && (
-                      <button
-                        onClick={() => navigator.clipboard.writeText(deployResult?.deploy_url || deployResult?.url || '')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }}
-                        title="Copy URL"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                  {(deployResult?.deploy_url || deployResult?.url) && (
-                    <a
-                      href={deployResult?.deploy_url || deployResult?.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
-                    >
-                      Visit site <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  <button
-                    onClick={() => { setDeployState('idle'); setDeployResult(null); }}
-                    style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}
-                  >
-                    Deploy again
-                  </button>
-                </div>
-
-                {/* Custom domain section */}
-                {!customDomainResult && (
-                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>Custom domain (optional)</p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        value={customDomain}
-                        onChange={e => setCustomDomain(e.target.value)}
-                        placeholder="yourdomain.com"
-                        style={{ flex: 1, padding: '8px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', border: '1.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'var(--theme-text)', fontSize: 13, outline: 'none' }}
-                      />
-                      <button
-                        onClick={async () => {
-                          if (!customDomain.trim() || !customDomain.includes('.')) return;
-                          setCustomDomainSaving(true);
-                          try {
-                            const res = await axios.post(
-                              `${API}/deploy/custom-domain`,
-                              { domain: customDomain.trim(), project_id: projectIdFromUrl || '' },
-                              { headers: { Authorization: `Bearer ${token}` } }
-                            );
-                            setCustomDomainResult(res.data);
-                          } catch (e) {
-                            // Ignore errors, show fallback
-                            setCustomDomainResult({ domain: customDomain.trim(), cname_target: 'cname.vercel-dns.com', instructions: ['Go to your registrar and add a CNAME record pointing to cname.vercel-dns.com'] });
-                          } finally {
-                            setCustomDomainSaving(false);
-                          }
-                        }}
-                        disabled={customDomainSaving || !customDomain.trim()}
-                        style={{ padding: '8px 14px', borderRadius: 8, background: customDomain.trim() ? 'var(--theme-accent)' : 'rgba(255,255,255,0.08)', color: customDomain.trim() ? '#fff' : 'var(--theme-muted)', border: 'none', cursor: customDomain.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600, flexShrink: 0 }}
-                      >
-                        {customDomainSaving ? 'Saving...' : 'Set domain'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {customDomainResult && (
-                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>DNS Setup for <code style={{ color: 'var(--theme-accent)' }}>{customDomainResult.domain}</code></p>
-                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 12, color: 'var(--theme-muted)' }}>
-                      {(customDomainResult.instructions || []).map((line, i) => (
-                        <div key={i} style={{ marginBottom: i < (customDomainResult.instructions.length - 1) ? 4 : 0 }}>{line}</div>
-                      ))}
-                    </div>
-                    {customDomainResult.ssl && (
-                      <p style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 6 }}>ðŸ”’ {customDomainResult.ssl}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Error state */}
-            {deployState === 'error' && (
-              <div>
-                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Deploy failed</p>
-                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{deployError}</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => { setDeployState('idle'); setDeployError(null); }}
-                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >
-                    Retry
-                  </button>
-                  <button onClick={() => { downloadCode(); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
-                    Download ZIP
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Close button â€” only when not deploying */}
-            {deployState !== 'deploying' && (
-              <button
-                onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
-                className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5"
-                style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}
-              >
-                Close
+        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
+          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
+            <p className="text-sm mb-5" style={{ color: '#71717a' }}>Download your ZIP then upload to any platform below:</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}>
+                <Download className="w-4 h-4" /> Download ZIP
               </button>
-            )}
+              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
+                Deploy to Vercel
+              </a>
+              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F' }}>
+                Deploy to Netlify Drop
+              </a>
+              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}>
+                Deploy to Railway
+              </a>
+            </div>
+            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: '#71717a', borderColor: 'rgba(255,255,255,0.1)' }}>Close</button>
           </div>
         </div>
-      )}
-
-      {/* â”€â”€ GitHub Git Sync Modal â”€â”€ */}
-      {showGitSyncModal && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.75)' }}
-          onClick={() => { if (gitSyncState !== 'syncing') setShowGitSyncModal(false); }}
-        >
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
-            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Github style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Push to GitHub</h3>
-              </div>
-              {gitSyncState !== 'syncing' && (
-                <button onClick={() => setShowGitSyncModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>Ã—</button>
-              )}
-            </div>
-
-            {gitSyncState === 'idle' && (
-              <div>
-                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>
-                  Push your generated code to a new GitHub repository. Requires a GitHub personal access token with <code>repo</code> scope.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', borderRadius: 8 }}>
-                  <input
-                    type="checkbox"
-                    id="git-private"
-                    checked={gitSyncPrivate}
-                    onChange={e => setGitSyncPrivate(e.target.checked)}
-                    style={{ width: 14, height: 14, accentColor: 'var(--theme-accent)', flexShrink: 0 }}
-                  />
-                  <label htmlFor="git-private" style={{ fontSize: 13, color: 'var(--theme-text)', cursor: 'pointer' }}>
-                    Private repository
-                  </label>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button
-                    onClick={async () => {
-                      setGitSyncState('syncing');
-                      try {
-                        const res = await axios.post(
-                          `${API}/git-sync/push`,
-                          {
-                            project_id: projectIdFromUrl || undefined,
-                            task_id: taskIdFromUrl || undefined,
-                            private: gitSyncPrivate,
-                          },
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        );
-                        setGitSyncResult(res.data);
-                        setGitSyncState('synced');
-                        addLog(`Pushed ${res.data.pushed_files} files to GitHub: ${res.data.repo_url}`, 'success', 'git');
-                      } catch (err) {
-                        const msg = err.response?.data?.detail || err.message || 'Git sync failed';
-                        if (typeof msg === 'string' && msg.includes('Add your GitHub token')) {
-                          setGitSyncState('idle');
-                          setShowGitSyncModal(false);
-                          navigate('/app/settings', { state: { openTab: 'account' } });
-                        } else {
-                          setGitSyncResult({ error: typeof msg === 'string' ? msg : JSON.stringify(msg) });
-                          setGitSyncState('error');
-                        }
-                      }
-                    }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, background: '#24292f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
-                  >
-                    <Github style={{ width: 15, height: 15 }} /> Push to GitHub
-                  </button>
-                  <p style={{ fontSize: 11, color: 'var(--theme-muted)', textAlign: 'center' }}>
-                    No token? Add it in{' '}
-                    <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-accent)', fontSize: 11, padding: 0, textDecoration: 'underline' }}>Settings â†’ Deploy integrations</button>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {gitSyncState === 'syncing' && (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Pushing to GitHub...</p>
-                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>Creating repo and uploading files</p>
-              </div>
-            )}
-
-            {gitSyncState === 'synced' && gitSyncResult && (
-              <div>
-                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Pushed successfully!</p>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 8 }}>{gitSyncResult.pushed_files} files pushed Â· {gitSyncResult.private ? 'Private' : 'Public'} repo</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
-                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>{gitSyncResult.repo_url}</code>
-                    <button onClick={() => navigator.clipboard.writeText(gitSyncResult.repo_url || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }} title="Copy URL">
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <a href={gitSyncResult.repo_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: '#24292f', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
-                    View on GitHub <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
-                    Push again
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {gitSyncState === 'error' && (
-              <div>
-                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Push failed</p>
-                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{gitSyncResult?.error || 'Unknown error'}</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-                    Retry
-                  </button>
-                  <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
-                    Add token
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {gitSyncState === 'idle' && (
-              <button onClick={() => setShowGitSyncModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}>
-                Close
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      {/* Deploy progress panel — shown when deploy starts, auto-dismissed after URL card */}
-      {showDeployPanel && (
-        <DeployProgressPanel
-          jobId={deployPanelJobId}
-          deployUrl={deployState === 'deployed' ? (deployResult?.deploy_url || deployResult?.url || null) : null}
-          apiBase={API}
-          token={token}
-          onClose={() => setShowDeployPanel(false)}
-        />
       )}
     </div>
   );
 };
 
 export default Workspace;
-
-

@@ -2,7 +2,6 @@
 Project state: structured store per project (plan, requirements, stack, artifacts, reports).
 All state writers and tool runners read/write this so the pipeline is real and verifiable.
 """
-
 import json
 import logging
 from pathlib import Path

@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Layout3Column from './Layout3Column';
 import Logo from './Logo';
 import './Layout.css';
@@ -28,16 +27,14 @@ import OnboardingTour from './OnboardingTour';
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  /** Dashboard home (`/app`) — Manus-like: hide heavy footer rule so chat feels open */
-  const isAppHomeDashboard = location.pathname === '/app' || location.pathname === '/app/';
-  const { user, logout, token, refreshUser } = useAuth();
+  const { user, logout, token } = useAuth();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useLayoutStore();
   const { tasks: storeTasks } = useTaskStore();
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Right panel: HIDDEN on workspace (workspace has its own Sandpack panel)
-  const isWorkspaceView = ['/app/workspace', '/app/workspace-manus', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
+  const isWorkspaceView = ['/app/workspace', '/app/builder'].some(p => location.pathname.startsWith(p))
     || location.pathname.match(/\/app\/projects\/[^/]+$/);
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
@@ -54,23 +51,13 @@ const Layout = () => {
   const [codeFiles, setCodeFiles] = useState({});
   const [terminalOutput, setTerminalOutput] = useState([]);
   const [buildHistory, setBuildHistory] = useState([]);
-  /** Throttle refreshUser after health: every ping was hitting /auth/me and burning the API rate limit. */
-  const lastUserRefreshRef = useRef(0);
 
   const checkBackend = useCallback(() => {
     setBackendOk(null);
-    const healthUrl = API ? `${API.replace(/\/$/, '')}/health` : '/api/health';
-    axios.get(healthUrl, { timeout: 5000 })
-      .then(() => {
-        setBackendOk(true);
-        const now = Date.now();
-        if (token && refreshUser && now - lastUserRefreshRef.current > 60_000) {
-          lastUserRefreshRef.current = now;
-          refreshUser().catch(() => {});
-        }
-      })
+    axios.get(`${API}/health`, { timeout: 5000 })
+      .then(() => setBackendOk(true))
       .catch((e) => { logApiError('Layout health', e); setBackendOk(false); });
-  }, [token, refreshUser]);
+  }, []);
 
   // Fetch projects for sidebar. Do NOT overwrite task store — All Tasks list is from local store so clicks open workspace with correct task.
   const fetchSidebarData = useCallback(async () => {
@@ -95,11 +82,6 @@ const Layout = () => {
     logout();
     navigate('/');
   };
-
-  const creditsAmount =
-    user != null
-      ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
-      : '—';
 
   // Sidebar content (receives collapse state for collapsed strip + account menu)
   const sidebarContent = (
@@ -137,15 +119,7 @@ const Layout = () => {
   // Main content
   const mainContent = (
     <div className="layout-main-wrapper">
-      {/* Credits — dashboard / rest of app only (workspace uses full vertical space) */}
-      {!isWorkspaceView && (
-        <div className="layout-topbar" role="region" aria-label="Credits">
-          <Link to="/app/tokens" className="layout-topbar-credits" title="Credits & Billing">
-            <Sparkles size={16} className="layout-topbar-credits-icon" aria-hidden />
-            <span className="layout-topbar-credits-value">{creditsAmount}</span>
-          </Link>
-        </div>
-      )}
+      {/* Right panel toggle removed — workspace manages its own preview panel */}
 
       {user?.internal_team && (
         <div className="layout-internal-banner">
@@ -153,9 +127,7 @@ const Layout = () => {
         </div>
       )}
 
-      <div
-        className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''} ${isAppHomeDashboard ? 'layout-page-content--dash-home' : ''}`}
-      >
+      <div className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''}`}>
         <Outlet context={{
           setPreviewContent,
           setCodeContent,
@@ -168,36 +140,24 @@ const Layout = () => {
         }} />
       </div>
 
-      {/* Footer — hidden on workspace (max vertical space); home chat trust line; elsewhere status + legal */}
-      {!isWorkspaceView && (
-        <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home layout-footer--chat-trust-only' : ''}`}>
-          {isAppHomeDashboard ? (
-            <p className="layout-footer-trust">
-              CrucibAI can make mistakes. Please double-check important responses.
-            </p>
-          ) : (
+      {/* Footer */}
+      <footer className="layout-footer">
+        <span className="layout-footer-status">
+          {backendOk === true && <span className="status-green">● Connected</span>}
+          {backendOk === false && (
             <>
-              <span className="layout-footer-status">
-                {backendOk === true && <span className="status-green">● Connected</span>}
-                {backendOk === false && (
-                  <>
-                    <span className="status-amber">● Disconnected</span>
-                    <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
-                  </>
-                )}
-                {backendOk === null && <span className="status-gray">● Checking…</span>}
-              </span>
-              <span className="layout-footer-links">
-                <Link to="/about">About</Link>
-                <Link to="/get-help">Get help</Link>
-                <Link to="/contact">Contact</Link>
-                <Link to="/privacy">Privacy</Link>
-                <Link to="/terms">Terms</Link>
-              </span>
+              <span className="status-amber">● Disconnected</span>
+              <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
             </>
           )}
-        </footer>
-      )}
+          {backendOk === null && <span className="status-gray">● Checking…</span>}
+        </span>
+        <span className="layout-footer-links">
+          <Link to="/about">About</Link>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+        </span>
+      </footer>
     </div>
   );
 
@@ -206,17 +166,9 @@ const Layout = () => {
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
         <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
-        <div className="layout-mobile-header-actions">
-          {!isWorkspaceView && (
-            <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">
-              <Sparkles size={16} className="layout-mobile-credits-icon" aria-hidden />
-              <span className="layout-mobile-credits-value">{creditsAmount}</span>
-            </Link>
-          )}
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
+          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </header>
 
       {/* Mobile Menu Overlay */}
@@ -241,8 +193,6 @@ const Layout = () => {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
         setSidebarOpen={setSidebarOpen}
-        hideSidebarToggle={false}
-        className={isAppHomeDashboard ? 'layout-shell--dash-home' : ''}
       />
 
       {/* Onboarding Tour for first-time users */}

@@ -9,10 +9,10 @@ Implements:
 - Policy enforcement
 """
 
-import logging
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Set
+from typing import Set, Optional, Dict, Any
+from dataclasses import dataclass
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,9 @@ class AccessControl:
 
         return has_perm
 
-    def check_resource_access(self, user: User, resource_id: str, action: str) -> bool:
+    def check_resource_access(
+        self, user: User, resource_id: str, action: str
+    ) -> bool:
         """
         Check if user can access resource.
 

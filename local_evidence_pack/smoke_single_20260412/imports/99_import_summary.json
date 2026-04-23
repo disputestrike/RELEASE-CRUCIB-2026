@@ -1,0 +1,23 @@
+[
+  {
+    "name": "paste_code",
+    "http": 200,
+    "ok": true,
+    "project_id": "005de729-bcb1-4113-8bb0-3bd9786ed999",
+    "followup_job_id": "755618ed-c05a-4a0b-a47a-61da8441861c",
+    "followup_status": "failed"
+  },
+  {
+    "name": "zip_upload",
+    "http": 200,
+    "ok": true,
+    "project_id": "6979a1c8-0541-4397-966c-aaa24867bc94",
+    "followup_job_id": "def189b8-4fe2-41f9-a1a9-41d45ef226c0",
+    "followup_status": "failed"
+  },
+  {
+    "name": "git_github",
+    "http": 400,
+    "ok": false
+  }
+]

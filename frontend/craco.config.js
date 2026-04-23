@@ -78,24 +78,6 @@ const webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
-  // Proxy /api to backend so local dev works: frontend :3000 → backend :8000
-  devServerConfig.proxy = {
-    '/api': {
-      target: 'http://127.0.0.1:8000',
-      changeOrigin: true,
-      timeout: 600000,
-      proxyTimeout: 600000,
-      onProxyRes(proxyRes) {
-        const ct = proxyRes.headers['content-type'] || '';
-        if (String(ct).includes('text/event-stream')) {
-          proxyRes.headers['cache-control'] = 'no-cache, no-transform';
-          proxyRes.headers['x-accel-buffering'] = 'no';
-        }
-      },
-    },
-    '/health': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-  };
-
   if (config.enableVisualEdits && setupDevServer) {
     devServerConfig = setupDevServer(devServerConfig);
   }

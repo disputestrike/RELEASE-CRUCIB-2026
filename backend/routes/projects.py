@@ -114,18 +114,58 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
     """Background task: delegates to RuntimeEngine which is the ONLY executor."""
     try:
         from services.runtime.runtime_engine import runtime_engine
+        from services.runtime.file_writer import write_generated_files
+        from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents
 
         db = get_db()
+        
+        # BLOCKER #2 FIX: Extract and store specification before build starts
+        specification = await _extract_and_store_specification(project_id, prompt, user_id)
+        
         await db.projects.update_one(
             {"id": project_id}, {"$set": {"status": "running"}}
         )
+
+        # FIX #1: Get execution phases from DAG
+        phases = get_execution_phases(AGENT_DAG)
+
         result = await runtime_engine.execute_with_control(
             task_id=project_id,
             user_id=user_id,
             request=prompt,
             conversation_id=f"project-{project_id}",
+            metadata={
+                "phases": phases,
+                "agent_dag": AGENT_DAG,
+                "build_context_func": build_context_from_previous_agents,
+            },
         )
         status = "completed" if result.get("success") else "failed"
+        
+        # FIX #2: Write generated files to workspace directory
+        agent_outputs = result.get("execution", {}).get("agent_outputs", [])
+        generated_code = ""
+        if status == "completed" and agent_outputs:
+            try:
+                files_written = await write_generated_files(project_id, agent_outputs)
+                logger.info(f"Wrote {files_written} generated files for project {project_id}")
+                # Collect all generated code for validation
+                for output in agent_outputs:
+                    if isinstance(output, dict):
+                        files = output.get("generated_files") or output.get("files") or {}
+                        for file_data in files.values():
+                            if isinstance(file_data, dict):
+                                code = file_data.get("code") or file_data.get("content")
+                                if code:
+                                    generated_code += code + "\n"
+            except Exception as exc:
+                logger.warning(f"Failed to write files for {project_id}: {exc}")
+                # Continue anyway - database record is more important
+        
+        # BLOCKER #2 FIX: Validate output against specification
+        if status == "completed" and generated_code and specification:
+            validation = await _validate_and_report_output(project_id, generated_code, specification)
+        
         await db.projects.update_one(
             {"id": project_id},
             {
@@ -514,19 +554,119 @@ async def build_plan(
             "prompt": data.prompt,
             "project_type": "fullstack",
             "phases": ["plan", "scaffold", "build", "test"],
-            "estimated_tokens": 675_000,
+            "estimated_tokens": 675000,
         }
     }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# INTENT EXTRACTION & VALIDATION INTEGRATION
+# ─────────────────────────────────────────────────────────────────────────────
 
-@projects_router.get("/settings/capabilities")
-async def get_capabilities(user: dict = Depends(get_optional_user)):
-    """Return platform capability flags used by the frontend."""
+async def _extract_and_store_specification(project_id: str, prompt: str, user_id: str) -> Dict[str, Any]:
+    """Extract intent from prompt and store as project specification."""
+    try:
+        from services.intent_extractor import IntentExtractor
+        
+        constraints = await IntentExtractor.extract_constraints(prompt)
+        
+        specification = {
+            "id": str(uuid.uuid4()),
+            "original_prompt": prompt,
+            "constraints": constraints,
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+        }
+        
+        db = get_db()
+        await db.projects.update_one(
+            {"id": project_id},
+            {"$set": {"specification": specification}}
+        )
+        
+        logger.info(f"Extracted {constraints.get('constraints_found', 0)} constraints for project {project_id}")
+        return specification
+    except Exception as exc:
+        logger.warning(f"Failed to extract specification for {project_id}: {exc}")
+        return {}
+
+
+async def _validate_and_report_output(project_id: str, generated_code: str, specification: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate generated code against specification and store report."""
+    try:
+        from services.output_validator import OutputValidator
+        
+        validation_result = await OutputValidator.validate_against_spec(
+            generated_code,
+            specification,
+        )
+        
+        # Generate human-readable report
+        report = await OutputValidator.generate_validation_report(project_id, validation_result)
+        
+        db = get_db()
+        await db.projects.update_one(
+            {"id": project_id},
+            {
+                "$set": {
+                    "validation_result": validation_result,
+                    "validation_report": report,
+                    "validated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            }
+        )
+        
+        logger.info(f"Validation result for {project_id}: {validation_result.get('is_valid')}")
+        return validation_result
+    except Exception as exc:
+        logger.warning(f"Failed to validate output for {project_id}: {exc}")
+        return {}
+
+
+@projects_router.get("/projects/{project_id}/validation")
+async def get_validation_report(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Get validation report for a completed project build."""
+    db = get_db()
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    validation_result = project.get("validation_result", {})
+    validation_report = project.get("validation_report", "")
+    specification = project.get("specification", {})
+    
     return {
-        "llm": True,
-        "agents": True,
-        "deploy": True,
-        "preview": True,
-        "git": True,
-        "terminal": True,
+        "project_id": project_id,
+        "validation_result": validation_result,
+        "validation_report": validation_report,
+        "specification": {
+            "original_prompt": specification.get("original_prompt", ""),
+            "constraints": specification.get("constraints", {}),
+            "extracted_at": specification.get("extracted_at"),
+        },
+        "status": "valid" if validation_result.get("is_valid") else "invalid",
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BUILD EVENT EMISSION INTEGRATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _emit_build_events(project_id: str, result: Dict[str, Any], duration_sec: float) -> None:
+    """Emit build completion events based on result."""
+    try:
+        from services.runtime.build_events import (
+            emit_build_completed,
+            emit_build_failed,
+        )
+        
+        if result.get("success"):
+            await emit_build_completed(project_id, duration_sec)
+        else:
+            error_msg = result.get("error", "Unknown error")
+            await emit_build_failed(project_id, error_msg)
+    except Exception as exc:
+        logger.warning(f"Failed to emit build events: {exc}")

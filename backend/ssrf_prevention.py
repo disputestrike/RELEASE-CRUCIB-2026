@@ -9,10 +9,10 @@ Implements:
 - Whitelist-based access control
 """
 
-import ipaddress
 import logging
+import ipaddress
 import socket
-from typing import List, Optional, Set
+from typing import Optional, Set, List
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class SSRFValidator:
         3306,  # MySQL
         5432,  # PostgreSQL
         6379,  # Redis
-        27017,  # Common non-HTTP DB port (block SSRF to raw sockets)
+        27017,  # MongoDB
     }
 
     def __init__(
@@ -206,7 +206,11 @@ class SafeRequestHandler:
         self.validator = validator or SSRFValidator()
 
     def make_request(
-        self, url: str, method: str = "GET", timeout: int = 10, **kwargs
+        self,
+        url: str,
+        method: str = "GET",
+        timeout: int = 10,
+        **kwargs
     ) -> Optional[dict]:
         """
         Make HTTP request safely.

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
+import { useAuth } from '../App';
 import {
   BookOpen, Search, Code, Zap, Shield, Database, Users,
   FileText, Terminal, ChevronRight, ChevronDown, Copy, Check,

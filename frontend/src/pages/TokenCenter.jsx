@@ -5,12 +5,10 @@ import {
   Zap, TrendingUp, ArrowUpRight, Clock, Check, 
   CreditCard, History, PieChart, Link2, Copy
 } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
-import './TokenCenter.css';
 
 const TokenCenter = () => {
   const location = useLocation();
@@ -101,12 +99,12 @@ const TokenCenter = () => {
   const bundleOrder = ['builder', 'pro', 'scale', 'teams'];
   const sortedBundles = bundleOrder.filter(k => bundles[k]).map(k => ({ key: k, ...bundles[k] }));
 
-  // Custom credits slider (100–10000 at $0.03/credit, same as plans)
+  // Custom credits slider (100–5000 at $0.06/credit)
   const [customCredits, setCustomCredits] = useState(500);
   const customMin = 100;
   const customMax = 10000;
   const customStep = 100;
-  const pricePerCredit = 0.03;
+  const pricePerCredit = 0.06;
   const customTotal = Math.round(customCredits * pricePerCredit * 100) / 100;
 
   const handlePurchaseCustom = async () => {
@@ -173,39 +171,38 @@ const TokenCenter = () => {
   const credits = user?.credit_balance ?? (user?.token_balance != null ? Math.floor(user.token_balance / 1000) : 0);
 
   return (
-    <div className="credit-center space-y-8" data-testid="credit-center">
+    <div className="space-y-8" data-testid="credit-center">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--theme-text)' }}>Credit Center</h1>
-        <p className="credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Buy credits and track your usage. 50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app.</p>
+        <h1 className="text-3xl font-bold mb-2">Credit Center</h1>
+        <p className="text-[#666666]">Buy credits and track your usage. 50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app. Credits roll over.</p>
       </div>
 
       {/* Balance Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="credit-center-card p-8 rounded-2xl border"
-        style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}
+        className="p-8 bg-gradient-to-br from-gray-200 to-gray-200 rounded-2xl border border-gray-400/30"
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <p className="credit-center-muted mb-2 flex items-center gap-2" style={{ color: 'var(--theme-muted)' }}>
-              <Zap className="w-5 h-5" style={{ color: 'var(--theme-muted)' }} />
+            <p className="text-[#666666] mb-2 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-[#666666]" />
               Current Balance
             </p>
-            <p className="text-5xl font-bold" data-testid="credit-balance" style={{ color: 'var(--theme-text)' }}>
+            <p className="text-5xl font-bold" data-testid="credit-balance">
               {credits.toLocaleString()}
             </p>
-            <p className="credit-center-muted mt-2" style={{ color: 'var(--theme-muted)' }}>credits available</p>
+            <p className="text-gray-500 mt-2">credits available</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg" style={{ background: 'var(--theme-input)' }}>
-              <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Total Used</p>
-              <p className="text-2xl font-bold" style={{ color: 'var(--theme-text)' }}>{usage?.total_used?.toLocaleString() || 0}</p>
+            <div className="p-4 bg-zinc-900/30 rounded-lg">
+              <p className="text-sm text-gray-500">Total Used</p>
+              <p className="text-2xl font-bold">{usage?.total_used?.toLocaleString() || 0}</p>
             </div>
-            <div className="p-4 rounded-lg" style={{ background: 'var(--theme-input)' }}>
-              <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Plan</p>
-              <p className="text-2xl font-bold capitalize" style={{ color: 'var(--theme-text)' }}>{user?.plan || 'Free'}</p>
+            <div className="p-4 bg-zinc-900/30 rounded-lg">
+              <p className="text-sm text-gray-500">Plan</p>
+              <p className="text-2xl font-bold capitalize">{user?.plan || 'Free'}</p>
             </div>
           </div>
         </div>
@@ -213,13 +210,13 @@ const TokenCenter = () => {
 
       {/* Referral: share link (free tier only for referrer reward) */}
       {referralCode && (
-        <div className="credit-center-section p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
-          <h2 className="credit-center-heading text-lg font-semibold flex items-center gap-2 mb-2" style={{ color: 'var(--theme-text)' }}>
-            <Link2 className="w-5 h-5" style={{ color: 'var(--theme-text)' }} /> Invite friends — 100 credits each
+        <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
+          <h2 className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2 mb-2">
+            <Link2 className="w-5 h-5 text-[#1A1A1A]" /> Invite friends — 100 credits each
           </h2>
-          <p className="text-sm credit-center-muted mb-3" style={{ color: 'var(--theme-muted)' }}>Share your link. When they sign up, they get 100 credits. You get 100 credits too if you're on the free plan (max 10 referrals/month).</p>
+          <p className="text-sm text-gray-500 mb-3">Share your link. When they sign up, they get 100 credits. You get 100 credits too if you're on the free plan (max 10 referrals/month).</p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="px-3 py-2 rounded-lg text-sm break-all" style={{ background: 'var(--theme-input)', color: 'var(--theme-muted)' }}>
+            <code className="px-3 py-2 bg-zinc-900/30 rounded-lg text-sm text-gray-300 break-all">
               {typeof window !== 'undefined' ? `${window.location.origin}/auth?ref=${referralCode}` : `/auth?ref=${referralCode}`}
             </code>
             <button
@@ -247,12 +244,12 @@ const TokenCenter = () => {
 
       {/* Pricing section heading */}
       <div className="mb-4">
-        <h2 className="credit-center-heading text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>Pricing & usage</h2>
-        <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Credits for builds. Usage this period: {usage?.total_used?.toLocaleString() ?? 0} tokens</p>
+        <h2 className="text-xl font-semibold text-[#1A1A1A]">Pricing & usage</h2>
+        <p className="text-sm text-gray-500">Credits for builds. Usage this period: {usage?.total_used?.toLocaleString() ?? 0} tokens</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+      <div className="flex gap-4 border-b border-black/10">
         {[
           { id: 'purchase', label: 'Buy Credits', icon: CreditCard },
           { id: 'history', label: 'History', icon: History },
@@ -261,10 +258,11 @@ const TokenCenter = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
-              activeTab === tab.id ? 'border-[var(--theme-accent)]' : 'border-transparent'
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
+              activeTab === tab.id
+                ? 'border-gray-400 text-[#1A1A1A]'
+                : 'border-transparent text-[#666666] hover:text-[#1A1A1A]'
             }`}
-              style={{ color: activeTab === tab.id ? 'var(--theme-text)' : 'var(--theme-muted)' }}
             data-testid={`tab-${tab.id}`}
           >
             <tab.icon className="w-4 h-4" />
@@ -284,25 +282,32 @@ const TokenCenter = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className={`credit-center-card p-6 rounded-xl border transition-all ${bundle.key === 'builder' ? 'scale-105' : ''} ${addonFromPricing === bundle.key ? 'ring-2 ring-[var(--theme-accent)]' : ''}`}
-              style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
+              className={`p-6 rounded-xl border transition-all ${
+                bundle.key === 'builder'
+                  ? 'bg-[#F3F1ED] border-[#1A1A1A]/20 scale-105'
+                  : 'bg-[#F5F5F4] border-black/10 hover:border-black/15'
+              } ${addonFromPricing === bundle.key ? 'ring-2 ring-[#1A1A1A]/20' : ''}`}
             >
               {bundle.key === 'builder' && (
-                <div className="text-xs font-medium mb-4" style={{ color: 'var(--theme-text)' }}>MOST POPULAR</div>
+                <div className="text-xs font-medium text-[#1A1A1A] mb-4">MOST POPULAR</div>
               )}
-              <h3 className="credit-center-heading text-xl font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>{bundle.name || bundle.key}</h3>
+              <h3 className="text-xl font-semibold mb-2">{bundle.name || bundle.key}</h3>
               <div className="mb-4">
-                <span className="text-3xl font-bold" style={{ color: 'var(--theme-text)' }}>${Number(bundle.price).toFixed(2)}</span>
-                <span className="text-sm ml-1 credit-center-muted" style={{ color: 'var(--theme-muted)' }}>/month</span>
+                <span className="text-3xl font-bold">${Number(bundle.price).toFixed(2)}</span>
+                <span className="text-gray-500 text-sm ml-1">/month</span>
               </div>
-              <p className="credit-center-muted mb-6" style={{ color: 'var(--theme-muted)' }}>
-                <Zap className="w-4 h-4 inline mr-1" style={{ color: 'var(--theme-muted)' }} />
+              <p className="text-[#666666] mb-6">
+                <Zap className="w-4 h-4 inline mr-1 text-[#666666]" />
                 {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits per month
               </p>
               <button
                 onClick={() => handlePurchase(bundle.key)}
                 disabled={purchasing === bundle.key}
-                className="w-full py-2.5 rounded-lg font-medium transition bg-[#1A1A1A] hover:bg-[#333] text-white disabled:opacity-50"
+                className={`w-full py-2.5 rounded-lg font-medium transition ${
+                  bundle.key === 'builder'
+                    ? 'bg-[#1A1A1A] hover:bg-[#333] text-white'
+                    : 'bg-[#EBE8E2] hover:bg-[#E0DCD5] text-[#1A1A1A]'
+                } disabled:opacity-50`}
                 data-testid={`buy-${bundle.key}-btn`}
               >
                 {purchasing === bundle.key && !purchasing.startsWith('stripe') ? (
@@ -327,12 +332,12 @@ const TokenCenter = () => {
           ))}
         </div>
         {/* Need more? Buy credits (slider) */}
-        <div className="credit-center-card mt-8 p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
-          <h3 className="credit-center-heading text-lg font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Need more? Buy credits</h3>
-          <p className="text-sm credit-center-muted mb-4" style={{ color: 'var(--theme-muted)' }}>100–10,000 credits at $0.03/credit (same rate as plans).</p>
+        <div className="mt-8 p-6 rounded-xl border border-black/10 bg-[#F5F5F4]">
+          <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2">Need more? Buy credits</h3>
+          <p className="text-sm text-gray-500 mb-4">100–5,000 credits at $0.06/credit. Credits roll over.</p>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--theme-text)' }}>Credits: {customCredits}</label>
+              <label className="block text-sm font-medium text-[#1A1A1A] mb-2">Credits: {customCredits}</label>
               <input
                 type="range"
                 min={customMin}
@@ -340,12 +345,11 @@ const TokenCenter = () => {
                 step={customStep}
                 value={customCredits}
                 onChange={(e) => setCustomCredits(Number(e.target.value))}
-                className="w-full h-2 rounded-lg appearance-none"
-                style={{ background: 'var(--theme-border)', accentColor: 'var(--theme-accent)' }}
+                className="w-full h-2 rounded-lg appearance-none bg-stone-200 accent-[#1A1A1A]"
               />
             </div>
             <div className="flex items-center gap-4 shrink-0">
-              <span className="text-lg font-bold" style={{ color: 'var(--theme-text)' }}>Total: ${customTotal.toFixed(2)}</span>
+              <span className="text-lg font-bold text-[#1A1A1A]">Total: ${customTotal.toFixed(2)}</span>
               <button
                 type="button"
                 onClick={handlePurchaseCustom}
@@ -370,39 +374,45 @@ const TokenCenter = () => {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="credit-center-section p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
+        <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
           {history.length === 0 ? (
             <div className="text-center py-12">
-              <History className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--theme-muted)' }} />
-              <p className="credit-center-muted" style={{ color: 'var(--theme-muted)' }}>No transactions yet</p>
+              <History className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-[#666666]">No transactions yet</p>
             </div>
           ) : (
             <div className="space-y-4">
               {history.map(item => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-4 rounded-lg"
-                  style={{ background: 'var(--theme-input)' }}
+                  className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--theme-border)' }}>
-                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5" style={{ color: 'var(--theme-text)' }} /> :
-                       item.type === 'bonus' ? <Zap className="w-5 h-5" style={{ color: 'var(--theme-text)' }} /> :
-                       <ArrowUpRight className="w-5 h-5" style={{ color: 'var(--theme-text)' }} />}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      item.type === 'purchase' ? 'bg-[#F3F1ED]' :
+                      item.type === 'bonus' ? 'bg-[#F3F1ED]' :
+                      item.type === 'refund' ? 'bg-[#F3F1ED]' :
+                      'bg-[#F5F5F4]'
+                    }`}>
+                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-[#1A1A1A]" /> :
+                       item.type === 'bonus' ? <Zap className="w-5 h-5 text-[#1A1A1A]" /> :
+                       <ArrowUpRight className="w-5 h-5 text-[#1A1A1A]" />}
                     </div>
                     <div>
-                      <p className="font-medium capitalize" style={{ color: 'var(--theme-text)' }}>{item.type}</p>
-                      <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>
+                      <p className="font-medium capitalize">{item.type}</p>
+                      <p className="text-sm text-gray-500">
                         {item.description || (item.bundle ? `${item.bundle} bundle` : 'Credit transaction')}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold" style={{ color: (item.credits ?? item.tokens) > 0 ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
+                    <p className={`font-bold ${
+                      (item.credits ?? item.tokens) > 0 ? 'text-[#1A1A1A]' : 'text-[#666666]'
+                    }`}>
                       {((item.credits ?? (item.tokens > 0 ? item.tokens / 1000 : 0)) > 0 ? '+' : '')}
                       {(item.credits ?? (item.tokens ? Math.floor(item.tokens / 1000) : 0))?.toLocaleString()} credits
                     </p>
-                    <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>
+                    <p className="text-sm text-gray-500">
                       {new Date(item.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -418,7 +428,7 @@ const TokenCenter = () => {
         <div className="space-y-6">
           {/* Usage trends (last 14 days) */}
           {(usage?.daily_trend?.length > 0) && (
-            <div className="credit-center-section p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
+            <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#1A1A1A]" /> Usage trends
               </h3>
@@ -435,8 +445,8 @@ const TokenCenter = () => {
             </div>
           )}
           <div className="grid lg:grid-cols-2 gap-6">
-          <div className="credit-center-section p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
-            <h3 className="credit-center-heading text-lg font-semibold mb-6" style={{ color: 'var(--theme-text)' }}>Usage by Agent</h3>
+          <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
+            <h3 className="text-lg font-semibold mb-6">Usage by Agent</h3>
             {usageChartData.length > 0 ? (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -468,8 +478,8 @@ const TokenCenter = () => {
             )}
           </div>
           
-          <div className="credit-center-section p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
-            <h3 className="credit-center-heading text-lg font-semibold mb-6" style={{ color: 'var(--theme-text)' }}>Top Consumers</h3>
+          <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
+            <h3 className="text-lg font-semibold mb-6">Top Consumers</h3>
             <div className="space-y-4">
               {usageChartData.slice(0, 5).map((item, i) => (
                 <div key={item.name} className="flex items-center gap-4">
