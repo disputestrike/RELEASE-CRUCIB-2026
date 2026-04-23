@@ -105,9 +105,9 @@ except ImportError:
         mode: Optional[str] = "guided"
 
 
-def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
+async def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    return planner_project_state_service(user, user_credits=get_user_credits(user))
+    return await planner_project_state_service(user, user_credits=get_user_credits(user))
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
@@ -260,7 +260,7 @@ async def public_build_plan(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
             update_last_build_state=_update_last_build_state,
         )
         return {"success": True, "plan": plan}
@@ -291,7 +291,7 @@ async def public_build_plan_summary(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
             update_last_build_state=_update_last_build_state,
         )
         return {"success": True, "plan": _public_plan_summary(plan)}
@@ -324,7 +324,7 @@ async def estimate_cost(
             user=user,
             planner_mod=planner_mod,
             normalize_build_target=normalize_build_target,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
         )
     except Exception as e:
         return {
@@ -407,7 +407,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
 
         # Generate plan
         plan = await planner_mod.generate_plan(
-            body.goal, project_state=_orchestrator_planner_project_state(user)
+            body.goal, project_state=await _orchestrator_planner_project_state(user)
         )
         _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
