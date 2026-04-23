@@ -1,0 +1,12 @@
+# Optional entrypoint: runs the same jobs as "Verify full stack" (reusable workflow).
+# Use workflow_dispatch for a manual full verify, or require this check in branch protection
+# alongside the main CI workflow during rollout.
+name: CrucibAI verify
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-full-stack:
+    uses: ./.github/workflows/ci-verify-full.yml
+    secrets: inherit
