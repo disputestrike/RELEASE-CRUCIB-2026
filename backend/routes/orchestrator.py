@@ -46,6 +46,29 @@ def _get_server_globals():
     )
 
 
+def _get_server_helpers():
+    from server import (
+        _ensure_credit_balance,
+        _generate_referral_code,
+        _project_workspace_path,
+        _user_credits,
+    )
+
+    def _assert_job_owner_match(job_user_id: str, user: dict):
+        if job_user_id != user.get("id") and user.get("id") not in ("guest", "admin"):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    def _resolve_job_project_id_for_user(project_id: Optional[str], user: dict) -> str:
+        return project_id or user.get("id") or "guest"
+
+    return (
+        _user_credits,
+        _assert_job_owner_match,
+        _resolve_job_project_id_for_user,
+        _project_workspace_path,
+    )
+
+
 
 
 
