@@ -1,221 +1,71 @@
-# CrucibAI Deployment Guide
+# CrucibAI Backend Deployment Guide
 
-## Prerequisites
+The backend is FastAPI on PostgreSQL. MongoDB is not part of the current deployment path.
 
-- Node.js 18+
+## Requirements
+
 - Python 3.11+
-- MongoDB 5.0+
-- Docker (optional)
+- PostgreSQL with `DATABASE_URL`
+- Redis with `REDIS_URL` recommended
+- `JWT_SECRET`
+- At least one AI provider key for real builds, preferably `ANTHROPIC_API_KEY`
 
-## Environment Setup
+## Local Backend
 
-### 1. Backend Setup
+From the repo root:
 
-```bash
-cd backend
-pip install -r requirements.txt
+```powershell
+docker compose up -d postgres redis
+$env:DATABASE_URL='postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai'
+$env:REDIS_URL='redis://127.0.0.1:6381/0'
+$env:JWT_SECRET='dev-secret-change-me-at-least-32-chars'
+python -m pip install -r backend\requirements.txt
+python -m uvicorn backend.server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Create `.env` file:
+Or run the repo bootstrap:
 
-```
-MONGO_URL=mongodb://localhost:27017
-JWT_SECRET=your_secret_key
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-GROQ_API_KEY=your_groq_key
-STRIPE_API_KEY=your_stripe_key
+```powershell
+.\run-dev.ps1
 ```
 
-### 2. Frontend Setup
+## Railway
 
-```bash
-cd frontend
-npm install
+Use the root `Dockerfile`, attach Railway Postgres, and set:
+
+```env
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+JWT_SECRET=<strong-random-secret>
+ANTHROPIC_API_KEY=<optional-real-builds>
+CORS_ORIGINS=https://your-frontend.example
+FRONTEND_URL=https://your-frontend.example
 ```
 
-Create `.env.local` file:
+Keep `CRUCIBAI_TERMINAL_ENABLED` unset or `0` for public launch unless terminal execution is isolated in a trusted sandbox.
 
-```
-VITE_API_URL=http://localhost:8000/api
-VITE_APP_NAME=CrucibAI
-```
+## Health Checks
 
-## Running Locally
-
-### Start Backend
-
-```bash
-cd backend
-python3 server.py
-```
-
-Backend will be available at `http://localhost:8000`
-
-### Start Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Frontend will be available at `http://localhost:5173`
-
-## Docker Deployment
-
-### Build Docker Images
-
-```bash
-# Backend
-docker build -t crucibai-backend:latest ./backend
-
-# Frontend
-docker build -t crucibai-frontend:latest ./frontend
-```
-
-### Run with Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-## Production Deployment
-
-### 1. Build for Production
-
-```bash
-# Frontend
-cd frontend
-npm run build
-
-# Backend
-cd backend
-pip install gunicorn
-```
-
-### 2. Deploy Backend
-
-Using Gunicorn:
-
-```bash
-gunicorn -w 4 -b 0.0.0.0:8000 server:app
-```
-
-### 3. Deploy Frontend
-
-Using a static file server:
-
-```bash
-# Using Node.js
-npm install -g serve
-serve -s dist -l 3000
-
-# Using Nginx
-# Copy dist/ to /var/www/crucibai
-# Configure Nginx to serve static files
-```
-
-### 4. Environment Variables
-
-Set production environment variables:
-
-```bash
-export MONGO_URL=mongodb+srv://user:pass@cluster.mongodb.net/crucibai
-export JWT_SECRET=<strong_random_key>
-export NODE_ENV=production
-```
-
-### 5. SSL/TLS
-
-Use Let's Encrypt for free SSL certificates:
-
-```bash
-certbot certonly --standalone -d api.crucibai.com
-```
-
-### 6. Database Backups
-
-Set up automated MongoDB backups:
-
-```bash
-mongodump --uri "mongodb+srv://user:pass@cluster.mongodb.net/crucibai" --out /backups/$(date +%Y%m%d)
-```
-
-## Monitoring
-
-### Health Checks
-
-```bash
+```powershell
 curl http://localhost:8000/api/health
+curl http://localhost:8000/api/health/ready
 ```
 
-### Logs
+`/api/health` is process liveness. `/api/health/ready` checks Postgres readiness.
 
-Monitor application logs:
+## Verification
 
-```bash
-# Backend logs
-tail -f backend/logs/app.log
-
-# Frontend logs
-# Check browser console
+```powershell
+python -m py_compile backend\server.py
+$env:DATABASE_URL='postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai'
+$env:REDIS_URL='redis://127.0.0.1:6381/0'
+python -m pytest backend\tests\test_smoke.py -q
 ```
 
-### Performance Metrics
+## Backups
 
-Monitor key metrics:
-- API response times
-- Database query performance
-- Frontend bundle size
-- Error rates
+Use PostgreSQL backups, for example Railway Postgres backups or `pg_dump`:
 
-## Scaling
-
-### Horizontal Scaling
-
-1. Deploy multiple backend instances
-2. Use load balancer (Nginx, HAProxy)
-3. Use MongoDB replica set for high availability
-
-### Vertical Scaling
-
-1. Increase server resources (CPU, RAM)
-2. Optimize database indexes
-3. Enable caching (Redis)
-
-## Troubleshooting
-
-### Backend Won't Start
-
-1. Check MongoDB connection: `mongosh mongodb://localhost:27017`
-2. Check environment variables: `env | grep MONGO`
-3. Check logs: `tail -f backend/logs/app.log`
-
-### Frontend Build Fails
-
-1. Clear node_modules: `rm -rf node_modules && npm install`
-2. Clear cache: `npm cache clean --force`
-3. Check Node version: `node --version` (should be 18+)
-
-### Database Connection Issues
-
-1. Check MongoDB is running: `ps aux | grep mongod`
-2. Check connection string in .env
-3. Check firewall rules
-
-## Security Checklist
-
-- [ ] Change default JWT_SECRET
-- [ ] Enable HTTPS/SSL
-- [ ] Set strong database passwords
-- [ ] Configure CORS properly
-- [ ] Enable rate limiting
-- [ ] Set up firewall rules
-- [ ] Enable database backups
-- [ ] Monitor for suspicious activity
-- [ ] Keep dependencies updated
-- [ ] Use environment variables for secrets
-
-## Support
-
-For deployment issues, contact support@crucibai.com
+```powershell
+pg_dump $env:DATABASE_URL > crucibai-backup.sql
+```

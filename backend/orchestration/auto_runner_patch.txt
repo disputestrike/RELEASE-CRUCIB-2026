@@ -1,0 +1,25 @@
+--- a/backend/orchestration/auto_runner.py
++++ b/backend/orchestration/auto_runner.py
+@@ -1,6 +1,7 @@
+ import asyncio
+ import json
+ import os
++from backend.orchestration.auto_runner_fix import prepare_job_failure_state
+ 
+ async def _execute_job_loop(job_id, workspace_path, db_pool, total_retries):
+     # ... existing code ...
+@@ -295,10 +296,13 @@ async def _execute_job_loop(job_id, workspace_path, db_pool, total_retries):
+         # Check for blocked steps
+         blocked_steps = [step for step in dag_steps if step in blocked_from_deps]
+         
++        # Prepare failure state with properly serialized data
++        failure_state = prepare_job_failure_state(
++            job_id, 
++            blocked_steps,
++            "Steps blocked by failed dependencies"
++        )
+-        # FIXED: Convert list to JSON string before database insert
+-        await update_job_state(job_id, "failed", {
+-            "blocked_steps": json.dumps(blocked_steps),
+-            "failure_reason": f"Steps blocked by failed dependencies: {blocked_steps}"
++        await update_job_state(job_id, failure_state["status"], failure_state)
