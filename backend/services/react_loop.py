@@ -26,10 +26,21 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
 from openai import AsyncOpenAI
 
 # Configure OpenAI client to use local/compatible API
-client = AsyncOpenAI(
-    base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
-    api_key=os.environ.get("OPENAI_API_KEY"),
-)
+# We initialize the client inside the call function to avoid startup errors if API keys are missing
+_client: AsyncOpenAI | None = None
+
+def get_client() -> AsyncOpenAI:
+    global _client
+    if _client is None:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            # Fallback for startup/validation if key is missing
+            api_key = "sk-placeholder-for-startup"
+        _client = AsyncOpenAI(
+            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
+            api_key=api_key,
+        )
+    return _client
 
 ToolCall = Callable[[str, Dict[str, Any]], Awaitable[Any]]
 LlmCall = Callable[[str, List[Dict[str, Any]]], Awaitable[Dict[str, Any]]]
@@ -66,6 +77,7 @@ async def _openai_llm_call(prompt: str, history: List[Dict[str, Any]], system_pr
             })
 
     try:
+        client = get_client()
         response = await client.chat.completions.create(
             model=os.environ.get("LLM_MODEL", "gpt-4.1-mini"),
             messages=messages,
