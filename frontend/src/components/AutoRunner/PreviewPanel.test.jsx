@@ -57,7 +57,7 @@ describe('PreviewPanel', () => {
     render(
       <PreviewPanel previewUrl={null} status="ready" sandpackFiles={{}} sandpackDeps={{}} filesReadyKey="t3" />,
     );
-    expect(screen.getByText(/When your UI files are in the workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Build complete! Add your UI files below or use Sync to pull generated code\./i)).toBeInTheDocument();
   });
 
   test('shows building shimmer when status building and no sandpack yet', () => {

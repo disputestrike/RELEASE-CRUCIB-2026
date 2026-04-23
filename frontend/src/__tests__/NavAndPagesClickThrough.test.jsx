@@ -46,7 +46,7 @@ describe('Nav and pages — link and click-through verification', () => {
     forbiddenInNav.forEach((path) => {
       expect(hrefs.filter((h) => h === path || h.startsWith(path + '?'))).toHaveLength(0);
     });
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /(sign|log) in/i })).toHaveAttribute('href', '/auth');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
   });
 
@@ -119,7 +119,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing');
     expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
     expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog');
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/auth');
+    expect(screen.getByRole('link', { name: /(sign|log) in/i })).toHaveAttribute('href', '/auth');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
   });
 

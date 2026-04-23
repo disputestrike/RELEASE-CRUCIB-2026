@@ -48,7 +48,7 @@ describe('Single Source of Truth', () => {
     it('Pricing page source uses redirect with addon query when not logged in', () => {
       const pricingPath = path.join(__dirname, '../pages/Pricing.jsx');
       const source = fs.readFileSync(pricingPath, 'utf8');
-      expect(source).toMatch(/redirect.*addon/);
+      expect(source).toMatch(/(redirect|navigate).*addon/);
       expect(source).toMatch(/\/app\/tokens\?addon=/);
     });
     it('TokenCenter source reads addon from location.state or searchParams', () => {

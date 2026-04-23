@@ -29,6 +29,11 @@ CEREBRAS_MODEL = "llama3.1-8b"
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = "claude-3-haiku-20240307"
 
+
+def get_cerebras_key() -> str:
+    """Return the current Cerebras API key from environment."""
+    return os.environ.get("CEREBRAS_API_KEY", "").strip()
+
 class TaskComplexity(str, Enum):
     """Task complexity classification"""
     SIMPLE = "simple"          # Quick formatting, simple transforms

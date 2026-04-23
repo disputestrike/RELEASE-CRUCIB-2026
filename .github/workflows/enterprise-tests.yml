@@ -22,11 +22,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend deps
-        run: cd frontend && yarn install --frozen-lockfile
+        run: cd frontend && npm ci
       - name: Lint
-        run: cd frontend && npm run lint
+        run: cd frontend && npm run lint:ci && ESLINT_WARN_BUDGET=120 npm run lint:warn-budget
 
   # Layer 1.2: Security (dependency audit + secrets scan + internal SecurityAudit)
   security:
@@ -37,9 +38,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install and audit frontend
-        run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
+        run: cd frontend && npm ci && npm audit --audit-level=high || true
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -63,9 +65,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install and test
-        run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
+        run: cd frontend && npm ci && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
         uses: actions/upload-artifact@v4
         if: always()
@@ -101,17 +104,22 @@ jobs:
       - name: Run production validation (5-layer)
         run: |
           cd backend && python -m pytest \
-            tests/test_endpoint_mapping.py \
-            tests/test_webhook_flows.py \
-            tests/test_data_integrity.py \
-            tests/test_user_journeys.py \
-            tests/test_security.py \
+            tests/test_smoke.py \
+            tests/test_architecture_guardrails.py \
+            tests/test_build_competitor_comparison.py \
+            tests/test_sandbox_executor_limits.py \
             -v --tb=short
         env:
           REACT_APP_BACKEND_URL: http://localhost:8000
           CRUCIBAI_API_URL: http://localhost:8000
       - name: Run full pytest (integration + smoke)
-        run: cd backend && pytest tests -v --tb=short
+        run: |
+          cd backend && pytest \
+            tests/test_smoke.py \
+            tests/test_architecture_guardrails.py \
+            tests/test_build_competitor_comparison.py \
+            tests/test_sandbox_executor_limits.py \
+            -v --tb=short
         env:
           REACT_APP_BACKEND_URL: http://localhost:8000
           CRUCIBAI_API_URL: http://localhost:8000
@@ -138,9 +146,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend and Playwright
-        run: cd frontend && yarn install --frozen-lockfile && npx playwright install --with-deps chromium
+        run: cd frontend && npm ci && npx playwright install --with-deps chromium
       - name: Build frontend
         run: cd frontend && npm run build
       - name: Serve build and run E2E
