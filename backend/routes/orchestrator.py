@@ -107,7 +107,7 @@ except ImportError:
 
 async def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    return await planner_project_state_service(user, user_credits=get_user_credits(user))
+    return await planner_project_state_service(user, user_credits=await get_user_credits(user))
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
