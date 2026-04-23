@@ -18,29 +18,82 @@ layered by passing a non-None `llm_call` coroutine with the same signature.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
+
+from openai import AsyncOpenAI
+
+# Configure OpenAI client to use local/compatible API
+client = AsyncOpenAI(
+    base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
 
 ToolCall = Callable[[str, Dict[str, Any]], Awaitable[Any]]
 LlmCall = Callable[[str, List[Dict[str, Any]]], Awaitable[Dict[str, Any]]]
 
 
-async def _default_llm(prompt: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Deterministic stand-in for an LLM — emits a thought then a final text.
+async def _openai_llm_call(prompt: str, history: List[Dict[str, Any]], system_prompt: Optional[str] = None, tools: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    for h in history:
+        if "tool" in h:
+            messages.append({"role": "tool", "tool_call_id": h["tool_call_id"], "content": json.dumps(h["result"])})
+        else:
+            messages.append({"role": "user", "content": h["prompt"]})
+    messages.append({"role": "user", "content": prompt})
 
-    Real callers should pass their own `llm_call`.
-    """
-    await asyncio.sleep(0)
-    return {
-        "thought": f"plan: answer '{prompt[:60]}' directly",
-        "tool_call": None,
-        "final": f"[stub] answer to: {prompt[:120]}",
-    }
+    tool_specs = []
+    if tools:
+        for tool_name, tool_func in tools.items():
+            tool_specs.append({
+                "type": "function",
+                "function": {
+                    "name": tool_name,
+                    "description": tool_func.__doc__,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The search query"},
+                            "max_results": {"type": "integer", "description": "Maximum number of search results"},
+                        },
+                        "required": ["query"],
+                    },
+                },
+            })
+
+    try:
+        response = await client.chat.completions.create(
+            model=os.environ.get("LLM_MODEL", "gpt-4.1-mini"),
+            messages=messages,
+            tools=tool_specs if tool_specs else None,
+            tool_choice="auto" if tool_specs else None,
+            stream=False,
+        )
+
+        choice = response.choices[0].message
+        if choice.tool_calls:
+            tool_call = choice.tool_calls[0]
+            return {
+                "thought": choice.content or "Calling tool",
+                "tool_call": {
+                    "id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "args": json.loads(tool_call.function.arguments),
+                },
+            }
+        else:
+            return {"final": choice.content}
+    except Exception as e:
+        return {"final": f"Error calling LLM: {e}"}
 
 
 async def react_stream(
     prompt: str,
     *,
+    system_prompt: Optional[str] = None,
     tools: Optional[Dict[str, ToolCall]] = None,
     llm_call: Optional[LlmCall] = None,
     thinking_budget: int = 8000,
@@ -48,13 +101,19 @@ async def react_stream(
 ) -> AsyncIterator[Dict[str, Any]]:
     """Drive a ReAct loop, yielding structured events."""
     tools = tools or {}
-    llm_call = llm_call or _default_llm
+    llm_call = llm_call or _openai_llm_call
     history: List[Dict[str, Any]] = []
+    # Pass system_prompt and tools to the llm_call if it's our default
+    if llm_call == _openai_llm_call:
+        _llm_call_with_context = lambda p, h: _openai_llm_call(p, h, system_prompt, tools)
+    else:
+        _llm_call_with_context = llm_call
+
     used = 0
     t0 = time.monotonic()
 
     for step in range(max_steps):
-        turn = await llm_call(prompt, history)
+        turn = await _llm_call_with_context(prompt, history)
         # Thinking narration
         thought = turn.get("thought")
         if thought:
@@ -80,7 +139,7 @@ async def react_stream(
                     result = {"error": f"{type(exc).__name__}: {exc}"}
                     ok = False
             yield {"type": "tool_result", "id": call_id, "ok": ok, "result": result}
-            history.append({"tool": name, "args": args, "result": result})
+            history.append({"tool": name, "args": args, "result": result, "tool_call_id": call_id})
             continue  # let the model incorporate tool result next step
 
         # Final answer

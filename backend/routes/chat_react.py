@@ -10,6 +10,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from services.react_loop import react_stream
+from services.prompts import load_prompt
+from services.tools import get_tools
 
 router = APIRouter(prefix="/api/chat", tags=["chat-react"])
 
@@ -21,8 +23,12 @@ class ReactChatRequest(BaseModel):
 
 
 async def _sse_iter(req: ReactChatRequest, request: Request) -> AsyncIterator[bytes]:
+    system_prompt = load_prompt("honesty_bias.v1.md")
+    tools = get_tools()
     async for event in react_stream(
         req.prompt,
+        system_prompt=system_prompt,
+        tools=tools,
         thinking_budget=req.thinking_budget,
         max_steps=req.max_steps,
     ):
