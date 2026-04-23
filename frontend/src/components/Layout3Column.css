@@ -117,17 +117,21 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  scrollbar-gutter: stable;
+  position: relative;
+  /* Ensure content doesn't get cut off at the bottom */
+  padding-bottom: 24px;
 }
 
 /* Dashboard /app: hide main-column scrollbar chrome (feels like a “grid line”) */
 .layout-shell--dash-home .layout-main-content {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: auto;
+  -ms-overflow-style: auto;
 }
 .layout-shell--dash-home .layout-main-content::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  display: block;
+  width: 10px;
+  height: 10px;
 }
 
 /* Right Panel — same tone as main canvas */
@@ -147,6 +151,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  scrollbar-gutter: stable;
 }
 
 /* Overlay (for mobile) */

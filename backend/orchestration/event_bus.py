@@ -60,8 +60,8 @@ async def publish(
         await websocket_broadcast_event(
             job_id, event_type, step_id=step_id, payload=payload or {}
         )
-    except Exception:
-        logger.debug("event_bus: websocket mirror unavailable for job %s", job_id)
+    except Exception as e:
+        logger.debug("event_bus: websocket mirror unavailable for job %s: %s", job_id, e)
 
 
 def publish_sync(

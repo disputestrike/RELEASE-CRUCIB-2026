@@ -33,6 +33,9 @@ export default function WorkspaceSystemsPanel({
   token,
   events = [],
   proof = null,
+  taskProgress = null,
+  actionChips = [],
+  controller = null,
 }) {
   const headers = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
@@ -266,6 +269,55 @@ export default function WorkspaceSystemsPanel({
 
   return (
     <div className="wsp-root">
+      {taskProgress && (
+        <section className="wsp-card wsp-progress-card">
+          <div className="wsp-card-title"><Radar size={16} /> Task Progress</div>
+          <div className="wsp-progress-bar-bg">
+            <div 
+              className="wsp-progress-bar-fill" 
+              style={{ width: `${taskProgress.percentage || 0}%` }} 
+            />
+          </div>
+          <div className="wsp-progress-meta">
+            <span>{taskProgress.summary || taskProgress.label || 'Processing...'}</span>
+            <strong>{taskProgress.percentage || 0}%</strong>
+          </div>
+          {actionChips.length > 0 && (
+            <div className="wsp-chip-row" style={{ marginTop: '8px' }}>
+              {actionChips.map((chip, i) => (
+                <span key={i} className={`wsp-chip wsp-chip-action ${chip.type || ''}`}>
+                  {chip.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {controller && (
+        <section className="wsp-card">
+          <div className="wsp-card-title"><Bot size={16} /> Controller Intelligence</div>
+          <div className="wsp-controller-status">
+            <div className="wsp-inline-item">
+              <span>State</span>
+              <strong>{controller.state || 'idle'}</strong>
+            </div>
+            <div className="wsp-inline-item">
+              <span>Focus</span>
+              <strong>{controller.current_focus || 'None'}</strong>
+            </div>
+          </div>
+          {controller.recommendation && (
+            <div className="wsp-result" style={{ gridTemplateColumns: '1fr', marginTop: '4px' }}>
+              <div>
+                <span>Recommendation</span>
+                <p style={{ fontSize: '12px', margin: '4px 0 0' }}>{controller.recommendation}</p>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="wsp-card">
         <div className="wsp-card-header">
           <div>

@@ -10,8 +10,10 @@ WORKDIR /app
 # Copy the full frontend source BEFORE npm ci because package.json has a
 # postinstall hook (`node scripts/patch-ajv-formats.js`) that runs during
 # install and needs scripts/ (and the rest of the source) available.
-COPY frontend/ ./
+COPY frontend/package*.json ./
+COPY frontend/scripts/ ./scripts/
 RUN npm ci --legacy-peer-deps --no-audit --no-fund --loglevel=error
+COPY frontend/ ./
 # Build — ESLint disabled (CRA warnings don't break the bundle and we lint in CI).
 ENV CI=true
 ENV DISABLE_ESLINT_PLUGIN=true

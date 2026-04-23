@@ -264,3 +264,53 @@
     flex-direction: column;
   }
 }
+/* Manus-style Progress & Action Chips */
+.wsp-progress-card {
+  background: var(--bg-2);
+  border-color: var(--border-2);
+}
+
+.wsp-progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-0);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.wsp-progress-bar-fill {
+  height: 100%;
+  background: var(--state-success);
+  transition: width 0.4s ease;
+}
+
+.wsp-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wsp-chip-action {
+  background: var(--bg-1);
+  border-color: var(--state-success);
+  color: var(--state-success);
+  font-weight: 600;
+}
+
+.wsp-chip-action.thinking {
+  border-color: var(--state-warning);
+  color: var(--state-warning);
+}
+
+.wsp-chip-action.error {
+  border-color: var(--state-error);
+  color: var(--state-error);
+}
+
+.wsp-controller-status {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

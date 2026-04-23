@@ -142,10 +142,14 @@ async def create_job(
     """Create a new job (plan + steps) for a project."""
     try:
         from orchestration import planner as planner_mod
-        # NOTE: build_dag_from_plan is no longer passed — create_job_service uses
-        # services.runtime.execution_authority.build_runtime_native_step_defs directly.
-        # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
-        # keyword argument, which was the root cause of the NoneType-await surface.
+        from services.orchestration_service import planner_project_state_service
+
+        # Get user credits for planner_project_state
+        from server import get_user_credits
+
+        project_state = planner_project_state_service(
+            user, user_credits=get_user_credits
+        )
 
         return await create_job_service(
             body=body,
@@ -153,6 +157,7 @@ async def create_job(
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
             generate_plan=planner_mod.generate_plan,
+            project_state=project_state,
         )
     except HTTPException:
         raise

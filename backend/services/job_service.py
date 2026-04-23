@@ -15,7 +15,7 @@ async def create_job_service(
     generate_plan: Callable[..., Awaitable[Any]],
     resolve_project_id: Optional[Callable[[str, dict], Awaitable[str]]] = None,
     update_last_build_state: Optional[Callable[[Any], None]] = None,
-    planner_project_state: Optional[dict] = None,
+    project_state: Optional[dict] = None,
 ):
     rs = runtime_state_getter()
     # Surface failures in pool acquisition explicitly — raising HTTPException(503)
@@ -39,7 +39,7 @@ async def create_job_service(
     if resolve_project_id is not None:
         project_id = await resolve_project_id(project_id, user)
 
-    plan = await generate_plan(body.goal, project_state=planner_project_state or {})
+    plan = await generate_plan(body.goal, project_state=project_state)
     if update_last_build_state is not None:
         try:
             update_last_build_state(plan)

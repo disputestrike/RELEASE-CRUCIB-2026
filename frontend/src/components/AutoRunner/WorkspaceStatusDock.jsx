@@ -13,17 +13,35 @@ function formatElapsed(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export default function WorkspaceStatusDock({ jobId, job, steps, stage, events, connectionMode, loading = false }) {
+export default function WorkspaceStatusDock({ 
+  jobId, 
+  job, 
+  steps, 
+  stage, 
+  events, 
+  connectionMode, 
+  loading = false,
+  taskProgress = null,
+  actionChips = [],
+  controller = null,
+}) {
   const meta = useMemo(
     () => (jobId ? computeDockMeta({ job, steps, stage, events }) : computeDockMetaPreJob({ stage, loading })),
     [jobId, job, steps, stage, events, loading],
   );
 
+  const displayTitle = taskProgress?.summary || meta.title;
+  const displayPercentage = taskProgress?.percentage;
+
   return (
     <div className="wsd-root" role="status" aria-live="polite">
       <div className="wsd-main">
-        <span className="wsd-title">{meta.title}</span>
-        {meta.progress ? (
+        <span className="wsd-title">{displayTitle}</span>
+        {displayPercentage != null ? (
+          <span className="wsd-progress">
+            {Math.round(displayPercentage)}%
+          </span>
+        ) : meta.progress ? (
           <span className="wsd-progress">
             {meta.progress.done}/{meta.progress.total}
           </span>

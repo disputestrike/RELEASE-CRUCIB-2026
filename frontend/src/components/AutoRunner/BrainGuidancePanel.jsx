@@ -205,6 +205,9 @@ export default function BrainGuidancePanel({
   milestoneBatch = null,
   repairQueueLen = 0,
   steps = [],
+  taskProgress = null,
+  actionChips = [],
+  controller = null,
 }) {
   const activityChips = useMemo(
     () => (jobId ? extractActivityChips(events, 10) : []),
@@ -269,24 +272,54 @@ export default function BrainGuidancePanel({
       );
     }
 
-    if (g) {
+    if (taskProgress || g) {
+      const headline = taskProgress?.summary || g?.headline;
+      const summary = taskProgress?.detail || (g?.summary !== g?.headline ? g?.summary : null);
+      const nextSteps = taskProgress?.next_steps || g?.next_steps || [];
+      const stepKey = taskProgress?.current_step || g?.step_key;
+
       return (
         <>
-          {g.step_key ? (
-            <p className="bgp-context-line" title={g.step_key}>
-              Now · {humanizeStepKey(g.step_key)}
+          {stepKey ? (
+            <p className="bgp-context-line" title={stepKey}>
+              Now · {humanizeStepKey(stepKey)}
             </p>
           ) : null}
-          <p className="bgp-headline">{g.headline}</p>
-          {g.summary && g.summary !== g.headline ? <p className="bgp-summary">{g.summary}</p> : null}
+          <p className="bgp-headline">{headline}</p>
+          {summary ? <p className="bgp-summary">{summary}</p> : null}
+          
+          {taskProgress?.percentage != null && (
+            <div className="bgp-progress-bar-wrap">
+              <div className="bgp-progress-bar-track">
+                <div 
+                  className="bgp-progress-bar-fill" 
+                  style={{ width: `${taskProgress.percentage}%` }} 
+                />
+              </div>
+              <span className="bgp-progress-bar-text">{Math.round(taskProgress.percentage)}%</span>
+            </div>
+          )}
+
           <EvidenceBlock text={evidenceText} repairMeta={latestFailure} />
-          {g.next_steps.length > 0 ? (
+          
+          {actionChips && actionChips.length > 0 && (
+            <div className="bgp-action-chips">
+              {actionChips.map((chip, i) => (
+                <div key={i} className="bgp-action-chip">
+                  <Sparkles size={10} />
+                  <span>{chip.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {nextSteps.length > 0 ? (
             <div className="bgp-steps">
               <div className="bgp-steps-label">
                 <ListOrdered size={12} /> What happens next
               </div>
               <ol className="bgp-ol">
-                {g.next_steps.map((s, i) => (
+                {nextSteps.map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
               </ol>

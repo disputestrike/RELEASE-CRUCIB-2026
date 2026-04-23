@@ -251,253 +251,77 @@ export default function UnifiedWorkspace() {
   const [activeWsPath, setActiveWsPath] = useState('');
   const [treeRevealTick, setTreeRevealTick] = useState(0);
   const [filesReadyKey, setFilesReadyKey] = useState('uw-default');
-
-  const [workspacePullKey, setWorkspacePullKey] = useState(0);
   const [wsPaths, setWsPaths] = useState([]);
-  const [wsListLoading, setWsListLoading] = useState(false);
   const [wsFileCache, setWsFileCache] = useState({});
+  const [workspacePullKey, setWorkspacePullKey] = useState(0);
   const [zipBusy, setZipBusy] = useState(false);
 
-  const sandpackMergeFiles = useMemo(() => {
-    const base = { ...DEFAULT_FILES, ...files };
-    Object.entries(wsFileCache).forEach(([k, ent]) => {
-      if (ent?.status === 'text' || ent?.status === 'markdown') {
-        const slashed = toEditorPath(k);
-        base[slashed] = { code: ent.text ?? '' };
-      }
-    });
-    return base;
-  }, [files, wsFileCache]);
+  const effectiveJobId = jobId || jobIdFromUrl;
+  const effectiveProjectId = projectIdFromUrl;
 
-  const { sandpackFiles, isFallback: sandpackIsFallback } = useMemo(
-    () => computeSandpackFilesWithMeta(sandpackMergeFiles),
-    [sandpackMergeFiles],
-  );
-  const sandpackDeps = useMemo(() => computeSandpackDeps(sandpackMergeFiles), [sandpackMergeFiles]);
+  const {
+    job,
+    steps,
+    events,
+    milestoneBatch,
+    repairQueueLen,
+    latestFailure,
+    latestFailedStep,
+    isCompleted,
+    connectionMode,
+    refresh,
+    taskProgress,
+    actionChips,
+    controller,
+  } = useJobStream(effectiveJobId, token);
 
-  /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
-  const effectiveJobId = jobIdFromUrl || jobId;
-  const { job, latestFailure, milestoneBatch, repairQueueLen, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
-    effectiveJobId,
-    token,
-  );
-
-  const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
-
-  const appendUserChat = useCallback((body) => {
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const jidAt = jobId || jobIdFromUrl || null;
-    // Dedup: if the very last user message has the same body+jobId, skip —
-    // this eliminates the duplicate-initial-prompt bug on first run.
-    setUserChatMessages((prev) => {
-      const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
-      const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
-      if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
-      return [...prev, msg];
-    });
-  }, [jobId, jobIdFromUrl]);
+  const buildDisplayTitle = useMemo(() => {
+    if (job?.name) return job.name;
+    if (job?.goal) return job.goal;
+    if (plan?.goal) return plan.goal;
+    if (goal) return goal;
+    return 'Untitled build';
+  }, [job?.name, job?.goal, plan?.goal, goal]);
 
   const clearBuildError = useCallback(() => {
     setError(null);
     setErrorRaw(null);
   }, []);
 
-  const applyBuildError = useCallback((raw) => {
-    let text = '';
-    if (typeof raw === 'string') text = raw;
-    else if (raw && typeof raw === 'object' && raw.response) {
-      const d = raw.response.data?.detail;
-      text = detailToString(d) || raw.message || 'Request failed';
-    } else if (raw instanceof Error) text = raw.message || String(raw);
-    else text = String(raw);
-    const { friendly } = formatWorkspaceBuildError(text);
-    setError(friendly);
-    setErrorRaw(text);
+  const applyBuildError = useCallback((msg) => {
+    const fmt = formatWorkspaceBuildError(msg);
+    setError(fmt.message);
+    setErrorRaw(fmt.raw);
   }, []);
 
-  const buildDisplayTitle = useMemo(() => {
-    const g = (job?.goal || '').trim();
-    if (g) return g.split('\n')[0].slice(0, 120);
-    const last = [...userChatMessages].reverse().find((m) => m.body);
-    if (last?.body) return String(last.body).split('\n')[0].slice(0, 120);
-    return 'Build';
-  }, [job?.goal, userChatMessages]);
-
-  useEffect(() => {
-    if (!effectiveJobId) return;
-    setUserChatMessages((prev) => {
-      let changed = false;
-      const next = prev.map((m) => {
-        if (m.pendingBind && !m.jobId) {
-          changed = true;
-          return { ...m, jobId: effectiveJobId, pendingBind: false };
-        }
-        return m;
-      });
-      return changed ? next : prev;
-    });
-  }, [effectiveJobId]);
-
-  useEffect(() => {
-    if (!taskIdFromUrl || !effectiveJobId) return;
-    const patch = { jobId: effectiveJobId };
-    const st = job?.status;
-    if (st === 'completed') patch.status = 'completed';
-    else if (st === 'failed' || st === 'cancelled') patch.status = 'failed';
-    else if (st) patch.status = 'running';
-    updateTask(taskIdFromUrl, patch);
-  }, [taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
-
-  const isCompleted = job?.status === 'completed';
-  const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
-
-  const completedStepCount = useMemo(
-    () => steps.filter((s) => s.status === 'completed').length,
-    [steps],
-  );
   const lastPulledStepCount = useRef(0);
-  const completedWorkspaceBumpRef = useRef(null);
   useEffect(() => {
-    lastPulledStepCount.current = 0;
-    completedWorkspaceBumpRef.current = null;
-  }, [jobId, jobIdFromUrl]);
-
-  useEffect(() => {
-    if (!token || !API) return;
-    if (!effectiveJobId && !effectiveProjectId) return;
-    if (completedStepCount === 0) return;
-    if (completedStepCount === lastPulledStepCount.current) return;
-    lastPulledStepCount.current = completedStepCount;
-    setWorkspacePullKey((k) => k + 1);
-  }, [completedStepCount, effectiveProjectId, effectiveJobId, token]);
-
-  useEffect(() => {
-    if (job?.status !== 'completed' || !effectiveJobId) return;
-    if (completedWorkspaceBumpRef.current === effectiveJobId) return;
-    completedWorkspaceBumpRef.current = effectiveJobId;
-    setWorkspacePullKey((k) => k + 1);
-  }, [job?.status, effectiveJobId]);
-
-  useEffect(() => {
-    if (isCompleted && stage === 'running') setStage('completed');
-  }, [isCompleted, stage]);
-
-  const handleShare = useCallback(() => {
-    const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: 'CrucibAI Workspace', url }).catch(() => {
-        navigator.clipboard.writeText(url);
-      });
-    } else {
-      navigator.clipboard.writeText(url);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!taskIdFromUrl || !token || !API) return;
-    axios
-      .get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        const task = r.data?.task || r.data;
-        const taskFiles = task?.files || task?.doc?.files;
-        if (!taskFiles || typeof taskFiles !== 'object') return;
-        const loaded = Object.entries(taskFiles).reduce((acc, [path, content]) => {
-          const key = path.startsWith('/') ? path : `/${path}`;
-          acc[key] = { code: typeof content === 'string' ? content : content?.code || '' };
-          return acc;
-        }, {});
-        if (Object.keys(loaded).length > 0) {
-          setFiles(loaded);
-          const pick =
-            Object.keys(loaded)
-              .sort()
-              .find((k) => /App\.(jsx?|tsx?)$/i.test(k)) || Object.keys(loaded).sort()[0];
-          setActiveWsPath(normalizeWorkspacePath(pick));
-          setTreeRevealTick((t) => t + 1);
-          setFilesReadyKey(`task_${taskIdFromUrl}_${Date.now()}`);
-        }
-      })
-      .catch(() => {});
-  }, [taskIdFromUrl, token]);
-
-  useEffect(() => {
-    if (!token || !API) return;
-    const useJobWs = Boolean(effectiveJobId);
-    if (!useJobWs && !effectiveProjectId) return;
+    if (!effectiveJobId || !token || !API) return;
     const headers = { Authorization: `Bearer ${token}` };
-    const listUrl = useJobWs
-      ? `${API}/jobs/${effectiveJobId}/workspace/files`
-      : `${API}/projects/${effectiveProjectId}/workspace/files`;
-    let cancelled = false;
-    setWsListLoading(true);
-    fetchAllWorkspaceFilePaths(listUrl, headers)
-      .then((paths) => {
-        if (cancelled) return;
-        setWsPaths(paths);
-        setFilesReadyKey(
-          useJobWs ? `job_${effectiveJobId}_${Date.now()}` : `proj_${effectiveProjectId}_${Date.now()}`,
-        );
-        setActiveWsPath((cur) => {
-          if (cur && paths.includes(cur)) return cur;
-          const pick =
-            paths.find((p) => /(^|\/)App\.(jsx?|tsx?)$/i.test(p)) ||
-            paths.find((p) => /(^|\/)index\.(jsx?|tsx?)$/i.test(p)) ||
-            paths[0] ||
-            '';
-          if (pick) setTreeRevealTick((t) => t + 1);
-          return pick;
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setWsPaths([]);
-      })
-      .finally(() => {
-        if (!cancelled) setWsListLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [effectiveProjectId, effectiveJobId, token, workspacePullKey, API]);
+    fetchAllWorkspaceFilePaths(API, effectiveJobId, headers)
+      .then((paths) => setWsPaths(paths))
+      .catch(() => setWsPaths([]));
+  }, [effectiveJobId, token, API, workspacePullKey]);
 
-  const traceByPath = useMemo(() => buildTraceIndexFromEvents(events, steps), [events, steps]);
+  const traceByPath = useMemo(() => buildTraceIndexFromEvents(events), [events]);
 
   const loadWorkspaceFileBody = useCallback(
-    async (posixPath) => {
-      const key = normalizeWorkspacePath(posixPath);
-      if (!key || !token || !API) return;
-      const useJobWs = Boolean(effectiveJobId);
-      if (!useJobWs && !effectiveProjectId) return;
+    async (key) => {
+      if (!effectiveJobId || !token || !API) return;
       const headers = { Authorization: `Bearer ${token}` };
-      const textBase = useJobWs
-        ? `${API}/jobs/${effectiveJobId}/workspace/file`
-        : `${API}/projects/${effectiveProjectId}/workspace/file`;
-      const rawBase = useJobWs
-        ? `${API}/jobs/${effectiveJobId}/workspace/file/raw`
-        : `${API}/projects/${effectiveProjectId}/workspace/file/raw`;
-      setWsFileCache((prev) => {
-        const old = prev[key];
-        if (old?.blobUrl) {
-          try {
-            URL.revokeObjectURL(old.blobUrl);
-          } catch (_) {
-            /* ignore */
-          }
-        }
-        return { ...prev, [key]: { status: 'loading' } };
-      });
-      const kind = guessViewerKind(key);
-      if (kind === 'image' || kind === 'binary') {
+      const textBase = `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file`;
+      const rawBase = `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file/raw`;
+      const isBinary = guessViewerKind(key) === 'binary';
+      if (isBinary) {
         try {
           const r = await fetch(`${rawBase}?path=${encodeURIComponent(key)}`, { headers });
-          if (!r.ok) throw new Error((await r.text()) || r.statusText || `HTTP ${r.status}`);
+          if (!r.ok) throw new Error((await r.text()) || r.statusText);
           const blob = await r.blob();
           const blobUrl = URL.createObjectURL(blob);
+          const isImg = (r.headers.get('content-type') || '').startsWith('image/');
           setWsFileCache((prev) => ({
             ...prev,
-            [key]: { status: kind === 'image' ? 'image' : 'binary', blobUrl, contentType: r.headers.get('content-type') },
+            [key]: { status: isImg ? 'image' : 'binary', blobUrl, contentType: r.headers.get('content-type') },
           }));
         } catch (e) {
           setWsFileCache((prev) => ({
@@ -765,229 +589,49 @@ export default function UnifiedWorkspace() {
 
   /**
    * Phase 1: one Send = POST /orchestrator/plan then POST /orchestrator/run-auto (same job).
-   * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
    */
-  const handleSend = async () => {
-    if (!goal.trim() || authLoading || !token || !API) return;
-    if (sendInFlightRef.current) return;
-    const submitted = goal.trim();
-    const activeJobId = jobId || jobIdFromUrl;
-
-    const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
-    /** Steer+resume whenever the job is terminal/blocked or steps failed (do not require quiescent workers — UI can lag). */
-    const steerMode =
-      Boolean(activeJobId) &&
-      (job?.status === 'failed' ||
-        job?.status === 'cancelled' ||
-        job?.status === 'blocked' ||
-        (failedOrBlocked && job?.status !== 'queued'));
-
-    const seeminglyBusy = isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage });
-
-    if (steerMode) {
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
-      sendInFlightRef.current = true;
-      setLoading(true);
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.post(
-          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
-          { message: submitted, resume: true },
-          { headers, timeout: 15000 },
-        );
-        clearBuildError();
-        const coachText = formatCoachReply(res.data?.guidance);
-        if (coachText) {
-          const aid =
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => [
-            ...prev,
-            {
-              id: aid,
-              body: coachText,
-              role: 'assistant',
-              jobId: activeJobId,
-              pendingBind: false,
-              ts: Date.now(),
-            },
-          ]);
-        }
-        setStage('running');
-        refresh();
-      } catch (e) {
-        setGoal(submitted);
-        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Steer / resume failed.');
-      } finally {
-        setLoading(false);
-        sendInFlightRef.current = false;
-      }
-      return;
-    }
-
-    if (stage === 'plan' && activeJobId) {
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
-      sendInFlightRef.current = true;
-      try {
-        await handleApprove();
-      } finally {
-        sendInFlightRef.current = false;
-      }
-      return;
-    }
-    if (seeminglyBusy && !steerMode) {
-      if (!activeJobId) {
-        setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
-        setErrorRaw(null);
-        return;
-      }
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
-      sendInFlightRef.current = true;
-      setLoading(true);
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.post(
-          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
-          { message: submitted, resume: false },
-          { headers, timeout: 15000 },
-        );
-        clearBuildError();
-        const coachText = formatCoachReply(res.data?.guidance);
-        if (coachText) {
-          const aid =
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => {
-            const msg = {
-              id: aid,
-              body: coachText,
-              role: 'assistant',
-              jobId: activeJobId,
-              pendingBind: false,
-              ts: Date.now(),
-            };
-            const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
-            if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
-            return [...prev, msg];
-          });
-        }
-        refresh();
-      } catch (e) {
-        setGoal(submitted);
-        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not send message.');
-      } finally {
-        setLoading(false);
-        sendInFlightRef.current = false;
-      }
-      return;
-    }
-
-    appendUserChat(submitted);
+  const handleComposerSend = async (text) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
     setGoal('');
-    clearBuildError();
-    await runNewPlanAndAuto(submitted);
+    appendUserChat(trimmed);
+    await runNewPlanAndAuto(trimmed);
   };
 
-  /** Home / dashboard: consume navigate(..., { state: { initialPrompt, autoStart } }). */
-  useEffect(() => {
-    const st = location.state;
-    if (!st || typeof st.initialPrompt !== 'string') return;
-    const raw = st.initialPrompt.trim();
-    if (!raw) return;
-    const key =
-      typeof st.handoffNonce === 'number'
-        ? `h_${st.handoffNonce}`
-        : `${location.key || 'nav'}_${raw.slice(0, 48)}_${st.autoStart ? '1' : '0'}`;
-    if (processedLocationHandoffRef.current.has(key)) return;
-    processedLocationHandoffRef.current.add(key);
+  const appendUserChat = useCallback((body) => {
+    const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `user_${Date.now()}`;
+    setUserChatMessages((prev) => [
+      ...prev,
+      { id: msgId, body, role: 'user', jobId: effectiveJobId, pendingBind: true, ts: Date.now() },
+    ]);
+  }, [effectiveJobId]);
 
-    if (st.autoStart) {
-      workspaceAutostartDoneRef.current = false;
-      try {
-        sessionStorage.setItem('crucibai_autostart_goal', raw);
-      } catch (_) {
-        /* private mode / quota */
-      }
-    }
-    setGoal(raw);
-    navigate(
-      { pathname: location.pathname, search: location.search || '' },
-      { replace: true, state: {} },
-    );
-  }, [location.key, location.state, location.pathname, location.search, navigate]);
-
-  /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
   const locSearch = location.search;
   useEffect(() => {
-    if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
-    if (sendInFlightRef.current) return;
+    const sp = new URLSearchParams(locSearch);
+    const st = location.state;
+    const prompt = (st?.initialPrompt || sp.get('prompt') || '').trim();
+    const autoStart = st?.autoStart || sp.get('autoStart') === '1';
+    const handoffKey = st?.handoffNonce ? `state:${st.handoffNonce}` : `query:${prompt}:${autoStart}`;
 
-    const urlParams = new URLSearchParams(locSearch);
-    const autoStartUrl = urlParams.get('autoStart') === '1';
+    if (!prompt) return;
+    if (processedLocationHandoffRef.current.has(handoffKey)) return;
+    processedLocationHandoffRef.current.add(handoffKey);
 
-    let goalText = '';
-    try {
-      const fromHandoff = (handoffQueuedAutostartRef.current || '').trim();
-      if (fromHandoff) {
-        goalText = fromHandoff;
-        handoffQueuedAutostartRef.current = null;
-        try {
-          sessionStorage.removeItem('crucibai_autostart_goal');
-        } catch (_) { void 0; }
+    (async () => {
+      if (autoStart) {
+        handoffQueuedAutostartRef.current = prompt;
+        await runNewPlanAndAuto(prompt);
       } else {
-        goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
-        if (goalText) {
-          try {
-            sessionStorage.removeItem('crucibai_autostart_goal');
-          } catch (_) { void 0; }
-        }
+        setGoal(prompt);
       }
-    } catch (_) {
-      return;
-    }
-    if (!goalText && autoStartUrl) {
-      const pq = (urlParams.get('prompt') || '').trim();
-      if (pq) goalText = pq;
-    }
-    if (!goalText && autoStartUrl && taskIdFromUrl) {
-      const t = tasks.find((x) => x.id === taskIdFromUrl);
-      const p = t?.prompt != null ? String(t.prompt).trim() : '';
-      if (p && t?.type === 'build') goalText = p;
-    }
-    if (!goalText) return;
-
-    workspaceAutostartDoneRef.current = true;
-
-    if (autoStartUrl || urlParams.get('prompt')) {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('autoStart');
-          next.delete('prompt');
-          return next;
-        },
-        { replace: true },
+      navigate(
+        { pathname: location.pathname, search: location.search || '' },
+        { replace: true, state: {} },
       );
-    }
-
-    void (async () => {
-      if (sendInFlightRef.current) return;
-      try {
-        appendUserChat(goalText);
-        setGoal('');
-        await runNewPlanAndAuto(goalText);
-      } catch (_) {
-        /* runNewPlanAndAuto surfaces errors via applyBuildError */
-      }
     })();
   }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
 
@@ -997,19 +641,24 @@ export default function UnifiedWorkspace() {
       taskPromptHydratedForIdRef.current = null;
       return;
     }
-    if (jobIdFromUrl) return;
-    if (taskPromptHydratedForIdRef.current === taskIdFromUrl) return;
+    if (taskIdFromUrl === taskPromptHydratedForIdRef.current) return;
     const task = tasks.find((t) => t.id === taskIdFromUrl);
     if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
-    try {
-      if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
-    } catch (_) { void 0; }
+    
+    // If we have a goal or chat, don't overwrite
     if (goal.trim() || userChatMessages.length > 0) return;
+    
     taskPromptHydratedForIdRef.current = taskIdFromUrl;
     setGoal(String(task.prompt).trim());
-  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length]);
+    
+    // If task is marked for autostart, trigger it
+    if (task.autoStart && !workspaceAutostartDoneRef.current && !jobIdFromUrl) {
+      workspaceAutostartDoneRef.current = true;
+      runNewPlanAndAuto(task.prompt);
+    }
+  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length, runNewPlanAndAuto]);
 
-  const handleCancel = async () => {
+  const handleCancelJob = async () => {
     const jid = jobId || jobIdFromUrl;
     if (!jid) return;
     try {
@@ -1020,7 +669,7 @@ export default function UnifiedWorkspace() {
     }
   };
 
-  const handleResume = async () => {
+  const handleResumeJob = async () => {
     const jid = jobId || jobIdFromUrl;
     if (!jid) return;
     try {
@@ -1219,9 +868,9 @@ export default function UnifiedWorkspace() {
                 jobId={effectiveJobId}
                 jobStatus={job?.status}
                 onRun={() => handleApprove()}
-                onPause={handleCancel}
-                onResume={handleResume}
-                onCancel={handleCancel}
+                onPause={handleCancelJob}
+                onResume={handleResumeJob}
+                onCancel={handleCancelJob}
                 budget={estimate}
                 showRunButton={false}
                 showModeSelector={false}
@@ -1247,6 +896,9 @@ export default function UnifiedWorkspace() {
               milestoneBatch={milestoneBatch}
               repairQueueLen={repairQueueLen}
               steps={steps}
+              taskProgress={taskProgress}
+              actionChips={actionChips}
+              controller={controller}
             />
             {stage === 'input' && (
               <WorkspaceActivityFeed
@@ -1261,6 +913,9 @@ export default function UnifiedWorkspace() {
                 fallbackGoal={goal}
                 hideGoalEcho={userChatMessages.length > 0}
                 openWorkspacePath={openWorkspacePath}
+                taskProgress={taskProgress}
+                actionChips={actionChips}
+                controller={controller}
               />
             )}
 
@@ -1279,313 +934,135 @@ export default function UnifiedWorkspace() {
 
             {(stage === 'running' ||
               stage === 'completed' ||
-              job?.status === 'failed' ||
-              job?.status === 'cancelled' ||
-              job?.status === 'blocked') && (
-              <div className="arp-execution-area">
-                {isCompleted && (
-                  <BuildCompletionCard
-                    job={job}
-                    proof={proof}
-                    apiBase={API}
-                    token={token}
-                    onOpenPreview={() => {
-                      setActivePane('preview');
-                      setRightCollapsed(false);
-                    }}
-                    onOpenProof={() => {
-                      setActivePane('proof');
-                      setRightCollapsed(false);
-                    }}
-                    onOpenCode={() => {
-                      setActivePane('code');
-                      setRightCollapsed(false);
-                    }}
-                    onDeployAgain={handleReset}
-                  />
-                )}
+              stage === 'plan' ||
+              stage === 'input') && (
+              <ExecutionTimeline
+                jobId={effectiveJobId}
+                steps={steps}
+                events={events}
+                onJumpToCode={jumpStepToCode}
+                onRetryStep={handleRetryStep}
+              />
+            )}
 
-                {failureStep && activePane !== 'failure' && (
-                  <FailureDrawer
-                    step={failureStep}
-                    onRetry={handleRetryStep}
-                    onOpenCode={jumpStepToCode}
-                    onPauseJob={handleCancel}
-                    onClose={() => setFailedStep(null)}
-                    openWorkspacePath={openWorkspacePath}
-                  />
-                )}
-              </div>
+            {isCompleted && (
+              <BuildCompletionCard
+                job={job}
+                onDownload={handleDownloadWorkspaceZip}
+                zipBusy={zipBusy}
+              />
             )}
           </div>
 
-          <div className="arp-center-pane-composer">
-            {error ? (
-              <div className="uw-workspace-error-banner">
-                <div className="uw-workspace-error-friendly">{error}</div>
-                {errorRaw ? (
-                  <details className="uw-workspace-error-details">
-                    <summary className="uw-workspace-error-details-summary">Technical details</summary>
-                    <pre className="uw-workspace-error-details-pre">{errorRaw}</pre>
-                  </details>
-                ) : null}
-              </div>
-            ) : null}
-            <WorkspaceStatusDock
-              jobId={effectiveJobId}
-              job={job}
-              steps={steps}
-              stage={stage}
-              events={events}
-              connectionMode={connectionMode}
-              loading={loading}
-            />
-            <WorkspaceUserChat messages={userChatMessages} />
+          <div className="arp-center-composer">
             <GoalComposer
               goal={goal}
-              onGoalChange={setGoal}
-              onSubmit={handleSend}
+              setGoal={setGoal}
+              onSend={handleComposerSend}
               loading={loading}
-              error={null}
-              errorRaw={null}
-              token={token}
-              onEstimateReady={setEstimate}
-              authLoading={authLoading}
-              buildTarget={buildTarget}
-              onBuildTargetChange={setBuildTarget}
-              buildTargets={buildTargets}
-              showExecutionTargets={false}
-              showContinuation={false}
-              showQuickChips={false}
-              showCostEstimator={false}
-              showSmartTags={false}
-              showComposerHeader={false}
-              enterSends
-              composerInputRows={3}
-              composerSubtitle={null}
-              inputPlaceholder={
-                job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Tell us the fix — Enter sends; we continue this same run.'
-                  : job?.status === 'blocked'
-                    ? 'What should we do next? Enter sends and moves us forward.'
-                    : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
-                      ? 'Steer anytime — Enter sends on this same run.'
-                      : 'Goal or follow-up — Enter to send, Shift+Enter for a new line.'
-              }
-              composerVariant="workspace"
+              stage={stage}
+              jobStatus={job?.status}
             />
           </div>
         </div>
 
-        {!rightCollapsed && <ResizableDivider onResize={handleResize} onDoubleClick={handleResetWidth} />}
+        <ResizableDivider onResize={handleResize} onReset={handleResetWidth} />
 
-        <div className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`} style={!rightCollapsed ? { width: `${rightWidth}px` } : undefined}>
-          <div className="arp-right-toggle" onClick={() => setRightCollapsed(!rightCollapsed)}>
-            {rightCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-          </div>
-
-          {!rightCollapsed && (
-            <>
-              <div className="arp-right-toolbar">
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Preview"
-                  aria-label="Preview"
-                  onClick={() => {
-                    setActivePane('preview');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Deploy — open preview when ready"
-                  aria-label="Deploy"
-                  onClick={() => {
-                    setActivePane('preview');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Rocket size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Proof"
-                  aria-label="Proof"
-                  onClick={() => {
-                    setActivePane('proof');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <ShieldCheck size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Systems"
-                  aria-label="Systems"
-                  onClick={() => {
-                    setActivePane('systems');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Wrench size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
-                  title="Share — copy link"
-                  aria-label="Share"
-                  onClick={handleShare}
-                >
-                  <Share2 size={16} />
-                </button>
-                <div className="arp-mode-switch" title="Simple vs Dev — which tools show in the right pane">
-                  <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>
-                    Simple
-                  </button>
-                  <button type="button" className={`arp-ux-btn ${uxMode === 'pro' ? 'active' : ''}`} onClick={() => toggleUxMode('pro')}>
-                    Dev
-                  </button>
-                </div>
-                <SystemStatusHUD
-                  isConnected={isConnected}
-                  connectionMode={connectionMode}
-                  activeAgentCount={activeAgentCount}
-                  jobStatus={job?.status}
-                  steps={steps}
-                  healthLatencyMs={healthMs}
-                  eventCount={events.length}
-                  proofItemCount={proofItemCount}
-                />
-              </div>
-              <div className="arp-pane-tabs">
+        <div
+          className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`}
+          style={{ width: rightCollapsed ? 0 : rightWidth }}
+        >
+          <div className="arp-right-pane-inner">
+            <div className="arp-right-pane-header">
+              <div className="arp-right-pane-tabs">
                 {visibleRightPanes.map((p) => (
-                  <button key={p} type="button" className={`arp-pane-tab ${activePane === p ? 'active' : ''}`} onClick={() => setActivePane(p)}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  <button
+                    key={p}
+                    className={`arp-right-pane-tab ${activePane === p ? 'active' : ''}`}
+                    onClick={() => setActivePane(p)}
+                  >
+                    {p === 'preview' && <Eye size={14} />}
+                    {p === 'proof' && <ShieldCheck size={14} />}
+                    {p === 'systems' && <Wrench size={14} />}
+                    {p === 'explorer' && <FileArchive size={14} />}
+                    <span className="arp-right-pane-tab-label">{p}</span>
                   </button>
                 ))}
               </div>
-              {rightRailSubtitle ? (
-                <div className="arp-right-context-line" title={rightRailSubtitle}>
-                  {rightRailSubtitle}
-                </div>
-              ) : null}
+              <button
+                className="arp-right-pane-toggle"
+                onClick={() => setRightCollapsed(!rightCollapsed)}
+              >
+                {rightCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+              </button>
+            </div>
 
-              <div className="arp-pane-content">
-                {activePane === 'preview' && (
-                  <PreviewPanel
-                    previewUrl={previewUrl}
-                    status={previewStatus}
-                    sandpackFiles={sandpackFiles}
-                    sandpackDeps={sandpackDeps}
-                    filesReadyKey={filesReadyKey}
-                    sandpackIsFallback={sandpackIsFallback}
-                    blockedDetail={previewBlockedDetail}
+            <div className="arp-right-pane-content">
+              {activePane === 'preview' && (
+                <PreviewPanel
+                  url={previewUrl}
+                  status={previewStatus}
+                  blockedDetail={previewBlockedDetail}
+                  onRetry={() => handleApprove()}
+                  taskProgress={taskProgress}
+                  actionChips={actionChips}
+                  controller={controller}
+                />
+              )}
+              {activePane === 'proof' && <ProofPanel jobId={effectiveJobId} proof={proof} />}
+              {activePane === 'systems' && (
+                <WorkspaceSystemsPanel
+                  jobId={effectiveJobId}
+                  events={events}
+                  steps={steps}
+                  taskProgress={taskProgress}
+                  actionChips={actionChips}
+                  controller={controller}
+                />
+              )}
+              {activePane === 'explorer' && (
+                <div className="uw-explorer-layout">
+                  <WorkspaceFileTree
+                    paths={wsPaths}
+                    activePath={activeWsPath}
+                    onSelect={openWorkspacePath}
+                    revealTick={treeRevealTick}
                   />
-                )}
-                {activePane === 'timeline' && (
-                  <ExecutionTimeline
-                    steps={steps}
-                    events={events}
-                    job={job}
-                    onRetryStep={handleRetryStep}
-                    onJumpToCode={jumpStepToCode}
-                    isConnected={isConnected}
-                    connectionMode={connectionMode}
-                  />
-                )}
-                {activePane === 'proof' && (
-                  <ProofPanel
-                    proof={proof}
-                    jobId={effectiveJobId}
-                    onExport={() => {}}
-                    openWorkspacePath={openWorkspacePath}
-                    milestoneBatch={milestoneBatch}
-                    repairQueueLen={repairQueueLen}
-                  />
-                )}
-                {activePane === 'systems' && uxMode === 'pro' && (
-                  <WorkspaceSystemsPanel
-                    jobId={effectiveJobId}
-                    projectId={effectiveProjectId}
-                    token={token}
-                    events={events}
-                    proof={proof}
-                  />
-                )}
-                {activePane === 'explorer' && uxMode === 'pro' && (
-                  <SystemExplorer
-                    steps={steps}
-                    proof={proof}
-                    job={job}
-                    projectId={effectiveProjectId}
-                    token={token}
-                    openWorkspacePath={openWorkspacePath}
-                  />
-                )}
-                {activePane === 'replay' && uxMode === 'pro' && <BuildReplay events={events} steps={steps} />}
-                {activePane === 'failure' &&
-                  (failureStep ? (
-                    <FailureDrawer
-                      step={failureStep}
-                      onRetry={handleRetryStep}
-                      onOpenCode={jumpStepToCode}
-                      onPauseJob={handleCancel}
-                      onClose={() => setFailedStep(null)}
-                      openWorkspacePath={openWorkspacePath}
+                  <div className="uw-explorer-viewer">
+                    <WorkspaceFileViewer
+                      path={activeWsPath}
+                      cache={wsFileCache}
+                      onCodeChange={handleCodeChange}
+                      colorMode={editorColorMode}
                     />
-                  ) : (
-                    <div className="arp-failure-empty">No failed steps — all green.</div>
-                  ))}
-                {activePane === 'code' && uxMode === 'pro' && (
-                  <div className="code-pane-wrap">
-                    <div className="code-pane-actions">
-                      {effectiveJobId && token ? (
-                        <button
-                          type="button"
-                          className="arp-topbar-btn"
-                          style={{ fontSize: 11 }}
-                          disabled={zipBusy}
-                          title="Handoff ZIP (omits outputs/). Append ?profile=full to the export URL for the complete tree."
-                          onClick={handleDownloadWorkspaceZip}
-                        >
-                          <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                          {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
-                        </button>
-                      ) : null}
-                      <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>
-                    </div>
-                    <div className="code-pane-main">
-                      <WorkspaceFileTree
-                        paths={wsPaths}
-                        selectedPath={activeWsPath}
-                        onSelectPath={(p) => {
-                          setActiveWsPath(p);
-                          setTreeRevealTick((t) => t + 1);
-                        }}
-                        revealTick={treeRevealTick}
-                        loading={wsListLoading}
-                      />
-                      <WorkspaceFileViewer
-                        activePathPosix={activeWsPath}
-                        entry={wsFileCache[activeWsPath]}
-                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
-                        editorColorMode={editorColorMode}
-                        onTextChange={handleCodeChange}
-                      />
-                    </div>
                   </div>
-                )}
-              </div>
-            </>
-          )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      <WorkspaceStatusDock
+        jobId={effectiveJobId}
+        job={job}
+        steps={steps}
+        stage={stage}
+        events={events}
+        connectionMode={connectionMode}
+        loading={loading}
+        taskProgress={taskProgress}
+        actionChips={actionChips}
+        controller={controller}
+      />
+
+      <SystemStatusHUD healthMs={healthMs} />
+
+      <FailureDrawer
+        failure={failureStep}
+        onRetry={() => handleRetryStep(failureStep)}
+        onClose={() => setFailedStep(null)}
+      />
     </div>
     </WorkspaceNavProvider>
   );

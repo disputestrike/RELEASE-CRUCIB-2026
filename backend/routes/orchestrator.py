@@ -17,6 +17,7 @@ from services.orchestration_service import (
     public_plan_summary_service,
     update_last_build_state_service,
 )
+from server import get_user_credits
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ def _get_server_helpers():
         _project_workspace_path,
         _resolve_job_project_id_for_user,
         _user_credits,
+        get_user_credits,
     )
 
     return (
@@ -116,8 +118,9 @@ except ImportError:
 
 def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    _user_credits, _, _, _ = _get_server_helpers()
-    return planner_project_state_service(user, user_credits=_user_credits)
+    from server import get_user_credits
+
+    return planner_project_state_service(user, user_credits=get_user_credits)
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
@@ -266,12 +269,13 @@ async def public_build_plan(
         raise HTTPException(status_code=400, detail="goal is required")
     try:
         _, _, planner_mod, _, _ = _get_orchestration()
+        project_state = planner_project_state_service(user, user_credits=get_user_credits)
         plan = await generate_public_plan_service(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
-            update_last_build_state=_update_last_build_state,
+            planner_project_state=project_state,
+            update_last_build_state=update_last_build_state_service,
         )
         return {"success": True, "plan": plan}
     except HTTPException:
@@ -297,12 +301,13 @@ async def public_build_plan_summary(
         raise HTTPException(status_code=400, detail="goal is required")
     try:
         _, _, planner_mod, _, _ = _get_orchestration()
+        project_state = planner_project_state_service(user, user_credits=get_user_credits)
         plan = await generate_public_plan_service(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
-            update_last_build_state=_update_last_build_state,
+            planner_project_state=project_state,
+            update_last_build_state=update_last_build_state_service,
         )
         return {"success": True, "plan": _public_plan_summary(plan)}
     except HTTPException:
@@ -334,7 +339,7 @@ async def estimate_cost(
             user=user,
             planner_mod=planner_mod,
             normalize_build_target=normalize_build_target,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=planner_project_state_service(user, user_credits=get_user_credits),
         )
     except Exception as e:
         return {
@@ -417,9 +422,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
 
         # Generate plan
         plan = await planner_mod.generate_plan(
-            body.goal, project_state=_orchestrator_planner_project_state(user)
+            body.goal, project_state=planner_project_state_service(user, user_credits=get_user_credits(user))
         )
-        _update_last_build_state(plan)
+        update_last_build_state_service(plan)
         requested_target = (body.build_target or "").strip()
         bt = normalize_build_target(
             requested_target or plan.get("recommended_build_target")
@@ -468,7 +473,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
                 agent_name=sd["agent_name"],
                 phase=sd["phase"],
                 depends_on=sd["depends_on"],
-                order_index=idx,
+                order_index=sd.get("order_index", idx),
             )
 
         from orchestration.capability_notice import capability_notice_lines

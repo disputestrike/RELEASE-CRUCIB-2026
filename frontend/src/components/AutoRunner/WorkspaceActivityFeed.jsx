@@ -77,6 +77,9 @@ export default function WorkspaceActivityFeed({
   /** When true, do not repeat the goal as body text (shown in chat bubbles above). */
   hideGoalEcho = false,
   openWorkspacePath,
+  taskProgress = null,
+  actionChips = [],
+  controller = null,
 }) {
   const sortedSteps = useMemo(
     () => [...steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
@@ -165,19 +168,45 @@ export default function WorkspaceActivityFeed({
           </p>
         )}
 
-        {runningStep && (
+        {(runningStep || taskProgress) && (
           <div className="uw-af-focus-wrap">
             <div className="uw-af-focus" role="status">
               <span className="uw-af-focus-icon" aria-hidden>
                 <Loader2 className="uw-af-spin" size={16} />
               </span>
-                <span className="uw-af-focus-text">
-                <span className="uw-af-focus-title">{stepLabel(runningStep)}</span>
-                {runningStep.narrative ? (
-                  <span className="uw-af-focus-sub">{runningStep.narrative}</span>
-                ) : null}
+              <span className="uw-af-focus-text">
+                <span className="uw-af-focus-title">
+                  {taskProgress?.summary || stepLabel(runningStep)}
+                </span>
+                {(taskProgress?.detail || runningStep?.narrative) && (
+                  <span className="uw-af-focus-sub">
+                    {taskProgress?.detail || runningStep.narrative}
+                  </span>
+                )}
               </span>
             </div>
+            
+            {taskProgress?.percentage != null && (
+              <div className="uw-af-progress-bar-wrap">
+                <div className="uw-af-progress-bar-track">
+                  <div 
+                    className="uw-af-progress-bar-fill" 
+                    style={{ width: `${taskProgress.percentage}%` }} 
+                  />
+                </div>
+                <span className="uw-af-progress-bar-text">{Math.round(taskProgress.percentage)}%</span>
+              </div>
+            )}
+
+            {actionChips && actionChips.length > 0 && (
+              <div className="uw-af-action-chips">
+                {actionChips.map((chip, i) => (
+                  <div key={i} className="uw-af-action-chip">
+                    <span>{chip.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

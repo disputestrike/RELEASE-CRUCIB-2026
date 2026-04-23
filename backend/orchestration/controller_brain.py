@@ -205,12 +205,51 @@ def _derive_recommended_focus(
     return "Await new work"
 
 
+def _get_agent_description(agent_key: str) -> str:
+    """Map technical agent keys to human-readable Manus-style descriptions."""
+    mapping = {
+        "scaffold": "Scaffolding project structure",
+        "frontend.generate": "Generating frontend components",
+        "frontend.styling": "Applying design tokens and CSS",
+        "backend.models": "Designing database models",
+        "backend.routes": "Implementing API endpoints",
+        "backend.auth": "Configuring authentication",
+        "verification.preview": "Verifying build bundle",
+        "verification.routes": "Testing API health",
+        "verification.security": "Running security audit",
+    }
+    return mapping.get(agent_key.lower(), f"Executing {agent_key.replace('_', ' ')}")
+
+
 def build_live_job_progress(
     *,
     job: Dict[str, Any] | None,
     steps: List[Dict[str, Any]],
     events: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
+    # ── Manus-style Task Progress Card ────────────────────────────────────────
+    task_progress = []
+    current_idx = 0
+    for i, s in enumerate(steps or []):
+        status = str(s.get("status") or "pending").lower()
+        if status in ("running", "verifying", "retrying"):
+            current_idx = i
+        task_progress.append({
+            "index": i,
+            "description": _get_agent_description(str(s.get("step_key") or "")),
+            "status": status
+        })
+
+    # ── Manus-style Action Chips ──────────────────────────────────────────────
+    action_chips = []
+    for i in range(current_idx, min(len(steps or []), current_idx + 3)):
+        s = steps[i]
+        action_chips.append({
+            "action": _get_agent_description(str(s.get("step_key") or "")),
+            "status": str(s.get("status") or "pending").lower(),
+            "icon": "file" if "generate" in str(s.get("step_key") or "") else "arrow"
+        })
+
     ordered_phases: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
     for step in sorted(
         steps or [],
@@ -330,8 +369,27 @@ def build_live_job_progress(
         "total_progress": total_progress,
         "is_running": is_running,
         "logs": logs,
+        "task_progress": {
+            "total": len(steps or []),
+            "current": current_idx + 1,
+            "percentage": total_progress,
+            "summary": _get_agent_description(str(steps[current_idx].get("step_key") or "")) if steps and current_idx < len(steps) else "Initializing...",
+            "label": _get_agent_description(str(steps[current_idx].get("step_key") or "")) if steps and current_idx < len(steps) else "Initializing...",
+            "detail": _event_message(events[-1]) if events else "Waiting for orchestrator...",
+            "current_step": steps[current_idx].get("step_key") if steps and current_idx < len(steps) else None,
+            "next_steps": [s.get("step_key") for s in steps[current_idx+1:current_idx+4]] if steps and current_idx < len(steps) else [],
+            "tasks": task_progress
+        },
+        "action_chips": action_chips,
         "controller": {
             "status": controller_status,
+            "state": controller_status,
+            "current_focus": _derive_recommended_focus(
+                blockers=blockers,
+                active_agents=active_agents,
+                queued_agents=queued_agents,
+            ),
+            "recommendation": repair_plan if blockers else "Continue with current plan.",
             "next_actions": next_actions,
             "blocker_count": len(blockers),
             "blockers": blockers[:12],

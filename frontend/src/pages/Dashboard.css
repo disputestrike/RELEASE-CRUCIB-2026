@@ -52,13 +52,17 @@
   justify-content: flex-start;
   align-items: center;
   gap: 24px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: auto;
+  -ms-overflow-style: auto;
+  scrollbar-gutter: stable;
+  position: relative;
+  /* Ensure content doesn't get cut off at the bottom */
+  padding-bottom: 40px;
 }
 .home-messages::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  display: block;
+  width: 10px;
+  height: 10px;
 }
 
 /* Empty home: welcome slightly above vertical center, composer + chips follow */

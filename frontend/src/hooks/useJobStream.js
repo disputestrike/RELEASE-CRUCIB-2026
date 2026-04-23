@@ -104,11 +104,15 @@ export function useJobStream(jobId, token) {
   const [steps, setSteps] = useState([]);
   const [events, setEvents] = useState([]);
   const [proof, setProof] = useState(null);
+  const [taskProgress, setTaskProgress] = useState(null);
+  const [actionChips, setActionChips] = useState([]);
+  const [controller, setController] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionMode, setConnectionMode] = useState('offline');
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
   const previousJobIdRef = useRef(null);
+  const wsRef = useRef(null);
 
   const fetchCheckpoints = useCallback(async () => {
     if (!jobId || !token) return;
@@ -141,11 +145,12 @@ export function useJobStream(jobId, token) {
     if (!jobId || !token) return;
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [jobRes, stepsRes, eventsRes, proofRes] = await Promise.allSettled([
+      const [jobRes, stepsRes, eventsRes, proofRes, progressRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/jobs/${jobId}`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/steps`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/events`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/proof`, { headers }),
+        axios.get(`${API_BASE}/job/${jobId}/progress`, { headers }),
       ]);
       if (jobRes.status === 'fulfilled') {
         const d = jobRes.value.data;
@@ -166,6 +171,12 @@ export function useJobStream(jobId, token) {
             proofFetchFailed: true,
           };
         });
+      }
+      if (progressRes.status === 'fulfilled') {
+        const d = progressRes.value.data;
+        setTaskProgress(d.task_progress);
+        setActionChips(d.action_chips);
+        setController(d.controller);
       }
       if (token) await fetchCheckpoints();
       const anySuccess = [jobRes, stepsRes, eventsRes, proofRes].some((result) => result.status === 'fulfilled');
@@ -206,9 +217,58 @@ export function useJobStream(jobId, token) {
     }
     fetchJobState();
 
+    // ── WebSocket Progress Bridge ─────────────────────────────────────────────
+    const connectWS = () => {
+      if (wsRef.current) return;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Use API_BASE but strip /api suffix and protocol to get the host
+      const host = API_BASE.replace(/^https?:\/\//, '').replace(/\/api$/, '');
+      const wsUrl = `${protocol}//${host}/api/job/${jobId}/progress?token=${token}`;
+      
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.snapshot) {
+            const s = data.snapshot;
+            setTaskProgress(s.task_progress);
+            setActionChips(s.action_chips);
+            setController(s.controller);
+            if (s.logs) setEvents(s.logs);
+          }
+        } catch (err) {
+          console.error('WS parse error', err);
+        }
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+        // Retry after 5s if job is still active
+        if (job && !['completed', 'failed', 'cancelled'].includes(job.status)) {
+          setTimeout(connectWS, 5000);
+        }
+      };
+    };
+    connectWS();
+
     const startPoll = () => {
       if (!pollRef.current) {
-        pollRef.current = setInterval(fetchJobState, 3000);
+        // Only poll if the job is actually running
+        pollRef.current = setInterval(() => {
+          setJob(prev => {
+            if (prev && (prev.status === 'completed' || prev.status === 'failed')) {
+              if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+              }
+              return prev;
+            }
+            fetchJobState();
+            return prev;
+          });
+        }, 15000); // Relaxed polling to 15s to avoid overwhelming the backend
       }
       setConnectionMode('polling');
     };
@@ -285,7 +345,7 @@ export function useJobStream(jobId, token) {
     };
   }, [jobId, token, fetchJobState, fetchCheckpoints]);
 
-  return {
+    return {
     job,
     latestFailure,
     milestoneBatch,
@@ -293,6 +353,9 @@ export function useJobStream(jobId, token) {
     steps,
     events,
     proof,
+    taskProgress,
+    actionChips,
+    controller,
     isConnected,
     connectionMode,
     error,

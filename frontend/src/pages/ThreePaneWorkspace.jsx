@@ -38,6 +38,7 @@ import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
 import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
+import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import Logo from '../components/Logo';
 import '../styles/three_pane.css';
 
@@ -48,14 +49,12 @@ const RIGHT_MIN = 360;
 const RIGHT_MAX = 560;
 
 const NAV_ITEMS = [
-  { key: 'workspace', label: 'Workspace', icon: LayoutDashboard, action: '/app/workspace' },
-  { key: 'projects', label: 'Projects', icon: FolderKanban, action: '/app/projects/new' },
-  { key: 'agents', label: 'Agents', icon: Bot, action: '/app/agents' },
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: '/app/dashboard' },
+  { key: 'builder', label: 'Builder', icon: Sparkles, action: '#tab:Preview' },
   { key: 'files', label: 'Files', icon: FileCode2, action: '#tab:Files' },
   { key: 'proof', label: 'Proof', icon: CheckCircle2, action: '#tab:Proof' },
+  { key: 'database', label: 'Database', icon: Database, action: '#tab:Database' },
   { key: 'deploy', label: 'Deploy', icon: Rocket, action: '#tab:Deploy' },
-  { key: 'automation', label: 'Automation', icon: Zap, action: '/app/live' },
-  { key: 'settings', label: 'Settings', icon: Database, action: '/app/settings' },
 ];
 
 function clamp(value, min, max) {
@@ -98,89 +97,66 @@ function humanStatus(raw) {
   if (value === 'completed') return 'Completed';
   if (value === 'failed' || value === 'error') return 'Failed';
   if (value === 'deployed') return 'Deployed';
-  if (value === 'waiting_input') return 'Waiting Input';
-  if (value === 'blocked') return 'Blocked';
   return 'Pending';
 }
 
-function timeOf(ts) {
-  const parsed = typeof ts === 'number' ? ts : Date.parse(String(ts || ''));
-  const value = Number.isFinite(parsed) ? parsed : Date.now();
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(value);
+function timeAgo(ts) {
+  if (!ts) return 'just now';
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  return `${Math.floor(diff / 3600000)}h ago`;
 }
 
-function timeAgo(ts) {
-  if (!ts) return 'now';
-  const parsed = typeof ts === 'number' ? ts : Date.parse(String(ts));
-  if (!Number.isFinite(parsed)) return 'now';
-  const diffMin = Math.max(0, Math.round((Date.now() - parsed) / 60000));
-  if (diffMin < 1) return 'now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHour = Math.round(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-  return `${Math.round(diffHour / 24)}d ago`;
+function timeOf(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function extractLogText(payload) {
-  if (!payload) return '';
-  if (typeof payload.message === 'string' && payload.message.trim()) return payload.message;
-  if (typeof payload.reason === 'string' && payload.reason.trim()) return payload.reason;
-  if (typeof payload.status === 'string' && payload.status.trim()) return payload.status;
-  return '';
+  return payload?.message || payload?.error || payload?.failure_reason || '';
 }
 
 function PhaseCard({ phase, index, open, onToggle, onLogs, onDatabase, onFiles }) {
-  const icon = phase.status === 'completed'
-    ? <CheckCircle2 size={18} />
-    : phase.status === 'active'
-      ? <ChevronsLeftRight size={18} />
-      : <Circle size={18} />;
-
   return (
-    <div className={`workspace-phase workspace-phase--${phase.status}`}>
-      <div className="workspace-phase__spine" />
-      <div className="workspace-phase__icon">{icon}</div>
-      <div className="workspace-phase__card">
-        <button type="button" className="workspace-phase__header" onClick={onToggle}>
-          <div>
-            <div className="workspace-phase__title">{index}. {phase.title}</div>
-            <div className="workspace-phase__description">{phase.description}</div>
+    <div className={`workspace-phase${open ? ' workspace-phase--open' : ''}`}>
+      <div className="workspace-phase__header" onClick={onToggle}>
+        <div className="workspace-phase__index">{index}</div>
+        <div className="workspace-phase__body">
+          <div className="workspace-phase__title-row">
+            <span className="workspace-phase__title">{phase.title}</span>
+            <span className={`workspace-phase__status workspace-phase__status--${phase.status}`}>{phase.status}</span>
           </div>
-          <div className="workspace-phase__meta">
-            <span className={`workspace-phase__badge workspace-phase__badge--${phase.status}`}>{humanStatus(phase.status)}</span>
-            {phase.timestamp ? <span>{timeOf(phase.timestamp)}</span> : null}
-            <ChevronDown size={15} className={open ? 'workspace-phase__chevron-open' : ''} />
-          </div>
-        </button>
-
-        {open ? (
-          <div className="workspace-phase__details">
-            {phase.substeps.length ? (
-              <ul className="workspace-phase__checklist">
-                {phase.substeps.slice(0, 4).map((substep) => (
-                  <li key={substep.id}><Circle size={10} /> {substep.label}</li>
-                ))}
-              </ul>
-            ) : null}
-
-            {phase.logs.length ? (
-              <div className="workspace-phase__logbox">
-                {phase.logs.slice(0, 8).map((line) => (
-                  <div key={line.id} className="workspace-phase__logline">
-                    <span>{timeOf(line.ts)}</span>
-                    <span>{line.text}</span>
-                  </div>
-                ))}
+          <div className="workspace-phase__desc">{phase.description}</div>
+        </div>
+        <ChevronDown size={16} className="workspace-phase__arrow" />
+      </div>
+      <div className="workspace-phase__content">
+        {phase.substeps?.length ? (
+          <div className="workspace-substeps">
+            {phase.substeps.map((sub) => (
+              <div key={sub.id} className="workspace-substep">
+                <span className={`workspace-substep__dot workspace-substep__dot--${sub.status}`} />
+                <span className="workspace-substep__label">{sub.label}</span>
               </div>
-            ) : (
-              <div className="workspace-phase__no-logs">No live logs yet for this phase.</div>
-            )}
-
-            <div className="workspace-phase__actions">
-              <button type="button" onClick={onLogs}><FileCode2 size={14} /> View Logs</button>
-              <button type="button" onClick={onDatabase}><Database size={14} /> Open Database</button>
-              <button type="button" onClick={onFiles}><FileCode2 size={14} /> View Files</button>
-            </div>
+            ))}
+          </div>
+        ) : null}
+        {phase.logs?.length ? (
+          <div className="workspace-logs">
+            {phase.logs.map((log) => (
+              <div key={log.id} className="workspace-log">
+                <span className="workspace-log__ts">{timeOf(log.ts)}</span>
+                <span className="workspace-log__text">{log.text}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {phase.status === 'completed' ? (
+          <div className="workspace-phase__actions">
+            <button type="button" onClick={onLogs}><FileCode2 size={14} /> View Logs</button>
+            <button type="button" onClick={onDatabase}><Database size={14} /> Open Database</button>
+            <button type="button" onClick={onFiles}><FileCode2 size={14} /> View Files</button>
           </div>
         ) : null}
       </div>
@@ -222,7 +198,26 @@ export default function ThreePaneWorkspace() {
   });
   const [openPhaseId, setOpenPhaseId] = useState(null);
 
-  const { job, steps, events, proof, isConnected, error: streamError } = useJobStream(jobId, token);
+  const { 
+    job, 
+    steps, 
+    events, 
+    proof, 
+    isConnected, 
+    error: streamError,
+    taskProgress,
+    actionChips,
+    controller,
+  } = useJobStream(jobId, token);
+
+  const workspaceStage = useMemo(() => {
+    if (!jobId) return 'idle';
+    if (job?.status === 'completed') return 'completed';
+    if (job?.status === 'failed' || job?.status === 'cancelled') return 'failed';
+    if (job?.status === 'blocked') return 'blocked';
+    if (job?.status === 'running' || job?.status === 'queued') return 'running';
+    return 'plan';
+  }, [jobId, job?.status]);
 
   useEffect(() => {
     messageRef.current = messages;
@@ -458,114 +453,67 @@ export default function ThreePaneWorkspace() {
       title: titleFromStep({ step_key: job?.current_phase || 'planning' }),
       description: 'Waiting for runtime steps from orchestrator...',
       status: toPhaseStatus(job?.status || 'queued'),
-      timestamp: job?.started_at || job?.created_at || null,
       logs: [],
       substeps: [],
     }];
-  }, [events, jobId, job, messages.length, steps]);
+  }, [jobId, steps, events, messages.length, job?.current_phase, job?.status]);
 
-  useEffect(() => {
-    const firstActive = phases.find((phase) => phase.status === 'active') || phases[0] || null;
-    if (!firstActive) {
-      setOpenPhaseId(null);
-      return;
-    }
-    setOpenPhaseId((prev) => prev || firstActive.id);
-  }, [phases]);
-
-  const previewUrl = job?.preview_url || proof?.preview_url || null;
-  const addressValue = previewUrl || (jobId ? `https://preview.crucibai.app/${jobId}` : 'Start a build to generate preview URL');
-
-  const openHistory = (item) => {
-    setTaskId(item.id);
-    setJobId(item.jobId || null);
-    if (Array.isArray(item.messages) && item.messages.length) {
-      setMessages(item.messages);
-    }
-    navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`, { replace: true });
-  };
+  const isEmptyWorkspace = !jobId && !messages.length;
+  const previewUrl = job?.preview_url || null;
 
   const onRename = () => {
-    if (!taskId) return;
-    const value = window.prompt('Rename project', headerTitle);
-    if (!value || !value.trim()) return;
-    syncTask(taskId, { name: value.trim() });
-  };
-
-  const onShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-    } catch {
-      void 0;
+    const next = prompt('Rename workspace:', headerTitle);
+    if (next && next.trim() && taskId) {
+      syncTask(taskId, { name: next.trim() });
     }
   };
 
-  const onNav = (path) => {
-    if (path.startsWith('#tab:')) {
-      const nextTab = path.replace('#tab:', '').trim();
-      if (RIGHT_TABS.includes(nextTab)) setActiveTab(nextTab);
-      return;
-    }
-    if (path === '/app/workspace') return;
-    navigate(path);
+  const onShare = () => {
+    if (!jobId) return alert('Start a build first to share.');
+    const url = `${window.location.origin}/share/${jobId}`;
+    navigator.clipboard.writeText(url);
+    alert('Share link copied to clipboard!');
   };
-
-  const isDeveloper = workspaceMode === 'developer';
-  const isEmptyWorkspace = !jobId && messages.length === 0;
 
   return (
-    <div
-      className="workspace-shell"
-      data-testid="crucib-three-pane-root"
-      style={{
-        gridTemplateColumns: `${railCollapsed ? 84 : leftPane}px 6px minmax(0,1fr)`,
-      }}
-    >
-      <input
-        ref={fileInputRef}
-        className="workspace-hidden-input"
-        type="file"
-        onChange={(event) => setAttachmentName(event.target.files?.[0]?.name || '')}
-      />
-
-      <aside className={`workspace-rail${railCollapsed ? ' workspace-rail--collapsed' : ''}`}>
-        <div className="workspace-rail__brand">
-          <Logo variant="full" height={30} href="/app/dashboard" showTagline={false} className="workspace-rail__logo" />
-          <button type="button" className="workspace-rail__utility" onClick={() => setRailCollapsed((value) => !value)}>
-            <MoreHorizontal size={16} />
+    <div className={`workspace-shell${railCollapsed ? ' workspace-shell--collapsed' : ''}`}>
+      <aside className="workspace-rail" style={{ width: railCollapsed ? 64 : leftPane }}>
+        <div className="workspace-rail__header">
+          <Logo variant="mark" height={28} showTagline={false} />
+          {!railCollapsed && <span className="workspace-rail__brand">CrucibAI</span>}
+          <button type="button" className="workspace-rail__toggle" onClick={() => setRailCollapsed(!railCollapsed)}>
+            <ChevronLeft size={16} />
           </button>
         </div>
 
-        <label className="workspace-rail__search">
-          <Search size={15} />
+        <div className="workspace-rail__search">
+          <Search size={14} />
           <input
+            type="text"
+            placeholder="Search history..."
             value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Search..."
-            aria-label="Search"
+            onChange={(e) => setSearchText(e.target.value)}
           />
-          <span>⌘K</span>
-        </label>
+        </div>
 
-        <button type="button" className="workspace-rail__new">
-          <Plus size={15} />
-          <span>New</span>
-          <ChevronDown size={14} />
-        </button>
-
-        <div className="workspace-rail__section">
-          <div className="workspace-rail__label">WORK</div>
+        <div className="workspace-rail__nav">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.key}
                 type="button"
-                className={`workspace-rail__nav${item.key === 'workspace' ? ' workspace-rail__nav--active' : ''}`}
-                onClick={() => onNav(item.action)}
+                className="workspace-nav-item"
+                onClick={() => {
+                  if (item.action.startsWith('#tab:')) {
+                    setActiveTab(item.action.split(':')[1]);
+                  } else {
+                    navigate(item.action);
+                  }
+                }}
               >
-                <Icon size={16} />
-                <span>{item.label}</span>
+                <Icon size={18} />
+                {!railCollapsed && <span>{item.label}</span>}
               </button>
             );
           })}
@@ -578,7 +526,10 @@ export default function ThreePaneWorkspace() {
               key={item.id}
               type="button"
               className={`workspace-history${item.id === taskId ? ' workspace-history--active' : ''}`}
-              onClick={() => openHistory(item)}
+              onClick={() => {
+                setTaskId(item.id);
+                navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`);
+              }}
             >
               <span className={`workspace-history__dot workspace-history__dot--${String(item.status || 'pending').toLowerCase()}`} />
               <span className="workspace-history__body">
@@ -651,6 +602,18 @@ export default function ThreePaneWorkspace() {
             <div className="workspace-avatar">{userInitial}</div>
           </div>
         </header>
+
+        <WorkspaceStatusDock
+          jobId={jobId}
+          job={job}
+          steps={steps}
+          stage={workspaceStage}
+          events={events}
+          connectionMode={isConnected ? 'stream' : 'offline'}
+          taskProgress={taskProgress}
+          actionChips={actionChips}
+          controller={controller}
+        />
 
         <div className="workspace-grid" style={{ gridTemplateColumns: `minmax(0,1fr) 6px ${rightPane}px` }}>
           <div className="workspace-thread">
@@ -738,7 +701,6 @@ export default function ThreePaneWorkspace() {
                   <button type="button" className="workspace-icon-btn"><ChevronLeft size={16} /></button>
                   <button type="button" className="workspace-icon-btn"><ChevronLeft size={16} className="workspace-browser-bar__flip" /></button>
                   <button type="button" className="workspace-icon-btn"><RefreshCw size={15} /></button>
-                  <div className="workspace-browser-bar__address">{addressValue}</div>
                   <button type="button" className="workspace-icon-btn" onClick={() => previewUrl && window.open(previewUrl, '_blank', 'noopener,noreferrer')}>
                     <ExternalLink size={15} />
                   </button>
@@ -754,6 +716,9 @@ export default function ThreePaneWorkspace() {
                     jobId={jobId}
                     token={token}
                     apiBase={API}
+                    taskProgress={taskProgress}
+                    actionChips={actionChips}
+                    controller={controller}
                   />
                 </div>
               </>
@@ -787,56 +752,25 @@ export default function ThreePaneWorkspace() {
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="workspace-panel-empty">Files appear here when the orchestrator creates artifacts.</div>
-                )}
+                ) : <div className="workspace-panel-empty">No files yet. Start a build to see the workspace tree.</div>}
               </div>
             ) : null}
 
             {activeTab === 'Database' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                <div className="workspace-panel-card">
-                  <h3>Database state</h3>
-                  <p>Connected to runtime project data. This panel reflects schema-related artifacts and log-derived status.</p>
-                  <div className="workspace-panel-card__meta">
-                    <span>Connection: {isConnected ? 'Stream' : jobId ? 'Polling' : 'Idle'}</span>
-                    <span>Mode: {isDeveloper ? 'Developer' : 'Builder'}</span>
-                  </div>
-                </div>
-                <div className="workspace-database-list">
-                  {(proof?.bundle?.database || []).slice(0, 8).map((item, index) => (
-                    <div key={`${item?.title || item?.kind || 'db'}-${index}`} className="workspace-db-item">
-                      <strong>{item?.title || item?.kind || 'Database artifact'}</strong>
-                      <span>{item?.summary || item?.path || 'Generated by runtime phase execution.'}</span>
-                    </div>
-                  ))}
-                  {!proof?.bundle?.database?.length ? <div className="workspace-panel-empty">No database artifacts yet for this run.</div> : null}
-                </div>
+                <div className="workspace-panel-empty">Database explorer is only available for projects with a connected schema.</div>
               </div>
             ) : null}
 
             {activeTab === 'Deploy' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                <div className="workspace-panel-card">
-                  <h3>Publish and deploy</h3>
-                  <p>State is read from the active runtime job and deploy proof artifacts when available.</p>
-                  <div className="workspace-panel-card__meta">
-                    <span>Status: {currentStatus}</span>
-                    <span>Job: {jobId || 'not started'}</span>
-                  </div>
-                </div>
-                {(proof?.bundle?.deploy || []).slice(0, 6).map((item, index) => (
-                  <div key={`${item?.title || item?.kind || 'deploy'}-${index}`} className="workspace-db-item">
-                    <strong>{item?.title || item?.kind || 'Deploy artifact'}</strong>
-                    <span>{item?.summary || item?.path || 'Deploy metadata from proof bundle.'}</span>
-                  </div>
-                ))}
+                <div className="workspace-panel-empty">Deployment targets will appear here after the build is verified.</div>
               </div>
             ) : null}
 
             {activeTab === 'Logs' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                {jobId ? <ExecutionTimeline job={job} steps={steps || []} events={events || []} /> : <div className="workspace-panel-empty">Runtime logs appear here once a run starts.</div>}
+                <ExecutionTimeline jobId={jobId} events={events} />
               </div>
             ) : null}
           </aside>

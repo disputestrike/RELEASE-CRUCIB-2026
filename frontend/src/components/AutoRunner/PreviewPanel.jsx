@@ -23,6 +23,9 @@ export default function PreviewPanel({
   jobId = null,
   token = null,
   apiBase = '',
+  taskProgress = null,
+  actionChips = [],
+  controller = null,
 }) {
   const iframeRef = useRef(null);
   const [devServerUrl, setDevServerUrl] = useState(null);
@@ -118,6 +121,29 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        {taskProgress && (
+          <div className="pp-progress-overlay">
+            <div className="pp-progress-bar-bg">
+              <div 
+                className="pp-progress-bar-fill" 
+                style={{ width: `${taskProgress.percentage || 0}%` }} 
+              />
+            </div>
+            <div className="pp-progress-meta">
+              <span>{taskProgress.summary || taskProgress.label || 'Processing...'}</span>
+              <strong>{taskProgress.percentage || 0}%</strong>
+            </div>
+            {actionChips.length > 0 && (
+              <div className="pp-chip-row">
+                {actionChips.map((chip, i) => (
+                  <span key={i} className={`pp-chip ${chip.type || ''}`}>
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <ErrorOverlay
           title={isBootingDevPreview ? 'Starting live preview' : 'Preview issue'}
           message={isBootingDevPreview ? 'Booting a workspace dev server so preview updates without a manual refresh.' : devPreviewError}

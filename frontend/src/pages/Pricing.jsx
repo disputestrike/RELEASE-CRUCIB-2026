@@ -13,7 +13,7 @@ import { logApiError } from '../utils/apiError';
 const DEFAULT_BUNDLES = {
   free:    { credits: 200,  price: 0,   name: 'Free' },
   builder: { credits: 500,  price: 15,  name: 'Builder' },
-  pro:     { credits: 1000, price: 15,  name: 'Pro' },
+  pro:     { credits: 1000, price: 30,  name: 'Pro' },
   scale:   { credits: 2000, price: 60,  name: 'Scale' },
   teams:   { credits: 5000, price: 150, name: 'Teams' },
 };
@@ -209,7 +209,7 @@ export default function Pricing() {
         if (r.data?.bundles && typeof r.data.bundles === 'object') {
           const b = {};
           for (const [key, val] of Object.entries(r.data.bundles)) {
-            if (!BUNDLE_ORDER.includes(key)) continue;
+            if (!BUNDLE_ORDER.includes(key) && key !== 'free') continue;
             const credits = val.credits ?? (val.tokens / 1000);
             b[key] = { credits, price: val.price, name: val.name || key };
           }

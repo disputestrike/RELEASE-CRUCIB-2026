@@ -26,7 +26,7 @@ function stashWorkspaceAutostartGoal(text) {
   const raw = (text || '').trim();
   if (!raw) return;
   try {
-    sessionStorage.setItem('crucibai_autostart_goal', raw);
+    localStorage.setItem('crucibai_autostart_goal', raw);
   } catch (_) { void 0; }
 }
 
@@ -522,17 +522,28 @@ const Dashboard = () => {
       setChatLoading(false);
       const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
       const taskName = (spec || userPrompt).slice(0, 60);
-      const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
-      stashWorkspaceAutostartGoal(spec || userPrompt);
+      
+      // Persist task first so it survives refresh in UnifiedWorkspace
+      const taskId = addTask({ 
+        name: taskName, 
+        prompt: spec || userPrompt, 
+        status: 'pending', 
+        type: 'build',
+        autoStart: true,
+        initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
+      });
+      
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
       ws.set('autoStart', '1');
+      
       navigate({
         pathname: '/app/workspace',
         search: `?${ws.toString()}`,
         state: withWorkspaceHandoffNonce({
           initialPrompt: spec || userPrompt,
           autoStart: true,
+          taskId: taskId,
           initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
         })
       });
@@ -637,15 +648,27 @@ const Dashboard = () => {
         const lastSpace = cut.lastIndexOf(' ');
         return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
       })();
-      const taskId = addTask({ name: taskName, prompt: chip.prompt, status: 'pending', type: 'build' });
-      stashWorkspaceAutostartGoal(chip.prompt);
+      
+      const taskId = addTask({ 
+        name: taskName, 
+        prompt: chip.prompt, 
+        status: 'pending', 
+        type: 'build',
+        autoStart: true 
+      });
+      
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
       ws.set('autoStart', '1');
+      
       navigate({
         pathname: '/app/workspace',
         search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({ initialPrompt: chip.prompt, autoStart: true })
+        state: withWorkspaceHandoffNonce({ 
+          initialPrompt: chip.prompt, 
+          autoStart: true,
+          taskId: taskId
+        })
       });
     }
   };

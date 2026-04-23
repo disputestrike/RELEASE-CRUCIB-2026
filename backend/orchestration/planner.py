@@ -776,6 +776,26 @@ async def generate_plan(
         build_target=recommended_target,
     )
 
+    # ── Manus-style Plan Summary ──────────────────────────────────────────────
+    plan_summary = []
+    for i, ph in enumerate(phases):
+        for s in ph.get("steps") or []:
+            plan_summary.append({
+                "index": len(plan_summary),
+                "description": s.get("description") or s.get("name") or "Executing step",
+                "status": "pending"
+            })
+
+    # ── Manus-style Action Chips ──────────────────────────────────────────────
+    action_chips = []
+    for i in range(min(len(plan_summary), 3)):
+        s = plan_summary[i]
+        action_chips.append({
+            "action": s["description"],
+            "status": "pending",
+            "icon": "arrow"
+        })
+
     plan = {
         "goal": goal,
         "build_kind": build_kind,
@@ -809,6 +829,12 @@ async def generate_plan(
         ),
         "selected_agents": selected_agents,
         "selected_agent_count": len(selected_agents),
+        "task_progress": {
+            "total": len(plan_summary),
+            "current": 0,
+            "tasks": plan_summary
+        },
+        "action_chips": action_chips,
     }
 
     enriched_plan = enrich_plan_with_node_manifests(plan)
