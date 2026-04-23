@@ -4,7 +4,14 @@ from fastapi import APIRouter, HTTPException
 try:
     from backend.prompts.loader import list_available, load_preamble  # dev/test layout
 except ImportError:  # production layout where /app is on sys.path
-    from prompts.loader import list_available, load_preamble  # type: ignore[no-redef]
+    try:
+        from prompts.loader import list_available, load_preamble  # type: ignore[no-redef]
+    except ImportError:
+        # Fallback: define stub functions if prompts module not available
+        def list_available():
+            return []
+        def load_preamble(name):
+            return None
 
 router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 
