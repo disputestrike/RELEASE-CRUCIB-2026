@@ -67,7 +67,10 @@ from .verification_api_smoke import healthcheck_sh_script
 from .verifier import verify_step
 from .verifier_issue_files import candidate_files_from_verification_issues
 from .brain_narration import build_failure_guidance
+from .placeholder_detection import contains_placeholder
 from .context_registry import merge_file_ownership
+from backend.orchestration.runtime_state import runtime_state_adapter
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -507,7 +510,7 @@ def _strip_prose_preamble(content: str, rel: str) -> str:
     return content
 
 
-def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
+def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None) -> Optional[str]:
     """Write UTF-8 text under workspace; returns normalized relative path or None."""
     if not base or not isinstance(base, str):
         return None
@@ -521,9 +524,12 @@ def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    with open(full, "w", encoding="utf-8") as fh:
-        fh.write(content)
-    return rel
+        with open(full, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        if job_id:
+            # Emit a file_written event
+            asyncio.create_task(runtime_state_adapter.append_job_event(job_id, "file_written", {"path": rel.replace("\\", "/"), "content_length": len(content), "timestamp": time.time()}))
+        return rel
 
 
 def _read_text(base: str, rel: str) -> Optional[str]:
@@ -796,7 +802,8 @@ async def handle_planning_step(
                     crew_pack = await run_crew_for_goal(
                         job.get("goal") or "",
                         workspace_path,
-                        system_prompt=combined or None,
+                        system_prompt=system_prompt,
+                        job_id=job_id,
                     )
                     written.extend(crew_pack.get("written") or [])
                 except Exception as exc:
@@ -1483,6 +1490,7 @@ async def handle_db_migration(
                     workspace_path,
                     "db/schema_blueprint.json",
                     json.dumps(schema_payload, indent=2),
+                    job_id=job.get("id"),
                 )
                 if blueprint:
                     out.append(blueprint)
@@ -1490,13 +1498,14 @@ async def handle_db_migration(
                     workspace_path,
                     "db/migrations/000_schema_blueprint.sql",
                     "\n\n".join(SchemaToSQL.generate_sql(schema)),
+                    job_id=job.get("id"),
                 )
                 if blueprint_sql:
                     out.append(blueprint_sql)
             except Exception as exc:
                 logger.warning("Database schema blueprint generation skipped: %s", exc)
             sql = migration_001_app_schema_sql()
-            w = _safe_write(workspace_path, "db/migrations/001_schema.sql", sql)
+            w = _safe_write(workspace_path, "db/migrations/001_schema.sql", sql, job_id=job.get("id"))
             if w:
                 out.append(w)
             if mt:
@@ -1505,6 +1514,7 @@ async def handle_db_migration(
                     workspace_path,
                     f"db/migrations/{MULTITENANCY_MIGRATION_FILENAME}",
                     sql_mt,
+                    job_id=job.get("id"),
                 )
                 if w2:
                     out.append(w2)
@@ -1520,6 +1530,7 @@ CREATE INDEX IF NOT EXISTS idx_stripe_events_received ON stripe_events_processed
                     workspace_path,
                     "db/migrations/003_stripe_idempotency_sketch.sql",
                     sql_st,
+                    job_id=job.get("id"),
                 )
                 if w3:
                     out.append(w3)
@@ -1734,10 +1745,14 @@ Auto-generated manifest — refine in continuation runs as the product hardens.
 - Migration or route **presence** alone does not prove tenancy isolation, payment idempotency, or auth enforcement — reference tests/smokes here when added.
 """
     rel = "proof/DELIVERY_CLASSIFICATION.md"
-    w = _safe_write(workspace_path, rel, body)
+    w = _safe_write(workspace_path, rel, body, job_id=job.get("id"))
     out = [rel] if w else []
     directive_rel = "proof/ELITE_EXECUTION_DIRECTIVE.md"
     if not _read_text(workspace_path, directive_rel):
+        # The elite execution directive is written by run_crew_for_goal, which is called by handle_crew_build.
+        # If it's not present, it means the crew build didn't happen or failed to write it.
+        # We should ensure it's written here if it's not already, to ensure proof is complete.
+        pass # This logic will be handled by run_crew_for_goal, which is called by handle_crew_build.
         directive = f"""# Elite Execution Directive
 
 This job must make every late-stage gate deterministic and evidence-backed.
@@ -1926,6 +1941,8 @@ async def execute_step(
         for inner in range(max_inner + 1):
             vr = await verify_step(verification_input, workspace_path, db_pool)
             _record_verifier_metrics(step_key, vr)
+            if job_id:
+                await runtime_state_adapter.append_job_event(job_id, "verification_result", vr)
             logger.info(
                 "executor: verify step_key=%s passed=%s score=%s inner_attempt=%s/%s",
                 step_key,

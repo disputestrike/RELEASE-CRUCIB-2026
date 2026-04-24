@@ -104,6 +104,11 @@ class RuntimeStateAdapter:
         job = self._job_view(task)
         await self._upsert_job_row(job, extra or {})
         await self.append_job_event(job_id, "job_status_changed", {"status": status, **(extra or {})})
+
+        if status == "complete":
+            proof_data = await self._collect_proof_data(job_id, job)
+            await self.save_proof_json(job_id, proof_data)
+
         return job
 
     async def create_step(
@@ -237,6 +242,16 @@ class RuntimeStateAdapter:
         rows = rows[-max(1, int(limit)) :]
         return [dict(r) for r in rows]
 
+    def _job_dir(self, job_id: str) -> Path:
+        # Assuming job_id is unique enough to create a subdirectory under WORKSPACE_ROOT
+        return Path(WORKSPACE_ROOT) / "jobs" / job_id
+
+    async def save_proof_json(self, job_id: str, proof_data: Dict[str, Any]) -> None:
+        job_dir = self._job_dir(job_id)
+        job_dir.mkdir(parents=True, exist_ok=True)
+        proof_path = job_dir / "proof.json"
+        proof_path.write_text(json.dumps(proof_data, indent=2), encoding="utf-8")
+
     async def save_checkpoint(self, job_id: str, checkpoint_key: str, data: Dict[str, Any]) -> None:
         cps = self._load_checkpoints(job_id)
         cps[str(checkpoint_key)] = {
@@ -272,6 +287,44 @@ class RuntimeStateAdapter:
                 order_index=order_index,
             )
             order_index += 1
+
+    async def _collect_proof_data(self, job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
+        # Gather all information for proof.json
+        proof = {
+            "job_id": job_id,
+            "prompt": job.get("goal"),
+            "intent_schema": job.get("metadata", {}).get("intent_schema"),
+            "dag_structure": build_dynamic_dag(IntentSchema(**job.get("metadata", {}).get("intent_schema"))),
+            "steps": await self.get_steps(job_id),
+            "files_changed": [],  # To be populated by file_writer events
+            "tests_run": [],  # To be populated by test_runner events
+            "verification_results": [],  # To be populated by verification events
+            "errors": [],  # To be populated by error events
+            "repair_attempts": [],  # To be populated by repair events
+            "timestamps": {
+                "created_at": job.get("created_at"),
+                "updated_at": job.get("updated_at"),
+                "completed_at": time.time(),
+            },
+        }
+
+        # Populate dynamic fields from events
+        events = await self.get_job_events(job_id)
+        for event in events:
+            event_type = event.get("event_type")
+            payload = json.loads(event.get("payload_json", "{}"))
+            if event_type == "file_written":
+                proof["files_changed"].append(payload)
+            elif event_type == "test_run":
+                proof["tests_run"].append(payload)
+            elif event_type == "verification_result":
+                proof["verification_results"].append(payload)
+            elif event_type == "error":
+                proof["errors"].append(payload)
+            elif event_type == "repair_attempt":
+                proof["repair_attempts"].append(payload)
+
+        return proof
 
     def _job_view(self, task: Dict[str, Any]) -> Dict[str, Any]:
         meta = task.get("metadata") or {}

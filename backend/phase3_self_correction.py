@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+from backend.orchestration.runtime_state import runtime_state_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -252,7 +253,7 @@ class TestRunner:
         self.test_results: List[TestResult] = []
 
     async def run_tests(
-        self, test_cases: List[TestCase], code: str
+        self, test_cases: List[TestCase], code: str, job_id: Optional[str] = None
     ) -> Tuple[List[TestResult], Dict[str, Any]]:
         """
         Run all test cases against code.
@@ -271,6 +272,8 @@ class TestRunner:
         for test_case in test_cases:
             result = await self._run_test(test_case, code)
             self.test_results.append(result)
+            if job_id:
+                await runtime_state_adapter.append_job_event(job_id, "test_run", result.to_dict())
 
         summary = self._generate_summary()
         logger.info(f"Test run complete: {summary['passed']}/{summary['total']} passed")
@@ -491,7 +494,7 @@ class SelfCorrectingCodeGenerator:
 
             # Step 2: Run tests
             test_results, summary = await self.test_runner.run_tests(
-                test_cases, current_code
+                test_cases, current_code, job_id=job_id
             )
 
             # Step 3: Analyze code
