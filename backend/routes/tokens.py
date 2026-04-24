@@ -38,7 +38,10 @@ def _get_token_constants():
     )
 
 
-from ..server import _get_server_helpers
+def _get_server_helpers():
+    """Lazy wrapper to avoid circular import with server.py."""
+    from ..server import _get_server_helpers as _ssh
+    return _ssh()
 
 
 try:
