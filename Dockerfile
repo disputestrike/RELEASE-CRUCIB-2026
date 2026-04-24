@@ -31,9 +31,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 COPY backend/requirements.txt ./requirements.txt
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
 RUN python -m playwright install --with-deps chromium
-
-COPY backend/ ./
-RUN echo "Backend files copied"
+WORKDIR /app
+# Copy the backend directory AS backend to maintain module structure
+COPY backend/ ./backend/
+RUN echo "Backend files copied to /app/backend"
 COPY --from=frontend /app/build ./static
 RUN echo "Frontend static files copied"
 COPY proof/benchmarks/repeatability_v1/summary.json /proof/benchmarks/repeatability_v1/summary.json
