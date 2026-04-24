@@ -802,8 +802,8 @@ async def handle_planning_step(
                     crew_pack = await run_crew_for_goal(
                         job.get("goal") or "",
                         workspace_path,
-                        system_prompt=system_prompt,
-                        job_id=job_id,
+                        system_prompt=job.get("elite_system_prompt") or "",
+                        job_id=job.get("id") or "",
                     )
                     written.extend(crew_pack.get("written") or [])
                 except Exception as exc:
