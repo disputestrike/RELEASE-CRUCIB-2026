@@ -1,0 +1,92 @@
+[
+  {
+    "prompt_idx": 1,
+    "prompt": "build a SaaS landing page with pricing and auth-ready layout",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 2,
+    "prompt": "build a React dashboard with charts and filters",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 3,
+    "prompt": "build a FastAPI endpoint and frontend form that calls it",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 4,
+    "prompt": "fix a broken React component",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 5,
+    "prompt": "add Stripe pricing page UI",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 6,
+    "prompt": "build a public share/remix route",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 7,
+    "prompt": "generate a proof report for a job",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 8,
+    "prompt": "create a multi-page website",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 9,
+    "prompt": "create a developer workspace with preview panel",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  },
+  {
+    "prompt_idx": 10,
+    "prompt": "intentionally introduce a failing verification and repair it",
+    "status": "failed",
+    "job_id": null,
+    "project_id": null,
+    "error": "benchmark/run 405: {\"detail\":\"Method Not Allowed\"}",
+    "metrics": {}
+  }
+]
