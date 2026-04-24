@@ -295,8 +295,28 @@ async def _run_single_agent_with_context(
     model_chain: list[dict],
     build_kind: str = "fullstack",
 ):
+    # Build context block from prior agents' outputs so each agent can
+    # build on the work already done rather than starting blind.
+    context_block = ""
+    if previous_outputs:
+        parts = []
+        for prior_agent, prior_result in previous_outputs.items():
+            prior_text = ""
+            if isinstance(prior_result, dict):
+                prior_text = str(prior_result.get("output") or prior_result.get("result") or "")
+            elif isinstance(prior_result, str):
+                prior_text = prior_result
+            if prior_text.strip():
+                parts.append(f"### {prior_agent}\n{prior_text[:2000]}")
+        if parts:
+            context_block = (
+                "\n\n---\n## Context from prior agents\n"
+                + "\n\n".join(parts)
+                + "\n---\n"
+            )
+    enriched_prompt = project_prompt + context_block
     output, _meta = await _call_llm_with_fallback(
-        message=project_prompt,
+        message=enriched_prompt,
         system_message=f"{agent_name} execution",
         session_id=f"{project_id}:{agent_name}",
         model_chain=model_chain,
