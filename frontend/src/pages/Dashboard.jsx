@@ -306,6 +306,8 @@ const Dashboard = () => {
   const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+  /** Tracks the last build spec described by the assistant so 'go build'/'yes' can route to workspace */
+  const pendingBuildSpecRef = useRef(null);
 
   // Live projects — fetched from API, polled every 5s when any are running
   const [liveProjects, setLiveProjects] = useState([]);
@@ -518,6 +520,26 @@ const Dashboard = () => {
     });
     requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
 
+    // Build-confirmation: if user says 'go build'/'yes'/'do it'/'build it' and there's a pending spec, go to workspace
+    const BUILD_CONFIRM_PATTERNS = /^(go\s*build|yes\s*build|build\s*it|do\s*it|go\s*ahead|just\s*build|build\s*now|start\s*building|let'?s\s*(build|go|do\s*it)|ship\s*it|build|yes|yeah|yep|ok|okay|sure|proceed|continue|go)\s*[!.?]*$/i;
+    if (userPrompt && BUILD_CONFIRM_PATTERNS.test(userPrompt.trim()) && pendingBuildSpecRef.current) {
+      setChatLoading(false);
+      const spec = pendingBuildSpecRef.current;
+      pendingBuildSpecRef.current = null;
+      const taskName = spec.slice(0, 60);
+      const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
+      stashWorkspaceAutostartGoal(spec);
+      const ws = new URLSearchParams();
+      if (taskId) ws.set('taskId', taskId);
+      ws.set('autoStart', '1');
+      navigate({
+        pathname: '/app/workspace',
+        search: `?${ws.toString()}`,
+        state: withWorkspaceHandoffNonce({ initialPrompt: spec, autoStart: true })
+      });
+      return;
+    }
+
     // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
 
@@ -598,6 +620,13 @@ const Dashboard = () => {
       const reply = await requestAssistantReply(taskId, userPrompt, priorTurns, filesToSend)
         || 'No response from model. Try again.';
       const assistantMsg = { role: 'assistant', content: reply };
+      // If assistant described something to build, store it so 'go build'/'yes' can route to workspace
+      const buildOfferMatch = reply.match(/I(?:'ll| will) build ([^.\n]{10,120})/i)
+        || reply.match(/(?:building|creating|developing)\s+(?:a\s+)?([^.\n]{10,120})/i)
+        || reply.match(/(?:prototype|platform|app|system|tool|service)(?:\s+called)?[:\s]+["']?([^.\n"']{10,80})["']?/i);
+      if (buildOfferMatch) {
+        pendingBuildSpecRef.current = buildOfferMatch[1]?.trim() || userPrompt;
+      }
       let afterAssistant;
       setChatMessages((prev) => {
         afterAssistant = [...prev, assistantMsg];
