@@ -13,12 +13,12 @@ import textwrap
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-from agents.code_repair_agent import CodeRepairAgent
-from agents.database_architect_agent import (
+from backend.agents.code_repair_agent import CodeRepairAgent
+from backend.agents.database_architect_agent import (
     SchemaToSQL,
     heuristic_schema_from_requirements,
 )
-from anthropic_models import ANTHROPIC_HAIKU_MODEL
+from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
 
 from .compliance_sketch import build_compliance_sketch_markdown
 from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent

@@ -443,6 +443,7 @@ class RuntimeStateAdapter:
 
 
 runtime_state = RuntimeStateAdapter()
+runtime_state_adapter = runtime_state  # Alias for backward compatibility
 
 
 def set_pool(pool: Any) -> None:
