@@ -13,7 +13,7 @@ import asyncpg
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
 
 
 class DatabaseOperationsAgent(BaseAgent):

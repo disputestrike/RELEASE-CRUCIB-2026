@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.workspace_explorer_agent import WorkspaceExplorerAgent
+from backend.agents.workspace_explorer_agent import WorkspaceExplorerAgent
 
 
 @pytest.fixture

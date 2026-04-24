@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
-from agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
 
 # Add parent to path so backend imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -7,7 +7,7 @@ See docs/LEGAL_COMPLIANCE_AND_INDUSTRY_ALIGNMENT.md for comparison.
 import logging
 from typing import Any, Dict
 
-from agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 

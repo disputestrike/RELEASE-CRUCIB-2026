@@ -7,7 +7,7 @@ import logging
 import os
 from typing import Dict, Optional
 
-from agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
