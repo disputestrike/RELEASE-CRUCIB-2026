@@ -1000,7 +1000,8 @@ async def health_check():
 
 @app.get("/api/v1/health")
 async def health_check_v1():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "v1", "timestamp": str(datetime.now())}
+
 
 
 class BenchmarkRunRequest(BaseModel):
