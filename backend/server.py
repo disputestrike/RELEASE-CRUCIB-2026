@@ -194,11 +194,28 @@ def _generate_referral_code() -> str:
 
     return uuid.uuid4().hex[:8]
 
+def _assert_job_owner_match(owner_id: Optional[str], user: dict) -> None:
+    """Raise 403 if the requesting user does not own this job.
+    Admins and guest-mode (no owner set) are always allowed through.
+    """
+    if not owner_id:
+        return  # no owner set — allow (e.g. system-created job)
+    request_uid = (user or {}).get("id", "")
+    if not request_uid:
+        return  # unauthenticated / guest — allow (enforced at auth layer)
+    # Admins bypass ownership check
+    if (user or {}).get("admin_role") in ADMIN_ROLES or request_uid in ADMIN_USER_IDS:
+        return
+    if owner_id != request_uid:
+        from fastapi import HTTPException as _HTTPEx
+        raise _HTTPEx(status_code=403, detail="You do not have access to this job.")
+
+
 def _get_server_helpers():
     return (
         _user_credits,
-        _ensure_credit_balance,
-        _resolve_job_project_id_for_user,
+        _assert_job_owner_match,   # FIX: was _ensure_credit_balance — wrong function,
+        _resolve_job_project_id_for_user,  # wrong signature → TypeError on every run-auto call
         _project_workspace_path,
     )
 
