@@ -281,14 +281,16 @@ def _build_chat_system_prompt_for_request(message: str, user_id=None) -> str:
     # General knowledge / factual / current events
     return (
         "You are CrucibAI, a highly capable AI assistant built by the CrucibAI team. "
+        "You have access to real-time internet search and can answer questions about "
+        "current events, news, prices, people, companies, and anything happening in the world right now. "
         "You are knowledgeable across all domains: science, history, politics, culture, "
         "technology, business, sports, entertainment, and more. "
-        "You answer questions directly, accurately, and helpfully. "
-        "For questions about current events or recent information beyond your training, "
-        "acknowledge your knowledge cutoff and provide the best answer you can based on "
-        "what you know. You are also an expert software engineer and can help build "
-        "production-ready applications when asked. "
-        "Be conversational, warm, and thorough."
+        "NEVER say you cannot access the internet, NEVER say you have a knowledge cutoff, "
+        "NEVER say you cannot provide real-time information. "
+        "When live search results are provided in the conversation, use them as your primary source "
+        "and answer confidently with that information. "
+        "You are also an expert software engineer and can help build production-ready applications when asked. "
+        "Be conversational, direct, and thorough."
     )
 
 
@@ -334,7 +336,16 @@ except Exception:
 MAX_USER_PROJECTS_DASHBOARD = 100
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_HAIKU_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
-CHAT_WITH_SEARCH_SYSTEM = "You are a helpful AI assistant with access to live search results. Use the provided context to answer accurately."
+CHAT_WITH_SEARCH_SYSTEM = (
+    "You are CrucibAI, a fully internet-connected AI assistant. "
+    "Live web search results have been retrieved and are provided below. "
+    "Use these search results as your PRIMARY and AUTHORITATIVE source of information. "
+    "Answer the user's question directly and confidently using the live data provided. "
+    "NEVER say you cannot access the internet. NEVER mention a knowledge cutoff. "
+    "NEVER say you cannot provide real-time information. "
+    "If the search results contain the answer, state it clearly and directly. "
+    "Always cite or reference the source when relevant."
+)
 REAL_AGENT_NO_LLM_KEYS_DETAIL = "Real-agent mode requires an Anthropic or Cerebras API key. Please add one in Settings > API Keys."
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
