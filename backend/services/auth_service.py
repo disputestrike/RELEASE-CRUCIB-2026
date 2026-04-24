@@ -115,18 +115,26 @@ async def create_guest_user_service(
         "workspace_mode": "simple",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.users.insert_one(user)
-    await db.token_ledger.insert_one(
-        {
-            "id": str(uuid.uuid4()),
-            "user_id": user_id,
-            "tokens": guest_tier_credits * credits_per_token,
-            "credits": guest_tier_credits,
-            "type": "bonus",
-            "description": "Guest session",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
+    try:
+        await db.users.insert_one(user)
+        await db.token_ledger.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "tokens": guest_tier_credits * credits_per_token,
+                "credits": guest_tier_credits,
+                "type": "bonus",
+                "description": "Guest session",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+    except Exception as _db_err:
+        # Tables may not exist yet or DB is temporarily unavailable.
+        # Issue a stateless guest token anyway — the user can still chat.
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            "Guest DB write failed (issuing stateless token): %s", _db_err
+        )
     token = create_token(user["id"])
     return {"token": token, "user": {k: v for k, v in user.items() if k not in ("password", "_id")}}
 

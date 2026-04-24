@@ -967,12 +967,22 @@ class ProjectTransferTransferUpdate(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load the ML model
-    # startup
-    print("startup")
+    # startup — ensure Postgres tables exist before serving any requests
+    try:
+        from .services.migration_runner import run_migrations_idempotent
+        await run_migrations_idempotent()
+        logger.info("Startup migrations complete.")
+    except Exception as _mig_err:
+        logger.warning("Startup migration failed (non-fatal): %s", _mig_err)
+    try:
+        from .db_pg import ensure_all_tables
+        await ensure_all_tables()
+        logger.info("ensure_all_tables complete.")
+    except Exception as _tbl_err:
+        logger.warning("ensure_all_tables failed (non-fatal): %s", _tbl_err)
     yield
     # shutdown
-    print("shutdown")
+    logger.info("shutdown")
 
 
 app = FastAPI(lifespan=lifespan)
