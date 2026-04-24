@@ -143,14 +143,16 @@ async def _resolve_job(job_id: str, user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Job not found")
     owner = job.get("user_id")
     uid = (user or {}).get("id")
-    if not owner or not uid or owner != uid:
+    is_admin = bool((user or {}).get("is_admin"))
+    if not is_admin and (not owner or not uid or owner != uid):
         raise HTTPException(status_code=403, detail="Not your job")
     return job
 
 
 def _assert_owner(owner_id: Optional[str], user: Optional[dict]) -> None:
     uid = (user or {}).get("id")
-    if not owner_id or not uid or owner_id != uid:
+    is_admin = bool((user or {}).get("is_admin"))
+    if not is_admin and (not owner_id or not uid or owner_id != uid):
         raise HTTPException(status_code=403, detail="Not your job")
 
 
