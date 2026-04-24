@@ -524,7 +524,6 @@ async def _call_llama_direct(
                 "max_tokens": 8192,
                 "temperature": 0.7,
                 "top_p": 0.9,
-                "intent_schema": intent_schema,
             },
             timeout=120,
         )
@@ -557,7 +556,6 @@ async def _call_cerebras_direct(
                 ],
                 "max_tokens": 8192,
                 "temperature": 0.7,
-                "intent_schema": intent_schema,
             },
             timeout=120,
         )
@@ -576,7 +574,6 @@ async def _call_cerebras_direct(
                     ],
                     "max_tokens": 4096,
                     "temperature": 0.7,
-                    "intent_schema": intent_schema,
                 },
                     timeout=120,
                 )
@@ -621,7 +618,6 @@ async def _call_anthropic_direct(
                 "max_tokens": 4096,
                 "system": system_message,
                 "messages": [{"role": "user", "content": message}],
-                "intent_schema": intent_schema,
             },
             timeout=120,
         )
