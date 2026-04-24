@@ -7,7 +7,7 @@ Token optimization: set USE_TOKEN_OPTIMIZED_PROMPTS=1 for shorter prompts and sm
 import os
 from collections import deque
 from typing import Any, Dict, List, Set
-from .agents.clarification_agent import IntentSchema
+from .agents.schemas import IntentSchema
 
 # Agent names must match _ORCHESTRATION_AGENTS in server.py
 # depends_on = list of agent names that must complete before this one

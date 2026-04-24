@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from ..agents.clarification_agent import ClarificationAgent, IntentSchema
+from ..agents.clarification_agent import ClarificationAgent
+from ..agents.schemas import IntentSchema
 from ..orchestration.runtime_state import runtime_state
 
 logger = logging.getLogger(__name__)

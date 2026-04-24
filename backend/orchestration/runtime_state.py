@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from ..agent_dag import AGENT_DAG, build_dynamic_dag
-from ..agents.clarification_agent import IntentSchema
+from ..agents.schemas import IntentSchema
 
 from backend.project_state import WORKSPACE_ROOT
 from backend.services.events import event_bus
