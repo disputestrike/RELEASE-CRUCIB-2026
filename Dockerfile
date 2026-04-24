@@ -35,8 +35,8 @@ WORKDIR /app
 # Copy the backend directory AS backend to maintain module structure
 COPY backend/ ./backend/
 RUN echo "Backend files copied to /app/backend"
-COPY --from=frontend /app/build ./static
-RUN echo "Frontend static files copied"
+COPY --from=frontend /app/build ./backend/static
+RUN echo "Frontend static files copied to /app/backend/static"
 COPY proof/benchmarks/repeatability_v1/summary.json /proof/benchmarks/repeatability_v1/summary.json
 COPY proof/benchmarks/repeatability_v1/PASS_FAIL.md /proof/benchmarks/repeatability_v1/PASS_FAIL.md
 COPY proof/full_systems/summary.json /proof/full_systems/summary.json
