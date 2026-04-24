@@ -1938,6 +1938,8 @@ async def execute_step(
         max_inner = max(0, min(max_inner, 5))
 
         vr: Dict[str, Any] = {}
+        retry_count = 0
+        max_retries = 8
         for inner in range(max_inner + 1):
             vr = await verify_step(verification_input, workspace_path, db_pool)
             _record_verifier_metrics(step_key, vr)
@@ -1975,6 +1977,9 @@ async def execute_step(
                 break
             issues_list = vr.get("issues") or []
             if not issues_list:
+                break
+            if retry_count >= max_retries:
+                logger.warning("executor: max_retries (%d) reached for step_key=%s, stopping repair loop", max_retries, step_key)
                 break
             st = {
                 **step,
@@ -2051,6 +2056,7 @@ async def execute_step(
                     )
             changed_paths = list(dict.fromkeys(changed_paths + repaired_output_files))
             if changed_paths:
+                retry_count += 1
                 maybe_commit_workspace_repairs(
                     workspace_path or "",
                     changed_paths,
