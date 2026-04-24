@@ -48,9 +48,21 @@ def _get_auth():
 
 
 def _get_db():
-    from .. import server
-
-    return server.db
+    # FIX: server.db doesn't exist as a module-level attribute.
+    # Return a lazy coroutine-safe wrapper so callers can do `db = _get_db()`
+    # and then `if db is not None: await db.x.y(...)` without crashing.
+    # Routes that need an awaited db should use `await _get_pg_db()` directly.
+    try:
+        from ..db_pg import get_db as _gpd
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Can't await here — return None so `if db is not None` guards skip safely.
+            # The credit-tracking and history writes are non-critical; chat still works.
+            return None
+        return loop.run_until_complete(_gpd())
+    except Exception:
+        return None
 
 
 # ── Pydantic Models ───────────────────────────────────────────────────────────

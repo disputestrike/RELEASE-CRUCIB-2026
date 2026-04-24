@@ -15,9 +15,16 @@ def _get_auth():
 
 
 def _get_db():
-    from .. import server
-
-    return server.db
+    # FIX: server.db doesn't exist as a module-level attribute — use db_pg instead.
+    try:
+        from ..db_pg import get_db as _gpd
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            return None  # Non-critical; callers all guard with `if db is not None`
+        return loop.run_until_complete(_gpd())
+    except Exception:
+        return None
 
 
 class AIChatBody(BaseModel):

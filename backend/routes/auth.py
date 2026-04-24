@@ -28,9 +28,15 @@ from ..deps import (
     JWT_SECRET,
     get_audit_logger,
     get_current_user,
-    get_db,
     get_optional_user,
 )
+# FIX: deps.get_db() always returned None (deps.init() was never called in production).
+# The real database is PostgreSQL via db_pg. Import it here and use it everywhere.
+from ..db_pg import get_db as _get_pg_db
+
+async def get_db():
+    """Return real PostgreSQL-backed DB. Replaces deps.get_db() which was always None."""
+    return await _get_pg_db()
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -113,7 +119,7 @@ async def _apply_referral_on_signup(
     referee_id: str, ref_code: Optional[str] = None
 ) -> None:
     """Grant 100 credits each when referee completes sign-up. Referrer reward only if on free plan. Cap 10/month."""
-    db = get_db()
+    db = await get_db()
     if not ref_code or not ref_code.strip():
         return
     ref_code = ref_code.strip().lower()
@@ -247,7 +253,7 @@ def _user_credits(user: Optional[dict]) -> int:
 
 
 async def _ensure_credit_balance(user_id: str) -> None:
-    db = get_db()
+    db = await get_db()
     doc = await db.users.find_one(
         {"id": user_id}, {"credit_balance": 1, "token_balance": 1}
     )
@@ -424,7 +430,7 @@ async def register(data: UserRegister, request: Request):
     return await register_user_service(
         data=data,
         request=request,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         is_disposable_email=_is_disposable_email,
         hash_password=hash_password,
@@ -438,7 +444,7 @@ async def login(data: UserLogin, request: Request):
     return await login_user_service(
         data=data,
         request=request,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         verify_password=verify_password,
         hash_password=hash_password,
@@ -452,7 +458,7 @@ async def auth_guest(request: Request):
     """Create a guest user and return token so the app can be used without sign-up."""
     return await create_guest_user_service(
         request=request,
-        db=get_db(),
+        db=await get_db(),
         create_token=create_token,
         guest_tier_credits=GUEST_TIER_CREDITS,
         credits_per_token=CREDITS_PER_TOKEN,
@@ -464,7 +470,7 @@ async def verify_mfa_login(body: MFAVerifyLogin, request: Request):
     return await verify_mfa_login_service(
         body=body,
         request=request,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         decode_mfa_temp_token=decode_mfa_temp_token,
         create_token=create_token,
@@ -476,7 +482,7 @@ async def verify_mfa_login(body: MFAVerifyLogin, request: Request):
 async def get_me(user: dict = Depends(get_current_user)):
     return await get_me_service(
         user=user,
-        db=get_db(),
+        db=await get_db(),
         ensure_credit_balance=_ensure_credit_balance,
         user_credits=_user_credits,
         admin_user_ids=ADMIN_USER_IDS,
@@ -490,7 +496,7 @@ async def get_me(user: dict = Depends(get_current_user)):
 async def set_workspace_mode(
     body: WorkspaceModeBody, user: dict = Depends(get_current_user)
 ):
-    return await set_workspace_mode_service(body=body, user=user, db=get_db())
+    return await set_workspace_mode_service(body=body, user=user, db=await get_db())
 
 
 # ---------------------------------------------------------------------------
@@ -503,7 +509,7 @@ async def mfa_setup(request: Request, user: dict = Depends(get_current_user)):
     return await mfa_setup_service(
         request=request,
         user=user,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         random_base32=pyotp.random_base32,
         build_totp_uri=lambda secret, name: pyotp.TOTP(secret).provisioning_uri(name=name, issuer_name="CrucibAI"),
@@ -519,7 +525,7 @@ async def mfa_verify(
         body=body,
         request=request,
         user=user,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         verify_totp=lambda secret, code: pyotp.TOTP(secret).verify(code, valid_window=1),
     )
@@ -533,7 +539,7 @@ async def mfa_disable(
         body=body,
         request=request,
         user=user,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         verify_password=verify_password,
     )
@@ -541,7 +547,7 @@ async def mfa_disable(
 
 @auth_router.get("/mfa/status")
 async def mfa_status(user: dict = Depends(get_current_user)):
-    return await mfa_status_service(user=user, db=get_db())
+    return await mfa_status_service(user=user, db=await get_db())
 
 
 @auth_router.post("/mfa/backup-code/use")
@@ -552,7 +558,7 @@ async def mfa_backup_code_use(
         body=body,
         request=request,
         user=user,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
     )
 
@@ -626,7 +632,7 @@ async def delete_account(
     body: DeleteAccountBody, user: dict = Depends(get_current_user)
 ):
     """Permanently delete the current user's account and all associated data. Requires password confirmation."""
-    return await delete_account_service(body=body, user=user, db=get_db(), verify_password=verify_password)
+    return await delete_account_service(body=body, user=user, db=await get_db(), verify_password=verify_password)
 
 
 @auth_router.post("/users/me/change-password")
@@ -637,7 +643,7 @@ async def change_password(
     return await change_password_service(
         body=body,
         user=user,
-        db=get_db(),
+        db=await get_db(),
         audit_logger=get_audit_logger(),
         verify_password=verify_password,
         hash_password=hash_password,
@@ -650,7 +656,7 @@ async def update_profile(
     body: UpdateProfileBody, user: dict = Depends(get_current_user)
 ):
     """Update user profile (name, email, bio, avatar_url)."""
-    return await update_profile_service(body=body, user=user, db=get_db())
+    return await update_profile_service(body=body, user=user, db=await get_db())
 
 
 @auth_router.patch("/users/me/notifications")
@@ -658,7 +664,7 @@ async def update_notification_prefs(
     body: NotificationPrefs, user: dict = Depends(get_current_user)
 ):
     """Save notification preferences for the current user."""
-    return await update_notification_prefs_service(body=body, user=user, db=get_db())
+    return await update_notification_prefs_service(body=body, user=user, db=await get_db())
 
 
 @auth_router.patch("/users/me/privacy")
@@ -666,7 +672,7 @@ async def update_privacy_prefs(
     body: PrivacyPrefs, user: dict = Depends(get_current_user)
 ):
     """Save privacy preferences for the current user."""
-    return await update_privacy_prefs_service(body=body, user=user, db=get_db())
+    return await update_privacy_prefs_service(body=body, user=user, db=await get_db())
 
 
 # ---------------------------------------------------------------------------
@@ -710,7 +716,7 @@ async def auth_google_callback(
     """Exchange Google code for tokens, create or find user, redirect to frontend with JWT.
     Uses only CrucibAI flow per docs/GOOGLE_AUTH_SETUP.md: one token exchange, verify with google-auth, redirect to FRONTEND_URL.
     """
-    db = get_db()
+    db = await get_db()
     if FRONTEND_URL and not FRONTEND_URL.startswith("http://localhost"):
         frontend_base = FRONTEND_URL.rstrip("/")
     else:
@@ -897,7 +903,7 @@ async def auth_github_callback(
     error_description: Optional[str] = None,
 ):
     """Exchange GitHub OAuth code, create/find user, redirect to frontend with JWT."""
-    db = get_db()
+    db = await get_db()
     if FRONTEND_URL and not FRONTEND_URL.startswith("http://localhost"):
         frontend_base = FRONTEND_URL.rstrip("/")
     else:
