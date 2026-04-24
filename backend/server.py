@@ -1166,17 +1166,8 @@ async def route_report(user: User = Depends(require_permission(Permission.CREATE
         raise HTTPException(status_code=403, detail="Forbidden")
     return ROUTE_REGISTRATION_REPORT
 
-# Serve static files from the 'static' directory
-if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
-    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+# Static file mounting moved to the end of the file to avoid shadowing API routes.
 
-    @app.exception_handler(404)
-    async def not_found_handler(_, __):
-        return FileResponse(str(STATIC_DIR / "index.html"))
-else:
-    logger.warning(
-        f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
-    )
 
 
 async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optional[str]:
@@ -1199,3 +1190,16 @@ async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optiona
     except Exception:
         pass
     return None
+
+# Serve static files from the 'static' directory
+if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
+    @app.exception_handler(404)
+    async def not_found_handler(_, __):
+        return FileResponse(str(STATIC_DIR / "index.html"))
+else:
+    logger.warning(
+        f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
+    )
+
