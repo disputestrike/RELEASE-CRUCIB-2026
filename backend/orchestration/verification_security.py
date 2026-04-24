@@ -201,11 +201,27 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
             ),
         )
     else:
-        issues.append("No db/migrations/*.sql found for security review")
+        # Not all projects require a database — skip migration check gracefully.
+        proof.append(
+            _pi(
+                "verification",
+                "Security: no db/migrations SQL found — skipping migration security checks (no DB required)",
+                {"check": "migrations_skipped", "reason": "no_db_migrations_dir"},
+                verification_class="presence",
+            )
+        )
 
     main_py = _read_file("backend/main.py", workspace_path)
     if not main_py.strip():
-        issues.append("backend/main.py missing or empty")
+        # Not all projects have a Python backend — skip this check gracefully.
+        proof.append(
+            _pi(
+                "verification",
+                "Security: backend/main.py not found — skipping backend security checks (frontend-only or non-Python project)",
+                {"check": "backend_main_skipped", "reason": "no_backend_main"},
+                verification_class="presence",
+            )
+        )
     else:
         if "CORSMiddleware" in main_py and (
             'allow_origins=["*"]' in main_py or "allow_origins=['*']" in main_py

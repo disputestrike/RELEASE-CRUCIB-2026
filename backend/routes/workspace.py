@@ -32,15 +32,22 @@ def _get_auth():
 
 
 def _workspace_root() -> Path:
-    from server import ROOT_DIR
-
-    return Path(ROOT_DIR) / "workspace"
+    try:
+        from server import WORKSPACE_ROOT
+        return Path(WORKSPACE_ROOT) / "projects"
+    except ImportError:
+        from server import ROOT_DIR
+        return Path(ROOT_DIR) / "workspace"
 
 
 def _project_workspace_path(project_id: str) -> Path:
-    root = _workspace_root()
-    safe = project_id.replace("/", "_").replace("\\", "_").replace("..", "_")
-    return root / safe
+    try:
+        from server import _project_workspace_path as _srv_wp
+        return _srv_wp(project_id)
+    except (ImportError, Exception):
+        root = _workspace_root()
+        safe = project_id.replace("/", "_").replace("\\", "_").replace("..", "_")
+        return root / safe
 
 
 def _safe_resolve(workspace: Path, rel: str) -> Path:

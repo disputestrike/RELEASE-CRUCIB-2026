@@ -1720,6 +1720,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.compact_command", "router", False),
     ("backend.routes.orchestrator", "router", False),
     ("backend.routes.jobs", "router", False),
+    ("backend.routes.workspace", "router", False),
     ("backend.adapter.routes.preview", "router", True),
     ("backend.adapter.routes.deploy", "router", True),
     ("backend.adapter.routes.trust", "router", True),
