@@ -43,13 +43,15 @@ def _get_optional_user():
 
 
 def _get_server_globals():
-    from .. import server
-
-    return (
-        server.AGENT_DAG,
-        server.LAST_BUILD_STATE,
-        server.RECENT_AGENT_SELECTION_LOGS,
-    )
+    # FIX: AGENT_DAG / LAST_BUILD_STATE / RECENT_AGENT_SELECTION_LOGS were
+    # never module-level attributes of server.py — accessing server.AGENT_DAG
+    # always raised AttributeError, crashing the workspace screen.
+    # AGENT_DAG now lives in agent_dag.py; the state containers are in server.py.
+    from ..agent_dag import AGENT_DAG as _dag
+    from .. import server as _srv
+    _last  = getattr(_srv, "LAST_BUILD_STATE", {})
+    _recnt = getattr(_srv, "RECENT_AGENT_SELECTION_LOGS", [])
+    return _dag, _last, _recnt
 
 
 

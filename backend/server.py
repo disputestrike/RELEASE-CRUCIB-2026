@@ -28,9 +28,105 @@ from .provider_readiness import build_provider_readiness
 from .services.llm_service import (
     _effective_api_keys,
     _get_model_chain,
+    _call_llm_with_fallback,
+    _is_product_support_query,
     get_authenticated_or_api_user,
     get_workspace_api_keys,
 )
+
+# ── Re-exports: symbols that routes/ai.py and routes/orchestrator.py import
+# from server.py directly. These live in sub-modules; re-exported here so
+# the existing import chains in ai.py/orchestrator.py don't need to change.
+# ─────────────────────────────────────────────────────────────────────────
+try:
+    from .agent_dag import AGENT_DAG  # 245-node DAG used by orchestrator
+except Exception:
+    AGENT_DAG: dict = {}
+
+try:
+    from .dev_stub_llm import (
+        is_real_agent_only,
+        chat_llm_available,
+        stub_build_enabled,
+        stub_multifile_markdown,
+    )
+    from .dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+except Exception:
+    def is_real_agent_only() -> bool: return False
+    def chat_llm_available(effective_keys=None) -> bool: return True
+    def stub_build_enabled() -> bool: return False
+    def stub_multifile_markdown(prompt: str, build_kind=None) -> str: return ""
+    def _stub_detect_build_kind(msg: str) -> str: return "fullstack"
+
+try:
+    from .content_policy import screen_user_content
+except Exception:
+    def screen_user_content(text: str): return None  # None = not blocked
+
+try:
+    from .pricing_plans import _speed_from_plan
+except Exception:
+    def _speed_from_plan(plan: str) -> str: return "balanced"
+
+# Runtime state containers — mutated at runtime by orchestrator
+LAST_BUILD_STATE: dict = {}
+RECENT_AGENT_SELECTION_LOGS: list = []
+
+
+def _tokens_to_credits(tokens: int) -> int:
+    """Convert token count to credit units (1 credit = 1 000 tokens)."""
+    return max(1, int(tokens) // 1000)
+
+
+def _needs_live_data(message: str) -> bool:
+    """Heuristic: does this message benefit from a live web search?"""
+    kw = ("today", "latest", "current", "right now", "news", "price",
+          "weather", "stock", "2025", "2026", "recently", "yesterday")
+    m = message.lower()
+    return any(k in m for k in kw)
+
+
+async def _fetch_search_context(message: str) -> str:
+    """Return web-search context string (no-op if search not configured)."""
+    return ""
+
+
+def _merge_prior_turns_into_message(message: str, prior_turns) -> str:
+    """Prepend the last N conversation turns so the LLM has context."""
+    if not prior_turns:
+        return message
+    parts = []
+    for turn in (prior_turns or [])[-6:]:
+        role = turn.get("role", "user")
+        content = (turn.get("content") or "").strip()
+        if content:
+            parts.append(f"{role.capitalize()}: {content}")
+    return ("\n".join(parts) + f"\nUser: {message}") if parts else message
+
+
+def _build_chat_system_prompt_for_request(message: str, user_id=None) -> str:
+    """Craft a system prompt tailored to the incoming message."""
+    return (
+        "You are CrucibAI, an expert AI software factory. "
+        "Build production-quality, complete, deployable code. "
+        "Be precise, thorough, and always return working code."
+    )
+
+
+def _extract_pdf_text_from_b64(b64: str) -> str:
+    """Extract readable text from a base64-encoded PDF attachment."""
+    try:
+        import base64, io
+        data = base64.b64decode(b64)
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(data))
+            return "\n".join(p.extract_text() or "" for p in reader.pages)[:8000]
+        except Exception:
+            return data.decode("utf-8", errors="ignore")[:4000]
+    except Exception:
+        return ""
+# ─────────────────────────────────────────────────────────────────────────
 from .services.session_journal import list_entries as list_session_journal_entries
 from .services.events.persistent_sink import read_events as read_persisted_events
 from .services.runtime.memory_graph import get_graph as get_memory_graph
