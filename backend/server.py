@@ -1002,11 +1002,11 @@ class BenchmarkRunRequest(BaseModel):
     goal: str
     secret: str
 
-@app.get("/api/benchmark-run")
+@app.get("/api/v1/benchmark-run")
 async def run_benchmark_job_direct_get():
     return {"status": "benchmark endpoint exists"}
 
-@app.post("/api/benchmark-run")
+@app.post("/api/v1/benchmark-run")
 async def run_benchmark_job_direct(
     body: BenchmarkRunRequest,
     background_tasks: BackgroundTasks
