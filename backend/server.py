@@ -998,6 +998,11 @@ app.add_middleware(
 async def health_check():
     return {"status": "ok"}
 
+@app.get("/api/v1/health")
+async def health_check_v1():
+    return {"status": "ok"}
+
+
 class BenchmarkRunRequest(BaseModel):
     goal: str
     secret: str
