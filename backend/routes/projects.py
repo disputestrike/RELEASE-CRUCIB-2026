@@ -509,15 +509,120 @@ async def build_plan(
     data: BuildPlanRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Return a build plan (skeleton) for a prompt."""
-    return {
-        "plan": {
-            "prompt": data.prompt,
-            "project_type": "fullstack",
-            "phases": ["plan", "scaffold", "build", "test"],
-            "estimated_tokens": 675_000,
+    """Generate a real orchestrator plan and create a job with proper DAG steps.
+
+    Returns job_id so the frontend can immediately call /orchestrator/run-auto
+    to fire the agent swarm, plus plan_text for display.
+    """
+    import uuid as _uuid
+    import json as _json
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    goal = (data.prompt or "").strip()
+
+    try:
+        from ..orchestration import planner as planner_mod
+        from ..orchestration.dag_engine import build_dag_from_plan
+        from ..orchestration import runtime_state
+
+        try:
+            from ..db_pg import get_pg_pool
+            pool = await get_pg_pool()
+        except Exception:
+            pool = None
+
+        if pool:
+            runtime_state.set_pool(pool)
+
+        # Generate a structured plan with real agent phases
+        plan = await planner_mod.generate_plan(goal)
+
+        # Create a project row if needed (FK guard)
+        project_id = str((user or {}).get("id") or _uuid.uuid4())
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    try:
+                        await conn.execute(
+                            """INSERT INTO projects (id, doc)
+                               VALUES ($1, $2::jsonb)
+                               ON CONFLICT (id) DO NOTHING""",
+                            project_id,
+                            _json.dumps({"user_id": project_id, "created_by": "build_plan"}),
+                        )
+                    except Exception:
+                        await conn.execute(
+                            """INSERT INTO projects (id, user_id, name, status, created_at, updated_at)
+                               VALUES ($1::uuid, $2::uuid, $3, 'active', NOW(), NOW())
+                               ON CONFLICT (id) DO NOTHING""",
+                            project_id, project_id, "Workspace",
+                        )
+            except Exception as _e:
+                _log.warning("build_plan: project FK preflight skipped: %s", _e)
+
+        # Create the job record
+        job = await runtime_state.create_job(
+            project_id=project_id,
+            mode="guided",
+            goal=goal,
+            user_id=(user or {}).get("id"),
+        )
+        job_id = job["id"]
+
+        # Persist plan in build_plans table
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
+                           VALUES ($1,$2,$3,$4,$5,'draft',NOW())""",
+                        str(_uuid.uuid4()), job_id, project_id, goal, _json.dumps(plan),
+                    )
+            except Exception as _e:
+                _log.warning("build_plan: could not store plan: %s", _e)
+
+        # Build DAG steps and persist them so auto-runner finds real work
+        step_defs = build_dag_from_plan(plan)
+        for idx, sd in enumerate(step_defs):
+            await runtime_state.create_step(
+                job_id=job_id,
+                step_key=sd["step_key"],
+                agent_name=sd["agent_name"],
+                phase=sd["phase"],
+                depends_on=sd["depends_on"],
+                order_index=idx,
+            )
+
+        # Build a human-readable plan summary for the UI
+        phases = plan.get("phases") or []
+        lines = [f"Goal: {goal}", f"Build target: {plan.get('crucib_build_target', 'fullstack')}", ""]
+        for ph in phases:
+            ph_key = ph.get("key") or ph.get("name") or "phase"
+            steps = ph.get("steps") or []
+            lines.append(f"Phase: {ph_key} ({len(steps)} agents)")
+        plan_text = "\n".join(lines)
+
+        return {
+            "job_id": job_id,
+            "project_id": project_id,
+            "plan_text": plan_text,
+            "plan": plan,
+            "step_count": len(step_defs),
+            "suggestions": [],
+            "stream_url": f"/api/jobs/{job_id}/stream",
         }
-    }
+
+    except Exception as exc:
+        _log.exception("build_plan: orchestrator error — falling back to stub")
+        # Graceful degradation: return stub so the UI never hard-crashes
+        return {
+            "job_id": None,
+            "plan_text": f"Plan for: {goal}",
+            "plan": {"prompt": goal, "project_type": "fullstack"},
+            "step_count": 0,
+            "suggestions": [],
+        }
 
 
 @projects_router.get("/settings/capabilities")

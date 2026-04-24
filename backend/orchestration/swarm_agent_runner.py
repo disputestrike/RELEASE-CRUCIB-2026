@@ -344,44 +344,31 @@ async def _run_server_swarm_agent(
     build_kind: str,
     previous_outputs: Dict[str, Dict[str, Any]],
 ) -> Dict[str, Any]:
-    import server
+    # FIX: was `import server` (broken — no top-level `server` module when
+    # PYTHONPATH=/app:/app/backend; `backend/server.py` is at `backend.server`).
+    # FIX: was `server._run_single_agent_with_retry` which does not exist.
+    # Correct function is `server._run_single_agent_with_context`.
+    from backend import server as _srv
 
     user_ref = _safe_user_ref(user_id)
-    user_keys = await server.get_workspace_api_keys(user_ref)
-    effective = server._effective_api_keys(user_keys)
-    model_chain = server._get_model_chain(
+    user_keys = await _srv.get_workspace_api_keys(user_ref)
+    effective = _srv._effective_api_keys(user_keys)
+    model_chain = _srv._get_model_chain(
         "auto",
         project_prompt,
         effective_keys=effective,
         force_complex=True,
     )
 
-    user_tier = "free"
-    available_credits = 0
-    try:
-        if user_id:
-            user = await server.db.users.find_one(
-                {"id": user_id}, {"plan": 1, "credit_balance": 1}
-            )
-            if user:
-                user_tier = user.get("plan", "free")
-                available_credits = user.get("credit_balance", 0) or 0
-    except Exception:
-        pass
-    speed_selector = server._speed_from_plan(user_tier)
-
-    return await server._run_single_agent_with_retry(
-        project_id,
-        user_id,
-        agent_name,
-        project_prompt,
-        previous_outputs,
-        effective,
-        model_chain,
+    return await _srv._run_single_agent_with_context(
+        project_id=project_id,
+        user_id=user_id,
+        agent_name=agent_name,
+        project_prompt=project_prompt,
+        previous_outputs=previous_outputs,
+        effective=effective,
+        model_chain=model_chain,
         build_kind=build_kind,
-        user_tier=user_tier,
-        speed_selector=speed_selector,
-        available_credits=available_credits,
     )
 
 

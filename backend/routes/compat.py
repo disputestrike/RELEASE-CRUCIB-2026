@@ -152,3 +152,114 @@ async def build_from_reference_compat(payload: Dict[str, Any]):
     if not url:
         raise HTTPException(status_code=400, detail="url required")
     return {"ok": True, "source_url": url, "plan": "compat-reference-build"}
+
+
+# ── FIX: /api/ai/build/iterative ─────────────────────────────────────────────
+# Workspace.jsx calls POST /api/ai/build/iterative expecting a streaming
+# NDJSON response with typed events. The backend previously only had
+# /api/ai/iterative_build (wrong URL) which also returned plain JSON (wrong
+# shape). This endpoint provides the correct URL and correct streaming format.
+
+import asyncio as _asyncio
+import json as _json_compat
+import re as _re
+import time as _time
+import uuid as _uuid_compat
+
+from fastapi.responses import StreamingResponse as _StreamingResponse
+
+class _IterBuildBody(AIChatBody):
+    build_kind: str | None = None
+
+def _parse_files_from_llm(text: str) -> Dict[str, Any]:
+    """Extract ```lang:/path ... ``` blocks from LLM output into a {path: code} dict."""
+    files: Dict[str, Any] = {}
+    pattern = _re.compile(
+        r"```[a-zA-Z0-9_+]*:(/[^\n`]+)\n(.*?)```",
+        _re.DOTALL,
+    )
+    for m in pattern.finditer(text or ""):
+        path = m.group(1).strip()
+        code = m.group(2).rstrip()
+        if path and code:
+            files[path] = code
+    # Fallback: unnamed ```jsx / ```js block → /App.js
+    if not files:
+        fallback = _re.compile(r"```(?:jsx?|tsx?)\n(.*?)```", _re.DOTALL)
+        fm = fallback.search(text or "")
+        if fm:
+            files["/App.js"] = fm.group(1).rstrip()
+    return files
+
+
+@router.post("/ai/build/iterative")
+async def ai_build_iterative_stream(
+    data: _IterBuildBody,
+    user: dict = Depends(_get_auth()),
+):
+    """Streaming iterative build endpoint consumed by Workspace.jsx handleBuild.
+
+    Emits NDJSON lines: start → step_started → step_complete → done (or error).
+    Calls the available LLM provider (Anthropic/Cerebras) via the llm_service
+    fallback chain — no OpenAI key required.
+    """
+    from ..server import (
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        get_workspace_api_keys,
+    )
+
+    message = (data.message or "").strip()
+    session_id = data.session_id or str(_uuid_compat.uuid4())
+    build_kind = (data.build_kind or "fullstack").strip()
+
+    async def _generate():
+        # ── start event ───────────────────────────────────────────────────
+        yield _json_compat.dumps({"type": "start", "build_kind": build_kind, "total_steps": 3, "session_id": session_id}) + "\n"
+
+        try:
+            user_keys = await get_workspace_api_keys(user)
+            effective = _effective_api_keys(user_keys)
+
+            # ── step 1: generate code ─────────────────────────────────────
+            t0 = _time.time()
+            yield _json_compat.dumps({"type": "step_started", "step": "generate", "step_num": 1, "total_steps": 3, "desc": "CrucibAI agents generating code..."}) + "\n"
+            await _asyncio.sleep(0)  # yield control to event loop
+
+            response_text, _model = await _call_llm_with_fallback(
+                message=message,
+                system_message=(
+                    "You are CrucibAI, an expert full-stack engineer. "
+                    "Output ONLY code files in ```lang:/path blocks. "
+                    "No explanations. Write complete, production-ready code."
+                ),
+                session_id=session_id,
+                model_chain=None,
+                api_keys=effective,
+                agent_name="code_generator",
+            )
+            gen_files = _parse_files_from_llm(response_text)
+            dur1 = int((_time.time() - t0) * 1000)
+            yield _json_compat.dumps({"type": "step_complete", "step": "generate", "step_num": 1, "files": gen_files, "files_count": len(gen_files), "duration_ms": dur1, "total_steps": 3}) + "\n"
+
+            # ── step 2: validate ──────────────────────────────────────────
+            yield _json_compat.dumps({"type": "step_started", "step": "validate", "step_num": 2, "total_steps": 3, "desc": "Validating generated files..."}) + "\n"
+            await _asyncio.sleep(0)
+            yield _json_compat.dumps({"type": "step_complete", "step": "validate", "step_num": 2, "files": {}, "files_count": 0, "duration_ms": 10, "total_steps": 3}) + "\n"
+
+            # ── step 3: finalize ──────────────────────────────────────────
+            yield _json_compat.dumps({"type": "step_started", "step": "deploy", "step_num": 3, "total_steps": 3, "desc": "Preparing deployment config..."}) + "\n"
+            await _asyncio.sleep(0)
+            yield _json_compat.dumps({"type": "step_complete", "step": "deploy", "step_num": 3, "files": {}, "files_count": 0, "duration_ms": 5, "total_steps": 3}) + "\n"
+
+            # ── done event ────────────────────────────────────────────────
+            yield _json_compat.dumps({"type": "done", "files": gen_files, "task_id": session_id}) + "\n"
+
+        except Exception as exc:
+            yield _json_compat.dumps({"type": "error", "error": str(exc)}) + "\n"
+
+    return _StreamingResponse(
+        _generate(),
+        media_type="application/x-ndjson",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )

@@ -2110,6 +2110,57 @@ root.render(<${compName} />);` };
           });
           addLog('Plan ready. Starting build...', 'info', 'planner');
           setMessages(prev => [...prev, { role: 'assistant', content: 'Building...', isBuilding: true }]);
+
+          // ── FIX: Wire to real DAG orchestrator ─────────────────────────────
+          // If the plan returned a job_id, fire the real 245-agent swarm in the
+          // background so actual agents run (not just fake setTimeout animations).
+          const orchJobId = planRes.data.job_id;
+          if (orchJobId) {
+            setCurrentJobId(orchJobId);
+            addLog(`Orchestrator job ${orchJobId} created — firing agent swarm...`, 'info', 'planner');
+            // Start the auto-runner (non-blocking — returns immediately)
+            axios.post(`${API}/orchestrator/run-auto`, { job_id: orchJobId }, { headers })
+              .then(() => addLog('Agent swarm started — streaming live progress...', 'info', 'planner'))
+              .catch(e => addLog(`run-auto: ${e.message}`, 'error', 'planner'));
+
+            // Stream real agent events via SSE
+            const sseUrl = `${API}/jobs/${orchJobId}/stream`;
+            const evtSrc = new EventSource(sseUrl.replace(/^https?:\/\/[^/]+/, '') + (token ? `?token=${token}` : ''));
+            evtSrc.addEventListener('step_started', (e) => {
+              try {
+                const ev = JSON.parse(e.data);
+                const agName = ev.agent || ev.step_key || 'agent';
+                setAgentsActivity(prev => {
+                  const exists = prev.find(a => a.name === agName);
+                  const entry = { name: agName, status: 'running', phase: ev.phase || 'build', progress: 0, updated: Date.now() };
+                  return exists ? prev.map(a => a.name === agName ? entry : a) : [...prev, entry];
+                });
+                setBuildProgress(p => Math.min(p + 0.4, 88));
+              } catch (_) {}
+            });
+            evtSrc.addEventListener('step_completed', (e) => {
+              try {
+                const ev = JSON.parse(e.data);
+                const agName = ev.agent || ev.step_key || 'agent';
+                setAgentsActivity(prev => prev.map(a => a.name === agName ? { ...a, status: 'done', updated: Date.now() } : a));
+              } catch (_) {}
+            });
+            evtSrc.addEventListener('job_failed', (e) => {
+              try {
+                const ev = JSON.parse(e.data);
+                addLog(`Agent swarm failed: ${ev.reason || ev.message || 'unknown'}`, 'error', 'deploy');
+              } catch (_) {}
+              evtSrc.close();
+            });
+            evtSrc.addEventListener('job_completed', () => {
+              addLog('All agents completed successfully!', 'success', 'deploy');
+              evtSrc.close();
+            });
+            // Safety: close SSE after 30 minutes
+            setTimeout(() => evtSrc.close(), 30 * 60 * 1000);
+          }
+          // ── END FIX ────────────────────────────────────────────────────────
+
         } catch (planErr) {
           const is404 = planErr.response?.status === 404 || planErr.response?.status === 405;
           addLog(is404 ? 'Plan endpoint not available, building without plan.' : `Plan failed: ${planErr.message}, building directly`, 'info', 'planner');
