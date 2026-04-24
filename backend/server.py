@@ -1002,7 +1002,7 @@ class BenchmarkRunRequest(BaseModel):
     goal: str
     secret: str
 
-@app.post("/api/benchmark/run")
+@app.post("/api/benchmark-run")
 async def run_benchmark_job_direct(
     body: BenchmarkRunRequest,
     background_tasks: BackgroundTasks
