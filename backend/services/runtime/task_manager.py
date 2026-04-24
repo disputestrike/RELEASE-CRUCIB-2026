@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, List, Optional
-from ...backend.agents.clarification_agent import IntentSchema
+from ...agents.clarification_agent import IntentSchema
 
 from ..events import event_bus
 from .task_store import delete_task, list_tasks, load_task, save_task

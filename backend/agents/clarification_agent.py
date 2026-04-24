@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from agents.base_agent import AgentValidationError, BaseAgent
-from agents.registry import AgentRegistry
+from .base_agent import AgentValidationError, BaseAgent
+from .registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
 
