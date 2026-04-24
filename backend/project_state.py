@@ -10,7 +10,11 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-WORKSPACE_ROOT = Path(__file__).parent / "workspace"
+# WORKSPACE_ROOT is the single source of truth — imported from config.py.
+# Previously this was defined independently as Path(__file__).parent / "workspace",
+# which diverged from config.py's {repo}/workspaces path and caused job lookup
+# to return None (task_store saves under config.py path; runtime_state looked here).
+from .config import WORKSPACE_ROOT
 
 # Schema: state is a flat dict; we use keys like plan, requirements, stack, design_spec, etc.
 DEFAULT_STATE: Dict[str, Any] = {
