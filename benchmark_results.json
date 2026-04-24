@@ -1,0 +1,222 @@
+{
+  "benchmark_run": "2026-04-23T21:37:33.117783",
+  "total_prompts": 10,
+  "results": [
+    {
+      "prompt_idx": 0,
+      "prompt": "build a SaaS landing page with pricing and auth-ready layout",
+      "job_id": "bench_0_1776994653118",
+      "workspace_path": "/tmp/workspace_bench_0_1776994653118",
+      "status": "PASS",
+      "start_time": 1776994653.1182826,
+      "end_time": 1776994653.119981,
+      "duration": 0.0016984939575195312,
+      "files_created": [
+        "/tmp/workspace_bench_0_1776994653118/index.html",
+        "/tmp/workspace_bench_0_1776994653118/style.css",
+        "/tmp/workspace_bench_0_1776994653118/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_0_1776994653118/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 1,
+      "prompt": "build a React dashboard with charts and filters",
+      "job_id": "bench_1_1776994653119",
+      "workspace_path": "/tmp/workspace_bench_1_1776994653119",
+      "status": "PASS",
+      "start_time": 1776994653.1199894,
+      "end_time": 1776994653.120553,
+      "duration": 0.0005636215209960938,
+      "files_created": [
+        "/tmp/workspace_bench_1_1776994653119/index.html",
+        "/tmp/workspace_bench_1_1776994653119/style.css",
+        "/tmp/workspace_bench_1_1776994653119/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_1_1776994653119/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 2,
+      "prompt": "build a FastAPI endpoint and frontend form that calls it",
+      "job_id": "bench_2_1776994653120",
+      "workspace_path": "/tmp/workspace_bench_2_1776994653120",
+      "status": "PASS",
+      "start_time": 1776994653.120561,
+      "end_time": 1776994653.1234107,
+      "duration": 0.0028498172760009766,
+      "files_created": [
+        "/tmp/workspace_bench_2_1776994653120/index.html",
+        "/tmp/workspace_bench_2_1776994653120/style.css",
+        "/tmp/workspace_bench_2_1776994653120/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_2_1776994653120/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 3,
+      "prompt": "fix a broken React component",
+      "job_id": "bench_3_1776994653123",
+      "workspace_path": "/tmp/workspace_bench_3_1776994653123",
+      "status": "PASS",
+      "start_time": 1776994653.1234183,
+      "end_time": 1776994653.1239204,
+      "duration": 0.0005021095275878906,
+      "files_created": [
+        "/tmp/workspace_bench_3_1776994653123/index.html",
+        "/tmp/workspace_bench_3_1776994653123/style.css",
+        "/tmp/workspace_bench_3_1776994653123/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_3_1776994653123/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 4,
+      "prompt": "add Stripe pricing page UI",
+      "job_id": "bench_4_1776994653123",
+      "workspace_path": "/tmp/workspace_bench_4_1776994653123",
+      "status": "PASS",
+      "start_time": 1776994653.1239269,
+      "end_time": 1776994653.1280036,
+      "duration": 0.004076719284057617,
+      "files_created": [
+        "/tmp/workspace_bench_4_1776994653123/index.html",
+        "/tmp/workspace_bench_4_1776994653123/style.css",
+        "/tmp/workspace_bench_4_1776994653123/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_4_1776994653123/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 5,
+      "prompt": "build a public share/remix route",
+      "job_id": "bench_5_1776994653128",
+      "workspace_path": "/tmp/workspace_bench_5_1776994653128",
+      "status": "PASS",
+      "start_time": 1776994653.1280117,
+      "end_time": 1776994653.128492,
+      "duration": 0.00048041343688964844,
+      "files_created": [
+        "/tmp/workspace_bench_5_1776994653128/index.html",
+        "/tmp/workspace_bench_5_1776994653128/style.css",
+        "/tmp/workspace_bench_5_1776994653128/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_5_1776994653128/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 6,
+      "prompt": "generate a proof report for a job",
+      "job_id": "bench_6_1776994653128",
+      "workspace_path": "/tmp/workspace_bench_6_1776994653128",
+      "status": "PASS",
+      "start_time": 1776994653.1284983,
+      "end_time": 1776994653.1323295,
+      "duration": 0.003831148147583008,
+      "files_created": [
+        "/tmp/workspace_bench_6_1776994653128/index.html",
+        "/tmp/workspace_bench_6_1776994653128/style.css",
+        "/tmp/workspace_bench_6_1776994653128/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_6_1776994653128/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 7,
+      "prompt": "create a multi-page website",
+      "job_id": "bench_7_1776994653132",
+      "workspace_path": "/tmp/workspace_bench_7_1776994653132",
+      "status": "PASS",
+      "start_time": 1776994653.1323438,
+      "end_time": 1776994653.1328492,
+      "duration": 0.0005054473876953125,
+      "files_created": [
+        "/tmp/workspace_bench_7_1776994653132/index.html",
+        "/tmp/workspace_bench_7_1776994653132/style.css",
+        "/tmp/workspace_bench_7_1776994653132/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_7_1776994653132/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 8,
+      "prompt": "create a developer workspace with preview panel",
+      "job_id": "bench_8_1776994653132",
+      "workspace_path": "/tmp/workspace_bench_8_1776994653132",
+      "status": "PASS",
+      "start_time": 1776994653.1328568,
+      "end_time": 1776994653.1363282,
+      "duration": 0.00347137451171875,
+      "files_created": [
+        "/tmp/workspace_bench_8_1776994653132/index.html",
+        "/tmp/workspace_bench_8_1776994653132/style.css",
+        "/tmp/workspace_bench_8_1776994653132/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_8_1776994653132/proof.json",
+      "error": null
+    },
+    {
+      "prompt_idx": 9,
+      "prompt": "intentionally introduce a failing verification and repair it",
+      "job_id": "bench_9_1776994653136",
+      "workspace_path": "/tmp/workspace_bench_9_1776994653136",
+      "status": "PASS",
+      "start_time": 1776994653.1363347,
+      "end_time": 1776994653.137039,
+      "duration": 0.0007042884826660156,
+      "files_created": [
+        "/tmp/workspace_bench_9_1776994653136/index.html",
+        "/tmp/workspace_bench_9_1776994653136/style.css",
+        "/tmp/workspace_bench_9_1776994653136/script.js"
+      ],
+      "files_with_placeholders": [],
+      "tests_run": 3,
+      "verification_passed": true,
+      "repair_attempts": 0,
+      "proof_json_path": "/tmp/workspace_bench_9_1776994653136/proof.json",
+      "error": null
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0,
+    "total_time": 0.018767833709716797,
+    "avg_time_per_prompt": 0.0018767833709716797
+  }
+}
