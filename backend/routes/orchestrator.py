@@ -8,7 +8,7 @@ from ..deps import get_current_user, get_optional_user
 from ..db_pg import get_pg_pool
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["orchestrator"])
+router = APIRouter(prefix="/orchestrator", tags=["orchestrator"])
 
 BENCHMARK_SECRET = os.environ.get("BENCHMARK_SECRET", "crucibai_benchmark_2026_secret_key")
 
