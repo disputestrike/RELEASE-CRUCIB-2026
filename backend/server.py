@@ -108,23 +108,49 @@ def _needs_live_data(message: str) -> bool:
 
 
 async def _fetch_search_context(message: str) -> str:
-    """Return web-search context string using Tavily, Serper, or DuckDuckGo fallback."""
+    """Return web-search context string using Tavily (v2 Bearer auth), Serper, or DuckDuckGo fallback."""
     import os, httpx
+    from datetime import datetime, timezone
+    now_str = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
     try:
-        # --- Tavily (preferred) ---
-        tavily_key = os.environ.get("TAVILY_API_KEY", "")
+        # --- Tavily v2 (preferred) — API key goes in Authorization header, NOT in body ---
+        tavily_key = os.environ.get("TAVILY_API_KEY", "").strip()
         if tavily_key:
-            async with httpx.AsyncClient(timeout=8) as client:
+            async with httpx.AsyncClient(timeout=10) as client:
                 r = await client.post(
                     "https://api.tavily.com/search",
-                    json={"api_key": tavily_key, "query": message, "max_results": 5},
+                    headers={
+                        "Authorization": f"Bearer {tavily_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "query": message,
+                        "max_results": 5,
+                        "search_depth": "basic",
+                        "include_answer": True,
+                    },
                 )
                 if r.status_code == 200:
                     data = r.json()
-                    snippets = [f"- {item.get('title','')}: {item.get('content','')}" for item in data.get("results", [])[:5]]
-                    return "\n".join(snippets)
+                    parts = []
+                    # Tavily direct answer (most accurate)
+                    if data.get("answer"):
+                        parts.append(f"Direct answer: {data['answer']}")
+                    # Individual result snippets
+                    for item in data.get("results", [])[:4]:
+                        title = item.get("title", "")
+                        content = (item.get("content") or "")[:300]
+                        if content:
+                            parts.append(f"- {title}: {content}")
+                    if parts:
+                        return f"[Today is {now_str}]\n" + "\n".join(parts)
+                else:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        "Tavily returned %s: %s", r.status_code, r.text[:200]
+                    )
         # --- Serper (fallback) ---
-        serper_key = os.environ.get("SERPER_API_KEY", "")
+        serper_key = os.environ.get("SERPER_API_KEY", "").strip()
         if serper_key:
             async with httpx.AsyncClient(timeout=8) as client:
                 r = await client.post(
@@ -134,8 +160,12 @@ async def _fetch_search_context(message: str) -> str:
                 )
                 if r.status_code == 200:
                     data = r.json()
-                    snippets = [f"- {item.get('title','')}: {item.get('snippet','')}" for item in data.get("organic", [])[:5]]
-                    return "\n".join(snippets)
+                    parts = [f"[Today is {now_str}]"]
+                    if data.get("answerBox", {}).get("answer"):
+                        parts.append(f"Direct answer: {data['answerBox']['answer']}")
+                    snippets = [f"- {item.get('title','')}: {item.get('snippet','')}" for item in data.get("organic", [])[:4]]
+                    parts.extend(snippets)
+                    return "\n".join(parts)
         # --- DuckDuckGo instant answer (no key needed) ---
         async with httpx.AsyncClient(timeout=6) as client:
             r = await client.get(
@@ -149,11 +179,12 @@ async def _fetch_search_context(message: str) -> str:
                 related = [t.get("Text", "") for t in data.get("RelatedTopics", [])[:3] if isinstance(t, dict)]
                 parts = [p for p in [answer, abstract] + related if p]
                 if parts:
-                    return "\n".join(f"- {p}" for p in parts[:5])
+                    return f"[Today is {now_str}]\n" + "\n".join(f"- {p}" for p in parts[:5])
     except Exception as _e:
         import logging
-        logging.getLogger(__name__).debug("_fetch_search_context failed: %s", _e)
-    return ""
+        logging.getLogger(__name__).warning("_fetch_search_context failed: %s", _e)
+    # Even if search fails, always inject today's date
+    return f"[Today is {now_str}. No live search results available.]"
 
 
 def _merge_prior_turns_into_message(message: str, prior_turns) -> str:

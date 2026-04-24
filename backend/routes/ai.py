@@ -217,10 +217,11 @@ async def ai_chat(
                 _build_chat_system_prompt_for_request(message, user_id_for_skill)
             )
         )
-        if not data.system_message and _needs_live_data(message):
+        if _needs_live_data(message):
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
-                system_message = CHAT_WITH_SEARCH_SYSTEM
+                if not data.system_message:
+                    system_message = CHAT_WITH_SEARCH_SYSTEM
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
@@ -734,10 +735,11 @@ async def ai_streaming_chat(
                 _build_chat_system_prompt_for_request(message, user_id_for_skill)
             )
         )
-        if not data.system_message and _needs_live_data(message):
+        if _needs_live_data(message):
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
-                system_message = CHAT_WITH_SEARCH_SYSTEM
+                if not data.system_message:
+                    system_message = CHAT_WITH_SEARCH_SYSTEM
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
