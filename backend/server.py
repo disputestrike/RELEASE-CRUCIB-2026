@@ -79,31 +79,79 @@ def _tokens_to_credits(tokens: int) -> int:
 
 
 def _needs_live_data(message: str) -> bool:
-    """Heuristic: does this message benefit from a live web search?"""
-    m = message.lower()
-    # Time-sensitive keywords
-    time_kw = (
-        "today", "latest", "current", "right now", "news", "price",
-        "weather", "stock", "2025", "2026", "recently", "yesterday",
-        "this week", "this month", "this year", "just announced", "breaking",
-        "update", "release", "launched", "new version", "just released",
-    )
-    # Factual/people queries that benefit from live data
-    factual_kw = (
-        "who is president", "who is the president", "who won", "who is ceo",
-        "who is the ceo", "who is prime minister", "who leads", "who runs",
-        "what is the population", "what happened", "how many people",
-        "current leader", "current president", "current prime minister",
-        "current ceo", "current score", "live score", "election result",
-        "poll result", "market cap", "share price", "bitcoin price",
-        "crypto price", "exchange rate", "interest rate", "inflation rate",
-        "who is", "who are", "who was", "who were",
-        "what is the current", "what is today", "how much is",
-    )
-    if any(k in m for k in time_kw):
+    """Determine if this message benefits from a live web search.
+
+    Philosophy: CrucibAI is a fully internet-connected AI. Almost any
+    substantive question benefits from current web data. We only skip
+    search for pure greetings, simple math, or explicit code-writing tasks
+    where the user wants the LLM to generate code (not look it up).
+    """
+    m = message.lower().strip()
+
+    # --- Never search: pure greetings / closings (very short or exact match) ---
+    pure_greetings = {
+        "hi", "hello", "hey", "yo", "sup", "bye", "goodbye", "thanks",
+        "thank you", "ok", "okay", "cool", "got it", "sure", "yes", "no",
+        "lol", "haha", "nice", "great", "awesome", "perfect",
+    }
+    if m in pure_greetings:
+        return False
+    if len(m) < 8:
+        return False
+
+    # --- Never search: pure math / unit conversion ---
+    import re
+    if re.match(r'^[\d\s\+\-\*\/\^\(\)\.\,\%\=]+$', m):
+        return False
+    math_only = re.match(r'^(what is |calculate |convert |how many )?(\d[\d\s\+\-\*\/\^\(\)\.\,\%]*)(\s*(\+|\-|\*|\/|\^|to|in|equals|=)\s*[\d\s\+\-\*\/\^\(\)\.\,\%]*)?$', m)
+    if math_only:
+        return False
+
+    # --- Never search: explicit code generation requests ---
+    # User wants the LLM to WRITE code, not look something up
+    code_gen_patterns = [
+        r'\b(write|create|generate|build|make|implement|code|scaffold)\b.*\b(function|class|component|script|program|app|api|endpoint|module|snippet|test|query|schema|migration|dockerfile|config)\b',
+        r'\b(fix|debug|refactor|optimize|review)\b.*\b(this|my|the)\b.*\b(code|function|class|bug|error|issue)\b',
+        r'\b(explain|how does)\b.*\b(this code|this function|this algorithm)\b',
+    ]
+    for pat in code_gen_patterns:
+        if re.search(pat, m):
+            return False
+
+    # --- Always search: explicit internet/research requests ---
+    explicit_search = [
+        'search', 'look up', 'find out', 'google', 'browse', 'visit',
+        'go to', 'check the website', 'read the article', 'what does.*say',
+        'according to', 'source', 'reference', 'cite',
+    ]
+    if any(k in m for k in explicit_search):
         return True
-    if any(k in m for k in factual_kw):
+
+    # --- Always search: questions about real-world facts, people, events, companies ---
+    # Any "what", "who", "when", "where", "why", "how" question about the real world
+    question_starters = (
+        'what ', 'who ', 'when ', 'where ', 'why ', 'how ', 'which ',
+        'is ', 'are ', 'was ', 'were ', 'does ', 'do ', 'did ', 'has ',
+        'have ', 'had ', 'can ', 'could ', 'should ', 'would ', 'will ',
+        'tell me about', 'explain', 'describe', 'summarize', 'give me',
+        'show me', 'list', 'find', 'get me', 'i want to know',
+        'i need to know', 'help me understand',
+    )
+    if any(m.startswith(k) or k in m for k in question_starters):
         return True
+
+    # --- Always search: any message mentioning a named entity, product, company, or place ---
+    # Capitalized words in the original message are strong signals
+    original_words = message.split()
+    capitalized = [w for w in original_words if len(w) > 2 and w[0].isupper() and not w.isupper()]
+    if len(capitalized) >= 1 and len(message) > 15:
+        return True
+
+    # --- Default: search for anything substantive (> 20 chars) ---
+    # Better to search and get no results than to answer with stale knowledge
+    if len(m) > 20:
+        return True
+
     return False
 
 
