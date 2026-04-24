@@ -156,83 +156,185 @@ def _needs_live_data(message: str) -> bool:
 
 
 async def _fetch_search_context(message: str) -> str:
-    """Return web-search context string using Tavily (v2 Bearer auth), Serper, or DuckDuckGo fallback."""
-    import os, httpx
+    """Return web-search context string.
+
+    Tier order:
+    1. Tavily v2  (best quality; requires valid TAVILY_API_KEY)
+    2. Serper     (Google results; requires SERPER_API_KEY)
+    3. Jina AI + Bing News RSS  (free, no key, works from any server)
+    4. DuckDuckGo Instant Answer API  (free, no key)
+    5. DuckDuckGo HTML scrape  (free, no key, may need browser UA)
+    6. Bing HTML scrape  (free, no key, may need browser UA)
+    """
+    import os, httpx, re as _re, urllib.parse
     from datetime import datetime, timezone
     now_str = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
+    _log = __import__('logging').getLogger(__name__)
+
+    def _ctx(parts):
+        return f"[Today is {now_str}]\n" + "\n".join(parts)
+
     try:
-        # --- Tavily v2 (preferred) — API key goes in Authorization header, NOT in body ---
+        # ── 1. Tavily v2 (preferred when key works) ──────────────────────────
         tavily_key = os.environ.get("TAVILY_API_KEY", "").strip()
         if tavily_key:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.post(
-                    "https://api.tavily.com/search",
-                    headers={
-                        "Authorization": f"Bearer {tavily_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "query": message,
-                        "max_results": 5,
-                        "search_depth": "basic",
-                        "include_answer": True,
-                    },
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    r = await client.post(
+                        "https://api.tavily.com/search",
+                        headers={"Authorization": f"Bearer {tavily_key}", "Content-Type": "application/json"},
+                        json={"query": message, "max_results": 5, "search_depth": "basic", "include_answer": True},
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        parts = []
+                        if data.get("answer"):
+                            parts.append(f"Direct answer: {data['answer']}")
+                        for item in data.get("results", [])[:4]:
+                            content = (item.get("content") or "")[:300]
+                            if content:
+                                parts.append(f"- {item.get('title','')}: {content}")
+                        if parts:
+                            return _ctx(parts)
+                    else:
+                        _log.warning("Tavily %s: %s", r.status_code, r.text[:100])
+            except Exception as e:
+                _log.warning("Tavily error: %s", e)
+
+        # ── 2. Serper (if key set) ────────────────────────────────────────────
+        serper_key = os.environ.get("SERPER_API_KEY", "").strip()
+        if serper_key:
+            try:
+                async with httpx.AsyncClient(timeout=8) as client:
+                    r = await client.post(
+                        "https://google.serper.dev/search",
+                        headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+                        json={"q": message, "num": 5},
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        parts = []
+                        if data.get("answerBox", {}).get("answer"):
+                            parts.append(f"Direct answer: {data['answerBox']['answer']}")
+                        for item in data.get("organic", [])[:4]:
+                            snip = item.get("snippet", "")
+                            if snip:
+                                parts.append(f"- {item.get('title','')}: {snip}")
+                        if parts:
+                            return _ctx(parts)
+            except Exception as e:
+                _log.warning("Serper error: %s", e)
+
+        # ── 3. Jina AI + Bing News RSS (free, no key, highly reliable) ──────────
+        # Jina's r.jina.ai reader fetches any URL and returns clean markdown.
+        # Bing News RSS gives real-time news headlines without CAPTCHA.
+        try:
+            encoded_q = urllib.parse.quote(message)
+            jina_url = f"https://r.jina.ai/https://www.bing.com/news/search?q={encoded_q}&format=RSS"
+            async with httpx.AsyncClient(
+                timeout=12,
+                follow_redirects=True,
+                headers={"User-Agent": "CrucibAI/1.0 (crucibai.com)", "Accept": "text/plain"},
+            ) as client:
+                r = await client.get(jina_url)
+                if r.status_code == 200 and len(r.text) > 200:
+                    # Extract headlines from Jina markdown output
+                    headlines = _re.findall(r'###\s+\[([^\]]+)\]', r.text)
+                    # Extract snippet text (content after headline links)
+                    snippets = _re.findall(r'\]\([^)]+\)\n([^\n#\[]{40,})', r.text)
+                    parts = []
+                    for h in headlines[:5]:
+                        parts.append(f"- {h[:200]}")
+                    for s in snippets[:3]:
+                        parts.append(f"  {s.strip()[:200]}")
+                    if parts:
+                        return _ctx(parts)
+        except Exception as e:
+            _log.warning("Jina+BingNews error: %s", e)
+
+        # ── 4. DuckDuckGo Instant Answer API (no key needed) ─────────────────
+        try:
+            async with httpx.AsyncClient(
+                timeout=8,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; CrucibAI/1.0)"},
+            ) as client:
+                r = await client.get(
+                    "https://api.duckduckgo.com/",
+                    params={"q": message, "format": "json", "no_html": "1", "skip_disambig": "1"},
                 )
                 if r.status_code == 200:
                     data = r.json()
                     parts = []
-                    # Tavily direct answer (most accurate)
-                    if data.get("answer"):
-                        parts.append(f"Direct answer: {data['answer']}")
-                    # Individual result snippets
-                    for item in data.get("results", [])[:4]:
-                        title = item.get("title", "")
-                        content = (item.get("content") or "")[:300]
-                        if content:
-                            parts.append(f"- {title}: {content}")
+                    if data.get("Answer"):
+                        parts.append(f"Direct answer: {data['Answer']}")
+                    if data.get("AbstractText"):
+                        parts.append(f"- {data['AbstractText'][:400]}")
+                    for t in data.get("RelatedTopics", [])[:4]:
+                        if isinstance(t, dict) and t.get("Text"):
+                            parts.append(f"- {t['Text'][:200]}")
                     if parts:
-                        return f"[Today is {now_str}]\n" + "\n".join(parts)
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(
-                        "Tavily returned %s: %s", r.status_code, r.text[:200]
-                    )
-        # --- Serper (fallback) ---
-        serper_key = os.environ.get("SERPER_API_KEY", "").strip()
-        if serper_key:
-            async with httpx.AsyncClient(timeout=8) as client:
-                r = await client.post(
-                    "https://google.serper.dev/search",
-                    headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
-                    json={"q": message, "num": 5},
-                )
+                        return _ctx(parts)
+        except Exception as e:
+            _log.warning("DDG instant answer error: %s", e)
+
+        # ── 5. DuckDuckGo HTML scrape ───────────────────────────────────────────
+        try:
+            async with httpx.AsyncClient(
+                timeout=10,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                follow_redirects=True,
+            ) as client:
+                r = await client.get("https://html.duckduckgo.com/html/", params={"q": message})
                 if r.status_code == 200:
-                    data = r.json()
-                    parts = [f"[Today is {now_str}]"]
-                    if data.get("answerBox", {}).get("answer"):
-                        parts.append(f"Direct answer: {data['answerBox']['answer']}")
-                    snippets = [f"- {item.get('title','')}: {item.get('snippet','')}" for item in data.get("organic", [])[:4]]
-                    parts.extend(snippets)
-                    return "\n".join(parts)
-        # --- DuckDuckGo instant answer (no key needed) ---
-        async with httpx.AsyncClient(timeout=6) as client:
-            r = await client.get(
-                "https://api.duckduckgo.com/",
-                params={"q": message, "format": "json", "no_html": "1", "skip_disambig": "1"},
-            )
-            if r.status_code == 200:
-                data = r.json()
-                abstract = data.get("AbstractText", "")
-                answer = data.get("Answer", "")
-                related = [t.get("Text", "") for t in data.get("RelatedTopics", [])[:3] if isinstance(t, dict)]
-                parts = [p for p in [answer, abstract] + related if p]
-                if parts:
-                    return f"[Today is {now_str}]\n" + "\n".join(f"- {p}" for p in parts[:5])
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(r.text, "html.parser")
+                    parts = []
+                    for result in soup.select(".result__snippet")[:5]:
+                        text = result.get_text(strip=True)
+                        if text and len(text) > 20:
+                            parts.append(f"- {text[:300]}")
+                    if parts:
+                        return _ctx(parts)
+        except Exception as e:
+            _log.warning("DDG HTML scrape error: %s", e)
+
+        # ── 6. Bing HTML scrape ──────────────────────────────────────────────────
+        try:
+            async with httpx.AsyncClient(
+                timeout=10,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                follow_redirects=True,
+            ) as client:
+                r = await client.get("https://www.bing.com/search", params={"q": message, "setlang": "en"})
+                if r.status_code == 200:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(r.text, "html.parser")
+                    parts = []
+                    for sel in [".b_focusTextMedium", ".b_focusTextSmall", ".b_factrow"]:
+                        el = soup.select_one(sel)
+                        if el:
+                            parts.append(f"Direct answer: {el.get_text(strip=True)[:300]}")
+                            break
+                    for cap in soup.select(".b_caption p")[:4]:
+                        text = cap.get_text(strip=True)
+                        if text and len(text) > 20:
+                            parts.append(f"- {text[:300]}")
+                    if parts:
+                        return _ctx(parts)
+        except Exception as e:
+            _log.warning("Bing scrape error: %s", e)
+
     except Exception as _e:
-        import logging
-        logging.getLogger(__name__).warning("_fetch_search_context failed: %s", _e)
-    # Even if search fails, always inject today's date
-    return f"[Today is {now_str}. No live search results available.]"
+        _log.warning("_fetch_search_context outer error: %s", _e)
+
+    # Always inject today's date even if all search methods fail
+    return f"[Today is {now_str}]"
 
 
 def _merge_prior_turns_into_message(message: str, prior_turns) -> str:
