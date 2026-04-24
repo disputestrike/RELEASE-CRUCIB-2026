@@ -80,14 +80,79 @@ def _tokens_to_credits(tokens: int) -> int:
 
 def _needs_live_data(message: str) -> bool:
     """Heuristic: does this message benefit from a live web search?"""
-    kw = ("today", "latest", "current", "right now", "news", "price",
-          "weather", "stock", "2025", "2026", "recently", "yesterday")
     m = message.lower()
-    return any(k in m for k in kw)
+    # Time-sensitive keywords
+    time_kw = (
+        "today", "latest", "current", "right now", "news", "price",
+        "weather", "stock", "2025", "2026", "recently", "yesterday",
+        "this week", "this month", "this year", "just announced", "breaking",
+        "update", "release", "launched", "new version", "just released",
+    )
+    # Factual/people queries that benefit from live data
+    factual_kw = (
+        "who is president", "who is the president", "who won", "who is ceo",
+        "who is the ceo", "who is prime minister", "who leads", "who runs",
+        "what is the population", "what happened", "how many people",
+        "current leader", "current president", "current prime minister",
+        "current ceo", "current score", "live score", "election result",
+        "poll result", "market cap", "share price", "bitcoin price",
+        "crypto price", "exchange rate", "interest rate", "inflation rate",
+        "who is", "who are", "who was", "who were",
+        "what is the current", "what is today", "how much is",
+    )
+    if any(k in m for k in time_kw):
+        return True
+    if any(k in m for k in factual_kw):
+        return True
+    return False
 
 
 async def _fetch_search_context(message: str) -> str:
-    """Return web-search context string (no-op if search not configured)."""
+    """Return web-search context string using Tavily, Serper, or DuckDuckGo fallback."""
+    import os, httpx
+    try:
+        # --- Tavily (preferred) ---
+        tavily_key = os.environ.get("TAVILY_API_KEY", "")
+        if tavily_key:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": tavily_key, "query": message, "max_results": 5},
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    snippets = [f"- {item.get('title','')}: {item.get('content','')}" for item in data.get("results", [])[:5]]
+                    return "\n".join(snippets)
+        # --- Serper (fallback) ---
+        serper_key = os.environ.get("SERPER_API_KEY", "")
+        if serper_key:
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.post(
+                    "https://google.serper.dev/search",
+                    headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+                    json={"q": message, "num": 5},
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    snippets = [f"- {item.get('title','')}: {item.get('snippet','')}" for item in data.get("organic", [])[:5]]
+                    return "\n".join(snippets)
+        # --- DuckDuckGo instant answer (no key needed) ---
+        async with httpx.AsyncClient(timeout=6) as client:
+            r = await client.get(
+                "https://api.duckduckgo.com/",
+                params={"q": message, "format": "json", "no_html": "1", "skip_disambig": "1"},
+            )
+            if r.status_code == 200:
+                data = r.json()
+                abstract = data.get("AbstractText", "")
+                answer = data.get("Answer", "")
+                related = [t.get("Text", "") for t in data.get("RelatedTopics", [])[:3] if isinstance(t, dict)]
+                parts = [p for p in [answer, abstract] + related if p]
+                if parts:
+                    return "\n".join(f"- {p}" for p in parts[:5])
+    except Exception as _e:
+        import logging
+        logging.getLogger(__name__).debug("_fetch_search_context failed: %s", _e)
     return ""
 
 
@@ -106,10 +171,45 @@ def _merge_prior_turns_into_message(message: str, prior_turns) -> str:
 
 def _build_chat_system_prompt_for_request(message: str, user_id=None) -> str:
     """Craft a system prompt tailored to the incoming message."""
+    import re
+    m = (message or "").lower()
+    # Code / build focused — use word-boundary matching to avoid false positives
+    # e.g. 'function' in 'who is the function of...' vs 'write a function'
+    code_kw = (
+        # Unambiguous code terms
+        r"\bcode\b", r"\bdebug\b", r"\brefactor\b", r"\balgorithm\b", r"\bimplement\b",
+        r"\bsql\b", r"\bregex\b", r"\bsnippet\b", r"\bsyntax\b",
+        r"\bpython\b", r"\bjavascript\b", r"\btypescript\b",
+        r"\bapi endpoint\b", r"\bcompile\b", r"\btest case\b",
+        r"\bgithub\b", r"\bgit commit\b", r"\bdocker\b", r"\bkubernetes\b",
+        # Contextual — only match when combined with a coding action
+        r"\bwrite a (function|class|method|module|component)\b",
+        r"\b(implement|create|build) a (function|class|method|api|endpoint)\b",
+        r"\b(fix|debug|solve) (this )?(bug|error|issue|problem) in\b",
+        r"\b(unit test|integration test|test suite)\b",
+        r"\b(react|vue|angular|next\.js|express|fastapi|django|flask)\b",
+        r"\b(npm|pip|yarn|cargo|gradle|maven)\b",
+        r"\b(async|await|promise|callback|closure|recursion)\b",
+        r"\b(array|object|dictionary|hashmap|linked list|binary tree)\b",
+    )
+    if any(re.search(k, m) for k in code_kw):
+        return (
+            "You are CrucibAI, an expert AI software engineer and architect. "
+            "You write production-quality, complete, deployable code. "
+            "Always explain your reasoning briefly, then provide the full working code. "
+            "Be precise, thorough, and never truncate output."
+        )
+    # General knowledge / factual / current events
     return (
-        "You are CrucibAI, an expert AI software factory. "
-        "Build production-quality, complete, deployable code. "
-        "Be precise, thorough, and always return working code."
+        "You are CrucibAI, a highly capable AI assistant built by the CrucibAI team. "
+        "You are knowledgeable across all domains: science, history, politics, culture, "
+        "technology, business, sports, entertainment, and more. "
+        "You answer questions directly, accurately, and helpfully. "
+        "For questions about current events or recent information beyond your training, "
+        "acknowledge your knowledge cutoff and provide the best answer you can based on "
+        "what you know. You are also an expert software engineer and can help build "
+        "production-ready applications when asked. "
+        "Be conversational, warm, and thorough."
     )
 
 
@@ -250,6 +350,22 @@ def _is_product_support_query(prompt: str) -> Optional[str]:
         return _support_check(prompt)
     except (ImportError, ModuleNotFoundError):
         return None
+
+
+async def _call_llm_with_fallback_streaming(*args, **kwargs):
+    """Streaming wrapper: calls _call_llm_with_fallback and yields the full
+    response as a single chunk so the streaming endpoint always gets
+    (chunk: str, model: str, tokens: int) tuples.
+    Falls back gracefully if the LLM service is unavailable.
+    """
+    try:
+        response, model_used = await _call_llm_with_fallback(*args, **kwargs)
+        text = response.get("text", "") if isinstance(response, dict) else str(response)
+        tokens = response.get("tokens_used", 0) if isinstance(response, dict) else 0
+        yield text, model_used, tokens
+    except Exception as exc:
+        logger.warning("_call_llm_with_fallback_streaming error: %s", exc)
+        yield "I'm having trouble connecting to the AI service right now. Please try again in a moment.", "compat/model", 0
 
 
 def _is_conversational_message(message: str) -> bool:
