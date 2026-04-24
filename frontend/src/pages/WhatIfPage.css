@@ -9,6 +9,9 @@
   color: #111827;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
 }
+[data-theme='dark'] .whatif-page {
+  color: var(--theme-text, #e4e4e7);
+}
 
 .whatif-hero {
   display: flex;
@@ -47,6 +50,11 @@
   padding: 18px 18px 16px;
   margin-bottom: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+[data-theme='dark'] .whatif-card {
+  background: var(--theme-surface, #18181B);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.12));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .whatif-card-head {
   display: flex;
@@ -283,6 +291,10 @@
   padding: 12px;
   background: #fff;
 }
+[data-theme='dark'] .whatif-cluster {
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.12));
+  background: var(--theme-surface2, #27272a);
+}
 .whatif-cluster-head {
   display: flex;
   justify-content: space-between;
@@ -291,6 +303,7 @@
   color: #6b7280;
   margin-bottom: 6px;
 }
+[data-theme='dark'] .whatif-cluster-head { color: var(--theme-muted, #a1a1aa); }
 .whatif-cluster-head strong {
   color: #111827;
   font-size: 12px;

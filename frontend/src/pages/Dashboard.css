@@ -417,25 +417,27 @@
   opacity: 1;
 }
 
+/* Default (light): accent blue button */
 .dashboard-prompt-submit--ready:not(:disabled) {
-  background: #171717;
-  border-color: #262626;
-  color: #fafafa;
-  cursor: pointer;
-}
-
-.dashboard-prompt-submit--ready:not(:disabled):hover {
-  background: #0a0a0a;
-  border-color: #404040;
-  transform: scale(1.03);
-}
-
-[data-theme="light"] .dashboard-prompt-submit--ready:not(:disabled) {
   background: var(--theme-accent, #2563eb);
   border-color: transparent;
   color: #ffffff;
+  cursor: pointer;
 }
-
+.dashboard-prompt-submit--ready:not(:disabled):hover {
+  background: var(--theme-accent-h, #1d4ed8);
+  transform: scale(1.03);
+}
+/* Dark theme: near-black button */
+[data-theme="dark"] .dashboard-prompt-submit--ready:not(:disabled) {
+  background: #171717;
+  border-color: #262626;
+  color: #fafafa;
+}
+[data-theme="dark"] .dashboard-prompt-submit--ready:not(:disabled):hover {
+  background: #0a0a0a;
+  border-color: #404040;
+}
 [data-theme="light"] .dashboard-prompt-submit--ready:not(:disabled):hover {
   background: var(--theme-accent-h, #1d4ed8);
   border-color: transparent;
@@ -680,6 +682,9 @@
 
 .dashboard-chat-start-building-btn:hover {
   background: #fff;
+}
+[data-theme='dark'] .dashboard-chat-start-building-btn:hover {
+  background: var(--theme-surface2, #3f3f46);
 }
 
 .dashboard-chat-actions {
@@ -1177,6 +1182,9 @@
 
 .dashboard-modal-submit:hover {
   background: #fff;
+}
+[data-theme='dark'] .dashboard-modal-submit:hover {
+  background: var(--theme-surface2, #3f3f46);
 }
 
 .dashboard-modal-submit:disabled {

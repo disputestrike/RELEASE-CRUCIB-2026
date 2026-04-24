@@ -41,27 +41,8 @@
 .animate-status-pulse { animation: status-pulse 2s ease-in-out infinite; }
 
 /* ── Theme system: data-theme="dark" | "light" ──────────────────────────── */
+/* DEFAULT = light (white). Dark is an explicit override via data-theme="dark". */
 :root,
-[data-theme="dark"] {
-  --theme-bg:        #0a0a0a;
-  --theme-surface:   #111113;
-  --theme-surface2:  #18181B;
-  --theme-border:    rgba(255,255,255,0.12);
-  --theme-border-vis: rgba(255,255,255,0.2);
-  --theme-text:      #e4e4e7;
-  --theme-muted:     #a1a1aa;
-  --theme-accent:    #666666;
-  --theme-accent-h:  #4a4a4a;
-  --theme-input:     #27272a;
-  --theme-select:    #27272a;
-  --theme-select-text: #e4e4e7;
-  /* Chat: softer panels, still legible (not near-black gray stacks) */
-  --chat-user-bg:   #3f3f46;
-  --chat-ai-bg:     #27272a;
-  --chat-text:      #f4f4f5;
-  --chat-error:     #4a4a4a;
-}
-
 [data-theme="light"] {
   --theme-bg:        #f8f9fb;
   --theme-surface:   #ffffff;
@@ -75,11 +56,31 @@
   --theme-input:     #ffffff;
   --theme-select:    #ffffff;
   --theme-select-text: #111827;
-  /* Chat: light surfaces, dark text (no gray-on-gray) */
+  /* Chat: light surfaces, dark text */
   --chat-user-bg:   #eef2ff;
   --chat-ai-bg:     #ffffff;
   --chat-text:      #111827;
   --chat-error:     #333333;
+}
+
+[data-theme="dark"] {
+  --theme-bg:        #0a0a0a;
+  --theme-surface:   #111113;
+  --theme-surface2:  #18181B;
+  --theme-border:    rgba(255,255,255,0.12);
+  --theme-border-vis: rgba(255,255,255,0.2);
+  --theme-text:      #e4e4e7;
+  --theme-muted:     #a1a1aa;
+  --theme-accent:    #666666;
+  --theme-accent-h:  #4a4a4a;
+  --theme-input:     #27272a;
+  --theme-select:    #27272a;
+  --theme-select-text: #e4e4e7;
+  /* Chat: softer panels, still legible */
+  --chat-user-bg:   #3f3f46;
+  --chat-ai-bg:     #27272a;
+  --chat-text:      #f4f4f5;
+  --chat-error:     #4a4a4a;
 }
 
 /* Logo wordmark — follows app theme; marketing nav uses kimi ink so dark theme ≠ invisible text on light headers */
@@ -542,8 +543,9 @@ code, pre, .mono {
 /* This matches VS Code / Cursor behavior */
 
 /* ── Inverse text (dark text on light bg — stays dark in both themes) ─── */
-:root, [data-theme="dark"]  { --theme-text-inv: #e4e4e7; }
-[data-theme="light"] { --theme-text-inv: #1A1A1A; }
+/* Inverse text: light default = dark text; dark theme = light text */
+:root, [data-theme="light"] { --theme-text-inv: #1A1A1A; }
+[data-theme="dark"]  { --theme-text-inv: #e4e4e7; }
 
 /* ── Workspace / Builder light theme overrides ───────────────────────── */
 [data-theme="light"] .layout-3-column { background: #F5F5F4; color: #1A1A1A; }
@@ -563,19 +565,18 @@ code, pre, .mono {
 /* Code editor — stays dark always (IDE convention, same as VS Code/Cursor) */
 [data-theme="light"] .monaco-editor,
 [data-theme="light"] .sandpack-wrapper { filter: none; }
-
-/* ── Chat bubble light theme ─────────────────────────────────────── */
-:root, [data-theme="dark"] {
-  --theme-surface2: #3f3f46;
-  --chat-user-bg:   #3f3f46;
-  --chat-ai-bg:     #1c1c1e;
-  --chat-text:      #e4e4e7;
-}
-[data-theme="light"] {
+/* ── Chat bubble theme (light default) ── */
+:root, [data-theme="light"] {
   --theme-surface2: #E8E8E6;
   --chat-user-bg:   #1A1A1A;
   --chat-ai-bg:     #F3F1ED;
   --chat-text:      #1A1A1A;
+}
+[data-theme="dark"] {
+  --theme-surface2: #3f3f46;
+  --chat-user-bg:   #3f3f46;
+  --chat-ai-bg:     #1c1c1e;
+  --chat-text:      #e4e4e7;
 }
 
 /* ── Table & Grid Styling (Grid Borders strategy) ────────────────────── */
