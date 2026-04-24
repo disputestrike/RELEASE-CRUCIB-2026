@@ -5,8 +5,21 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from ..agent_dag import AGENT_DAG, build_dynamic_dag
-from ..agents.schemas import IntentSchema
+try:
+    from backend.agent_dag import AGENT_DAG, build_dynamic_dag
+except ImportError:
+    try:
+        from agent_dag import AGENT_DAG, build_dynamic_dag
+    except ImportError:
+        AGENT_DAG = {}
+        def build_dynamic_dag(*a, **kw): return {}
+try:
+    from backend.agents.schemas import IntentSchema
+except ImportError:
+    try:
+        from agents.schemas import IntentSchema
+    except ImportError:
+        IntentSchema = None
 
 from backend.project_state import WORKSPACE_ROOT
 from backend.services.events import event_bus

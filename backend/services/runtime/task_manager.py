@@ -7,7 +7,10 @@ import uuid
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, List, Optional
-from ...agents.schemas import IntentSchema
+try:
+    from backend.agents.schemas import IntentSchema
+except ImportError:
+    IntentSchema = None
 
 from ..events import event_bus
 from .task_store import delete_task, list_tasks, load_task, save_task

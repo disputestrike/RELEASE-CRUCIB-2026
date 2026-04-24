@@ -376,8 +376,11 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         if pool:
             runtime_state.set_pool(pool)
 
-        effective_project_id = await _resolve_job_project_id_for_user(
-            body.project_id, user
+        # Resolve effective_project_id: use provided project_id, or fall back to user id, or generate one
+        effective_project_id = (
+            (body.project_id or "").strip()
+            or str((user or {}).get("id") or "")
+            or str(__import__("uuid").uuid4())
         )
 
         # Defensive FK guard: ensure a projects row exists before inserting into jobs.

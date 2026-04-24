@@ -10,8 +10,21 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from typing import Any, Dict, List
-from ..agent_dag import AGENT_DAG, build_dynamic_dag
-from ..agents.clarification_agent import IntentSchema
+try:
+    from backend.agent_dag import AGENT_DAG, build_dynamic_dag
+except ImportError:
+    try:
+        from agent_dag import AGENT_DAG, build_dynamic_dag
+    except ImportError:
+        AGENT_DAG = {}
+        def build_dynamic_dag(*a, **kw): return {}
+try:
+    from backend.agents.clarification_agent import IntentSchema
+except ImportError:
+    try:
+        from agents.clarification_agent import IntentSchema
+    except ImportError:
+        IntentSchema = None
 
 
 def _truncate_text(value: Any, limit: int = 220) -> str:

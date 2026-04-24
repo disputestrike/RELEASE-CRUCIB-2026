@@ -310,7 +310,7 @@ async def stream_job_events(job_id: str, request: Request):
     do not idle-close the connection. Clients should reconnect on error; the
     companion ``/api/jobs/{id}/events`` endpoint serves backfill via ``since_id``.
     """
-    from orchestration.event_bus import subscribe, unsubscribe
+    from backend.orchestration.event_bus import subscribe, unsubscribe
 
     queue = await subscribe(job_id)
 
@@ -385,7 +385,7 @@ async def update_job(
     """Update job status and optionally broadcast progress."""
     try:
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
         except Exception:
             publish = None
         return await update_job_service(
@@ -414,7 +414,7 @@ async def cancel_job(
         rs = _get_runtime_state()
         await rs.update_job_state(job_id, "cancelled")
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, "job_cancelled", {"job_id": job_id})
         except Exception:
@@ -452,7 +452,7 @@ async def retry_job(
             },
         )
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, "job_requeued", {"job_id": job_id})
         except Exception:
@@ -571,7 +571,7 @@ async def webhook_job_event(
         if new_status:
             await rs.update_job_state(job_id, new_status)
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, event_type, event)
         except Exception:
