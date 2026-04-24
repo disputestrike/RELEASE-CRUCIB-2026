@@ -104,19 +104,52 @@ class SimulationEngine:
                     neutral += 1
 
         total = max(1, len(personas))
+        # Build scenario-aware cluster positions
+        s = (scenario or "").strip()
+        s_lower = s.lower()
+        # Derive concise scenario label for positions
+        words = s.split()
+        scenario_label = " ".join(words[:12]) + ("..." if len(words) > 12 else "")
+
+        # Determine domain keywords for richer positions
+        is_geopolitical = any(w in s_lower for w in ["war", "sanction", "iran", "china", "russia", "nato", "military", "nuclear", "conflict", "election", "president", "government", "policy", "ban", "tiktok"])
+        is_economic = any(w in s_lower for w in ["price", "cost", "market", "stock", "inflation", "recession", "gdp", "trade", "tariff", "revenue", "profit", "budget"])
+        is_tech = any(w in s_lower for w in ["ai", "software", "app", "api", "cloud", "saas", "deploy", "migrate", "stack", "platform", "framework"])
+
+        if is_geopolitical:
+            pos_a = f"Cautious de-escalation path: monitor {scenario_label} before committing resources"
+            pos_b = f"Proactive response to {scenario_label} with defined exit criteria"
+            pos_neutral = f"Insufficient intelligence on {scenario_label}; delay major decisions"
+            args_a = ["reduces exposure to unpredictable escalation", "preserves diplomatic options", "lower immediate resource cost"]
+            args_b = ["early positioning captures strategic advantage", "signals resolve to stakeholders", "prevents worse outcomes if scenario accelerates"]
+        elif is_economic:
+            pos_a = f"Hold current position on {scenario_label} until market signals clarify"
+            pos_b = f"Adjust strategy now to capture upside from {scenario_label}"
+            pos_neutral = f"Hedge exposure to {scenario_label} with diversified approach"
+            args_a = ["avoids premature commitment", "preserves capital flexibility", "lower downside risk"]
+            args_b = ["first-mover advantage in shifting market", "higher expected value if scenario plays out", "competitors likely to act regardless"]
+        elif is_tech:
+            pos_a = f"Maintain current approach; migration risk from {scenario_label} is high"
+            pos_b = f"Adopt change from {scenario_label} with staged rollout and fallback"
+            pos_neutral = f"Pilot {scenario_label} in isolated environment before full commitment"
+            args_a = ["existing integrations remain stable", "lower operational disruption", "easier compliance continuity"]
+            args_b = ["cost or DX upside", "faster long-term iteration", "manageable migration with staged fallback"]
+        else:
+            pos_a = f"Resist change from {scenario_label}; current state is more stable"
+            pos_b = f"Embrace {scenario_label} with measured implementation plan"
+            pos_neutral = f"Gather more evidence on {scenario_label} before committing"
+            args_a = ["lower transition risk", "preserves existing value", "avoids disruption"]
+            args_b = ["captures upside of scenario", "positions for future state", "manageable with proper planning"]
+
         clusters: List[Dict[str, Any]] = []
         if a_size > 0:
             clusters.append(
                 {
                     "id": "cluster_a",
                     "size": a_size,
-                    "position": "Keep current architecture; migration risk is currently too high",
+                    "position": pos_a,
                     "confidence": round(min(0.95, 0.45 + (a_size / total) * 0.6), 2),
-                    "key_arguments": [
-                        "existing integrations remain stable",
-                        "lower operational disruption",
-                        "easier compliance continuity",
-                    ],
+                    "key_arguments": args_a,
                 }
             )
         if b_size > 0:
@@ -124,13 +157,9 @@ class SimulationEngine:
                 {
                     "id": "cluster_b",
                     "size": b_size,
-                    "position": "Adopt the proposed change with guarded rollout",
+                    "position": pos_b,
                     "confidence": round(min(0.95, 0.45 + (b_size / total) * 0.6), 2),
-                    "key_arguments": [
-                        "cost or DX upside",
-                        "faster long-term iteration",
-                        "manageable migration with staged fallback",
-                    ],
+                    "key_arguments": args_b,
                 }
             )
         if neutral > 0:
@@ -138,12 +167,9 @@ class SimulationEngine:
                 {
                     "id": "cluster_neutral",
                     "size": neutral,
-                    "position": "Delay decision and gather additional runtime evidence",
+                    "position": pos_neutral,
                     "confidence": round(min(0.9, 0.35 + (neutral / total) * 0.5), 2),
-                    "key_arguments": [
-                        "insufficient benchmark data",
-                        "need controlled canary evidence",
-                    ],
+                    "key_arguments": ["insufficient data to commit", "need controlled evidence before decision"],
                 }
             )
         return clusters
