@@ -1195,16 +1195,24 @@ async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optiona
         pass
     return None
 
-# Static file mounting disabled for debugging API routing.
-# if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
-#     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
-#
-#     @app.exception_handler(404)
-#     async def not_found_handler(_, __):
-#         return FileResponse(str(STATIC_DIR / "index.html"))
-# else:
-#     logger.warning(
-#         f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
-#     )
+# Serve static files from the 'static' directory
+# Mount static files at the end to avoid shadowing API routes.
+if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
+    # Mount static files at /static instead of / to avoid shadowing everything
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    
+    # Catch-all for frontend routing
+    @app.get("/{full_path:path}")
+    async def catch_all(full_path: str):
+        # If it's an API route that wasn't caught, let it 404
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
+        # Otherwise serve index.html for frontend routing
+        return FileResponse(str(STATIC_DIR / "index.html"))
+else:
+    logger.warning(
+        f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
+    )
+
 
 
