@@ -19,9 +19,14 @@ from ..services.orchestration_service import (
 )
 from pydantic import BaseModel
 from ..deps import get_user_credits
-from ..server import _get_server_helpers
-
 logger = logging.getLogger(__name__)
+
+def _get_server_helpers():
+    """Lazy wrapper to avoid circular import with server.py."""
+    from ..server import _get_server_helpers as _ssh
+    return _ssh()
+
+
 router = APIRouter(prefix="/api", tags=["orchestrator"])
 
 
