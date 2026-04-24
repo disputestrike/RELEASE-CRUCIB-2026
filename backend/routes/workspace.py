@@ -26,23 +26,23 @@ router = APIRouter(prefix="/api", tags=["workspace"])
 
 def _get_auth():
     """Import auth dep lazily to avoid circular imports."""
-    from server import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
 
 def _workspace_root() -> Path:
     try:
-        from server import WORKSPACE_ROOT
+        from ..config import WORKSPACE_ROOT
         return Path(WORKSPACE_ROOT) / "projects"
     except ImportError:
-        from server import ROOT_DIR
+        from ..config import ROOT_DIR
         return Path(ROOT_DIR) / "workspace"
 
 
 def _project_workspace_path(project_id: str) -> Path:
     try:
-        from server import _project_workspace_path as _srv_wp
+        from ..server import _project_workspace_path as _srv_wp
         return _srv_wp(project_id)
     except (ImportError, Exception):
         root = _workspace_root()
@@ -61,7 +61,7 @@ def _safe_resolve(workspace: Path, rel: str) -> Path:
 async def _assert_project_access(project_id: str, user: dict) -> Path:
     """Verify user owns project and return workspace path."""
     try:
-        from server import _user_can_access_project_workspace
+        from ..server import _user_can_access_project_workspace
 
         ok = await _user_can_access_project_workspace(user.get("id"), project_id)
         if not ok:
@@ -74,8 +74,8 @@ async def _assert_project_access(project_id: str, user: dict) -> Path:
 async def _assert_job_access(job_id: str, user: dict) -> Path:
     """Verify user owns job and return workspace path."""
     try:
-        from db_pg import get_pg_pool
-        from server import _assert_job_owner_match, _get_orchestration
+        from ..db_pg import get_pg_pool
+        from ..server import _assert_job_owner_match, _get_orchestration
 
         runtime_state = None
         try:
@@ -88,7 +88,7 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
             runtime_state = None
 
         if runtime_state is None:
-            from orchestration import runtime_state as _runtime_state
+            from ..orchestration import runtime_state as _runtime_state
 
             runtime_state = _runtime_state
 
