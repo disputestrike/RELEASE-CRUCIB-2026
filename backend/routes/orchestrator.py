@@ -31,14 +31,13 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str):
 async def run_auto(
     body: RunAutoRequest,
     background_tasks: BackgroundTasks,
-    user: dict = Depends(get_optional_user),
     x_benchmark_secret: Optional[str] = Header(None, alias="x-benchmark-secret")
 ):
     """
     Start auto-runner for an existing job.
     """
-    # Allow if user is authenticated OR if valid benchmark secret is provided
-    if not user and x_benchmark_secret != BENCHMARK_SECRET:
+    # Allow if valid benchmark secret is provided
+    if x_benchmark_secret != BENCHMARK_SECRET:
         raise HTTPException(status_code=401, detail=f"Not authenticated (secret: {x_benchmark_secret})")
         
     try:
