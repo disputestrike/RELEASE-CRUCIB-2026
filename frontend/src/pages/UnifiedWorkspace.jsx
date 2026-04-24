@@ -585,31 +585,46 @@ export default function UnifiedWorkspace() {
   }, [events]);
 
   // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
-  const lastBrainEventIdRef = useRef(null);
+  // PERSISTENCE FIX: Process ALL brain_guidance events (not just the last) so that
+  // navigating back to a workspace restores the full conversation history.
+  const processedBrainEventIdsRef = useRef(new Set());
+  useEffect(() => {
+    // Reset processed set when job changes
+    processedBrainEventIdsRef.current = new Set();
+  }, [effectiveJobId]);
   useEffect(() => {
     if (!events.length) return;
-    const last = events[events.length - 1];
-    const t = last?.type || last?.event_type;
-    if (t !== 'brain_guidance') return;
-    // dedupe — only push if this is a new event
-    const evId = last?.id || last?.event_id || JSON.stringify(last).slice(0, 80);
-    if (lastBrainEventIdRef.current === evId) return;
-    lastBrainEventIdRef.current = evId;
-    // parse payload
-    const p = last?.payload && typeof last.payload === 'object'
-      ? last.payload
-      : (() => { try { return JSON.parse(last?.payload_json || '{}'); } catch { return {}; } })();
-    const headline = p?.headline || '';
-    const summary = p?.summary || '';
-    const body = [headline, summary].filter(Boolean).join(' — ');
-    if (!body.trim()) return;
-    const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `brain_${Date.now()}`;
-    setUserChatMessages((prev) => [
-      ...prev,
-      { id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: Date.now() },
-    ]);
+    const brainEvents = events.filter((e) => {
+      const t = e?.type || e?.event_type;
+      return t === 'brain_guidance';
+    });
+    if (!brainEvents.length) return;
+    const newMessages = [];
+    for (const ev of brainEvents) {
+      const evId = ev?.id || ev?.event_id || JSON.stringify(ev).slice(0, 80);
+      if (processedBrainEventIdsRef.current.has(evId)) continue;
+      processedBrainEventIdsRef.current.add(evId);
+      const p = ev?.payload && typeof ev.payload === 'object'
+        ? ev.payload
+        : (() => { try { return JSON.parse(ev?.payload_json || '{}'); } catch { return {}; } })();
+      const headline = p?.headline || '';
+      const summary = p?.summary || '';
+      const body = [headline, summary].filter(Boolean).join(' — ');
+      if (!body.trim()) continue;
+      const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `brain_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      newMessages.push({ id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: ev?.created_at ? new Date(ev.created_at).getTime() : Date.now() });
+    }
+    if (newMessages.length > 0) {
+      setUserChatMessages((prev) => {
+        // Dedupe by body+role to avoid duplicates on re-render
+        const existingKeys = new Set(prev.map((m) => `${m.role}:${m.body}`));
+        const toAdd = newMessages.filter((m) => !existingKeys.has(`${m.role}:${m.body}`));
+        if (!toAdd.length) return prev;
+        return [...prev, ...toAdd].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      });
+    }
   }, [events, effectiveJobId]);
 
   const prevJobStatusRef = useRef(null);
@@ -992,22 +1007,34 @@ export default function UnifiedWorkspace() {
   }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
+  // PERSISTENCE FIX: When navigating back via sidebar (?taskId=... but no jobId),
+  // restore the jobId from the task store so the workspace rehydrates the full job state.
   useEffect(() => {
-    if (!taskIdFromUrl) {
-      taskPromptHydratedForIdRef.current = null;
+    if (!taskIdFromUrl || jobIdFromUrl) return;
+    const task = tasks.find((t) => t.id === taskIdFromUrl);
+    if (!task) return;
+    // If the task has a stored jobId (set when build was started), restore it to URL
+    if (task.jobId) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('jobId', task.jobId);
+          return next;
+        },
+        { replace: true },
+      );
       return;
     }
-    if (jobIdFromUrl) return;
+    // No jobId stored — task is pending (never started). Show the prompt in composer.
     if (taskPromptHydratedForIdRef.current === taskIdFromUrl) return;
-    const task = tasks.find((t) => t.id === taskIdFromUrl);
-    if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
+    if (!task?.prompt?.trim() || task.type !== 'build') return;
     try {
       if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
     } catch (_) { void 0; }
     if (goal.trim() || userChatMessages.length > 0) return;
     taskPromptHydratedForIdRef.current = taskIdFromUrl;
     setGoal(String(task.prompt).trim());
-  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length]);
+  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length, setSearchParams]);
 
   const handleCancel = async () => {
     const jid = jobId || jobIdFromUrl;
