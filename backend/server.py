@@ -998,6 +998,52 @@ app.add_middleware(
 async def health_check():
     return {"status": "ok"}
 
+class BenchmarkRunRequest(BaseModel):
+    goal: str
+    secret: str
+
+@app.post("/api/benchmark/run")
+async def run_benchmark_job_direct(
+    body: BenchmarkRunRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Direct benchmark endpoint in server.py.
+    """
+    BENCHMARK_SECRET = os.environ.get("BENCHMARK_SECRET", "crucibai_benchmark_2026_secret_key")
+    if body.secret != BENCHMARK_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid benchmark secret")
+        
+    try:
+        from .services.runtime.task_manager import task_manager
+        from .routes.orchestrator import _background_auto_runner_job
+        
+        # Create job with a system user ID
+        job = await task_manager.create_task(
+            goal=body.goal,
+            user_id="system-benchmark-user",
+            mode="guided"
+        )
+        
+        job_id = job["id"]
+        project_id = job.get("project_id")
+        workspace_path = _project_workspace_path(project_id)
+        
+        # Start background execution
+        background_tasks.add_task(_background_auto_runner_job, job_id, str(workspace_path))
+        
+        return {
+            "success": True, 
+            "job_id": job_id, 
+            "project_id": project_id,
+            "status": "started"
+        }
+        
+    except Exception as e:
+        logger.exception("benchmark/run direct error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.get("/api/llm-config")
 async def llm_config(user: User = Depends(get_authenticated_or_api_user)):
