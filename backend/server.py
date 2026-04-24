@@ -254,42 +254,80 @@ def _is_product_support_query(prompt: str) -> Optional[str]:
 
 def _is_conversational_message(message: str) -> bool:
     """Detect if a message is purely conversational (questions, chat, greetings)
-    vs a build/create/deploy intent that should route through the orchestration engine.
+    vs a build/create/deploy/automate intent that should route through the
+    orchestration engine.
 
     Returns True  -> skip ClarificationAgent, go straight to LLM chat.
-    Returns False -> run ClarificationAgent to check for build/deploy intent.
+    Returns False -> run ClarificationAgent to check for build/agent intent.
 
-    Design rule: when in doubt, treat as conversational so the user gets a
-    real LLM response instead of a 'needs clarification' dead-end.
+    Aligned with the frontend Dashboard.jsx BUILD_KEYWORDS / AGENT_KEYWORDS
+    regex patterns so both layers agree on routing.
+    Design rule: when in doubt, treat as conversational.
     """
+    import re
     m = message.lower().strip()
+    flat = re.sub(r'[\r\n]+', ' ', m)  # collapse newlines
 
-    # Very short messages are always conversational
+    # ── 1. Definite chat patterns (mirrors CHAT_ONLY_PATTERNS in Dashboard.jsx)
+    chat_only = [
+        r'^(hi|hello|hey|howdy|yo|sup|greetings?|good\s*(morning|afternoon|evening)|hi\s+there|hey\s+there|what\'?s\s*up)\s*[!.?]*$',
+        r'^(thanks?|thank\s*you|thx|ok|okay|sure|yes|no|nope|yep|yeah)\s*[!.?]*$',
+        r'^(how\s+are\s+you|what\'?s\s+going\s+on|how\s+is\s+it\s+going)\s*[!.?]*$',
+        r'^(bye|goodbye|see\s*ya|later)\s*[!.?]*$',
+    ]
+    for pat in chat_only:
+        if re.match(pat, m, re.IGNORECASE):
+            return True
+
+    # ── 2. Very short messages are always conversational
     if len(m) < 8:
         return True
 
-    # Explicit build / create / deploy keywords -> NOT conversational
-    # These are the signals that the user wants the orchestration engine
-    build_keywords = [
-        "build me", "create me", "make me", "generate me",
-        "build a ", "create a ", "make a ", "generate a ",
-        "build an ", "create an ", "make an ", "generate an ",
-        "write me a", "write me an",
-        "develop a", "develop an",
-        "set up a", "set up an",
-        "scaffold a", "scaffold an",
-        "deploy a", "deploy an",
-        "launch a", "launch an",
-        "implement a", "implement an",
-        "i want you to build", "i need you to build",
-        "i want you to create", "i need you to create",
-        "build the", "create the",
-    ]
-    for kw in build_keywords:
-        if kw in m:
+    # ── 3. Agent / automation keywords (mirrors AGENT_KEYWORDS in Dashboard.jsx)
+    agent_pattern = r'\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow|pipeline)\b'
+    if re.search(agent_pattern, flat, re.IGNORECASE):
+        return False
+
+    # ── 4. Build keywords — verb + software target
+    #    Mirrors BUILD_KEYWORDS regex from Dashboard.jsx
+    build_verbs = r'\b(build|building|create|creating|make|making|develop|developing|design|designing|generate|generating|produce|producing|code|scaffold|scaffolding|implement|implementing|launch|launching|deploy|deploying|set\s+up|setup|bootstrap|write|configure|spin\s+up|spin\s+up)\b'
+    build_targets = r'\b(app|application|website|web\s*app|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product|service|microservice|database|schema|bot|chatbot|portal|system|interface|ui|ux|component|module|library|package|plugin|extension|script|cli|sdk|integration|webhook|endpoint|server|client|mobile\s*app|ios\s*app|android\s*app|chrome\s*extension|vs\s*code\s*extension|npm\s*package|rest\s*api|graphql\s*api|crud\s*app|full\s*stack|fullstack|e-commerce|ecommerce|store|shop|marketplace|crm|erp|cms|blog|portfolio|admin\s*panel|admin\s*dashboard|analytics\s*dashboard|monitoring\s*tool|devops\s*pipeline|ci\s*cd|docker|container|kubernetes|k8s|auth\s*system|payment\s*system|notification\s*system|email\s*system|search\s*engine|recommendation\s*engine|ml\s*model|ai\s*model|neural\s*network|data\s*pipeline|etl|scraper|crawler|infrastructure|environment|cluster|deployment)\b'
+    if re.search(build_verbs, flat, re.IGNORECASE) and re.search(build_targets, flat, re.IGNORECASE):
+        return False
+
+    # ── 5. Loose build match (verb alone with clear software context)
+    #    Mirrors BUILD_KEYWORDS_LOOSE from Dashboard.jsx
+    loose_verbs = r'\b(build|create|make|develop|generate)\b'
+    loose_targets = r'\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend|mobile|ios|android)\b'
+    if re.search(loose_verbs, flat, re.IGNORECASE) and re.search(loose_targets, flat, re.IGNORECASE):
+        return False
+
+    # ── 6. Long technical briefs (mirrors looksLikeBuildSpec in Dashboard.jsx)
+    if len(flat) >= 160:
+        tech_signals = [
+            'react native', 'ios', 'android', 'expo', 'jest', 'playwright',
+            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'stripe',
+            'postgres', 'mongodb', 'tailwind', 'fastapi', 'next.js', 'vite',
+            'kubernetes', 'docker', 'offline', 'multi-tenant', 'saas',
+            'dashboard', 'crm', 'oauth', 'jwt', 'websocket', 'redis',
+            'elasticsearch', 'celery', 'rabbitmq', 'kafka',
+        ]
+        hits = sum(1 for s in tech_signals if s in flat)
+        if hits >= 2:
             return False
 
-    # Everything else is conversational — let the LLM handle it naturally
+    # ── 7. Explicit intent phrases ("I want you to build", "go ahead and create", etc.)
+    explicit_phrases = [
+        r'i\s+(want|need)\s+(you\s+to|u\s+to)\s+(build|create|make|develop|generate|code|write)',
+        r'(go\s+ahead\s+and|just|please)\s+(build|create|make|develop|generate|code|write)',
+        r"(you\s+decide|figure\s+it\s+out|don'?t\s+ask|just\s+do\s+it)",
+        r'(can\s+you|could\s+you|would\s+you)\s+(build|create|make|develop|generate|code|write)',
+    ]
+    for pat in explicit_phrases:
+        if re.search(pat, flat, re.IGNORECASE):
+            return False
+
+    # ── 8. Everything else is conversational — let the LLM handle it
     return True
 
 
