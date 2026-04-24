@@ -239,7 +239,7 @@ async def _call_llm_with_fallback(*args, **kwargs):
         return await _llm_call(*args, **kwargs)
     except (ImportError, ModuleNotFoundError) as exc:
         logger.warning("llm_service unavailable; using compatibility fallback: %s", exc)
-        return ("compat-llm-response", "compat/model")
+        return ({"text": "I'm having trouble connecting to the AI service right now. Please try again in a moment.", "tokens_used": 0}, "compat/model")
 
 
 def _is_product_support_query(prompt: str) -> Optional[str]:
@@ -253,12 +253,44 @@ def _is_product_support_query(prompt: str) -> Optional[str]:
 
 
 def _is_conversational_message(message: str) -> bool:
-    """Detect if a message is purely conversational (greetings, thanks, etc.)."""
+    """Detect if a message is purely conversational (questions, chat, greetings)
+    vs a build/create/deploy intent that should route through the orchestration engine.
+
+    Returns True  -> skip ClarificationAgent, go straight to LLM chat.
+    Returns False -> run ClarificationAgent to check for build/deploy intent.
+
+    Design rule: when in doubt, treat as conversational so the user gets a
+    real LLM response instead of a 'needs clarification' dead-end.
+    """
     m = message.lower().strip()
-    greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "good evening"}
-    thanks = {"thanks", "thank you", "thx", "appreciate it"}
-    closings = {"bye", "goodbye", "see ya"}
-    return m in greetings or m in thanks or m in closings or len(m) < 5
+
+    # Very short messages are always conversational
+    if len(m) < 8:
+        return True
+
+    # Explicit build / create / deploy keywords -> NOT conversational
+    # These are the signals that the user wants the orchestration engine
+    build_keywords = [
+        "build me", "create me", "make me", "generate me",
+        "build a ", "create a ", "make a ", "generate a ",
+        "build an ", "create an ", "make an ", "generate an ",
+        "write me a", "write me an",
+        "develop a", "develop an",
+        "set up a", "set up an",
+        "scaffold a", "scaffold an",
+        "deploy a", "deploy an",
+        "launch a", "launch an",
+        "implement a", "implement an",
+        "i want you to build", "i need you to build",
+        "i want you to create", "i need you to create",
+        "build the", "create the",
+    ]
+    for kw in build_keywords:
+        if kw in m:
+            return False
+
+    # Everything else is conversational — let the LLM handle it naturally
+    return True
 
 
 REAL_AGENT_NAMES: set[str] = set()

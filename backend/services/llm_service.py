@@ -752,6 +752,9 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
+                # Wrap plain string into standard response dict
+                if isinstance(response, str):
+                    response = {"text": response, "tokens_used": 0}
                 return (response, f"llama/{model_id}")
 
             elif provider == "cerebras" and llm_router.cerebras_available:
@@ -773,6 +776,9 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
+                # Wrap plain string into standard response dict
+                if isinstance(response, str):
+                    response = {"text": response, "tokens_used": 0}
                 return (response, f"cerebras/{model_id}")
 
             elif provider == "anthropic" and llm_router.haiku_available:
@@ -794,6 +800,9 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
+                # Wrap plain string into standard response dict
+                if isinstance(response, str):
+                    response = {"text": response, "tokens_used": 0}
                 return (response, f"haiku/{model_id}")
 
         except Exception as e:
