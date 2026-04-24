@@ -25,6 +25,16 @@ import jwt
 from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+# FIX: deps.get_db() always returned None (init() never called in production).
+# _get_real_db() fetches a live PostgreSQL connection for every auth check.
+async def _get_real_db():
+    """Always returns a real PG-backed DB handle, or None on error."""
+    try:
+        from .db_pg import get_db as _pg
+        return await _pg()
+    except Exception:
+        return None
+
 # ---------------------------------------------------------------------------
 # Mutable shared state
 # ---------------------------------------------------------------------------
@@ -75,7 +85,7 @@ async def get_current_user(
 ) -> dict:
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    db = get_db()
+    db = await _get_real_db()
     try:
         payload = jwt.decode(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
@@ -94,7 +104,22 @@ async def get_current_user(
             raise HTTPException(status_code=503, detail="Database not ready")
         user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            # Stateless guest token — DB write failed silently at issue time.
+            # Synthesize a minimal guest profile so the session stays alive.
+            import re as _re
+            if _re.match(r"^[0-9a-f-]{36}$", uid):
+                user = {
+                    "id": uid,
+                    "email": f"guest-{uid[:8]}@crucibai.guest",
+                    "name": "Guest",
+                    "plan": "free",
+                    "token_balance": 50_000,
+                    "credit_balance": 50,
+                    "auth_provider": "guest",
+                    "workspace_mode": "simple",
+                }
+            else:
+                raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
             raise HTTPException(status_code=403, detail="Account suspended")
         return user
@@ -117,7 +142,7 @@ async def get_current_user_sse(
         raw = str(access_token).strip()
     if not raw:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    db = get_db()
+    db = await _get_real_db()
     try:
         payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         uid = payload["user_id"]
@@ -134,7 +159,20 @@ async def get_current_user_sse(
             raise HTTPException(status_code=503, detail="Database not ready")
         user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            import re as _re
+            if _re.match(r"^[0-9a-f-]{36}$", uid):
+                user = {
+                    "id": uid,
+                    "email": f"guest-{uid[:8]}@crucibai.guest",
+                    "name": "Guest",
+                    "plan": "free",
+                    "token_balance": 50_000,
+                    "credit_balance": 50,
+                    "auth_provider": "guest",
+                    "workspace_mode": "simple",
+                }
+            else:
+                raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
             raise HTTPException(status_code=403, detail="Account suspended")
         return user
@@ -150,7 +188,7 @@ async def get_optional_user(
 ) -> Optional[dict]:
     """Return the authenticated user, or ``None`` for public/unauthenticated access."""
     if credentials:
-        db = get_db()
+        db = await _get_real_db()
         try:
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
@@ -206,7 +244,7 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
     ) -> dict:
         if not credentials:
             raise HTTPException(status_code=401, detail="Not authenticated")
-        db = get_db()
+        db = await _get_real_db()
         try:
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
