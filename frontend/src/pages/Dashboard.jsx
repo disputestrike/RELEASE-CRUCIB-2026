@@ -48,10 +48,13 @@ function flattenIntentText(p) {
 }
 
 const BUILD_KEYWORDS =
-  /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b[\s\S]{0,8000}?\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
+  /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b[\s\S]{0,8000}?\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product|software|program|system|game|bot|chatbot|service|solution|prototype|project)\b/i;
 /** Looser match for typos (e.g. "WEBITSIDE") or phrases split across lines. */
 const BUILD_KEYWORDS_LOOSE =
-  /\b(build|building|create|creating|make|making|develop|developing)\b[\s\S]{0,8000}?\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend)\b/i;
+  /\b(build|building|create|creating|make|making|develop|developing)\b[\s\S]{0,8000}?\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend|software|program|system|game|bot|service|solution)\b/i;
+/** Catch vague but clearly build-intent phrases like 'make me the greatest software' or 'build me something' */
+const BUILD_VAGUE =
+  /\b(build\s+me|make\s+me|create\s+me|give\s+me|i\s+want\s+(a|an|the)|i\s+need\s+(a|an|the))\b/i;
 
 /** Long technical briefs often omit the word "build" but clearly request software. */
 function looksLikeBuildSpec(flat) {
@@ -205,6 +208,7 @@ async function detectIntent(prompt, API, token) {
   let looksBuild = BUILD_KEYWORDS.test(flat);
   if (!looksBuild) looksBuild = BUILD_KEYWORDS_LOOSE.test(flat);
   if (!looksBuild) looksBuild = looksLikeBuildSpec(flat);
+  if (!looksBuild) looksBuild = BUILD_VAGUE.test(flat);
   const looksAgent = AGENT_KEYWORDS.test(flat);
   if (!looksBuild && !looksAgent) return "chat";
 

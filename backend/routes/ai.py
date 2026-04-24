@@ -164,50 +164,11 @@ async def ai_chat(
                 "tokens_used": 0,
             }
 
-        # Conversational messages skip the ClarificationAgent entirely and go
-        # straight to the LLM.  Build / task requests still get clarified.
-        intent_schema = None  # always defined; set below if clarification runs
-        if not _is_conversational_message(message):
-            try:
-                clarification_agent = ClarificationAgent()
-                clarification_result = await clarification_agent.execute({
-                    "user_prompt": message,
-                    "context": {"workspace_info": "..."}
-                })
-                intent_schema = clarification_result.get("intent_schema")
-                if clarification_result.get("needs_clarification"):
-                    return {
-                        "response": "I need more information to proceed. " + " ".join(clarification_result.get("clarifying_questions", [])),
-                        "message": "I need more information to proceed. " + " ".join(clarification_result.get("clarifying_questions", [])),
-                        "session_id": data.session_id or str(uuid.uuid4()),
-                        "model_used": "clarification-agent",
-                        "tokens_used": 0,
-                        "clarification_needed": True,
-                        "clarifying_questions": clarification_result.get("clarifying_questions", []),
-                        "intent_schema": intent_schema.dict() if intent_schema else None,
-                    }
-                elif intent_schema and intent_schema.required_tools:
-                    project_id = data.session_id or str(uuid.uuid4())
-                    user_id = user["id"] if user else None
-                    job = await runtime_state.create_job(
-                        project_id=project_id,
-                        mode="orchestration",
-                        goal=message,
-                        user_id=user_id,
-                        intent_schema=intent_schema,
-                    )
-                    return {
-                        "response": f"Initiated a new job with ID {job['id']} based on your intent. You can track its progress.",
-                        "message": f"Initiated a new job with ID {job['id']} based on your intent. You can track its progress.",
-                        "session_id": job["id"],
-                        "model_used": "orchestration-engine",
-                        "tokens_used": 0,
-                        "job_id": job["id"],
-                        "intent_schema": intent_schema.dict(),
-                    }
-            except Exception as _ce:
-                logger.warning("ClarificationAgent error (falling through to LLM): %s", _ce)
-                intent_schema = None
+        # ClarificationAgent is intentionally NOT used in the chat endpoint.
+        # The chat endpoint is for conversational AI responses only.
+        # Build requests are routed to the workspace by the frontend before reaching here.
+        # The orchestrator/build pipeline has its own clarification logic.
+        intent_schema = None
 
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
@@ -676,56 +637,10 @@ async def ai_streaming_chat(
                 yield json.dumps({"response": support_response, "message": support_response, "session_id": data.session_id or str(uuid.uuid4()), "model_used": "canned-support", "tokens_used": 0}) + "\n"
             return StreamingResponse(generate_canned_response(), media_type="application/json")
 
-        # Conversational messages bypass the ClarificationAgent and go straight
-        # to the LLM.  Build / task requests are still routed through it.
+        # ClarificationAgent is intentionally NOT used in the streaming chat endpoint.
+        # The chat endpoint is for conversational AI responses only.
+        # Build requests are routed to the workspace by the frontend before reaching here.
         intent_schema = None
-        if not _is_conversational_message(message):
-            try:
-                clarification_agent = ClarificationAgent()
-                clarification_result = await clarification_agent.execute({
-                    "user_prompt": message,
-                    "context": {"workspace_info": "..."}
-                })
-                intent_schema = clarification_result.get("intent_schema")
-                if clarification_result.get("needs_clarification"):
-                    async def generate_clarification_response():
-                        response_data = {
-                            "response": "I need more information to proceed. " + " ".join(clarification_result.get("clarifying_questions", [])),
-                            "message": "I need more information to proceed. " + " ".join(clarification_result.get("clarifying_questions", [])),
-                            "session_id": data.session_id or str(uuid.uuid4()),
-                            "model_used": "clarification-agent",
-                            "tokens_used": 0,
-                            "clarification_needed": True,
-                            "clarifying_questions": clarification_result.get("clarifying_questions", []),
-                            "intent_schema": intent_schema.dict() if intent_schema else None,
-                        }
-                        yield json.dumps(response_data) + "\n"
-                    return StreamingResponse(generate_clarification_response(), media_type="application/json")
-                elif intent_schema and intent_schema.required_tools:
-                    project_id = data.session_id or str(uuid.uuid4())
-                    user_id = user["id"] if user else None
-                    job = await runtime_state.create_job(
-                        project_id=project_id,
-                        mode="orchestration",
-                        goal=message,
-                        user_id=user_id,
-                        intent_schema=intent_schema,
-                    )
-                    async def generate_orchestration_response():
-                        response_data = {
-                            "response": f"Initiated a new job with ID {job['id']} based on your intent. You can track its progress.",
-                            "message": f"Initiated a new job with ID {job['id']} based on your intent. You can track its progress.",
-                            "session_id": job["id"],
-                            "model_used": "orchestration-engine",
-                            "tokens_used": 0,
-                            "job_id": job["id"],
-                            "intent_schema": intent_schema.dict(),
-                        }
-                        yield json.dumps(response_data) + "\n"
-                    return StreamingResponse(generate_orchestration_response(), media_type="application/json")
-            except Exception as _ce:
-                logger.warning("ClarificationAgent error (falling through to LLM): %s", _ce)
-                intent_schema = None
 
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
