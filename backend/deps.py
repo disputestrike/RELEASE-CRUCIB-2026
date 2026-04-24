@@ -278,8 +278,3 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
 async def get_user_credits(user: dict = Depends(get_current_user)) -> int:
     """Return the user's credit balance."""
     return int((user or {}).get("credit_balance", 0) or 0)
-
-
-async def get_user_credits(user: dict = Depends(get_current_user)) -> int:
-    """Return the user's credit balance."""
-    return int((user or {}).get("credit_balance", 0) or 0)
