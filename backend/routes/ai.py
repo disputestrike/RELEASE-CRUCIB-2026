@@ -182,7 +182,9 @@ async def ai_chat(
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
                 if not data.system_message:
-                    system_message = CHAT_WITH_SEARCH_SYSTEM
+                    from datetime import datetime, timezone as _tz
+                    _today = datetime.now(_tz.utc).strftime("%B %d, %Y")
+                    system_message = f"TODAY'S DATE: {_today}.\n\n" + CHAT_WITH_SEARCH_SYSTEM
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
@@ -654,7 +656,9 @@ async def ai_streaming_chat(
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
                 if not data.system_message:
-                    system_message = CHAT_WITH_SEARCH_SYSTEM
+                    from datetime import datetime, timezone as _tz
+                    _today = datetime.now(_tz.utc).strftime("%B %d, %Y")
+                    system_message = f"TODAY'S DATE: {_today}.\n\n" + CHAT_WITH_SEARCH_SYSTEM
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )

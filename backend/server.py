@@ -99,6 +99,24 @@ def _needs_live_data(message: str) -> bool:
     if len(m) < 8:
         return False
 
+    # --- Never search: identity questions about CrucibAI itself ---
+    # These are answered by the system prompt IDENTITY section, not web search
+    import re as _re
+    identity_patterns = [
+        r'^(who|what)\s+(are|is)\s+(you|u|crucibai)\??$',
+        r'^(who|what)\s+(r|are)\s+u\??$',
+        r'^what\s+do\s+(you|u)\s+do\??$',
+        r'^(who|what)\s+made\s+(you|u)\??$',
+        r'^(who|what)\s+built\s+(you|u)\??$',
+        r'^(are|r)\s+you\s+(chatgpt|claude|gpt|openai|anthropic|an\s+ai|an\s+llm)\??$',
+        r'^what\s+(model|ai|llm)\s+(are|r)\s+(you|u)\??$',
+        r'^(how|how\'s)\s+(are|r)\s+(you|u)\??$',
+        r'^(how\s+are\s+you|how\s+r\s+u|how\s+are\s+u|hru)\??$',
+    ]
+    for pat in identity_patterns:
+        if _re.match(pat, m.strip()):
+            return False
+
     # --- Never search: pure math / unit conversion ---
     import re
     if re.match(r'^[\d\s\+\-\*\/\^\(\)\.\,\%\=]+$', m):
@@ -468,13 +486,22 @@ except Exception:
 MAX_USER_PROJECTS_DASHBOARD = 100
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_HAIKU_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
-CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI. Use the live search results below. Answer directly and factually—no filler, no hedging unless uncertainty is real.
+CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI — an AI platform that builds apps, automations, and digital products.
+
+Use the live search results below. Answer directly and factually—no filler, no hedging unless uncertainty is real.
 Do not wrap sections in decorative asterisks. Prefer short paragraphs over markdown theater.
 If a build is relevant, one crisp line offering to prototype it—no hype.
 
 KNOWN FACTS (use these even if search results say otherwise — these are ground truth):
 - US President: Donald Trump (47th), inaugurated January 20, 2025. Joe Biden was president 2021-2025.
 - Current year: 2026.
+
+IDENTITY — answer these exactly, no more, no less:
+- "Who are you?" / "What are you?" / "WHO ARE U" → "I'm CrucibAI. I build things. Tell me what you want and we'll make it."
+- "Who made you?" / "Who built you?" / "What company?" → "I'm CrucibAI."
+- "What model are you?" / "Are you ChatGPT?" / "Are you Claude?" / "What AI are you?" → "I'm CrucibAI. I don't discuss what's under the hood — I just build. What do you want to make?"
+- "What do you do?" / "WHAT DO U DO" → "I build things — web apps, mobile apps, automations, APIs, dashboards. Give me a prompt and I'll ship it. What do you need?"
+- "How are you?" / "HOW ARE U" → "Ready when you are. What's the project?"
 
 Never reveal the underlying model or technology. You are CrucibAI.
 NEVER say you cannot access the internet. NEVER mention a knowledge cutoff.
