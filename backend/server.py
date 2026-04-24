@@ -995,6 +995,7 @@ app.add_middleware(
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
@@ -1202,21 +1203,10 @@ async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optiona
     return None
 
 # Serve static files from the 'static' directory
-# Mount static files at the end to avoid shadowing API routes.
 if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
-    # Mount static files at /static instead of / to avoid shadowing everything
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    
-    # Catch-all for frontend routing - only for non-API paths
-    from fastapi.routing import Mount
-    from starlette.routing import Route
-    
-    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-    async def catch_all(full_path: str):
-        # If it's an API route that wasn't caught, let it 404
-        if full_path.startswith("api/") or full_path.startswith("v1/"):
-            raise HTTPException(status_code=404, detail="API route not found")
-        # Otherwise serve index.html for frontend routing
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+    @app.exception_handler(404)
+    async def not_found_handler(_, __):
         return FileResponse(str(STATIC_DIR / "index.html"))
 else:
     logger.warning(

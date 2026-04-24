@@ -23,17 +23,13 @@ async def create_job_service(
     # "object NoneType can't be used in 'await' expression" errors.
     try:
         pool = await pool_getter()
+        rs.set_pool(pool)
     except Exception as exc:
         import logging as _lg
-        _lg.getLogger(__name__).exception(
-            "create_job_service: pool unavailable — raising 503",
+        _lg.getLogger(__name__).warning(
+            "create_job_service: pool unavailable — continuing in file-only mode",
         )
-        raise HTTPException(status_code=503, detail="database pool unavailable") from exc
-    if pool is None:
-        import logging as _lg
-        _lg.getLogger(__name__).error("create_job_service: pool_getter returned None — raising 503")
-        raise HTTPException(status_code=503, detail="database pool unavailable")
-    rs.set_pool(pool)
+        pool = None
 
     project_id = body.project_id or user.get("id", "default")
     if resolve_project_id is not None:

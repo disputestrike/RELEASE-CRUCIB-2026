@@ -21,7 +21,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
 
-from orchestration.trust.trust_scoring import sha256_file_preview
+from ..orchestration.trust.trust_scoring import sha256_file_preview
 
 logger = logging.getLogger(__name__)
 
