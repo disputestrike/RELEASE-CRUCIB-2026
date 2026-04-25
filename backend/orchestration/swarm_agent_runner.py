@@ -172,6 +172,169 @@ from .agent_selection_logic import (
 from .runtime_state import get_steps, load_checkpoint
 
 SWARM_STEP_PREFIX = "agents"
+
+# ---------------------------------------------------------------------------
+# Per-agent model tier classification
+# ---------------------------------------------------------------------------
+# "anthropic" = deep reasoning tasks (architecture, planning, multi-file generation,
+#               security, auth, database schema, final audit)
+# "cerebras"  = fast tasks (boilerplate, config, docs, simple writes, export agents)
+#
+# IMPORTANT: Anthropic has NO credits on Railway — every "anthropic" agent MUST
+# have Cerebras as a real fallback so the build never hard-fails.
+# ---------------------------------------------------------------------------
+AGENT_MODEL_TIER: Dict[str, str] = {
+    # ── DEEP REASONING (Anthropic primary, Cerebras fallback) ──────────────
+    "Planner": "anthropic",
+    "Requirements Clarifier": "anthropic",
+    "Stack Selector": "anthropic",
+    "Frontend Generation": "anthropic",
+    "Backend Generation": "anthropic",
+    "Database Agent": "anthropic",
+    "Auth Setup Agent": "anthropic",
+    "Security Checker": "anthropic",
+    "API Integration": "anthropic",
+    "Payment Setup Agent": "anthropic",
+    "Multi-tenant Agent": "anthropic",
+    "RBAC Agent": "anthropic",
+    "SSO Agent": "anthropic",
+    "GraphQL Agent": "anthropic",
+    "WebSocket Agent": "anthropic",
+    "Migration Agent": "anthropic",
+    "Schema Validation Agent": "anthropic",
+    "E2E Agent": "anthropic",
+    "Penetration Test Agent": "anthropic",
+    "Incident Response Agent": "anthropic",
+    "HIPAA Agent": "anthropic",
+    "SOC2 Agent": "anthropic",
+    "Deployment Agent": "anthropic",
+    "DevOps Agent": "anthropic",
+    "Workflow Agent": "anthropic",
+    "Queue Agent": "anthropic",
+    "Test Generation": "anthropic",
+    "Test Executor": "anthropic",
+    "Code Review Agent": "anthropic",
+    "Error Recovery": "anthropic",
+    "Validation Agent": "anthropic",
+    # ── FAST / SIMPLE (Cerebras primary, Anthropic fallback) ───────────────
+    "Native Config Agent": "cerebras",
+    "Store Prep Agent": "cerebras",
+    "Image Generation": "cerebras",
+    "Video Generation": "cerebras",
+    "UX Auditor": "cerebras",
+    "Performance Analyzer": "cerebras",
+    "Memory Agent": "cerebras",
+    "PDF Export": "cerebras",
+    "Excel Export": "cerebras",
+    "Markdown Export": "cerebras",
+    "Scraping Agent": "cerebras",
+    "Automation Agent": "cerebras",
+    "Design Agent": "cerebras",
+    "Layout Agent": "cerebras",
+    "SEO Agent": "cerebras",
+    "Content Agent": "cerebras",
+    "Brand Agent": "cerebras",
+    "Documentation Agent": "cerebras",
+    "Monitoring Agent": "cerebras",
+    "Accessibility Agent": "cerebras",
+    "Webhook Agent": "cerebras",
+    "Email Agent": "cerebras",
+    "Legal Compliance Agent": "cerebras",
+    "i18n Agent": "cerebras",
+    "Caching Agent": "cerebras",
+    "Rate Limit Agent": "cerebras",
+    "Search Agent": "cerebras",
+    "Analytics Agent": "cerebras",
+    "API Documentation Agent": "cerebras",
+    "Mobile Responsive Agent": "cerebras",
+    "Backup Agent": "cerebras",
+    "Notification Agent": "cerebras",
+    "Design Iteration Agent": "cerebras",
+    "Staging Agent": "cerebras",
+    "A/B Test Agent": "cerebras",
+    "Feature Flag Agent": "cerebras",
+    "Error Boundary Agent": "cerebras",
+    "Logging Agent": "cerebras",
+    "Metrics Agent": "cerebras",
+    "Audit Trail Agent": "cerebras",
+    "Session Agent": "cerebras",
+    "OAuth Provider Agent": "cerebras",
+    "2FA Agent": "cerebras",
+    "Stripe Subscription Agent": "cerebras",
+    "Invoice Agent": "cerebras",
+    "CDN Agent": "cerebras",
+    "SSR Agent": "cerebras",
+    "Bundle Analyzer Agent": "cerebras",
+    "Lighthouse Agent": "cerebras",
+    "Mock API Agent": "cerebras",
+    "Load Test Agent": "cerebras",
+    "Dependency Audit Agent": "cerebras",
+    "License Agent": "cerebras",
+    "Terms Agent": "cerebras",
+    "Privacy Policy Agent": "cerebras",
+    "Cookie Consent Agent": "cerebras",
+    "Audit Export Agent": "cerebras",
+    "Data Residency Agent": "cerebras",
+    "SLA Agent": "cerebras",
+    "Cost Optimizer Agent": "cerebras",
+    "Accessibility WCAG Agent": "cerebras",
+    "RTL Agent": "cerebras",
+    "Dark Mode Agent": "cerebras",
+    "Keyboard Nav Agent": "cerebras",
+    "Screen Reader Agent": "cerebras",
+    "Component Library Agent": "cerebras",
+    "Design System Agent": "cerebras",
+    "Animation Agent": "cerebras",
+    "Chart Agent": "cerebras",
+    "Table Agent": "cerebras",
+    "Form Builder Agent": "cerebras",
+    "File Tool Agent": "cerebras",
+}
+
+
+def _get_agent_model_chain(
+    agent_name: str,
+    effective: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    """
+    Build the model chain for a specific agent based on AGENT_MODEL_TIER.
+
+    Anthropic agents: [anthropic, cerebras] — deep reasoning first, fast fallback
+    Cerebras agents:  [cerebras, anthropic] — fast first, deep fallback
+
+    IMPORTANT: Anthropic has NO credits on Railway. If Anthropic fails, Cerebras
+    MUST be in the chain so the build continues. Never return an Anthropic-only chain.
+    """
+    from ..llm_router import CEREBRAS_MODEL
+    from ..anthropic_models import ANTHROPIC_HAIKU_MODEL
+
+    cerebras_key = (effective or {}).get("cerebras") or os.environ.get("CEREBRAS_API_KEY")
+    anthropic_key = (effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY")
+
+    cerebras_entry = {"provider": "cerebras", "model": CEREBRAS_MODEL}
+    anthropic_entry = {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}
+
+    tier = AGENT_MODEL_TIER.get(agent_name, "cerebras")  # default to fast
+
+    if tier == "anthropic":
+        # Anthropic primary — but always include Cerebras as fallback
+        chain = []
+        if anthropic_key:
+            chain.append(anthropic_entry)
+        if cerebras_key:
+            chain.append(cerebras_entry)
+        # If neither key is set, return empty (will raise downstream)
+        return chain if chain else [cerebras_entry]
+    else:
+        # Cerebras primary — Anthropic as fallback if key exists
+        chain = []
+        if cerebras_key:
+            chain.append(cerebras_entry)
+        if anthropic_key:
+            chain.append(anthropic_entry)
+        return chain if chain else [anthropic_entry]
+
+
 _COMPLEX_SWARM_MARKERS = (
     "helios aegis command",
     "aegis omega",
@@ -343,21 +506,36 @@ async def _run_server_swarm_agent(
     project_prompt: str,
     build_kind: str,
     previous_outputs: Dict[str, Dict[str, Any]],
+    workspace_path: str = "",
 ) -> Dict[str, Any]:
     # FIX: was `import server` (broken — no top-level `server` module when
     # PYTHONPATH=/app:/app/backend; `backend/server.py` is at `backend.server`).
     # FIX: was `server._run_single_agent_with_retry` which does not exist.
     # Correct function is `server._run_single_agent_with_context`.
     from backend import server as _srv
-
     user_ref = _safe_user_ref(user_id)
     user_keys = await _srv.get_workspace_api_keys(user_ref)
     effective = _srv._effective_api_keys(user_keys)
-    model_chain = _srv._get_model_chain(
-        "auto",
-        project_prompt,
-        effective_keys=effective,
-        force_complex=True,
+
+    # Per-agent model routing: deep agents get Anthropic primary (Cerebras fallback),
+    # fast agents get Cerebras primary (Anthropic fallback).
+    # IMPORTANT: Anthropic has no credits on Railway — Cerebras is always in chain.
+    model_chain = _get_agent_model_chain(agent_name, effective)
+    if not model_chain:
+        # Final safety fallback: use the legacy auto chain
+        model_chain = _srv._get_model_chain(
+            "auto",
+            project_prompt,
+            effective_keys=effective,
+            force_complex=False,
+        )
+
+    tier = AGENT_MODEL_TIER.get(agent_name, "cerebras")
+    logger.info(
+        "agent_model_routing: agent=%s tier=%s chain=%s",
+        agent_name,
+        tier,
+        [c.get("provider") for c in model_chain],
     )
 
     return await _srv._run_single_agent_with_context(
@@ -369,6 +547,7 @@ async def _run_server_swarm_agent(
         effective=effective,
         model_chain=model_chain,
         build_kind=build_kind,
+        workspace_path=workspace_path,
     )
 
 
@@ -458,6 +637,15 @@ async def run_swarm_agent_step(
         )
         project_prompt = f"[SYSTEM CONSTRAINT] {prefix}\n\n{project_prompt}"
 
+    # Initialize build memory on first agent (Planner) so all agents share context
+    if agent_name == "Planner" and workspace_path:
+        try:
+            from .build_memory import init_build_memory
+            init_build_memory(workspace_path, project_prompt, build_kind or "fullstack")
+            logger.info("build_memory: initialized for job=%s", job_id)
+        except Exception as _bm_err:
+            logger.warning("build_memory init failed: %s", _bm_err)
+
     result = await _run_server_swarm_agent(
         project_id=project_id,
         user_id=user_id,
@@ -465,6 +653,7 @@ async def run_swarm_agent_step(
         project_prompt=project_prompt,
         build_kind=build_kind,
         previous_outputs=previous_outputs,
+        workspace_path=workspace_path,
     )
 
     # Clean up forced model env
@@ -571,6 +760,61 @@ async def run_swarm_agent_step(
         artifacts.append(
             {"kind": "agent_output", "path": artifact_path, "agent": agent_name}
         )
+
+    # Record agent files and model decision into build memory
+    if workspace_path and changed_files:
+        try:
+            from .build_memory import record_agent_files, record_model_decision
+            record_agent_files(workspace_path, agent_name, changed_files)
+            # Record which model tier was used
+            tier = AGENT_MODEL_TIER.get(agent_name, "cerebras")
+            record_model_decision(workspace_path, agent_name, tier)
+            logger.info(
+                "build_memory: recorded %d files for agent=%s",
+                len(changed_files),
+                agent_name,
+            )
+        except Exception as _bm_err:
+            logger.warning("build_memory record failed: %s", _bm_err)
+
+    # Parse Planner output to extract build_type and complexity into memory
+    if agent_name == "Planner" and workspace_path:
+        try:
+            from .build_memory import update_build_memory
+            llm_out = result.get("output") or result.get("result") or ""
+            _updates: dict = {}
+            # Detect build type from planner output
+            _out_lower = llm_out.lower()
+            for _bt in ("saas", "ecommerce", "mobile", "api", "fullstack", "frontend", "backend"):
+                if _bt in _out_lower:
+                    _updates["build_type"] = _bt
+                    break
+            if _updates:
+                update_build_memory(workspace_path, _updates)
+        except Exception as _bm_err:
+            logger.warning("build_memory planner parse failed: %s", _bm_err)
+
+    # Parse Stack Selector output to extract stack into memory
+    if agent_name == "Stack Selector" and workspace_path:
+        try:
+            from .build_memory import update_build_memory
+            import json as _json
+            llm_out = result.get("output") or result.get("result") or ""
+            # Try to parse JSON stack from output
+            _stack_match = re.search(r'\{[^{}]*(?:frontend|backend|database)[^{}]*\}', llm_out, re.DOTALL | re.IGNORECASE)
+            if _stack_match:
+                try:
+                    _stack_data = _json.loads(_stack_match.group(0))
+                    _stack = {}
+                    for _k in ("frontend", "backend", "database", "auth", "deploy", "deployment"):
+                        if _k in _stack_data:
+                            _stack[_k] = str(_stack_data[_k])
+                    if _stack:
+                        update_build_memory(workspace_path, {"stack": _stack})
+                except Exception:
+                    pass
+        except Exception as _bm_err:
+            logger.warning("build_memory stack parse failed: %s", _bm_err)
 
     return {
         "output": result.get("output") or result.get("result") or "",

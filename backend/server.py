@@ -735,10 +735,23 @@ async def _run_single_agent_with_context(
     effective: dict,
     model_chain: list[dict],
     build_kind: str = "fullstack",
+    workspace_path: str = "",
 ):
-    # Build context block from prior agents' outputs so each agent can
-    # build on the work already done rather than starting blind.
-    # Use 8000 chars per agent (was 2000) so code context is not truncated.
+    # ── Build context for this agent ────────────────────────────────────────
+    # Priority 1: structured build memory (goal, stack, schema, routes, files)
+    # Priority 2: raw prior-agent outputs (truncated, for agents that need code)
+    # ─────────────────────────────────────────────────────────────────────────
+    memory_summary = ""
+    if workspace_path:
+        try:
+            from backend.orchestration.build_memory import get_memory_summary
+            memory_summary = get_memory_summary(workspace_path)
+        except Exception as _bm_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning("build_memory get_summary failed: %s", _bm_err)
+
+    # Build raw context block from prior agents' outputs (kept as supplement)
+    # Use 8000 chars per agent so code context is not truncated.
     context_block = ""
     if previous_outputs:
         parts = []
@@ -756,10 +769,16 @@ async def _run_single_agent_with_context(
                 + "\n\n".join(parts)
                 + "\n---\n"
             )
+
     # Inject the goal as a reminder at the top of the prompt so agents never
     # forget what they are building when context is long.
     goal_reminder = f"## GOAL\n{project_prompt}\n\n## YOUR TASK\n"
-    enriched_prompt = goal_reminder + project_prompt + context_block
+
+    # Compose enriched prompt: goal + structured memory (if available) + raw context
+    if memory_summary:
+        enriched_prompt = goal_reminder + project_prompt + "\n\n" + memory_summary + context_block
+    else:
+        enriched_prompt = goal_reminder + project_prompt + context_block
     # Use the AGENT_DAG system_prompt so each agent gets its full code-writing
     # instructions (e.g. "Output ONLY complete JSX code") instead of the bare
     # "Frontend Generation execution" stub that caused agents to return prose.
