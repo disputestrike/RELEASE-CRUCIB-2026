@@ -23,8 +23,8 @@ async def test_lakers_prompt_is_sports_forecast_not_business_decision(app_client
     simulation_id = create.json()["simulation"]["id"]
 
     run = await app_client.post(
-        f"/api/simulations/{simulation_id}/run",
-        json={"prompt": "LAKERS WIN NBA", "rounds": 5, "agent_count": 8},
+        "/api/simulations/run",
+        json={"simulation_id": simulation_id, "prompt": "LAKERS WIN NBA", "rounds": 5, "agent_count": 8},
         timeout=20,
     )
     assert run.status_code == 200

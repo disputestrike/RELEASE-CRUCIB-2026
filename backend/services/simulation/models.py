@@ -13,6 +13,7 @@ class SimulationCreate(BaseModel):
 
 
 class SimulationRunRequest(BaseModel):
+    simulation_id: Optional[str] = Field(default=None, max_length=128)
     prompt: Optional[str] = Field(default=None, max_length=12000)
     assumptions: List[str] = Field(default_factory=list)
     attachments: List[Dict[str, Any]] = Field(default_factory=list)
@@ -36,4 +37,3 @@ class ScenarioClassification(BaseModel):
     interpretation: str
     ambiguity: str = "low"
     assumptions: List[str] = Field(default_factory=list)
-

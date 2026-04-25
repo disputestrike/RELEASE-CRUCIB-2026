@@ -30,6 +30,24 @@ function pct(value) {
   return `${Math.round(n * 100)}%`;
 }
 
+async function readJsonResponse(response, label) {
+  const contentType = response.headers.get('content-type') || '';
+  const body = await response.text();
+  const preview = body.slice(0, 180).replace(/\s+/g, ' ').trim();
+
+  if (!response.ok) {
+    throw new Error(`${label} failed (${response.status}). ${preview}`);
+  }
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(`${label} returned ${contentType || 'non-JSON'} instead of JSON. ${preview}`);
+  }
+  try {
+    return JSON.parse(body);
+  } catch (err) {
+    throw new Error(`${label} returned invalid JSON. ${preview}`);
+  }
+}
+
 function Panel({ title, icon, children, aside }) {
   const Icon = icon || Activity;
   return (
@@ -84,16 +102,16 @@ export default function WhatIfPage() {
           metadata: { surface: 'simulation_command_center' },
         }),
       });
-      if (!createRes.ok) throw new Error(`Create failed (${createRes.status})`);
-      const created = await createRes.json();
+      const created = await readJsonResponse(createRes, 'Create simulation');
       const simulationId = created?.simulation?.id;
       if (!simulationId) throw new Error('Simulation create response did not include an id.');
 
-      const runRes = await fetch(`${API}/simulations/${encodeURIComponent(simulationId)}/run`, {
+      const runRes = await fetch(`${API}/simulations/run`, {
         method: 'POST',
         credentials: 'include',
         headers,
         body: JSON.stringify({
+          simulation_id: simulationId,
           prompt: cleanPrompt,
           assumptions,
           attachments,
@@ -102,11 +120,7 @@ export default function WhatIfPage() {
           metadata: { surface: 'simulation_command_center' },
         }),
       });
-      if (!runRes.ok) {
-        const body = await runRes.text().catch(() => '');
-        throw new Error(`Run failed (${runRes.status}). ${body.slice(0, 160)}`);
-      }
-      setResult(await runRes.json());
+      setResult(await readJsonResponse(runRes, 'Run simulation'));
     } catch (err) {
       setError(err?.message || 'Simulation failed.');
     } finally {

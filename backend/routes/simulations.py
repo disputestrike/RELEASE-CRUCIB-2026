@@ -42,8 +42,7 @@ async def create_simulation(body: SimulationCreate, user: dict = Depends(_get_au
     return {"success": True, "simulation": simulation}
 
 
-@router.post("/{simulation_id}/run")
-async def run_simulation(simulation_id: str, body: SimulationRunRequest, user: dict = Depends(_get_auth())):
+async def _run_simulation_for_id(simulation_id: str, body: SimulationRunRequest, user: dict) -> Dict[str, Any]:
     sim = await _require_owned_simulation(simulation_id, user)
     prompt = (body.prompt or sim.get("prompt") or "").strip()
     if not prompt:
@@ -59,6 +58,19 @@ async def run_simulation(simulation_id: str, body: SimulationRunRequest, user: d
         metadata=body.metadata,
     )
     return {"success": True, **result}
+
+
+@router.post("/run")
+async def run_simulation_flat(body: SimulationRunRequest, user: dict = Depends(_get_auth())):
+    simulation_id = (body.simulation_id or "").strip()
+    if not simulation_id:
+        raise HTTPException(status_code=400, detail="simulation_id is required")
+    return await _run_simulation_for_id(simulation_id, body, user)
+
+
+@router.post("/{simulation_id}/run")
+async def run_simulation(simulation_id: str, body: SimulationRunRequest, user: dict = Depends(_get_auth())):
+    return await _run_simulation_for_id(simulation_id, body, user)
 
 
 @router.get("/history")
