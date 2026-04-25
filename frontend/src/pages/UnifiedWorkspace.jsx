@@ -879,7 +879,15 @@ export default function UnifiedWorkspace() {
         const namePreview = (trimmed || '').slice(0, 120) || 'Build';
         let createdTaskId = null;
         if (taskIdFromUrl) {
-          updateTask(taskIdFromUrl, { jobId: newJid, name: namePreview, status: 'running' });
+          const prev = tasks.find((t) => t.id === taskIdFromUrl);
+          // Keep the first build title in History; do not rename the row to every follow-up message.
+          const displayName = prev?.name && String(prev.name).trim() ? prev.name : namePreview;
+          updateTask(taskIdFromUrl, {
+            jobId: newJid,
+            name: displayName,
+            prompt: trimmed,
+            status: 'running',
+          });
         } else {
           createdTaskId = addTask({
             name: namePreview,
@@ -928,7 +936,7 @@ export default function UnifiedWorkspace() {
         sendInFlightRef.current = false;
       }
     },
-    [API, token, buildTargets, projectIdFromUrl, taskIdFromUrl, addTask, updateTask, setSearchParams, clearBuildError, applyBuildError],
+    [API, token, buildTargets, projectIdFromUrl, taskIdFromUrl, tasks, addTask, updateTask, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -1048,6 +1056,66 @@ export default function UnifiedWorkspace() {
             persistTranscriptLine('assistant', coachText);
             return [...prev, msg];
           });
+        }
+        refresh();
+      } catch (e) {
+        setGoal(submitted);
+        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not send message.');
+      } finally {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
+      return;
+    }
+
+    // Job exists but is not in a "live" phase (e.g. completed): sending from composer must not
+    // POST /orchestrator/plan again — that spawns a second job and duplicates History rows (same as Codex/Cursor: one run thread).
+    if (activeJobId) {
+      appendUserChat(submitted);
+      setGoal('');
+      clearBuildError();
+      sendInFlightRef.current = true;
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const res = await axios.post(
+          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
+          { message: submitted, resume: false },
+          { headers, timeout: 15000 },
+        );
+        clearBuildError();
+        const coachText = formatCoachReply(res.data?.guidance);
+        if (coachText) {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_coach_${Date.now()}`;
+          setUserChatMessages((prev) => {
+            const msg = {
+              id: aid,
+              body: coachText,
+              role: 'assistant',
+              jobId: activeJobId,
+              pendingBind: false,
+              ts: Date.now(),
+            };
+            const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+            if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
+            persistTranscriptLine('assistant', coachText);
+            return [...prev, msg];
+          });
+        } else {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_ack_${Date.now()}`;
+          const body =
+            'Saved on this run. Use + New in the sidebar to start a separate build; your follow-up stays in this thread.';
+          setUserChatMessages((prev) => [
+            ...prev,
+            { id: aid, body, role: 'assistant', jobId: activeJobId, ts: Date.now() },
+          ]);
+          persistTranscriptLine('assistant', body);
         }
         refresh();
       } catch (e) {
