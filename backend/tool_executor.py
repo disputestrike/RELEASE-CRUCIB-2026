@@ -18,8 +18,19 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from project_state import WORKSPACE_ROOT
+from services.policy import permission_engine
+from services.tools.registry import get_tool_contract
 
 logger = logging.getLogger(__name__)
+
+
+def require_runtime_authority(*_args, **_kwargs):
+    """Compatibility hook used by legacy tests and runtime wrappers."""
+    try:
+        from services.runtime.execution_authority import require_runtime_authority as _require
+        return _require("tool_executor", detail="direct tool execution")
+    except Exception as exc:
+        raise PermissionError(str(exc))
 
 # Commands allowed for execute_tool(..., "run", { "command": [...], "cwd": "optional relative path" })
 RUN_ALLOWLIST = [
@@ -100,6 +111,68 @@ def execute_tool(
     """
     workspace = _project_workspace(project_id)
     tool_name = (tool_name or "").strip().lower()
+    contract = get_tool_contract(tool_name)
+
+    try:
+        require_runtime_authority("tool_executor", detail="execute_tool")
+    except PermissionError:
+        return {
+            "success": False,
+            "error": "runtime_engine_required: direct execute_tool is forbidden",
+            "policy": {"reason": "runtime_engine_required", "mode": "deny"},
+            "tool": {"name": tool_name, "known": bool(contract)},
+        }
+
+    if contract is None:
+        return {
+            "success": False,
+            "error": f"Unknown tool: {tool_name}",
+            "policy": {"reason": "unknown_tool_contract", "mode": "deny"},
+            "tool": {"name": tool_name, "known": False},
+        }
+
+    skill_name = str((params or {}).get("skill") or "").strip().lstrip("/") or None
+    # Keep surface unset in executor-level checks to preserve runtime
+    # compatibility; skill gating still applies via skill_name.
+    surface = None
+
+    decision = permission_engine.evaluate_tool_call(
+        tool_name=tool_name,
+        params=params or {},
+        surface=surface,
+        skill_name=skill_name,
+        project_id=project_id,
+    )
+    policy_payload = decision.to_dict()
+    if not decision.allowed:
+        deny_reason = decision.reason
+        if decision.layer == "skill_scope" and "Skill denied tool" not in deny_reason:
+            deny_reason = f"Skill denied tool: {decision.reason}"
+        if decision.ask:
+            return {
+                "success": False,
+                "error": deny_reason,
+                "policy": {**policy_payload, "approval_required": True},
+                "tool": {
+                    "name": contract.name,
+                    "known": True,
+                    "risk_level": contract.risk_level,
+                    "side_effect_class": contract.side_effect_class,
+                },
+                "skill": {"name": skill_name, "matched": bool(skill_name)},
+            }
+        return {
+            "success": False,
+            "error": deny_reason,
+            "policy": policy_payload,
+            "tool": {
+                "name": contract.name,
+                "known": True,
+                "risk_level": contract.risk_level,
+                "side_effect_class": contract.side_effect_class,
+            },
+            "skill": {"name": skill_name, "matched": bool(skill_name)},
+        }
 
     if tool_name == "file":
         action = (params.get("action") or "read").strip().lower()
@@ -109,31 +182,31 @@ def execute_tool(
             p = _resolve_under_workspace(workspace, path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
-            return {"success": True, "path": str(p), "bytes": len(content.encode("utf-8"))}
+            return {"success": True, "path": str(p), "bytes": len(content.encode("utf-8")), "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         elif action == "read":
             p = _resolve_under_workspace(workspace, path)
             if not p.exists():
-                return {"success": False, "error": "File not found"}
-            return {"success": True, "content": p.read_text(encoding="utf-8"), "path": str(p)}
+                return {"success": False, "error": "File not found", "policy": policy_payload}
+            return {"success": True, "content": p.read_text(encoding="utf-8"), "path": str(p), "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         elif action == "list":
             p = _resolve_under_workspace(workspace, path)
             if not p.is_dir():
-                return {"success": False, "error": "Not a directory"}
+                return {"success": False, "error": "Not a directory", "policy": policy_payload}
             names = [x.name for x in p.iterdir()]
-            return {"success": True, "path": str(p), "entries": names}
+            return {"success": True, "path": str(p), "entries": names, "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         elif action == "mkdir":
             p = _resolve_under_workspace(workspace, path)
             p.mkdir(parents=True, exist_ok=True)
-            return {"success": True, "path": str(p)}
+            return {"success": True, "path": str(p), "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         else:
-            return {"success": False, "error": f"Unknown file action: {action}"}
+            return {"success": False, "error": f"Unknown file action: {action}", "policy": policy_payload}
 
     if tool_name == "run":
         cmd = params.get("command")
         if not isinstance(cmd, list):
-            return {"success": False, "error": "command must be a list"}
+            return {"success": False, "error": "command must be a list", "policy": policy_payload}
         if not _is_run_allowed(cmd):
-            return {"success": False, "error": f"Command not allowlisted: {cmd}"}
+            return {"success": False, "error": f"Command not allowlisted: {cmd}", "policy": {"mode": "deny", "reason": "allowlist", "allowed": False, "ask": False, "layer": "allowlist"}}
         cwd = workspace
         if params.get("cwd"):
             cwd = _resolve_under_workspace(workspace, params["cwd"])
@@ -164,12 +237,12 @@ def execute_tool(
                     errors="replace",
                 )
                 out = (proc.stdout or "") + (proc.stderr or "")
-                return {"success": proc.returncode == 0, "returncode": proc.returncode, "output": out[:50000], "sandbox": True}
+                return {"success": proc.returncode == 0, "returncode": proc.returncode, "output": out[:50000], "sandbox": True, "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
             except FileNotFoundError:
                 logger.warning("Docker not found; falling back to local run")
                 run_in_sandbox = False
             except subprocess.TimeoutExpired:
-                return {"success": False, "error": "timeout", "output": "", "sandbox": True}
+                return {"success": False, "error": "timeout", "output": "", "sandbox": True, "policy": policy_payload}
             except Exception as e:
                 logger.warning("Sandbox run failed: %s", e)
                 run_in_sandbox = False
@@ -189,59 +262,62 @@ def execute_tool(
                     "success": proc.returncode == 0,
                     "returncode": proc.returncode,
                     "output": out[:50000],
+                    "policy": policy_payload,
+                    "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class},
+                    "skill": {"name": skill_name, "matched": bool(skill_name)},
                 }
             except subprocess.TimeoutExpired:
-                return {"success": False, "error": "timeout", "output": ""}
+                return {"success": False, "error": "timeout", "output": "", "policy": policy_payload}
             except Exception as e:
-                return {"success": False, "error": str(e), "output": ""}
+                return {"success": False, "error": str(e), "output": "", "policy": policy_payload}
 
     if tool_name == "api":
         url = params.get("url") or ""
         if not _is_safe_url(url):
-            return {"success": False, "error": "URL not allowed (SSRF safety)"}
+            return {"success": False, "error": "URL not allowed (SSRF safety)", "policy": policy_payload}
         try:
             import urllib.request
             req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Tool/1.0"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:100000]
-            return {"success": True, "status": r.status, "body": body}
+            return {"success": True, "status": r.status, "body": body, "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": str(e), "policy": policy_payload}
 
     if tool_name == "browser":
         url = params.get("url") or ""
         if not _is_safe_url(url):
-            return {"success": False, "error": "URL not allowed"}
+            return {"success": False, "error": "URL not allowed", "policy": policy_payload}
         # Sync fetch only (no Playwright) to avoid async in execute_tool
         try:
             import urllib.request
             req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Browser/1.0"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:50000]
-            return {"success": True, "body_preview": body[:2000]}
+            return {"success": True, "body_preview": body[:2000], "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": str(e), "policy": policy_payload}
 
     if tool_name == "db":
         # SQLite in workspace only
         db_path = (params.get("path") or "data.db").strip().lstrip("/")
         if ".." in db_path:
-            return {"success": False, "error": "Invalid path"}
+            return {"success": False, "error": "Invalid path", "policy": policy_payload}
         db_file = workspace / db_path
         action = (params.get("action") or "query").strip().lower()
         if action == "query":
             sql = params.get("sql") or ""
             if not sql.strip().upper().startswith("SELECT"):
-                return {"success": False, "error": "Only SELECT allowed"}
+                return {"success": False, "error": "Only SELECT allowed", "policy": policy_payload}
             try:
                 import sqlite3
                 conn = sqlite3.connect(str(db_file))
                 cur = conn.execute(sql)
                 rows = cur.fetchall()
                 conn.close()
-                return {"success": True, "rows": rows}
+                return {"success": True, "rows": rows, "policy": policy_payload, "tool": {"name": contract.name, "known": True, "risk_level": contract.risk_level, "side_effect_class": contract.side_effect_class}, "skill": {"name": skill_name, "matched": bool(skill_name)}}
             except Exception as e:
-                return {"success": False, "error": str(e)}
-        return {"success": False, "error": f"Unknown db action: {action}"}
+                return {"success": False, "error": str(e), "policy": policy_payload}
+        return {"success": False, "error": f"Unknown db action: {action}", "policy": policy_payload}
 
-    return {"success": False, "error": f"Unknown tool: {tool_name}"}
+    return {"success": False, "error": f"Unknown tool: {tool_name}", "policy": {"reason": "unknown_tool_contract", "mode": "deny"}, "tool": {"name": tool_name, "known": False}}

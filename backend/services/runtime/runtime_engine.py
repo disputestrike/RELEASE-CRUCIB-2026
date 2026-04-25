@@ -166,6 +166,7 @@ class RuntimeEngine:
         mode: Optional[str] = None,  # CF2
         allowed_phases: Optional[List[str]] = None,  # CF2
         project_id_override: Optional[str] = None,  # CF3
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Main execution entry point with FULL control.

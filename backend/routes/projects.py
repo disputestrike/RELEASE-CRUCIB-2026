@@ -443,7 +443,7 @@ async def delete_project(
     db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        return Response(status_code=204)
     await db.project_logs.delete_many({"project_id": project_id})
     await db.agent_status.delete_many({"project_id": project_id})
     await db.shares.delete_many({"project_id": project_id})
