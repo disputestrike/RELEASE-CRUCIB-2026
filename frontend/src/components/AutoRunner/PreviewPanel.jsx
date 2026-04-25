@@ -186,6 +186,11 @@ export default function PreviewPanel({
     devPreviewError,
     isBootingDevPreview,
   });
+  const showBootingOverlay = isBootingDevPreview && !useRemote && !hasSandpack;
+  const overlayMessage = devPreviewError || (showBootingOverlay
+    ? 'Booting a workspace dev server so preview updates without a manual refresh.'
+    : null);
+  const overlayTitle = devPreviewError ? 'Preview issue' : 'Starting live preview';
 
   return (
     <div className="preview-panel">
@@ -225,8 +230,8 @@ export default function PreviewPanel({
           <span className="pp-preview-state-detail">{readiness.detail}</span>
         </div>
         <ErrorOverlay
-          title={isBootingDevPreview ? 'Starting live preview' : 'Preview issue'}
-          message={isBootingDevPreview ? 'Booting a workspace dev server so preview updates without a manual refresh.' : devPreviewError}
+          title={overlayTitle}
+          message={overlayMessage}
           onRetry={jobId && token && apiBase ? () => { setDevServerUrl(null); setDevPreviewError(null); setIsBootingDevPreview(false); setRetryTick((v) => v + 1); } : null}
         />
         {status === 'blocked' && hasSandpack && (

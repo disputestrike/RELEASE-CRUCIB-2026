@@ -859,7 +859,7 @@ def _enrich_job_public_urls(job: dict[str, Any]) -> dict[str, Any]:
 
 async def _lookup_job(job_id: str):
     try:
-        runtime_state = __import__("orchestration.runtime_state", fromlist=["get_job"])
+        runtime_state = __import__("backend.orchestration.runtime_state", fromlist=["get_job"])
         return await runtime_state.get_job(job_id)
     except Exception:
         return None
@@ -1825,6 +1825,22 @@ async def route_report(user: User = Depends(require_permission(Permission.CREATE
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Forbidden")
     return ROUTE_REGISTRATION_REPORT
+
+
+@app.get("/published/{job_id}/")
+@app.get("/published/{job_id}/{path:path}")
+async def serve_published_generated_app(job_id: str, path: str = ""):
+    from .orchestration.publish_urls import safe_publish_id
+    from .services.published_app_service import serve_published_app_response
+
+    return await serve_published_app_response(
+        job_id=job_id,
+        path=path,
+        get_job=_lookup_job,
+        safe_publish_id=safe_publish_id,
+        project_workspace_path=_project_workspace_path,
+        workspace_root=WORKSPACE_ROOT,
+    )
 
 # Static file mounting moved to the end of the file to avoid shadowing API routes.
 

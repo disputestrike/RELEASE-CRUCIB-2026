@@ -109,19 +109,172 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
         return _project_workspace_path(job_id)
 
 
-def _collect_job_workspace_files(workspace: Path) -> List[Dict[str, Any]]:
+HEAVY_WORKSPACE_DIRS = {
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+}
+PREVIEW_ARTIFACT_DIRS = {"dist", "build", "out", "public"}
+INTERNAL_WORKSPACE_DIRS = {"META", "outputs", ".tmp"}
+CODE_FILE_EXTS = {
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".html",
+    ".json",
+    ".sql",
+    ".md",
+    ".yaml",
+    ".yml",
+}
+PREVIEW_ARTIFACT_EXTS = {
+    ".html",
+    ".js",
+    ".mjs",
+    ".css",
+    ".json",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+}
+
+
+def _workspace_candidates(primary: Path, job_id: str = "") -> List[Path]:
+    """Return plausible workspace roots for a job without trusting client paths.
+
+    Runtime task state historically lives under ``WORKSPACE_ROOT/{project_id}``,
+    while app files for preview live under ``WORKSPACE_ROOT/projects/{project_id}``.
+    Listing/reading must tolerate both so a completed build cannot show an empty
+    file room just because one surface resolved a different workspace root.
+    """
+    roots: List[Path] = []
+    try:
+        base = _workspace_root().resolve().parent
+    except Exception:
+        base = primary.resolve().parent
+    names = [primary.name]
+    if job_id and job_id not in names:
+        names.append(job_id)
+    raw = [primary]
+    for name in names:
+        if not name:
+            continue
+        raw.extend(
+            [
+                base / "projects" / name,
+                base / name,
+            ]
+        )
+    seen = set()
+    for p in raw:
+        try:
+            resolved = p.resolve()
+        except Exception:
+            continue
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        roots.append(resolved)
+    return roots
+
+
+def _file_kind(rel: str, full: Path) -> str:
+    top = rel.split("/", 1)[0]
+    if top in PREVIEW_ARTIFACT_DIRS:
+        return "preview_artifact"
+    if top in INTERNAL_WORKSPACE_DIRS:
+        return "internal"
+    if full.suffix.lower() in CODE_FILE_EXTS:
+        return "source"
+    return "asset"
+
+
+def _collect_workspace_files_from_root(workspace: Path) -> List[Dict[str, Any]]:
     files: List[Dict[str, Any]] = []
-    if not workspace.exists():
+    if not workspace.exists() or not workspace.is_dir():
         return files
-    skip = {"node_modules", ".git", "__pycache__", "dist", "build"}
     for root, dirs, filenames in os.walk(workspace):
-        dirs[:] = [d for d in dirs if d not in skip]
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in HEAVY_WORKSPACE_DIRS and not d.startswith(".tmp")
+        ]
         for name in filenames:
             full = Path(root) / name
-            rel = str(full.relative_to(workspace)).replace("\\", "/")
-            files.append({"path": rel, "size": full.stat().st_size})
-    files.sort(key=lambda x: x["path"])
+            try:
+                rel = str(full.relative_to(workspace)).replace("\\", "/")
+                stat = full.stat()
+            except OSError:
+                continue
+            kind = _file_kind(rel, full)
+            if kind == "preview_artifact" and full.suffix.lower() not in PREVIEW_ARTIFACT_EXTS:
+                continue
+            files.append(
+                {
+                    "path": rel,
+                    "size": stat.st_size,
+                    "kind": kind,
+                    "is_code": full.suffix.lower() in CODE_FILE_EXTS,
+                    "is_preview_artifact": kind == "preview_artifact",
+                }
+            )
     return files
+
+
+def _collect_job_workspace_files(workspace: Path, job_id: str = "") -> List[Dict[str, Any]]:
+    by_path: Dict[str, Dict[str, Any]] = {}
+    for candidate in _workspace_candidates(workspace, job_id):
+        for row in _collect_workspace_files_from_root(candidate):
+            path = row.get("path")
+            if not path:
+                continue
+            existing = by_path.get(path)
+            if existing is None:
+                by_path[path] = row
+                continue
+            # Prefer source over preview artifacts over internal metadata when
+            # the same relative path exists in multiple compatible roots.
+            rank = {"source": 0, "asset": 1, "preview_artifact": 2, "internal": 3}
+            if rank.get(row.get("kind"), 9) < rank.get(existing.get("kind"), 9):
+                by_path[path] = row
+
+    product_files = [
+        row
+        for row in by_path.values()
+        if row.get("kind") not in {"internal"}
+    ]
+    internal_files = [
+        row
+        for row in by_path.values()
+        if row.get("kind") == "internal"
+    ]
+    files = product_files or internal_files
+    files.sort(key=lambda x: (x.get("kind") == "preview_artifact", x["path"]))
+    return files
+
+
+def _resolve_job_workspace_file(workspace: Path, rel: str, job_id: str = "") -> Path:
+    for candidate in _workspace_candidates(workspace, job_id):
+        try:
+            full = _safe_resolve(candidate, rel)
+        except HTTPException:
+            raise
+        if full.exists() and full.is_file():
+            return full
+    return _safe_resolve(workspace, rel)
 
 
 # ── Project workspace file routes ─────────────────────────────────────────────
@@ -206,7 +359,7 @@ async def list_job_workspace_files(
 ):
     """List files in a job's workspace (paginated; same shape as orchestration job workspace tests)."""
     workspace = await _assert_job_access(job_id, user)
-    all_files = _collect_job_workspace_files(workspace) if workspace.exists() else []
+    all_files = _collect_job_workspace_files(workspace, job_id)
     total = len(all_files)
     off = max(0, int(offset))
     lim = max(1, min(int(limit), 1000))
@@ -232,7 +385,7 @@ async def get_job_workspace_file(
 ):
     """Get contents of a specific file in a job's workspace."""
     workspace = await _assert_job_access(job_id, user)
-    full_path = _safe_resolve(workspace, path)
+    full_path = _resolve_job_workspace_file(workspace, path, job_id)
 
     if not full_path.exists() or not full_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {path}")
@@ -257,7 +410,7 @@ async def get_job_workspace_file_raw(
 ):
     """Stream raw bytes for a file in the job workspace (images, binaries)."""
     workspace = await _assert_job_access(job_id, user)
-    full_path = _safe_resolve(workspace, path)
+    full_path = _resolve_job_workspace_file(workspace, path, job_id)
     if not full_path.exists() or not full_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     media = mimetypes.guess_type(full_path.name)[0] or "application/octet-stream"

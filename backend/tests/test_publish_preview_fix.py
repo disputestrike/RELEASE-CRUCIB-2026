@@ -12,7 +12,7 @@ def _install_published_job(
     monkeypatch, workspace_root, *, job_id: str = "job-preview-123"
 ):
     from backend import server
-    from orchestration import runtime_state
+    from backend.orchestration import runtime_state
 
     project_id = "project-preview-123"
     monkeypatch.setattr(server, "WORKSPACE_ROOT", workspace_root)

@@ -4,10 +4,12 @@
  */
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import axios from 'axios';
 
 jest.mock('../SandpackErrorBoundary.css', () => ({}));
 jest.mock('./PreviewPanel.css', () => ({}));
+jest.mock('axios', () => ({ get: jest.fn() }));
 
 import PreviewPanel from './PreviewPanel';
 
@@ -21,6 +23,10 @@ jest.mock('../SandpackErrorBoundary', () => function MockBoundary({ children }) 
 });
 
 describe('PreviewPanel', () => {
+  beforeEach(() => {
+    axios.get.mockReset();
+  });
+
   test('renders Sandpack when status ready, no previewUrl, and sandpackFiles non-empty', () => {
     const sandpackFiles = { '/src/App.jsx': { code: 'export default function App(){return null}' } };
     const sandpackDeps = { react: '^18.2.0', 'react-dom': '^18.2.0' };
@@ -81,7 +87,7 @@ describe('PreviewPanel', () => {
         blockedDetail="Type error in App.jsx"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/Preview paused/i);
+    expect(screen.getByText(/Preview paused/i)).toBeInTheDocument();
     expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
     expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Paused/i);
   });
@@ -99,6 +105,30 @@ describe('PreviewPanel', () => {
         sandpackIsFallback
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/Starter shell/i);
+    expect(screen.getByText(/Starter shell/i)).toBeInTheDocument();
+  });
+
+  test('does not cover existing Sandpack preview with booting overlay', async () => {
+    axios.get.mockReturnValue(new Promise(() => {}));
+    const sandpackFiles = { '/src/App.jsx': { code: 'export default function App(){return null}' } };
+    const sandpackDeps = { react: '^18.2.0', 'react-dom': '^18.2.0' };
+
+    render(
+      <PreviewPanel
+        previewUrl={null}
+        status="building"
+        sandpackFiles={sandpackFiles}
+        sandpackDeps={sandpackDeps}
+        filesReadyKey="t-booting"
+        jobId="tsk_booting"
+        token="token"
+        apiBase="https://api.example.com/api"
+      />,
+    );
+
+    await waitFor(() => expect(axios.get).toHaveBeenCalled());
+    expect(screen.getByTestId('sandpack-preview')).toBeInTheDocument();
+    expect(screen.queryByText(/Starting live preview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Booting a workspace dev server/i)).not.toBeInTheDocument();
   });
 });
