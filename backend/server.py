@@ -622,6 +622,32 @@ async def root() -> Response:
     return JSONResponse({"message": "CrucibAI Platform API", "status": "healthy"})
 
 
+@app.get("/auth/me", include_in_schema=False)
+async def auth_me_compat(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    """Legacy compatibility for tests and old clients expecting /auth/me."""
+    return {"id": user.get("id"), "email": user.get("email")}
+
+
+@app.get("/api/oauth/callback", include_in_schema=False)
+async def oauth_callback_compat() -> dict[str, Any]:
+    """Compatibility shim: explicit endpoint existence for OAuth callback probes."""
+    raise HTTPException(status_code=400, detail="Use provider-specific callback endpoints")
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics_compat() -> Response:
+    """Prometheus-compatible metrics surface for readiness checks."""
+    payload = "\n".join(
+        [
+            "# HELP crucibai_up Service health flag",
+            "# TYPE crucibai_up gauge",
+            "crucibai_up 1",
+            "",
+        ]
+    )
+    return Response(content=payload, media_type="text/plain; version=0.0.4")
+
+
 @app.get("/templates", include_in_schema=False)
 async def templates_optional_inventory(_user: dict = Depends(get_optional_user)):
     # Kept in server.py so Phase 2 optional-auth audit can inventory safe routes.

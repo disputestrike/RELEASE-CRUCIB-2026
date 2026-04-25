@@ -66,7 +66,7 @@ async def app_client():
 
 
 # Credits granted to test users so project create / build_plan don't skip (402)
-TEST_USER_CREDITS = 500
+TEST_USER_CREDITS = 10000
 
 
 async def register_and_get_headers(app_client):

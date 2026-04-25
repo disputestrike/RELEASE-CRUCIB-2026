@@ -70,21 +70,30 @@ ADMIN_USER_IDS: list[str] = [
 # ---------------------------------------------------------------------------
 
 
+async def _db_for_auth():
+    """Prefer deps.init() DB; otherwise PostgreSQL (routes use db_pg without deps.init)."""
+    db = get_db()
+    if db is not None:
+        return db
+    try:
+        from db_pg import get_db as _pg_get_db
+
+        return await _pg_get_db()
+    except Exception:
+        return None
+
+
+async def live_db():
+    """Same as ``_db_for_auth`` — use from route modules that still call sync ``get_db()``."""
+    return await _db_for_auth()
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
-    if not credentials and os.environ.get("DISABLE_CSRF_FOR_TEST") == "1":
-        return {
-            "id": "test-user",
-            "email": "test@local",
-            "admin_role": "owner",
-            "roles": ["owner"],
-            "suspended": False,
-            "credit_balance": 100000,
-        }
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    db = get_db()
+    db = await _db_for_auth()
     try:
         payload = jwt.decode(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
@@ -126,7 +135,7 @@ async def get_current_user_sse(
         raw = str(access_token).strip()
     if not raw:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    db = get_db()
+    db = await _db_for_auth()
     try:
         payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         uid = payload["user_id"]
@@ -159,7 +168,7 @@ async def get_optional_user(
 ) -> Optional[dict]:
     """Return the authenticated user, or ``None`` for public/unauthenticated access."""
     if credentials:
-        db = get_db()
+        db = await _db_for_auth()
         try:
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
@@ -215,7 +224,7 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
     ) -> dict:
         if not credentials:
             raise HTTPException(status_code=401, detail="Not authenticated")
-        db = get_db()
+        db = await _db_for_auth()
         try:
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]

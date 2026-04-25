@@ -25,8 +25,8 @@ from deps import (
     JWT_SECRET,
     get_audit_logger,
     get_current_user,
-    get_db,
     get_optional_user,
+    live_db,
     require_permission,
 )
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
@@ -114,10 +114,13 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
     """Background task: delegates to RuntimeEngine which is the ONLY executor."""
     try:
         from services.runtime.runtime_engine import runtime_engine
-        from services.runtime.file_writer import write_generated_files
+        try:
+            from services.runtime.file_writer import write_generated_files
+        except Exception:
+            write_generated_files = None
         from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents
 
-        db = get_db()
+        db = await live_db()
         
         # BLOCKER #2 FIX: Extract and store specification before build starts
         specification = await _extract_and_store_specification(project_id, prompt, user_id)
@@ -145,7 +148,7 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
         # FIX #2: Write generated files to workspace directory
         agent_outputs = result.get("execution", {}).get("agent_outputs", [])
         generated_code = ""
-        if status == "completed" and agent_outputs:
+        if status == "completed" and agent_outputs and write_generated_files is not None:
             try:
                 files_written = await write_generated_files(project_id, agent_outputs)
                 logger.info(f"Wrote {files_written} generated files for project {project_id}")
@@ -179,7 +182,7 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
     except Exception as exc:
         logger.exception("Build failed for project %s: %s", project_id, exc)
         try:
-            db = get_db()
+            db = await live_db()
             await db.projects.update_one(
                 {"id": project_id},
                 {
@@ -248,7 +251,7 @@ async def create_project(
     request: Request,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     audit_logger = get_audit_logger()
 
     if Permission is not None and not has_permission(user, Permission.CREATE_PROJECT):
@@ -340,7 +343,7 @@ async def get_projects(
     limit: int = Query(100, ge=1, le=500),
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     if db is None:
         if os.environ.get("CRUCIBAI_DEV") == "1":
             return {"projects": []}
@@ -355,7 +358,7 @@ async def import_project(
     data: ProjectImportBody,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     name = (data.name or "Imported project").strip() or "Imported project"
@@ -425,7 +428,7 @@ async def get_project(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -437,7 +440,7 @@ async def delete_project(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -461,7 +464,7 @@ async def get_project_state(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -475,7 +478,7 @@ async def get_project_events(
     since: int = Query(0, ge=0),
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -489,7 +492,7 @@ async def get_project_logs(
     limit: int = Query(200, ge=1, le=1000),
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -503,7 +506,7 @@ async def duplicate_project(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -577,7 +580,7 @@ async def _extract_and_store_specification(project_id: str, prompt: str, user_id
             "user_id": user_id,
         }
         
-        db = get_db()
+        db = await live_db()
         await db.projects.update_one(
             {"id": project_id},
             {"$set": {"specification": specification}}
@@ -603,7 +606,7 @@ async def _validate_and_report_output(project_id: str, generated_code: str, spec
         # Generate human-readable report
         report = await OutputValidator.generate_validation_report(project_id, validation_result)
         
-        db = get_db()
+        db = await live_db()
         await db.projects.update_one(
             {"id": project_id},
             {
@@ -628,7 +631,7 @@ async def get_validation_report(
     user: dict = Depends(get_current_user),
 ):
     """Get validation report for a completed project build."""
-    db = get_db()
+    db = await live_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     
     if not project:
