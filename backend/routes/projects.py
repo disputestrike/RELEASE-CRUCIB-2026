@@ -729,4 +729,24 @@ async def get_capabilities(user: dict = Depends(get_optional_user)):
         logger = logging.getLogger(__name__)
         logger.debug("capabilities MCP bootstrap: %s", exc)
     out["mcp"] = mcp_payload
+    try:
+        from ..services.product_capability_registry import (
+            build_capability_registry,
+            list_asset_providers,
+            list_preview_types,
+            list_workflow_templates,
+        )
+
+        out["capability_registry"] = build_capability_registry()
+        out["preview_types"] = list_preview_types()
+        out["asset_providers"] = list_asset_providers()
+        out["workflow_templates"] = list_workflow_templates()
+    except Exception as exc:
+        logger = logging.getLogger(__name__)
+        logger.debug("capabilities product registry: %s", exc)
+        out["capability_registry"] = {
+            "version": "unavailable",
+            "capabilities": [],
+            "error": "registry_unavailable",
+        }
     return out

@@ -1769,6 +1769,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.ide", "router", True),
     ("backend.routes.mobile", "mobile_router", True),
     ("backend.routes.monitoring", "router", False),
+    ("backend.routes.capabilities", "router", False),
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),
     ("backend.routes.tokens", "router", False),

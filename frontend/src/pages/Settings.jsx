@@ -745,6 +745,39 @@ const Settings = () => {
                   ) : (
                     <p style={{ fontSize: 12, color: T.muted }}>No MCP adapters registered.</p>
                   )}
+                  <Label>Capability registry</Label>
+                  <p style={{ fontSize: 12, color: T.muted, marginBottom: 8, lineHeight: 1.5 }}>
+                    Product surfaces should read this registry before showing tools, connectors, previews, automation templates, or asset providers.
+                  </p>
+                  {Array.isArray(capPayload.capability_registry?.capabilities) && capPayload.capability_registry.capabilities.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {capPayload.capability_registry.capabilities.slice(0, 12).map((cap) => (
+                        <div
+                          key={cap.name}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            background: T.input,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            fontSize: 13,
+                          }}
+                        >
+                          <span style={{ color: T.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {cap.name}
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: cap.status === 'available' ? T.success : T.muted, flexShrink: 0 }}>
+                            {cap.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: T.muted }}>No product capability registry returned.</p>
+                  )}
                 </>
               )}
             </Card>

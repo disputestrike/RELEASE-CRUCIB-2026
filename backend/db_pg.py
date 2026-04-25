@@ -706,6 +706,11 @@ REQUIRED_TABLES = [
     "blocked_requests",
     "agent_memory",
     "automation_tasks",
+    "scheduled_tasks",
+    "computer_use_tasks",
+    "computer_use_actions",
+    "asset_generation_requests",
+    "capability_registry_snapshots",
     "audit_log",
     "examples",
     "exports",
@@ -763,6 +768,11 @@ CREATE TABLE IF NOT EXISTS shares (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAU
 CREATE TABLE IF NOT EXISTS blocked_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS agent_memory (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS automation_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS scheduled_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS computer_use_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS computer_use_actions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS asset_generation_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS capability_registry_snapshots (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_log (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS examples (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS exports (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
