@@ -1,6 +1,7 @@
 /**
  * Derive Manus-class live UI strings from job stream + steps (no fake data).
  */
+import { formatWorkspaceActivityEvent } from './workspaceActivityEvents';
 
 function humanizeAgentLabel(raw) {
   const t = (raw || '').trim();
@@ -11,7 +12,51 @@ function humanizeAgentLabel(raw) {
   return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function chipKindForEvent(type, label = '') {
+  const t = String(type || '');
+  if (['step_completed', 'dag_node_completed', 'file_written', 'job_completed'].includes(t)) {
+    return 'ok';
+  }
+  if (
+    ['step_failed', 'job_failed', 'step_infrastructure_failure', 'step_retry_exhausted'].includes(t) ||
+    /failed|blocked|issue|needs work/i.test(label)
+  ) {
+    return 'warn';
+  }
+  if (
+    [
+      'step_started',
+      'step_retrying',
+      'step_verifying',
+      'job_started',
+      'job_status_changed',
+      'verification_attempt_failed',
+    ].includes(t) ||
+    /working|retrying|verifying|preflight|pre-build/i.test(label)
+  ) {
+    return 'run';
+  }
+  return 'info';
+}
+
 export function extractActivityChips(events, limit = 10) {
+  if (!Array.isArray(events) || !events.length) return [];
+  const chips = [];
+  const seen = new Set();
+  for (let i = events.length - 1; i >= 0 && chips.length < limit; i -= 1) {
+    const ev = events[i];
+    const t = ev?.type || ev?.event_type;
+    const id = ev?.id || `${t}-${i}`;
+    if (seen.has(id)) continue;
+    const label = formatWorkspaceActivityEvent(ev);
+    if (!label) continue;
+    seen.add(id);
+    chips.push({ id, label, kind: chipKindForEvent(t, label) });
+  }
+  return chips.reverse();
+}
+
+function extractActivityChipsLegacy(events, limit = 10) {
   if (!Array.isArray(events) || !events.length) return [];
   const chips = [];
   const seen = new Set();
@@ -71,6 +116,26 @@ export function extractActivityChips(events, limit = 10) {
 }
 
 export function deriveRightRailSubtitle(events, steps) {
+  if (Array.isArray(events) && events.length) {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const ev = events[i];
+      const t = ev?.type || ev?.event_type;
+      const formatted = formatWorkspaceActivityEvent(ev);
+      if (formatted && t !== 'brain_guidance' && t !== 'workspace_transcript') {
+        return formatted;
+      }
+    }
+  }
+  const sorted = [...(steps || [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+  const run = sorted.find((s) => s.status === 'running' || s.status === 'verifying');
+  if (run) {
+    const n = humanizeAgentLabel(run.agent_name || run.step_key || '');
+    if (n) return `Working on - ${n}`;
+  }
+  return '';
+}
+
+function deriveRightRailSubtitleLegacy(events, steps) {
   if (Array.isArray(events) && events.length) {
     for (let i = events.length - 1; i >= 0; i -= 1) {
       const ev = events[i];

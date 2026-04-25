@@ -3,6 +3,7 @@ import {
   computeDockMetaPreJob,
   deriveRightRailSubtitle,
   derivePreviewReadiness,
+  extractActivityChips,
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from './workspaceLiveUi';
@@ -62,6 +63,53 @@ describe('deriveRightRailSubtitle', () => {
       { order_index: 0, status: 'running', agent_name: 'agents.codegen', step_key: 'x' },
     ]);
     expect(s).toMatch(/Working on/);
+  });
+
+  test('uses shared event formatter for latest high-signal events', () => {
+    const s = deriveRightRailSubtitle(
+      [
+        { type: 'step_started', payload: { agent_name: 'agents.backend' } },
+        { type: 'file_written', payload: { path: 'src/App.jsx' } },
+      ],
+      [],
+    );
+    expect(s).toBe('Saved file: App.jsx');
+  });
+});
+
+describe('extractActivityChips', () => {
+  test('uses shared event formatter for rich workspace events', () => {
+    const chips = extractActivityChips([
+      { id: 'a', type: 'artifact_delta', payload: { added: 1, changed: 2, removed: 0 } },
+      { id: 'b', type: 'code_repair_applied', payload: { failure_type: 'syntax_error', files: ['src/App.jsx'] } },
+      { id: 'c', type: 'step_infrastructure_failure', payload: {} },
+    ]);
+
+    expect(chips).toEqual([
+      { id: 'a', label: 'Files changed: 1 added, 2 updated, 0 removed', kind: 'info' },
+      { id: 'b', label: 'Repair applied after syntax error: App.jsx', kind: 'info' },
+      {
+        id: 'c',
+        label: 'Infrastructure issue: run stopped for a host or dependency failure',
+        kind: 'warn',
+      },
+    ]);
+  });
+
+  test('deduplicates events and preserves chronological display order', () => {
+    const chips = extractActivityChips(
+      [
+        { id: 'same', type: 'step_started', payload: { agent_name: 'agents.frontend' } },
+        { id: 'same', type: 'step_completed', payload: { agent_name: 'agents.frontend' } },
+        { id: 'done', type: 'file_written', payload: { path: 'src/styles.css' } },
+      ],
+      10,
+    );
+
+    expect(chips).toEqual([
+      { id: 'same', label: 'Done: Frontend', kind: 'ok' },
+      { id: 'done', label: 'Saved file: styles.css', kind: 'ok' },
+    ]);
   });
 });
 
