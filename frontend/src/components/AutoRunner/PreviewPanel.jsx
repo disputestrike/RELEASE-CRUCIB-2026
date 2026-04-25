@@ -11,6 +11,36 @@ import SandpackErrorBoundary from '../SandpackErrorBoundary';
 import '../SandpackErrorBoundary.css';
 import './PreviewPanel.css';
 
+/**
+ * Iframe and new-tab links must target the **API** origin when `REACT_APP_BACKEND_URL` is set;
+ * a path-only `dev_server_url` (e.g. `/api/preview/.../serve`) otherwise resolves to the
+ * static app host and returns HTML or 404 — blank white preview.
+ */
+function resolveAgentPreviewUrl(url, apiBase) {
+  if (url == null || url === '') return null;
+  if (/^https?:\/\//i.test(String(url))) return String(url);
+  const p = String(url);
+  if (p.startsWith('/') && apiBase && /^https?:\/\//i.test(apiBase)) {
+    const origin = new URL(apiBase).origin;
+    return `${origin}${p}`;
+  }
+  if (p.startsWith('/') && typeof window !== 'undefined' && (!apiBase || apiBase.startsWith('/'))) {
+    return `${window.location.origin}${p}`;
+  }
+  return p;
+}
+
+function wsBaseFromApiBase(apiBase) {
+  if (!apiBase) return '';
+  if (apiBase.startsWith('https://')) return apiBase.replace('https://', 'wss://');
+  if (apiBase.startsWith('http://')) return apiBase.replace('http://', 'ws://');
+  if (apiBase.startsWith('/') && typeof window !== 'undefined') {
+    const p = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${p}://${window.location.host}${apiBase}`;
+  }
+  return apiBase;
+}
+
 export default function PreviewPanel({
   previewUrl,
   status = 'idle',
@@ -54,19 +84,20 @@ export default function PreviewPanel({
   }, [previewUrl, jobId, token, apiBase, retryTick]);
 
   useEffect(() => {
-    if (!jobId || !token || !apiBase || !remotePreviewUrl) return undefined;
-    const wsBase = apiBase.replace(/^http/i, 'ws');
+    if (!jobId || !token || !apiBase || !resolvedRemoteUrl) return undefined;
+    const wsBase = wsBaseFromApiBase(apiBase);
     const ws = new WebSocket(`${wsBase}/ws/jobs/${jobId}/preview-watch?token=${encodeURIComponent(token)}`);
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data || '{}');
-        if (data?.type === 'files_changed' && Array.isArray(data.files) && data.files.length && iframeRef.current && remotePreviewUrl) {
-          iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
+        if (data?.type === 'files_changed' && Array.isArray(data.files) && data.files.length && iframeRef.current && resolvedRemoteUrl) {
+          const u = resolvedRemoteUrl.replace(/\/$/, '');
+          iframeRef.current.src = `${u}/?t=${Date.now()}`;
         }
       } catch {}
     };
     return () => { try { ws.close(); } catch {} };
-  }, [jobId, token, apiBase, remotePreviewUrl]);
+  }, [jobId, token, apiBase, resolvedRemoteUrl]);
 
   const statusColor = useRemote
     ? 'var(--state-success)'
@@ -103,13 +134,16 @@ export default function PreviewPanel({
                 type="button"
                 className="pp-preview-btn"
                 onClick={() => {
-                  if (iframeRef.current && remotePreviewUrl) iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
+                  if (iframeRef.current && resolvedRemoteUrl) {
+                    const u = resolvedRemoteUrl.replace(/\/$/, '');
+                    iframeRef.current.src = `${u}/?t=${Date.now()}`;
+                  }
                 }}
                 title="Refresh preview"
               >
                 <RefreshCw size={12} />
               </button>
-              <a href={remotePreviewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
+              <a href={resolvedRemoteUrl || remotePreviewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
                 <ExternalLink size={12} />
               </a>
             </>
@@ -223,7 +257,7 @@ root.render(<App />);`,
         )}
 
         {useRemote && (
-          <iframe ref={iframeRef} className="pp-preview-iframe" src={remotePreviewUrl} title="Live Preview" />
+          <iframe ref={iframeRef} className="pp-preview-iframe" src={resolvedRemoteUrl || remotePreviewUrl} title="Live Preview" />
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (

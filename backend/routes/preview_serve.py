@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 logger = logging.getLogger(__name__)
@@ -184,7 +184,7 @@ async def serve_preview_root(job_id: str):
 
 
 @router.get("/api/jobs/{job_id}/dev-preview")
-async def dev_preview(job_id: str):
+async def dev_preview(job_id: str, request: Request):
     """Return a serve URL for the PreviewPanel iframe.
 
     Called by the frontend PreviewPanel when no remote preview_url is set.
@@ -221,6 +221,16 @@ async def dev_preview(job_id: str):
         or os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
         or ""
     )
+    if not base:
+        # Same-origin and split frontend/API: relative "/api/..." in an iframe src resolves to the
+        # *page* host, not the API. Prefer request base URL (honors X-Forwarded-* on Railway) so
+        # dev-preview returns a URL the iframe can load.
+        try:
+            bu = str(request.base_url)
+            if bu:
+                base = bu.rstrip("/")
+        except Exception:
+            base = ""
     serve_url = f"{base}/api/preview/{job_id}/serve" if base else f"/api/preview/{job_id}/serve"
 
     return {

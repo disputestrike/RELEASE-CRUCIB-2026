@@ -298,6 +298,7 @@ export default function UnifiedWorkspace() {
   // Without this reset, the old job's stage/messages/plan stay visible while the
   // new job loads, making the UI appear frozen or showing stale data.
   const prevJobIdFromUrlRef = useRef(null);
+  const mdOnlyPreviewInjectedRef = useRef('');
   useEffect(() => {
     if (!jobIdFromUrl) return;
     if (prevJobIdFromUrlRef.current === jobIdFromUrl) return;
@@ -329,6 +330,7 @@ export default function UnifiedWorkspace() {
     workspaceAutostartDoneRef.current = false;
     autoPreviewOnceForJobRef.current = null;
     transcriptRebuiltForJobRef.current = null;
+    mdOnlyPreviewInjectedRef.current = '';
   }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
@@ -603,6 +605,53 @@ export default function UnifiedWorkspace() {
       );
       if (cancelled || !Object.keys(patch).length) return;
       setFiles((prev) => ({ ...prev, ...patch }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveJobId, token, API, wsPaths, workspacePullKey]);
+
+  // When the run only produced markdown (e.g. deploy/PUBLISH.md), Sandpack would stay empty; inject a
+  // small reader so Preview shows the doc instead of a white panel.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API || !wsPaths.length) return;
+    const hasPackable = wsPaths.some(
+      (p) =>
+        /\.(jsx?|tsx?|css|json|html?)$/i.test(p) && !/\.md$/i.test(p),
+    );
+    if (hasPackable) return;
+    const mds = wsPaths.filter((p) => /\.md$/i.test(p));
+    if (!mds.length) return;
+    const prefer = mds.find((p) => /(^|\/)PUBLISH\.md$/i.test(p)) || mds[0];
+    const injKey = `${effectiveJobId}|${prefer}|${workspacePullKey}`;
+    if (mdOnlyPreviewInjectedRef.current === injKey) return;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    (async () => {
+      try {
+        const r = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file`, {
+          params: { path: prefer },
+          headers,
+          timeout: 20000,
+        });
+        const text = r.data?.content ?? '';
+        if (cancelled) return;
+        if (typeof btoa === 'undefined') return;
+        const b64 = btoa(unescape(encodeURIComponent(text)));
+        const appCode = `import React, { useMemo } from 'react';
+export default function App() {
+  const body = useMemo(() => {
+    try { return decodeURIComponent(escape(atob('${b64}'))); } catch (e) { return 'Could not decode document.'; }
+  }, []);
+  return (
+    <div style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif', padding: 16, fontSize: 14, lineHeight: 1.5, color: '#e2e8f0', background: '#0f172a', minHeight: '100vh', whiteSpace: 'pre-wrap' }}>{body}</div>
+  );
+}`;
+        mdOnlyPreviewInjectedRef.current = injKey;
+        setFiles((prev) => ({ ...prev, '/src/App.jsx': { code: appCode } }));
+      } catch {
+        /* ignore */
+      }
     })();
     return () => {
       cancelled = true;
