@@ -53,6 +53,8 @@ export default function PreviewPanel({
   jobId = null,
   token = null,
   apiBase = '',
+  /** Drives re-fetch of /dev-preview when the job or workspace on disk changes (e.g. dist/ lands). */
+  jobStatus = null,
 }) {
   const iframeRef = useRef(null);
   const [devServerUrl, setDevServerUrl] = useState(null);
@@ -68,24 +70,73 @@ export default function PreviewPanel({
   );
   const useRemote = Boolean(resolvedRemoteUrl);
 
+  // Single-shot GET never worked: the build often returned 202 (no index.html) once, then dist appears
+  // later. We also must re-run when jobStatus → completed and when filesReadyKey bumps (Sync / steps).
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = null;
+    let attempt = 0;
+    const maxAttempts = 40;
+
     if (previewUrl || !jobId || !token || !apiBase) return undefined;
+
+    const isTerminal = (s) => s === 'failed' || s === 'cancelled' || s === 'blocked';
+
     setIsBootingDevPreview(true);
     setDevPreviewError(null);
-    axios.get(`${apiBase}/jobs/${jobId}/dev-preview`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
+
+    const scheduleRetry = (delayMs) => {
+      if (cancelled) return;
+      if (isTerminal(jobStatus)) return;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        void doFetch();
+      }, delayMs);
+    };
+
+    const doFetch = async () => {
+      if (cancelled) return;
+      try {
+        const res = await axios.get(`${apiBase}/jobs/${encodeURIComponent(jobId)}/dev-preview`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 20000,
+        });
         if (cancelled) return;
-        setDevServerUrl(res.data?.dev_server_url || null);
-      })
-      .catch((err) => {
+        setIsBootingDevPreview(false);
+        const u = res.data?.dev_server_url;
+        if (u) {
+          setDevServerUrl(u);
+          setDevPreviewError(null);
+          return;
+        }
+        setDevServerUrl(null);
+        attempt += 1;
+        if (!isTerminal(jobStatus) && attempt < maxAttempts) {
+          setDevPreviewError(null);
+          scheduleRetry(4000);
+        }
+      } catch (e) {
         if (cancelled) return;
-        const detail = err?.response?.data?.detail || err?.message || 'Unable to start live preview';
-        setDevPreviewError(String(detail));
-      })
-      .finally(() => { if (!cancelled) setIsBootingDevPreview(false); });
-    return () => { cancelled = true; };
-  }, [previewUrl, jobId, token, apiBase, retryTick]);
+        setIsBootingDevPreview(false);
+        setDevServerUrl(null);
+        attempt += 1;
+        if (!isTerminal(jobStatus) && attempt < maxAttempts) {
+          setDevPreviewError(null);
+          scheduleRetry(4000);
+        } else {
+          const detail = e?.response?.data?.detail || e?.message || 'Unable to start live preview';
+          setDevPreviewError(String(detail));
+        }
+      }
+    };
+
+    void doFetch();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [previewUrl, jobId, token, apiBase, retryTick, filesReadyKey, jobStatus]);
 
   useEffect(() => {
     if (!jobId || !token || !apiBase || !resolvedRemoteUrl) return undefined;

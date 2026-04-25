@@ -1883,6 +1883,7 @@ export default function App() {
                     jobId={effectiveJobId}
                     token={token}
                     apiBase={API}
+                    jobStatus={job?.status}
                   />
                 )}
                 {activePane === 'timeline' && (
