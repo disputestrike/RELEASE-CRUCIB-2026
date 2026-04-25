@@ -15,7 +15,7 @@
 | **3** | `PREVIEW-DATA` | E3 | Ensure `PreviewPanel` receives `jobId` / `token` / `apiBase` so `dev-preview` + preview WS can run | **Done** (this train) |
 | **4** | `WORKSPACE-PULL` | E4 | `workspacePullKey` on `dag_node_completed` (existing) **+** `step_started` / `file_write*` / `workspace_files_updated` (shipped) | **Done** (frontend) **+** verify orchestrator writes on host |
 | **5** | `FAILURE-UX` | E5 | `useJobStream`: immediate `GET /jobs/:id` on SSE **`job_failed`**; workspace failure callout + one refresh; pane refresh (existing) | **Done** (frontend) **+** operator E2E |
-| **6** | `SERVER-CHAT-LOG` | E6 (optional) | DB-backed or job-scoped message log — **not** in this train | **Backlog** |
+| **6** | `SERVER-CHAT-LOG` | E6 | `POST /api/jobs/{id}/transcript` persists user lines as `workspace_transcript` events; workspace rehydrates from `GET /events` before `brain_guidance` mapping | **Done** |
 
 ---
 
@@ -28,6 +28,7 @@
 | C-E3 | Activity hidden during run | Feed was `stage === 'input'` only | Condition `stage === 'input' \|\| effectiveJobId` |
 | C-E4 | Preview URL not loading | `dev-preview` never called without `jobId` on panel | `PreviewPanel` props from `UnifiedWorkspace` |
 | C-E5 | Dual brain (Dashboard `/ai/chat` vs job) | **Advisory** note on Home chat + link to Workspace (minimal) | `Dashboard.jsx` + `Dashboard.css` |
+| C-E6 | No server chat log per job | User lines → `workspace_transcript`; reload/switch rehydrates users; assistant from `brain_guidance` (existing) | `jobs.py` `POST .../transcript`, `UnifiedWorkspace.jsx` |
 
 ---
 
@@ -41,6 +42,7 @@
 | **Claude Code** | One CWD mental model | Single `effectiveJobId`; job switch reset preserved |
 | **Goose** | Honest connectors | No stub changes in this train |
 | **Manus (checklist)** | DAG + recovery visible | Activity feed + timeline details; failure panes unchanged |
+| **Manus / Codex** | Durable run transcript | User turns durable via job events; assistant from orchestrator events |
 
 ---
 
@@ -52,6 +54,7 @@
 - [x] `formatEvent` covers `dag_node_*`, `brain_guidance` (short), steering, job lifecycle.
 - [x] Live strip shows for non-terminal jobs when events exist.
 - [x] `PreviewPanel` receives `jobId`, `token`, `apiBase`.
+- [x] E6: user workspace lines POST to `/api/jobs/{id}/transcript` and rehydrate from `/events` when present.
 - [ ] Railway: succeed + fail job — confirm `GET /jobs/:id` has preview fields and `dev-preview` returns URL (operator).
 - [ ] E2E: failed job — failure panel + `latestFailure` visible after refresh (operator).
 
@@ -67,6 +70,8 @@
 | `frontend/src/hooks/useJobStream.js` | `job_failed` → same job row fetch as completed (latestFailure) |
 | `frontend/src/pages/AutoRunnerPage.css` | Failure callout in composer |
 | `frontend/src/pages/Dashboard.jsx` + `Dashboard.css` | Advisory channel hint (C-E5) |
+| `backend/routes/jobs.py` | `POST /{job_id}/transcript` → `workspace_transcript` job event |
+| `frontend/src/pages/UnifiedWorkspace.jsx` (E6) | `persistUserTranscriptLine`, `userTranscriptLinesFromEvents`, rehydration effect |
 
 ---
 
@@ -75,7 +80,8 @@
 - **Build:** `cd frontend && npm run build` must pass.
 - **Manual:** Start build from `/app/workspace` without prior `taskId` → URL gains `taskId` + `jobId`; sidebar entry links back with both.
 - **Manual:** During `running`, “Behind the scenes” shows live strip with step/DAG lines without opening “Timeline & steps”.
+- **Manual (E6):** Send a user message with a job active → refresh page → user line returns from events (plus brain lines when present).
 
 ---
 
-*Update the **Status** column in §1 when phases 4–6 close; add commit SHAs to §5 as needed.*
+**Program status:** Phases **0–6** implemented in repo; **operator-only** gates remain in §4 (Railway / E2E smoke).

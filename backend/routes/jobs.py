@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from ..services.job_service import (
@@ -27,7 +28,7 @@ from ..services.job_event_service import (
     get_job_steps_service,
     get_job_events_service,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from ..deps import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,13 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 class BenchmarkRunRequest(BaseModel):
     goal: str
     secret: str
+
+
+class TranscriptAppend(BaseModel):
+    """Durable workspace chat line (UnifiedWorkspace) stored as a job event."""
+
+    role: Literal["user", "assistant"] = "user"
+    body: str = Field(..., min_length=1, max_length=32000)
 
 @router.post("/benchmark/run")
 async def run_benchmark_job_fallback(
@@ -299,6 +307,47 @@ async def get_job_events(
     except Exception as e:
         logger.exception("GET /api/jobs/%s/events error", job_id)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/transcript")
+async def append_job_transcript(
+    job_id: str,
+    body: TranscriptAppend,
+    user: dict = Depends(_get_auth()),
+):
+    """Append a user (or assistant) line to the durable job event log (E6)."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        pool = await _get_pool()
+        if pool is not None:
+            rs.set_pool(pool)
+        rec = await rs.append_job_event(
+            job_id,
+            "workspace_transcript",
+            {
+                "role": body.role,
+                "text": body.body,
+                "ts": time.time(),
+                "source": "unified_workspace",
+            },
+        )
+        try:
+            from ..orchestration.event_bus import publish
+
+            await publish(
+                job_id,
+                "workspace_transcript",
+                {"role": body.role, "text": body.body},
+            )
+        except Exception:
+            pass
+        return {"success": True, "event": rec}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("POST /api/jobs/%s/transcript error", job_id)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{job_id}/stream")

@@ -76,6 +76,38 @@ function formatCoachReply(guidance) {
   return lines.join('\n\n').trim();
 }
 
+/** E6: map persisted `workspace_transcript` (user) events → chat rows (assistant uses brain_guidance separately). */
+function userTranscriptLinesFromEvents(events, jobId) {
+  if (!Array.isArray(events) || !jobId) return [];
+  const rows = [];
+  for (const ev of events) {
+    const t = ev?.type || ev?.event_type;
+    if (t !== 'workspace_transcript') continue;
+    const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
+    if (p.role && p.role !== 'user') continue;
+    const text = String(p.text || p.body || '').trim();
+    if (!text) continue;
+    const created = ev.created_at;
+    let ts = Date.now();
+    if (typeof created === 'number') {
+      ts = created < 1e12 ? created * 1000 : created;
+    } else if (created) {
+      const d = new Date(created);
+      if (!Number.isNaN(d.getTime())) ts = d.getTime();
+    }
+    rows.push({
+      id: ev.id || `wt_${rows.length}_${ts}`,
+      body: text,
+      role: 'user',
+      jobId,
+      pendingBind: false,
+      ts,
+    });
+  }
+  rows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return rows;
+}
+
 export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -94,6 +126,8 @@ export default function UnifiedWorkspace() {
   const workspaceAutostartDoneRef = useRef(false);
   /** Open Preview once per job when a run is in motion (does not fight tab changes on re-render). */
   const autoPreviewOnceForJobRef = useRef(null);
+  /** E6: one-shot rehydrate of user lines from `workspace_transcript` after GET /events. */
+  const transcriptRebuiltForJobRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -294,6 +328,7 @@ export default function UnifiedWorkspace() {
     // Reset autostart guards so the new job can trigger its own autostart if needed
     workspaceAutostartDoneRef.current = false;
     autoPreviewOnceForJobRef.current = null;
+    transcriptRebuiltForJobRef.current = null;
   }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
 
@@ -316,6 +351,11 @@ export default function UnifiedWorkspace() {
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
   const effectiveJobId = jobIdFromUrl || jobId;
+
+  useEffect(() => {
+    transcriptRebuiltForJobRef.current = null;
+  }, [effectiveJobId]);
+
   const { job, latestFailure, milestoneBatch, repairQueueLen, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
     effectiveJobId,
     token,
@@ -323,21 +363,43 @@ export default function UnifiedWorkspace() {
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
-  const appendUserChat = useCallback((body) => {
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const jidAt = jobId || jobIdFromUrl || null;
-    // Dedup: if the very last user message has the same body+jobId, skip —
-    // this eliminates the duplicate-initial-prompt bug on first run.
-    setUserChatMessages((prev) => {
-      const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
-      const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
-      if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
-      return [...prev, msg];
-    });
-  }, [jobId, jobIdFromUrl]);
+  const persistUserTranscriptLine = useCallback(
+    (body) => {
+      const t = (body || '').trim();
+      if (!t || !token || !API) return;
+      const jid = jobId || jobIdFromUrl;
+      if (!jid) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      void axios
+        .post(
+          `${API}/jobs/${encodeURIComponent(jid)}/transcript`,
+          { role: 'user', body: t },
+          { headers, timeout: 15000 },
+        )
+        .catch(() => {});
+    },
+    [token, API, jobId, jobIdFromUrl],
+  );
+
+  const appendUserChat = useCallback(
+    (body) => {
+      const id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const jidAt = jobId || jobIdFromUrl || null;
+      // Dedup: if the very last user message has the same body+jobId, skip —
+      // this eliminates the duplicate-initial-prompt bug on first run.
+      setUserChatMessages((prev) => {
+        const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
+        const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+        if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
+        persistUserTranscriptLine(body);
+        return [...prev, msg];
+      });
+    },
+    [jobId, jobIdFromUrl, persistUserTranscriptLine],
+  );
 
   const clearBuildError = useCallback(() => {
     setError(null);
@@ -632,6 +694,30 @@ export default function UnifiedWorkspace() {
     const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 450);
     return () => clearTimeout(id);
   }, [events]);
+
+  // E6: rehydrate user lines from `workspace_transcript` before brain_guidance adds assistant text.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API) return;
+    if (transcriptRebuiltForJobRef.current === effectiveJobId) return;
+    const hasT = events.some((e) => (e?.type || e?.event_type) === 'workspace_transcript');
+    if (!hasT) return;
+    const users = userTranscriptLinesFromEvents(events, effectiveJobId);
+    setUserChatMessages((prev) => {
+      if (prev.length > 0) {
+        const onlyHydrate = prev.every((m) => String(m.id || '').startsWith('hydrate-'));
+        if (!onlyHydrate) {
+          transcriptRebuiltForJobRef.current = effectiveJobId;
+          return prev;
+        }
+      }
+      if (users.length === 0) {
+        transcriptRebuiltForJobRef.current = effectiveJobId;
+        return prev;
+      }
+      transcriptRebuiltForJobRef.current = effectiveJobId;
+      return users;
+    });
+  }, [API, events, effectiveJobId, token]);
 
   // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
   // PERSISTENCE FIX: Process ALL brain_guidance events (not just the last) so that
@@ -1153,6 +1239,7 @@ export default function UnifiedWorkspace() {
     clearBuildError();
     setUserChatMessages([]);
     setFailedStep(null);
+    transcriptRebuiltForJobRef.current = null;
     setActiveWsPath('');
     setWsPaths([]);
     setWsFileCache((prev) => {
