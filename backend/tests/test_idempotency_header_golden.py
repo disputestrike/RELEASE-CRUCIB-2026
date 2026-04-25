@@ -6,7 +6,7 @@ from starlette.requests import Request
 
 @pytest.mark.golden
 def test_idempotency_key_from_request_reads_header():
-    from server import _idempotency_key_from_request
+    from backend.server import _idempotency_key_from_request
 
     scope = {
         "type": "http",
@@ -28,7 +28,7 @@ def test_idempotency_key_from_request_reads_header():
 
 @pytest.mark.golden
 def test_idempotency_key_from_request_x_prefixed():
-    from server import _idempotency_key_from_request
+    from backend.server import _idempotency_key_from_request
 
     scope = {
         "type": "http",
@@ -50,7 +50,7 @@ def test_idempotency_key_from_request_x_prefixed():
 
 @pytest.mark.golden
 def test_idempotency_key_rejects_oversized():
-    from server import _idempotency_key_from_request
+    from backend.server import _idempotency_key_from_request
 
     big = "x" * 300
     scope = {

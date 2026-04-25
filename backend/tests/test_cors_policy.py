@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import server
+from backend import server
 
 
 def test_cors_wildcard_not_used_with_credentials_enabled():

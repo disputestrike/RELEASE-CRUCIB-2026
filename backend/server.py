@@ -1613,9 +1613,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Introspection for tests and ops (CORS is configured in middleware only otherwise).
+CORS_ALLOW_ORIGINS: List[str] = [
+    o
+    for o in [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:8000",
@@ -1623,8 +1624,16 @@ app.add_middleware(
         "https://www.crucib.ai",
         "https://crucib.ai",
         FRONTEND_URL,
-    ],
-    allow_credentials=True,
+    ]
+    if o and str(o).strip()
+]
+cors_origins: List[str] = CORS_ALLOW_ORIGINS
+cors_allow_credentials: bool = True
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

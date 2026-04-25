@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from orchestration.repair_loop import is_enabled, run_repair_loop
+from backend.orchestration.repair_loop import is_enabled, run_repair_loop
 
 
 def _run(coro):

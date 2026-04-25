@@ -36,6 +36,10 @@ _TEST_TEMP_ROOT = _REPO_ROOT / ".tmp_pytest_manual"
 _TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 
+# Import `backend.*` like production; required before test modules that import `server` top-level.
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 
 class _RepoTemporaryDirectory:
     """Windows/OneDrive-safe replacement for tempfile.TemporaryDirectory in tests."""
@@ -370,18 +374,17 @@ async def app_client():
     """Per-test AsyncClient + asyncpg pool on the same event loop (required on Windows + httpx)."""
     import sys
 
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    import server as server_module
-    from db_pg import close_pg_pool, get_db
+    from backend import server as server_module
+    from backend.db_pg import close_pg_pool, get_db
     from httpx import ASGITransport, AsyncClient
-    from server import app
+    from backend.server import app
 
     await close_pg_pool()
     server_module.db = None
     try:
         server_module.db = await get_db()
         try:
-            from utils.audit_log import AuditLogger as DbAuditLogger
+            from backend.utils.audit_log import AuditLogger as DbAuditLogger
 
             server_module.audit_logger = DbAuditLogger(server_module.db)
         except Exception:
@@ -390,7 +393,7 @@ async def app_client():
         if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
             server_module.db = _FakeDb()
             try:
-                from utils.audit_log import AuditLogger as DbAuditLogger
+                from backend.utils.audit_log import AuditLogger as DbAuditLogger
 
                 server_module.audit_logger = DbAuditLogger(server_module.db)
             except Exception:
@@ -403,7 +406,7 @@ async def app_client():
 
     # Sync deps module so extracted route modules (routes/auth.py etc.) also see the db
     try:
-        import deps as _deps
+        import backend.deps as _deps
 
         _deps.init(db=server_module.db, audit_logger=server_module.audit_logger)
     except Exception:
@@ -419,7 +422,7 @@ async def app_client():
     await close_pg_pool()
     server_module.db = None
     try:
-        import deps as _deps
+        import backend.deps as _deps
 
         _deps.init(db=None, audit_logger=None)
     except Exception:
@@ -445,8 +448,9 @@ async def register_and_get_headers(app_client):
     assert "token" in data
     user_id = data.get("user", {}).get("id")
     if user_id:
-        from server import db
+        from backend import server as _server_mod
 
+        db = _server_mod.db
         await db.users.update_one(
             {"id": user_id},
             {"$set": {"credit_balance": TEST_USER_CREDITS, "plan": "pro"}},

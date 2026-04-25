@@ -6,12 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-# Stub dependencies to prevent import errors during test collection
+# Stub optional DAG/router modules for this file only (do not replace real `orchestration` package
+# in sys.modules — that breaks other tests' imports during collection).
 sys.modules["agent_dag"] = MagicMock()
 sys.modules["llm_router"] = MagicMock()
 sys.modules["backend.llm_router"] = MagicMock()
-sys.modules["orchestration"] = MagicMock()
-sys.modules["backend.orchestration"] = MagicMock()
 
 from backend.server import app
 

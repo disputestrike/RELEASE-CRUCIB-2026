@@ -15,7 +15,7 @@ async def test_run_single_agent_with_context_returns_completed_result_for_planne
     monkeypatch.setenv("CRUCIBAI_DEV", "1")
     monkeypatch.setenv("JWT_SECRET", "test-secret")
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/test")
-    import server
+    from backend import server
 
     monkeypatch.setattr(server, "REAL_AGENT_NAMES", set())
     monkeypatch.setattr(

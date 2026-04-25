@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 def _install_published_job(
     monkeypatch, workspace_root, *, job_id: str = "job-preview-123"
 ):
-    import server
+    from backend import server
     from orchestration import runtime_state
 
     project_id = "project-preview-123"
@@ -50,7 +50,7 @@ def workspace_root():
 def test_published_route_rewrites_assets_and_serves_job_bundle(
     monkeypatch, workspace_root
 ):
-    import server
+    from backend import server
 
     root, job_id = _install_published_job(monkeypatch, workspace_root)
     (root / "dist" / "index.html").write_text(
@@ -73,7 +73,7 @@ def test_published_route_rewrites_assets_and_serves_job_bundle(
 
 
 def test_published_route_missing_asset_returns_404(monkeypatch, workspace_root):
-    import server
+    from backend import server
 
     root, job_id = _install_published_job(
         monkeypatch, workspace_root, job_id="job-missing-123"
@@ -89,7 +89,7 @@ def test_published_route_missing_asset_returns_404(monkeypatch, workspace_root):
 
 
 def test_enrich_job_public_urls_sets_preview_and_deploy(monkeypatch, workspace_root):
-    import server
+    from backend import server
 
     monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com")
     monkeypatch.setattr(server, "WORKSPACE_ROOT", workspace_root)

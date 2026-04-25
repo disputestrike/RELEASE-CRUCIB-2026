@@ -44,7 +44,7 @@ def _app_for(module_name: str, attr: str = "router") -> FastAPI:
 
     # Override auth deps so tests do not need a real token.
     try:
-        from server import get_current_user  # type: ignore
+        from backend.deps import get_current_user  # type: ignore
         app.dependency_overrides[get_current_user] = lambda: {"id": "test-user"}
     except Exception:
         pass

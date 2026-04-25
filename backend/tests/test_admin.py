@@ -10,7 +10,10 @@ async def register_admin_and_get_headers(app_client):
     """Register a user, grant admin_role in DB, return auth headers."""
     import uuid
 
-    from server import db
+    from backend import server as _srv
+
+    db = _srv.db
+    assert db is not None
 
     email = f"admin-{uuid.uuid4().hex[:12]}@example.com"
     r = await app_client.post(

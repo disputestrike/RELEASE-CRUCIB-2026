@@ -34,7 +34,7 @@ def _app_for(module_name: str, attr: str = "router") -> FastAPI:
     app.include_router(router)
 
     try:
-        from server import get_current_user  # type: ignore
+        from backend.deps import get_current_user  # type: ignore
         app.dependency_overrides[get_current_user] = lambda: {"id": "perf-test-user"}
     except Exception:
         pass

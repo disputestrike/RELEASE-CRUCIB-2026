@@ -7,8 +7,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from routes.trust import create_trust_router
-from services.proof_manifest import (
+from backend.routes.trust import create_trust_router
+from backend.services.proof_manifest import (
     build_replay_plan,
     build_signed_manifest_for_directory,
     sign_manifest,
