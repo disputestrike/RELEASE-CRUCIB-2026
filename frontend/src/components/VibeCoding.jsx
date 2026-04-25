@@ -64,7 +64,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
   const transcribeAudio = async (blob) => {
     try {
       const formData = new FormData();
-      formData.append('file', blob, 'audio.webm');
+      formData.append('audio', blob, 'audio.webm');
 
       const response = await axios.post(`${API}/voice/transcribe`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -86,13 +86,12 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
    */
   const analyzeVibe = async (text) => {
     try {
-      const response = await axios.post(`${API}/ai/analyze`, {
-        content: text,
-        type: 'vibe',
+      const response = await axios.post(`${API}/vibecoding/analyze`, {
+        text: text,
       });
 
-      setVibeAnalysis(response.data.analysis);
-      setSuggestions(response.data.suggestions || []);
+    setVibeAnalysis(response.data.vibe);
+    setSuggestions(response.data.vibe?.suggestions || []);
     } catch (error) {
       console.error('Vibe analysis failed:', error);
     }
@@ -149,7 +148,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             disabled={isLoading}
             className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all ${
               isRecording
-                ? 'bg-red-500 text-[#1A1A1A]'
+                ? 'bg-gray-200 text-gray-900 animate-pulse'
                 : 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A]'
             } disabled:opacity-50`}
             title={isRecording ? 'Stop recording' : 'Start recording'}

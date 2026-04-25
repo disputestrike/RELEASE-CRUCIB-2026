@@ -159,10 +159,20 @@ export default function WhatIfPage() {
             </div>
             <div className="whatif-reco-confidence">
               Confidence: <strong>{Math.round((recommendation.confidence || 0) * 100)}%</strong>
+              {recommendation.evidence_quality && (
+                <span className="ml-2 text-xs opacity-70">
+                  (Evidence: {recommendation.evidence_quality})
+                </span>
+              )}
             </div>
           </div>
           <div className="whatif-reco-title">Recommended action</div>
           <p className="whatif-reco-text">{recommendation.recommended_action}</p>
+          {recommendation.uncertainty && (
+            <div className="mb-3 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800">
+              <strong>Uncertainty:</strong> {recommendation.uncertainty}
+            </div>
+          )}
           {Array.isArray(recommendation.tradeoffs) && recommendation.tradeoffs.length > 0 && (
             <div className="whatif-reco-tradeoffs">
               <div className="whatif-reco-tradeoffs-label">Key arguments</div>

@@ -23,8 +23,8 @@
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
-  color: #4f46e5;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #10b981;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -86,8 +86,8 @@
 }
 .whatif-textarea:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
 
 .whatif-presets {
@@ -110,12 +110,12 @@
   transition: background 120ms ease, border-color 120ms ease;
 }
 .whatif-preset:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  color: #3730a3;
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #065f46;
 }
 .whatif-preset svg {
-  color: #6366f1;
+  color: #10b981;
 }
 
 .whatif-controls {
@@ -135,14 +135,14 @@
 }
 .whatif-control em {
   margin-left: auto;
-  color: #4f46e5;
+  color: #10b981;
   font-style: normal;
   font-weight: 600;
   font-size: 12px;
 }
 .whatif-control input[type="range"] {
   width: 100%;
-  accent-color: #4f46e5;
+  accent-color: #10b981;
 }
 
 .whatif-priors {
@@ -176,13 +176,13 @@
 }
 .whatif-prior-row input[type="range"] {
   width: 100%;
-  accent-color: #4f46e5;
+  accent-color: #10b981;
 }
 .whatif-prior-row em {
   text-align: right;
   font-style: normal;
   font-weight: 600;
-  color: #4f46e5;
+  color: #10b981;
 }
 
 .whatif-actions {
@@ -413,8 +413,8 @@
   color: var(--theme-muted, #71717a);
 }
 [data-theme='dark'] .whatif-textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
 }
 [data-theme='dark'] .whatif-card-head h2 {
   color: var(--theme-text, #e4e4e7);
@@ -434,9 +434,9 @@
   color: var(--theme-text, #e4e4e7);
 }
 [data-theme='dark'] .whatif-preset:hover {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: #6366f1;
-  color: #a5b4fc;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #a7f3d0;
 }
 [data-theme='dark'] .whatif-priors {
   background: var(--theme-surface, #18181b);
@@ -494,7 +494,7 @@
   color: #f87171;
 }
 [data-theme='dark'] .whatif-run {
-  background: #4f46e5;
+  background: #10b981;
   color: #fff;
 }
 [data-theme='dark'] .whatif-run:hover:not(:disabled) {

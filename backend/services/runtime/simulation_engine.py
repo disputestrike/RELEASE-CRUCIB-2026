@@ -115,8 +115,15 @@ class SimulationEngine:
         is_geopolitical = any(w in s_lower for w in ["war", "sanction", "iran", "china", "russia", "nato", "military", "nuclear", "conflict", "election", "president", "government", "policy", "ban", "tiktok"])
         is_economic = any(w in s_lower for w in ["price", "cost", "market", "stock", "inflation", "recession", "gdp", "trade", "tariff", "revenue", "profit", "budget"])
         is_tech = any(w in s_lower for w in ["ai", "software", "app", "api", "cloud", "saas", "deploy", "migrate", "stack", "platform", "framework"])
+        is_sports = any(w in s_lower for w in ["world cup", "football", "soccer", "brazil", "win", "match", "tournament", "squad", "fixtures", "injuries", "odds"])
 
-        if is_geopolitical:
+        if is_sports:
+            pos_a = f"Citing missing evidence for {scenario_label}: current state is unpredictable"
+            pos_b = f"Simulating {scenario_label} based on historical performance and fan sentiment"
+            pos_neutral = f"Rejecting {scenario_label} as a valid business decision; switch to Forecast Mode"
+            args_a = ["missing current squad/injury data", "betting markets are volatile", "bracket path is unknown"]
+            args_b = ["historical dominance in tournament", "strong youth talent pipeline", "high momentum from qualifiers"]
+        elif is_geopolitical:
             pos_a = f"Cautious de-escalation path: monitor {scenario_label} before committing resources"
             pos_b = f"Proactive response to {scenario_label} with defined exit criteria"
             pos_neutral = f"Insufficient intelligence on {scenario_label}; delay major decisions"
@@ -226,11 +233,18 @@ class SimulationEngine:
                 break
 
         dominant = max(last_clusters, key=lambda c: c.get("size") or 0) if last_clusters else None
+        
+        # Grounding and calibration
+        s_lower = (scenario or "").lower()
+        is_sports = any(w in s_lower for w in ["world cup", "football", "soccer", "brazil", "win", "match", "tournament", "squad", "fixtures", "injuries", "odds"])
+        
         recommendation = {
             "recommended_action": (dominant or {}).get("position") or "Collect more evidence before decision",
             "confidence": round((dominant or {}).get("confidence") or 0.5, 2),
             "tradeoffs": (dominant or {}).get("key_arguments") or [],
             "cluster_id": (dominant or {}).get("id"),
+            "evidence_quality": "Weak (Missing real-time data)" if is_sports else "Medium (Based on historical trends)",
+            "uncertainty": "Scenario lacks structured evidence: current squad, injuries, and betting odds are missing." if is_sports else None
         }
 
         return {
