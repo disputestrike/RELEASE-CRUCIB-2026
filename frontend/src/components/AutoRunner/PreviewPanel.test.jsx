@@ -53,11 +53,11 @@ describe('PreviewPanel', () => {
     expect(screen.queryByTestId('sandpack-provider')).not.toBeInTheDocument();
   });
 
-  test('shows idle hint when status ready but sandpackFiles empty and no previewUrl', () => {
+  test('shows ready fallback when status ready but sandpackFiles empty and no previewUrl', () => {
     render(
       <PreviewPanel previewUrl={null} status="ready" sandpackFiles={{}} sandpackDeps={{}} filesReadyKey="t3" />,
     );
-    expect(screen.getByText(/When your UI files are in the workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Build complete! Add your UI files below|use Sync to pull generated code/i)).toBeInTheDocument();
   });
 
   test('shows building shimmer when status building and no sandpack yet', () => {

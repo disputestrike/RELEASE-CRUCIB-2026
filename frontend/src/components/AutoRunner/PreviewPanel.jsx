@@ -62,7 +62,11 @@ export default function PreviewPanel({
 
   const hasSandpack = sandpackFiles && Object.keys(sandpackFiles).length > 0;
   const remotePreviewUrl = useMemo(() => previewUrl || devServerUrl || null, [previewUrl, devServerUrl]);
-  const useRemote = Boolean(remotePreviewUrl);
+  const resolvedRemoteUrl = useMemo(
+    () => resolveAgentPreviewUrl(remotePreviewUrl, apiBase),
+    [remotePreviewUrl, apiBase],
+  );
+  const useRemote = Boolean(resolvedRemoteUrl);
 
   useEffect(() => {
     let cancelled = false;
