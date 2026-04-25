@@ -315,6 +315,54 @@
   color: var(--text-secondary);
 }
 
+.uw-failure-callout {
+  width: 100%;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
+  margin: 0 auto 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--state-error, #ef4444) 10%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--state-error, #ef4444) 28%, transparent);
+}
+
+.uw-failure-callout-text {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.uw-failure-callout-text strong {
+  font-weight: 650;
+}
+
+.uw-failure-callout-detail {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.uw-failure-callout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.uw-failure-callout-dismiss {
+  opacity: 0.85;
+}
+
 .arp-right-context-line {
   flex-shrink: 0;
   padding: 6px 12px 8px 40px;

@@ -13,8 +13,8 @@
 | **1** | `TASK-JOB-SPINE` | E1 | Single run identity: `jobId` in URL + task store as soon as plan returns; new runs without `taskId` get a task row + `?taskId=` | **Done** (this train) |
 | **2** | `ACTIVITY-FEED` | E2 | Event surface beyond `brain_guidance`: activity feed visible during **run**, mapped event types, live strip | **Done** (this train) |
 | **3** | `PREVIEW-DATA` | E3 | Ensure `PreviewPanel` receives `jobId` / `token` / `apiBase` so `dev-preview` + preview WS can run | **Done** (this train) |
-| **4** | `WORKSPACE-PULL` | E4 | Existing `workspacePullKey` + step/dag hooks — monitor; server must write files (orchestrator host) | **Verify in env** |
-| **5** | `FAILURE-UX` | E5 | `latestFailure` + `FailureDrawer` + refresh on pane — no UI clearing of failure DTO | **Verify E2E** |
+| **4** | `WORKSPACE-PULL` | E4 | `workspacePullKey` on `dag_node_completed` (existing) **+** `step_started` / `file_write*` / `workspace_files_updated` (shipped) | **Done** (frontend) **+** verify orchestrator writes on host |
+| **5** | `FAILURE-UX` | E5 | `useJobStream`: immediate `GET /jobs/:id` on SSE **`job_failed`**; workspace failure callout + one refresh; pane refresh (existing) | **Done** (frontend) **+** operator E2E |
 | **6** | `SERVER-CHAT-LOG` | E6 (optional) | DB-backed or job-scoped message log — **not** in this train | **Backlog** |
 
 ---
@@ -27,7 +27,7 @@
 | C-E2 | Only `brain_guidance` in chat | Activity feed + `formatEvent` for DAG / step / brain headline | `WorkspaceActivityFeed.jsx` |
 | C-E3 | Activity hidden during run | Feed was `stage === 'input'` only | Condition `stage === 'input' \|\| effectiveJobId` |
 | C-E4 | Preview URL not loading | `dev-preview` never called without `jobId` on panel | `PreviewPanel` props from `UnifiedWorkspace` |
-| C-E5 | Dual brain (Dashboard `/ai/chat` vs job) | Not merged in this train — **label/unify** optional | Backlog (do not touch dashboard without scope) |
+| C-E5 | Dual brain (Dashboard `/ai/chat` vs job) | **Advisory** note on Home chat + link to Workspace (minimal) | `Dashboard.jsx` + `Dashboard.css` |
 
 ---
 
@@ -64,6 +64,9 @@
 | `frontend/src/pages/UnifiedWorkspace.jsx` | Task/job URL sync after plan; show activity feed for active job; pass preview auth props |
 | `frontend/src/components/AutoRunner/WorkspaceActivityFeed.jsx` | Richer `formatEvent`; live strip; larger event buffer |
 | `frontend/src/components/AutoRunner/WorkspaceActivityFeed.css` | Styles for live strip |
+| `frontend/src/hooks/useJobStream.js` | `job_failed` → same job row fetch as completed (latestFailure) |
+| `frontend/src/pages/AutoRunnerPage.css` | Failure callout in composer |
+| `frontend/src/pages/Dashboard.jsx` + `Dashboard.css` | Advisory channel hint (C-E5) |
 
 ---
 

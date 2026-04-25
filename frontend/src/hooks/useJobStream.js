@@ -83,7 +83,7 @@ function handleStreamPayload(data, jobId, token, setters) {
     fetchJobState();
   }
 
-  if (data.type === 'job_started' || data.type === 'job_completed') {
+  if (data.type === 'job_started' || data.type === 'job_completed' || data.type === 'job_failed') {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
       .get(`${API_BASE}/jobs/${jobId}`, { headers })

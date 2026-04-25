@@ -1233,6 +1233,10 @@ const Dashboard = () => {
         {hasChat && (
           <div className="dashboard-chat-shell">
             <div className="dashboard-chat-inner">
+              <p className="dashboard-chat-channel-hint" role="note">
+                Advisory chat (session-based). For a live run with job stream, proof, and code room, open{' '}
+                <Link to="/app/workspace">Workspace</Link>.
+              </p>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
               {chatMessages.map((msg, i) => {
                 const userAskedCode = msg.role === 'assistant' && userRequestedCodeBlock(lastUserContentBeforeIndex(chatMessages, i));

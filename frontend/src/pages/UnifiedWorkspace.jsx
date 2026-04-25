@@ -186,6 +186,8 @@ export default function UnifiedWorkspace() {
   const [userChatMessages, setUserChatMessages] = useState([]);
   const [activePane, setActivePane] = useState(() => sanitizePane(searchParams.get('panel')));
   const [failedStep, setFailedStep] = useState(null);
+  const [failureCalloutDismissed, setFailureCalloutDismissed] = useState(false);
+  const failureRefreshOnceRef = useRef(null);
   useEffect(() => {
     if (!API) return;
     axios
@@ -279,6 +281,8 @@ export default function UnifiedWorkspace() {
     setErrorRaw(null);
     setUserChatMessages([]);
     setFailedStep(null);
+    setFailureCalloutDismissed(false);
+    failureRefreshOnceRef.current = null;
     setActiveWsPath('');
     setWsPaths([]);
     setWsFileCache((prev) => {
@@ -616,6 +620,16 @@ export default function UnifiedWorkspace() {
     const t = last?.type || last?.event_type;
     if (t !== 'dag_node_completed') return undefined;
     const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 600);
+    return () => clearTimeout(id);
+  }, [events]);
+
+  // E4: pull file list when steps start or files are written (orchestrator may have new paths)
+  useEffect(() => {
+    if (!events.length) return;
+    const last = events[events.length - 1];
+    const t = last?.type || last?.event_type;
+    if (!['step_started', 'file_written', 'file_write', 'workspace_files_updated'].includes(t)) return undefined;
+    const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 450);
     return () => clearTimeout(id);
   }, [events]);
 
@@ -1225,6 +1239,29 @@ export default function UnifiedWorkspace() {
 
   const failureStep = failedStep || latestFailedStep;
 
+  useEffect(() => {
+    if (job?.status !== 'failed' || !effectiveJobId) return;
+    if (failureRefreshOnceRef.current === effectiveJobId) return;
+    failureRefreshOnceRef.current = effectiveJobId;
+    try {
+      refresh?.();
+    } catch (_) {
+      /* ignore */
+    }
+  }, [job?.status, effectiveJobId, refresh]);
+
+  const showFailureCallout = useMemo(() => {
+    if (job?.status !== 'failed' || failureCalloutDismissed) return false;
+    if (activePane === 'failure') return false;
+    const hasLatest =
+      latestFailure &&
+      typeof latestFailure === 'object' &&
+      (Boolean(latestFailure.error_message) ||
+        (Array.isArray(latestFailure.issues) && latestFailure.issues.length > 0) ||
+        Boolean(latestFailure.step_key));
+    return Boolean(failureStep || hasLatest);
+  }, [job?.status, failureCalloutDismissed, activePane, failureStep, latestFailure]);
+
   const previewBlockedDetail = useMemo(() => {
     const fromStep = failureStep?.error_message || failureStep?.step_key;
     if (latestFailure && typeof latestFailure === 'object') {
@@ -1410,6 +1447,34 @@ export default function UnifiedWorkspace() {
                 ) : null}
               </div>
             ) : null}
+            {showFailureCallout && (
+              <div className="uw-failure-callout" role="status">
+                <div className="uw-failure-callout-text">
+                  <strong>Run failed</strong>
+                  {previewBlockedDetail ? (
+                    <span className="uw-failure-callout-detail">
+                      {String(previewBlockedDetail).slice(0, 200)}
+                      {String(previewBlockedDetail).length > 200 ? '…' : ''}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="uw-failure-callout-actions">
+                  <button
+                    type="button"
+                    className="arp-topbar-btn"
+                    onClick={() => {
+                      setActivePane('failure');
+                      setRightCollapsed(false);
+                    }}
+                  >
+                    Open Failure
+                  </button>
+                  <button type="button" className="arp-topbar-btn uw-failure-callout-dismiss" onClick={() => setFailureCalloutDismissed(true)}>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             <WorkspaceStatusDock
               jobId={effectiveJobId}
               job={job}

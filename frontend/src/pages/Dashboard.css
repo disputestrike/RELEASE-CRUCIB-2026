@@ -538,6 +538,25 @@
   box-sizing: border-box;
 }
 
+.dashboard-chat-channel-hint {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted, #6b7280);
+  background: color-mix(in srgb, var(--bg-elevated, #f9fafb) 92%, #4f46e5 5%);
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+}
+.dashboard-chat-channel-hint a {
+  font-weight: 600;
+  color: var(--link-color, #4f46e5);
+  text-decoration: none;
+}
+.dashboard-chat-channel-hint a:hover {
+  text-decoration: underline;
+}
+
 .dashboard-chat-inner {
   width: 100%;
   max-width: min(720px, 92vw);
