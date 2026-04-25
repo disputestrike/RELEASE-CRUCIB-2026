@@ -51,17 +51,32 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   });
   const accountMenuRef = React.useRef(null);
   const collapsedAccountRef = React.useRef(null);
+  const collapsedAccountBtnRef = React.useRef(null);
+  const accountMenuDropdownRef = React.useRef(null);
+  const [accountMenuPortaledStyle, setAccountMenuPortaledStyle] = useState(null);
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
 
-  // Close account menu on outside click (expanded footer or collapsed strip)
+  // Close account menu on outside click (expanded footer, collapsed strip, or portaled menu)
   useEffect(() => {
     const close = (e) => {
-      const inside = accountMenuRef.current?.contains(e.target) || collapsedAccountRef.current?.contains(e.target);
+      const inside =
+        accountMenuRef.current?.contains(e.target) ||
+        collapsedAccountRef.current?.contains(e.target) ||
+        accountMenuDropdownRef.current?.contains(e.target);
       if (!inside) setAccountMenuOpen(false);
     };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, []);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setAccountMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [accountMenuOpen]);
 
   useEffect(() => {
     if (/^\/app\/(prompts|learn|patterns)(\/|$)/.test(location.pathname || '')) setLibraryOpen(true);
@@ -334,6 +349,52 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     || (user?.email && !String(user.email).toLowerCase().includes('guest') ? (user.email.split('@')[0] || 'User') : null)
     || 'Guest';
 
+  // Collapsed rail has overflow hidden — the account dropdown was clipped. Portaled to body; position to the right of the avatar.
+  useLayoutEffect(() => {
+    if (!accountMenuOpen || !collapsed) {
+      setAccountMenuPortaledStyle(null);
+      return;
+    }
+    const el = collapsedAccountBtnRef.current;
+    if (!el) {
+      setAccountMenuPortaledStyle(null);
+      return;
+    }
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      const menuGuessW = 240;
+      const m = 8;
+      let left = r.right + m;
+      if (left + menuGuessW > window.innerWidth - m) {
+        left = Math.max(m, r.left - menuGuessW - m);
+      }
+      const maxH = Math.min(window.innerHeight * 0.6, 420);
+      let top = r.top;
+      if (top + maxH > window.innerHeight - m) {
+        top = Math.max(m, window.innerHeight - m - maxH);
+      }
+      top = Math.max(m, Math.min(top, window.innerHeight - m - 120));
+      setAccountMenuPortaledStyle({
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+        zIndex: 10050,
+        maxHeight: 'min(60vh, 420px)',
+        overflowY: 'auto',
+        margin: 0,
+        right: 'auto',
+        bottom: 'auto',
+      });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [accountMenuOpen, collapsed]);
+
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
     const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
@@ -526,6 +587,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         <div className="sidebar-collapsed-bottom">
           <div className="sidebar-collapsed-account-wrap" ref={collapsedAccountRef}>
             <button
+              ref={collapsedAccountBtnRef}
               type="button"
               className={`sidebar-collapsed-icon sidebar-collapsed-account ${accountMenuOpen ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAccountMenuOpen((o) => !o); }}
@@ -535,16 +597,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             >
               <div className="sidebar-collapsed-avatar">{(displayName || 'G').charAt(0).toUpperCase()}</div>
             </button>
-            {accountMenuOpen && (
-              <div className="sidebar-account-menu sidebar-account-menu--dropup" role="menu">
-                <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Settings size={16} /> Settings</Link>
-                <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}><LayoutGrid size={16} /> Engine room</Link>
-                <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Coins size={16} /> Credits & Billing</Link>
-                <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Zap size={16} /> Upgrade plan</Link>
-                <div className="sidebar-account-menu-divider" />
-                <button type="button" className="sidebar-account-menu-logout" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogout?.(); }}><LogOut size={16} /> Log out</button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -757,6 +809,45 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 </button>
               </div>
             </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Collapsed sidebar: account menu portaled to body (see useLayoutEffect) — avoids overflow clip on narrow rail */}
+      {collapsed &&
+        accountMenuOpen &&
+        accountMenuPortaledStyle &&
+        createPortal(
+          <div
+            ref={accountMenuDropdownRef}
+            className="sidebar-account-menu sidebar-account-menu--portaled"
+            style={accountMenuPortaledStyle}
+            role="menu"
+          >
+            <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Settings size={16} /> Settings
+            </Link>
+            <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <LayoutGrid size={16} /> Engine room
+            </Link>
+            <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Coins size={16} /> Credits & Billing
+            </Link>
+            <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Zap size={16} /> Upgrade plan
+            </Link>
+            <div className="sidebar-account-menu-divider" />
+            <button
+              type="button"
+              className="sidebar-account-menu-logout"
+              role="menuitem"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                onLogout?.();
+              }}
+            >
+              <LogOut size={16} /> Log out
+            </button>
           </div>,
           document.body
         )}
