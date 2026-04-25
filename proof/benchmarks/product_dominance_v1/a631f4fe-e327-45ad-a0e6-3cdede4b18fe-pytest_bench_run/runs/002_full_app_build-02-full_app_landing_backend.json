@@ -1,0 +1,30 @@
+{
+  "case_id": "full_app_landing_backend",
+  "category": "full_app_build",
+  "deploy_status": "simulated",
+  "dimensions": {
+    "accuracy": 100.0,
+    "reliability": 88.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 80.0
+  },
+  "failures": 0,
+  "index": 2,
+  "iteration": 2,
+  "mode": "simulated",
+  "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+  "result_text": "Simulated run for Landing and Backend Integration. landing form backend email validation",
+  "retries": 1,
+  "run_id": "full_app_build-02-full_app_landing_backend",
+  "score": 96.2,
+  "steps_taken": 8,
+  "success": true,
+  "time_seconds": 106.0,
+  "timeline": [
+    "simulation.started",
+    "simulation.completed"
+  ],
+  "timestamp": "2026-04-25T06:41:07.572778+00:00",
+  "title": "Landing and Backend Integration"
+}

@@ -4,11 +4,20 @@
   "description": "State the idea. We build it. AI-powered app builder and automations.",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/logo-icon-transparent.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
     }
   ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FFFFFF",
   "background_color": "#FAFAF8"
 }
