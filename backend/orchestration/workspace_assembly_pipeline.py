@@ -99,9 +99,17 @@ def _raw_text(blob: Dict[str, Any]) -> str:
 
 
 def _extract_code_for_path(raw: str, rel: str) -> str:
-    from real_agent_runner import _extract_code
-
-    return _extract_code(raw, filepath=rel or "file.txt")
+    """Strip any outer code fence wrapper if the body itself contains one.
+    Returns the raw body as-is (the outer fence was already stripped by the caller regex).
+    """
+    if not raw:
+        return raw
+    # If the body still has a nested fence, strip it
+    import re as _re
+    m = _re.match(r'^```[\w.+-]*\s*\n?(.*?)\n?```\s*$', raw.strip(), _re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return raw
 
 
 def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:

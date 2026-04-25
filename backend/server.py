@@ -738,6 +738,7 @@ async def _run_single_agent_with_context(
 ):
     # Build context block from prior agents' outputs so each agent can
     # build on the work already done rather than starting blind.
+    # Use 8000 chars per agent (was 2000) so code context is not truncated.
     context_block = ""
     if previous_outputs:
         parts = []
@@ -748,14 +749,17 @@ async def _run_single_agent_with_context(
             elif isinstance(prior_result, str):
                 prior_text = prior_result
             if prior_text.strip():
-                parts.append(f"### {prior_agent}\n{prior_text[:2000]}")
+                parts.append(f"### {prior_agent}\n{prior_text[:8000]}")
         if parts:
             context_block = (
                 "\n\n---\n## Context from prior agents\n"
                 + "\n\n".join(parts)
                 + "\n---\n"
             )
-    enriched_prompt = project_prompt + context_block
+    # Inject the goal as a reminder at the top of the prompt so agents never
+    # forget what they are building when context is long.
+    goal_reminder = f"## GOAL\n{project_prompt}\n\n## YOUR TASK\n"
+    enriched_prompt = goal_reminder + project_prompt + context_block
     # Use the AGENT_DAG system_prompt so each agent gets its full code-writing
     # instructions (e.g. "Output ONLY complete JSX code") instead of the bare
     # "Frontend Generation execution" stub that caused agents to return prose.
