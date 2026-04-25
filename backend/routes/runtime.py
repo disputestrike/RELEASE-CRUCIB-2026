@@ -177,33 +177,44 @@ async def run_what_if(body: WhatIfBody, user: dict = Depends(_get_auth())):
     Spawns a population of agent personas, runs multi-round debate simulation,
     and returns clusters, sentiment shifts, and a recommendation.
     """
-    import uuid
-    from ..services.runtime.simulation_orchestrator import SimulationOrchestrator
-
-    sim_job_id = f"whatif_{uuid.uuid4().hex[:12]}"
+    from ..services.simulation.reality_engine import reality_engine
     uid = str((user or {}).get("id") or "guest")
 
-    orchestrator = SimulationOrchestrator(job_id=sim_job_id, user_id=uid)
+    simulation = await reality_engine.create_simulation(
+        user_id=uid,
+        prompt=body.scenario,
+        assumptions=[],
+        attachments=[],
+        metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},
+    )
 
-    # Normalize priors — ensure they sum to 1.0
-    raw_priors: Dict[str, float] = body.priors or {}
-    total = sum(raw_priors.values()) if raw_priors else 0.0
-    if total > 0:
-        normalized_priors = {k: round(v / total, 4) for k, v in raw_priors.items()}
-    else:
-        normalized_priors = {"cost_sensitive": 0.33, "security_first": 0.34, "speed_first": 0.33}
-
-    result = await orchestrator.run(
-        scenario=body.scenario,
-        mode=body.mode,
-        population_size=body.population_size,
+    result = await reality_engine.run_simulation(
+        simulation_id=simulation["id"],
+        user_id=uid,
+        prompt=body.scenario,
+        assumptions=[],
+        attachments=[],
         rounds=body.rounds,
-        agent_roles=body.agent_roles,
-        priors=normalized_priors,
+        agent_count=max(3, min(24, int(body.population_size or 8))),
+        metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},
     )
 
     return {
         "success": True,
-        "jobId": sim_job_id,
+        "jobId": simulation["id"],
+        "project_id": simulation["id"],
+        "runtime_mode": "production",
+        "simulationId": simulation["id"],
+        "runId": (result.get("run") or {}).get("id"),
+        "scenario": body.scenario,
+        "updates": [
+            {
+                "round": row.get("round_number"),
+                "purpose": row.get("purpose"),
+                "consensus_emerging": False,
+                "clusters": result.get("clusters") or [],
+            }
+            for row in result.get("rounds", [])
+        ],
         **result,
     }

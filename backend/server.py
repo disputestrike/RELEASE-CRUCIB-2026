@@ -1756,6 +1756,7 @@ async def provider_readiness_endpoint(user: User = Depends(get_current_user)):
 _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.auth", "auth_router", False),
     ("backend.routes.runtime", "router", False),
+    ("backend.routes.simulations", "router", False),
     ("backend.routes.projects", "projects_router", False),
     ("backend.routes.project_memory", "router", False),
     ("backend.routes.automation", "router", False),

@@ -1,305 +1,319 @@
 import React, { useMemo, useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  Brain,
+  CheckCircle2,
+  FileText,
+  GitBranch,
+  Loader2,
+  Play,
+  RadioTower,
+  Search,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
-import {
-  GitBranch, Play, Users, RefreshCcw, CheckCircle2, AlertCircle,
-  Sparkles, ShieldCheck, Zap, DollarSign,
-} from 'lucide-react';
 import './WhatIfPage.css';
 
-const PRESETS = [
-  { title: 'Swap payment provider', text: 'What if we replace Stripe with LemonSqueezy in the billing flow next quarter?' },
-  { title: 'Migrate off AWS', text: 'What if we migrate our production workloads from AWS to Cloudflare + Neon in the next 6 months?' },
-  { title: 'Raise prices 30%', text: 'What if we raise our Pro-tier pricing by 30% and grandfather existing customers for 12 months?' },
-  { title: 'Drop a feature', text: 'What if we deprecate the on-prem deployment option and refund those customers?' },
-  { title: 'Change tech stack', text: 'What if we rewrite the backend from FastAPI to Rust (Axum) to improve throughput?' },
+const PROMPTS = [
+  'Will the Lakers win the NBA championship?',
+  'Should we raise prices by 30% next quarter?',
+  'What happens if Nigeria bans crypto?',
+  'Should we migrate off AWS?',
+  'Will customers hate this redesign?',
 ];
+
+function pct(value) {
+  const n = Number(value || 0);
+  return `${Math.round(n * 100)}%`;
+}
+
+function Panel({ title, icon, children, aside }) {
+  const Icon = icon || Activity;
+  return (
+    <section className="sim-panel">
+      <div className="sim-panel-head">
+        <div className="sim-panel-title"><Icon size={15} /> {title}</div>
+        {aside && <div className="sim-panel-aside">{aside}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function WhatIfPage() {
   const { token } = useAuth();
-  const [scenario, setScenario] = useState(PRESETS[0].text);
-  const [mode, setMode] = useState('decision');
-  const [population, setPopulation] = useState(48);
-  const [rounds, setRounds] = useState(4);
-  const [cost, setCost] = useState(0.30);
-  const [security, setSecurity] = useState(0.35);
-  const [speed, setSpeed] = useState(0.35);
+  const [prompt, setPrompt] = useState(PROMPTS[0]);
+  const [assumptionsText, setAssumptionsText] = useState('');
+  const [rounds, setRounds] = useState(5);
+  const [agentCount, setAgentCount] = useState(8);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
-  const normalizedPriors = useMemo(() => {
-    const total = cost + security + speed || 1;
-    return {
-      cost_sensitive: cost / total,
-      security_first: security / total,
-      speed_first: speed / total,
-    };
-  }, [cost, security, speed]);
+  const assumptions = useMemo(
+    () => assumptionsText.split('\n').map((row) => row.trim()).filter(Boolean),
+    [assumptionsText],
+  );
 
   const runSimulation = async () => {
-    const s = String(scenario || '').trim();
-    if (!s) { setError('Describe a scenario to simulate.'); return; }
-    setLoading(true); setError(''); setResult(null);
+    const cleanPrompt = String(prompt || '').trim();
+    if (!cleanPrompt) {
+      setError('Enter a scenario to simulate.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setResult(null);
     try {
-      const res = await fetch(`${API}/runtime/what-if`, {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const createRes = await fetch(`${API}/simulations`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers,
         body: JSON.stringify({
-          mode: mode,
-          scenario: s,
-          population_size: Math.max(3, Math.min(256, Number(population) || 48)),
-          rounds: Math.max(1, Math.min(8, Number(rounds) || 4)),
-          priors: normalizedPriors,
+          prompt: cleanPrompt,
+          assumptions,
+          attachments,
+          metadata: { surface: 'simulation_command_center' },
         }),
       });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        setError(`Simulation failed (HTTP ${res.status}). ${body?.slice(0, 140) || ''}`);
-        return;
+      if (!createRes.ok) throw new Error(`Create failed (${createRes.status})`);
+      const created = await createRes.json();
+      const simulationId = created?.simulation?.id;
+      if (!simulationId) throw new Error('Simulation create response did not include an id.');
+
+      const runRes = await fetch(`${API}/simulations/${encodeURIComponent(simulationId)}/run`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          prompt: cleanPrompt,
+          assumptions,
+          attachments,
+          rounds,
+          agent_count: agentCount,
+          metadata: { surface: 'simulation_command_center' },
+        }),
+      });
+      if (!runRes.ok) {
+        const body = await runRes.text().catch(() => '');
+        throw new Error(`Run failed (${runRes.status}). ${body.slice(0, 160)}`);
       }
-      const payload = await res.json();
-      setResult(payload);
-    } catch (e) {
-      setError('Simulation failed — network or server error.');
+      setResult(await runRes.json());
+    } catch (err) {
+      setError(err?.message || 'Simulation failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const updates = Array.isArray(result?.updates) ? result.updates : [];
-  const lastRound = updates[updates.length - 1] || null;
-  const recommendation = result?.recommendation || null;
-  const consensusReached = !!result?.consensus_reached;
+  const classification = result?.classification || {};
+  const trust = result?.trust_score || {};
+  const report = result?.report || {};
+  const agents = Array.isArray(result?.agents) ? result.agents : [];
+  const messages = Array.isArray(result?.agent_messages) ? result.agent_messages : [];
+  const updates = Array.isArray(result?.belief_updates) ? result.belief_updates : [];
+  const outcomes = Array.isArray(result?.outcomes) ? result.outcomes : [];
+  const evidence = Array.isArray(result?.evidence) ? result.evidence : [];
+  const sources = Array.isArray(result?.sources) ? result.sources : [];
+  const missingEvidence = Array.isArray(result?.missing_evidence) ? result.missing_evidence : [];
+  const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
 
   return (
-    <div className="whatif-page">
-      <header className="whatif-hero">
-        <div className="whatif-hero-icon"><GitBranch size={22} /></div>
-        <div className="whatif-hero-text">
-          <h1>What-If Analysis</h1>
-          <p>
-            Spin up a population of expert agents (architect, backend, security, UX, devops)
-            and simulate how they'd debate a decision across multiple rounds. Use it for
-            vendor swaps, pricing moves, architecture changes, feature cuts — anything with
-            real tradeoffs before you commit engineering time.
-          </p>
-        </div>
+    <div className="simulation-page">
+      <header className="simulation-hero">
+        <div className="simulation-kicker"><RadioTower size={14} /> Reality Engine</div>
+        <h1>Simulation</h1>
+        <p>
+          Ask any scenario. CrucibAI classifies it, identifies evidence needs, creates
+          scenario-specific agents, runs debate rounds, tracks belief shifts, and produces
+          an auditable report with trust scoring.
+        </p>
       </header>
 
-      <section className="whatif-card">
-        <div className="whatif-card-head">
-          <h2>Scenario</h2>
-          <span className="whatif-card-sub">Describe the change you're weighing.</span>
-        </div>
+      <Panel title="Universal Input" icon={Search}>
         <textarea
-          className="whatif-textarea"
-          value={scenario}
-          onChange={(e) => setScenario(e.target.value)}
-          rows={4}
-          placeholder="What if we…"
+          className="simulation-prompt"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          rows={5}
+          placeholder="Ask any forecast, decision, market reaction, product, sports, business, finance, policy, or engineering scenario..."
         />
-        <div
-          style={{
-            marginTop: "10px",
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
-          }}
-        >
-          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>
-            Mode:
-          </label>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: "6px",
-              border: "1px solid #d1d5db",
-              fontSize: "12px",
-              fontWeight: "500",
-              cursor: "pointer",
-              backgroundColor: "#fff",
-              color: "#1f2937",
-            }}
-          >
-            <option value="decision">Decision Mode</option>
-            <option value="forecast">Forecast Mode</option>
-            <option value="market_reaction">Market Reaction Mode</option>
-          </select>
-        </div>
-        <div className="whatif-presets">
-          {PRESETS.map((p) => (
-            <button key={p.title} type="button" className="whatif-preset" onClick={() => setScenario(p.text)}>
-              <Sparkles size={12} /><span>{p.title}</span>
+        <div className="simulation-presets">
+          {PROMPTS.map((item) => (
+            <button type="button" key={item} onClick={() => setPrompt(item)}>
+              {item}
             </button>
           ))}
         </div>
-        <div className="whatif-controls">
-          <label className="whatif-control">
-            <span><Users size={13} /> Agents<em>{population}</em></span>
-            <input type="range" min={8} max={128} step={4} value={population}
-              onChange={(e) => setPopulation(Number(e.target.value))} />
+        <textarea
+          className="simulation-assumptions"
+          value={assumptionsText}
+          onChange={(event) => setAssumptionsText(event.target.value)}
+          rows={3}
+          placeholder="Optional assumptions, one per line. Example: LeBron is healthy. CAC is $90. Railway is the target host."
+        />
+        <div className="simulation-controls">
+          <label>
+            <span>Agents <strong>{agentCount}</strong></span>
+            <input type="range" min="3" max="16" step="1" value={agentCount} onChange={(event) => setAgentCount(Number(event.target.value))} />
           </label>
-          <label className="whatif-control">
-            <span><RefreshCcw size={13} /> Rounds<em>{rounds}</em></span>
-            <input type="range" min={1} max={8} step={1} value={rounds}
-              onChange={(e) => setRounds(Number(e.target.value))} />
+          <label>
+            <span>Rounds <strong>{rounds}</strong></span>
+            <input type="range" min="1" max="8" step="1" value={rounds} onChange={(event) => setRounds(Number(event.target.value))} />
+          </label>
+          <label className="simulation-file">
+            <span>Attachments</span>
+            <input
+              type="file"
+              multiple
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                setAttachments(files.map((file) => ({ name: file.name, size: file.size, type: file.type || 'unknown' })));
+              }}
+            />
           </label>
         </div>
-        <div className="whatif-priors">
-          <div className="whatif-priors-head">Priors mix (normalized automatically)</div>
-          <div className="whatif-prior-row">
-            <span className="whatif-prior-label"><DollarSign size={12} /> Cost-sensitive</span>
-            <input type="range" min={0} max={1} step={0.05} value={cost}
-              onChange={(e) => setCost(Number(e.target.value))} />
-            <em>{Math.round(normalizedPriors.cost_sensitive * 100)}%</em>
+        {attachments.length > 0 && (
+          <div className="simulation-attachments">
+            {attachments.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}
           </div>
-          <div className="whatif-prior-row">
-            <span className="whatif-prior-label"><ShieldCheck size={12} /> Security-first</span>
-            <input type="range" min={0} max={1} step={0.05} value={security}
-              onChange={(e) => setSecurity(Number(e.target.value))} />
-            <em>{Math.round(normalizedPriors.security_first * 100)}%</em>
-          </div>
-          <div className="whatif-prior-row">
-            <span className="whatif-prior-label"><Zap size={12} /> Speed-first</span>
-            <input type="range" min={0} max={1} step={0.05} value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))} />
-            <em>{Math.round(normalizedPriors.speed_first * 100)}%</em>
-          </div>
-        </div>
-        <div className="whatif-actions">
-          <button type="button" className="whatif-run" onClick={runSimulation} disabled={loading}>
-            <Play size={14} />
-            {loading ? 'Running simulation…' : 'Run simulation'}
+        )}
+        <div className="simulation-actions">
+          <button type="button" className="simulation-run" onClick={runSimulation} disabled={loading}>
+            {loading ? <Loader2 size={15} className="spin" /> : <Play size={15} />}
+            {loading ? 'Running Simulation...' : 'Run Simulation'}
           </button>
-          {error && (<span className="whatif-error"><AlertCircle size={13} /> {error}</span>)}
+          {error && <span className="simulation-error"><AlertTriangle size={14} /> {error}</span>}
         </div>
-      </section>
+      </Panel>
 
-      {recommendation && (
-        <section className="whatif-card whatif-reco">
-          <div className="whatif-reco-head">
-            <div className="whatif-reco-badge">
-              {consensusReached ? <CheckCircle2 size={14} /> : <GitBranch size={14} />}
-              {consensusReached ? 'Consensus reached' : 'Debate still open'}
+      {result && (
+        <>
+          <Panel title="Auto-Detected Scenario" icon={Brain} aside={result.engine}>
+            <div className="simulation-grid four">
+              <div><span>Domain</span><strong>{classification.domain}</strong></div>
+              <div><span>Scenario type</span><strong>{String(classification.scenario_type || '').replaceAll('_', ' ')}</strong></div>
+              <div><span>Time sensitivity</span><strong>{classification.time_sensitivity}</strong></div>
+              <div><span>Output style</span><strong>{String(classification.output_style || '').replaceAll('_', ' ')}</strong></div>
             </div>
-            <div className="whatif-reco-confidence">
-              Confidence: <strong>{Math.round((recommendation.confidence || 0) * 100)}%</strong>
-              {recommendation.evidence_quality && (
-                <span className="ml-2 text-xs opacity-70">
-                  (Evidence: {recommendation.evidence_quality})
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="whatif-reco-title">Recommended action</div>
-          <p className="whatif-reco-text">{recommendation.recommended_action}</p>
-          {recommendation.uncertainty && (
-            <div className="mb-3 p-2 bg-yellow-50 border border-yellow-100 rounded text-xs text-yellow-800">
-              <strong>Uncertainty:</strong> {recommendation.uncertainty}
-            </div>
-          )}
-          {Array.isArray(recommendation.data_sources) && recommendation.data_sources.length > 0 && (
-            <div className="mb-3 text-xs text-gray-500">
-              <strong>Data Sources:</strong> {recommendation.data_sources.join(', ')}
-            </div>
-          )}
-          {Array.isArray(recommendation.tradeoffs) && recommendation.tradeoffs.length > 0 && (
-            <div className="whatif-reco-tradeoffs">
-              <div className="whatif-reco-tradeoffs-label">Key arguments</div>
-              <ul>
-                {recommendation.tradeoffs.slice(0, 5).map((t, i) => (<li key={`t-${i}`}>{t}</li>))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
-
-      {lastRound && (
-        <section className="whatif-card">
-          <div className="whatif-card-head">
-            <h2>Final round clustering</h2>
-            <span className="whatif-card-sub">
-              Round {lastRound.round} of {result.rounds_executed} · {result.population_size} agents
-            </span>
-          </div>
-          <div className="whatif-clusters">
-            {(lastRound.clusters || []).map((c) => {
-              const pct = result.population_size
-                ? Math.round((Number(c.size) / result.population_size) * 100) : 0;
-              return (
-                <div key={c.id} className="whatif-cluster">
-                  <div className="whatif-cluster-head">
-                    <strong>{c.id.replace('cluster_', 'Cluster ').toUpperCase()}</strong>
-                    <span>{c.size} agents · {pct}%</span>
-                  </div>
-                  <div className="whatif-cluster-bar">
-                    <div className="whatif-cluster-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="whatif-cluster-position">{c.position}</div>
-                  {Array.isArray(c.key_arguments) && c.key_arguments.length > 0 && (
-                    <ul className="whatif-cluster-args">
-                      {c.key_arguments.slice(0, 3).map((a, i) => (<li key={`${c.id}-${i}`}>{a}</li>))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {updates.length > 1 && (
-        <section className="whatif-card">
-          <div className="whatif-card-head">
-            <h2>Round-by-round evolution</h2>
-            <span className="whatif-card-sub">
-              How agent clusters shifted across {updates.length} rounds of debate.
-            </span>
-          </div>
-          <div className="whatif-timeline">
-            {updates.map((u) => (
-              <div key={`r-${u.round}`} className="whatif-timeline-row">
-                <div className="whatif-timeline-label">R{u.round}</div>
-                <div className="whatif-timeline-track">
-                  {(u.clusters || []).map((c) => {
-                    const pct = result.population_size
-                      ? (Number(c.size) / result.population_size) * 100 : 0;
-                    const color =
-                      c.id === 'cluster_a' ? '#059669'
-                      : c.id === 'cluster_b' ? '#10b981'
-                      : '#9ca3af';
-                    return (
-                      <div key={`${u.round}-${c.id}`} className="whatif-timeline-seg"
-                        style={{ width: `${pct}%`, background: color }}
-                        title={`${c.id}: ${c.size} agents`} />
-                    );
-                  })}
-                </div>
-                <div className="whatif-timeline-state">
-                  {u.consensus_emerging ? 'consensus' : 'contested'}
-                </div>
+            <p className="simulation-interpretation">{classification.interpretation}</p>
+            {Array.isArray(classification.required_evidence) && (
+              <div className="simulation-chips">
+                {classification.required_evidence.map((item) => <span key={item}>{item}</span>)}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            )}
+          </Panel>
 
-      {!result && !loading && (
-        <section className="whatif-empty">
-          <GitBranch size={18} />
-          <div>
-            <strong>Run a simulation to see results.</strong>
-            <p>Pick a preset or describe your own scenario, tune the priors for how your team
-              actually thinks, then hit <em>Run simulation</em>.</p>
-          </div>
-        </section>
+          <Panel title="Evidence Panel" icon={FileText} aside={`${sources.length} sources / ${evidence.length} facts`}>
+            <div className="simulation-evidence-layout">
+              <div>
+                <h3>Sources used</h3>
+                {sources.map((source) => (
+                  <div className="simulation-source" key={source.id}>
+                    <strong>{source.title}</strong>
+                    <span>{source.type} / reliability: {source.reliability} / freshness: {source.freshness}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h3>Evidence gaps</h3>
+                {missingEvidence.map((item) => <div className="simulation-gap" key={item}>{item}</div>)}
+                {unsupportedClaims.map((item) => <div className="simulation-warning" key={item}>{item}</div>)}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Agent Arena" icon={Users} aside={`${agents.length} agents`}>
+            <div className="simulation-agent-grid">
+              {agents.map((agent) => (
+                <div className="simulation-agent" key={agent.id}>
+                  <div className="simulation-agent-head">
+                    <strong>{agent.role}</strong>
+                    <span>{pct(agent.current_belief)}</span>
+                  </div>
+                  <p>{agent.domain_expertise}</p>
+                  <div className="simulation-meter"><i style={{ width: pct(agent.current_belief) }} /></div>
+                  <footer>confidence {pct(agent.confidence)} / {agent.persona}</footer>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Debate Timeline" icon={GitBranch}>
+            <div className="simulation-timeline">
+              {(result.rounds || []).map((round) => {
+                const roundMessages = messages.filter((msg) => msg.round_id === round.id).slice(0, 3);
+                const roundUpdates = updates.filter((update) => update.round_id === round.id).slice(0, 3);
+                return (
+                  <div className="simulation-round" key={round.id}>
+                    <div className="simulation-round-head">
+                      <strong>Round {round.round_number}</strong>
+                      <span>{round.purpose}</span>
+                    </div>
+                    {roundMessages.map((msg) => <p key={msg.id}>{msg.content}</p>)}
+                    {roundUpdates.map((update) => (
+                      <div className="simulation-belief" key={update.id}>
+                        belief {pct(update.previous_belief)} -> {pct(update.new_belief)} / {update.reason}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+
+          <Panel title="Outcomes" icon={Activity}>
+            <div className="simulation-outcomes">
+              {outcomes.map((outcome) => (
+                <div className="simulation-outcome" key={outcome.id}>
+                  <div className="simulation-outcome-head">
+                    <strong>{outcome.label}</strong>
+                    <span>{outcome.display_likelihood}</span>
+                  </div>
+                  <p>{outcome.rationale}</p>
+                  <h4>What would change it</h4>
+                  {(outcome.what_would_change || []).slice(0, 3).map((item) => <em key={item}>{item}</em>)}
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Trust Panel" icon={ShieldCheck} aside={trust.trust_score}>
+            <div className="simulation-trust-grid">
+              {Object.entries(trust.components || {}).map(([key, value]) => (
+                <div key={key}>
+                  <span>{key.replaceAll('_', ' ')}</span>
+                  <strong>{pct(value)}</strong>
+                </div>
+              ))}
+            </div>
+            {(trust.warnings || []).map((warning) => (
+              <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
+            ))}
+          </Panel>
+
+          <Panel title="Final Report" icon={CheckCircle2}>
+            <div className="simulation-report">
+              <h3>{report.executive_summary}</h3>
+              <p>{result.recommendation?.recommendation}</p>
+              <h4>Next data to collect</h4>
+              <ul>
+                {(report.next_data_to_collect || []).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <div className="simulation-replay">
+                Simulation {report.replay_metadata?.simulation_id} / Run {report.replay_metadata?.run_id}
+              </div>
+            </div>
+          </Panel>
+        </>
       )}
     </div>
   );
