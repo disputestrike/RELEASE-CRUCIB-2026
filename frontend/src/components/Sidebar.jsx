@@ -730,20 +730,36 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       </div>
       )}
 
-      {/* Delete confirmation — over right pane */}
-      {deleteConfirmTask && (
-        <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
-          <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <p className="sidebar-delete-title">Delete &quot;{deleteConfirmTask.name}&quot;?</p>
-            <div className="sidebar-delete-actions">
-              <button type="button" onClick={() => setDeleteConfirmTask(null)}>Cancel</button>
-              <button type="button" className="danger" onClick={handleDeleteConfirm}>
-                Delete
-              </button>
+      {/* Delete confirmation — portaled to body so .sidebar overflow/transform never traps it in the left rail */}
+      {deleteConfirmTask &&
+        createPortal(
+          <div
+            className="sidebar-delete-overlay"
+            onClick={() => setDeleteConfirmTask(null)}
+            role="presentation"
+          >
+            <div
+              className="sidebar-delete-modal"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="sidebar-delete-confirm-title"
+            >
+              <p className="sidebar-delete-title" id="sidebar-delete-confirm-title">
+                Delete &quot;{deleteConfirmTask.name}&quot;?
+              </p>
+              <div className="sidebar-delete-actions">
+                <button type="button" onClick={() => setDeleteConfirmTask(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="danger" onClick={handleDeleteConfirm}>
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Footer — account trigger with dropdown (Logout, etc.) */}
       <div className="sidebar-footer" ref={accountMenuRef}>
