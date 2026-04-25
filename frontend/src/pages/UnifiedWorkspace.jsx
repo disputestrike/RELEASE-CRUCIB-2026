@@ -256,6 +256,41 @@ export default function UnifiedWorkspace() {
   const [wsPaths, setWsPaths] = useState([]);
   const [wsListLoading, setWsListLoading] = useState(false);
   const [wsFileCache, setWsFileCache] = useState({});
+
+  // ── Job-switch state reset ──────────────────────────────────────────────────
+  // When the user clicks a different job in the sidebar, jobIdFromUrl changes.
+  // Without this reset, the old job's stage/messages/plan stay visible while the
+  // new job loads, making the UI appear frozen or showing stale data.
+  const prevJobIdFromUrlRef = useRef(null);
+  useEffect(() => {
+    if (!jobIdFromUrl) return;
+    if (prevJobIdFromUrlRef.current === jobIdFromUrl) return;
+    const isFirstLoad = prevJobIdFromUrlRef.current === null;
+    prevJobIdFromUrlRef.current = jobIdFromUrl;
+    if (isFirstLoad) return; // don't reset on initial page load
+    // Clear all job-specific state so the new job hydrates cleanly
+    setGoal('');
+    setPlan(null);
+    setCapabilityNotice([]);
+    setEstimate(null);
+    setStage('input');
+    setLoading(false);
+    setError(null);
+    setErrorRaw(null);
+    setUserChatMessages([]);
+    setFailedStep(null);
+    setActiveWsPath('');
+    setWsPaths([]);
+    setWsFileCache((prev) => {
+      Object.values(prev).forEach((e) => {
+        if (e?.blobUrl) { try { URL.revokeObjectURL(e.blobUrl); } catch (_) {} }
+      });
+      return {};
+    });
+    // Reset autostart guards so the new job can trigger its own autostart if needed
+    workspaceAutostartDoneRef.current = false;
+    autoPreviewOnceForJobRef.current = null;
+  }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
 
   const sandpackMergeFiles = useMemo(() => {

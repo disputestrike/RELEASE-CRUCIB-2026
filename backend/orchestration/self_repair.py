@@ -197,25 +197,94 @@ def try_add_missing_npm_dependency(
 # ── Repair functions ───────────────────────────────────────────────────────────
 
 
-def strip_prose_preamble(content: str) -> str:
+def _is_prose_line(line: str, file_ext: str = "") -> bool:
+    """Return True if this line is prose/non-code that should be stripped."""
+    stripped = line.strip()
+    lower = stripped.lower()
+    if not stripped:
+        return True  # blank lines at top are fine to skip
+    # Standard prose prefixes
+    if any(lower.startswith(p) for p in PROSE_PREFIXES):
+        return True
+    ext = (file_ext or "").lower()
+    js_exts = {".jsx", ".tsx", ".js", ".ts", ".mjs", ".cjs"}
+    if ext in js_exts:
+        # JSON object as first char — definitely not valid JS/JSX
+        if stripped.startswith('{"') or stripped.startswith("{'"): 
+            return True
+        # Markdown heading or bold in a code file
+        if stripped.startswith('# ') or stripped.startswith('**'):
+            return True
+        # Package.json fragment: "name": "something"
+        import re as _re
+        if _re.match(r'^["\s]*"name"\s*:', stripped):
+            return True
+        # Plain English sentence (no JS tokens)
+        if (
+            len(stripped) > 20
+            and not any(c in stripped for c in ('(', '{', ';', '=', '=>', 'import', 'export', 'const', 'let', 'var', 'function', 'class', '//'))
+            and lower[0].isalpha()
+            and ' ' in lower
+        ):
+            return True
+    return False
+
+
+def strip_prose_preamble(content: str, file_ext: str = "") -> str:
+    """Strip prose/JSON preamble from the top of a code file.
+    
+    For JSON-only content (entire file is a JSON object), replaces with a
+    minimal scaffold rather than returning empty string.
+    """
+    import json as _json
+    # Special case: entire file is a JSON object (e.g. {"text": "I am the agent..."})
+    # This happens when an agent returns its response as JSON instead of code.
+    stripped_content = content.strip()
+    if stripped_content.startswith('{') and stripped_content.endswith('}'):
+        try:
+            parsed = _json.loads(stripped_content)
+            if isinstance(parsed, dict):
+                # It's pure JSON — the whole file is prose-as-JSON
+                ext = (file_ext or "").lower()
+                if ext in {".jsx", ".tsx", ".js", ".ts"}:
+                    return ""  # caller will replace with scaffold
+        except (ValueError, TypeError):
+            pass
     lines = content.split("\n")
     for i, line in enumerate(lines):
-        stripped = line.strip().lower()
-        if not stripped:
-            continue
-        if any(stripped.startswith(p) for p in PROSE_PREFIXES):
-            continue
-        return "\n".join(lines[i:])
+        if not _is_prose_line(line, file_ext):
+            return "\n".join(lines[i:])
     return content
+
+
+# Minimal scaffolds for when a file is entirely prose/JSON
+_MINIMAL_SCAFFOLD: Dict[str, str] = {
+    ".jsx": "import React from 'react';\n\nexport default function Component() {\n  return <div>Loading...</div>;\n}\n",
+    ".tsx": "import React from 'react';\n\nexport default function Component(): JSX.Element {\n  return <div>Loading...</div>;\n}\n",
+    ".js": "// Auto-generated placeholder\nexport default {};\n",
+    ".ts": "// Auto-generated placeholder\nexport default {};\n",
+}
 
 
 def repair_prose_in_file(workspace_path: str, rel_path: str) -> Dict[str, Any]:
     content = _read_safe(workspace_path, rel_path)
     if not content:
         return {"fixed": False, "reason": f"{rel_path} not readable"}
-    cleaned = strip_prose_preamble(content)
+    ext = os.path.splitext(rel_path)[1].lower()
+    cleaned = strip_prose_preamble(content, ext)
     if cleaned == content:
         return {"fixed": False, "reason": "No prose preamble found"}
+    # If strip_prose_preamble returned empty string, the whole file was prose/JSON
+    # Replace with a minimal scaffold so the bundler doesn't crash on an empty file
+    if not cleaned.strip():
+        scaffold = _MINIMAL_SCAFFOLD.get(ext, "// Auto-generated placeholder\n")
+        _safe_write(workspace_path, rel_path, scaffold)
+        return {
+            "fixed": True,
+            "file": rel_path,
+            "action": "replaced_json_prose_with_scaffold",
+            "first_line_after": scaffold.split("\n")[0][:80],
+        }
     lines_removed = content.count("\n") - cleaned.count("\n")
     _safe_write(workspace_path, rel_path, cleaned)
     return {
@@ -278,24 +347,44 @@ if (container) {
 
 
 def repair_app_jsx_if_broken(workspace_path: str) -> Dict[str, Any]:
-    content = _read_safe(workspace_path, "src/App.jsx")
+    # Try both .jsx and .tsx variants
+    for app_path in ("src/App.jsx", "src/App.tsx", "App.jsx", "App.tsx"):
+        content = _read_safe(workspace_path, app_path)
+        if content:
+            break
+    else:
+        content = None
+        app_path = "src/App.jsx"
     is_empty = not content or not content.strip()
     is_prose = False
     if not is_empty:
-        first = content.strip().split("\n")[0].strip().lower()
-        is_prose = any(first.startswith(p) for p in PROSE_PREFIXES)
+        ext = os.path.splitext(app_path)[1].lower()
+        # Use the enhanced _is_prose_line to detect JSON/dict content too
+        first = content.strip().split("\n")[0]
+        is_prose = _is_prose_line(first, ext)
 
     if not is_prose and not is_empty:
-        cleaned = strip_prose_preamble(content)
+        ext = os.path.splitext(app_path)[1].lower()
+        cleaned = strip_prose_preamble(content, ext)
         if cleaned != content:
-            _safe_write(workspace_path, "src/App.jsx", cleaned)
+            if not cleaned.strip():
+                # Whole file was JSON/prose — replace with scaffold
+                scaffold = _MINIMAL_SCAFFOLD.get(ext, _MINIMAL_SCAFFOLD[".jsx"])
+                _safe_write(workspace_path, app_path, scaffold)
+                return {
+                    "fixed": True,
+                    "file": app_path,
+                    "action": "replaced_json_prose_with_scaffold",
+                    "first_line": scaffold.split("\n")[0][:80],
+                }
+            _safe_write(workspace_path, app_path, cleaned)
             return {
                 "fixed": True,
-                "file": "src/App.jsx",
+                "file": app_path,
                 "action": "stripped_prose",
                 "first_line": cleaned.strip().split("\n")[0][:80],
             }
-        return {"fixed": False, "reason": "App.jsx appears valid"}
+        return {"fixed": False, "reason": f"{app_path} appears valid"}
 
     _safe_write(
         workspace_path,

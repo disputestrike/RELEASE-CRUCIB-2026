@@ -84,8 +84,10 @@
 .layout-sidebar-content {
   flex: 1;
   padding: 0;
-  overflow-y: auto;
-  overflow-x: visible;
+  /* Do NOT set overflow-y here — the Sidebar component manages its own scroll
+     via .sidebar-section-tasks flex + .sidebar-section-items-scroll overflow-y:auto.
+     Setting overflow-y:auto here creates a second scroll container that fights the inner one. */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;

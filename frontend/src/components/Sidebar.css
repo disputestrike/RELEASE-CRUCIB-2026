@@ -379,6 +379,16 @@
   padding: 4px 0;
 }
 
+/* History section must grow/shrink in the flex column so the inner scroll container works */
+.sidebar-section.sidebar-section-tasks {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
 .sidebar-section-header {
   display: flex;
   align-items: center;
@@ -863,7 +873,7 @@
 
 .sidebar-footer {
   flex-shrink: 0;
-  margin-top: auto;
+  /* margin-top: auto removed — history section now takes flex:1 so footer is naturally at bottom */
   padding: 12px 12px 12px;
   border-top: 1px solid var(--theme-border);
   display: flex;
