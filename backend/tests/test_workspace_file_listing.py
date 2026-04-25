@@ -72,3 +72,42 @@ def test_resolve_job_workspace_file_reads_compatible_legacy_root(monkeypatch):
         assert resolved == legacy / "src" / "App.jsx"
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_assert_job_access_uses_runtime_project_id(monkeypatch):
+    from backend.routes import workspace as workspace_routes
+
+    async def fake_get_pg_pool():
+        return None
+
+    async def fake_get_job(job_id: str):
+        return {
+            "id": job_id,
+            "project_id": "project-from-runtime",
+            "user_id": "user-1",
+        }
+
+    def fake_assert_owner(owner_id, user):
+        assert owner_id == "user-1"
+        assert user["id"] == "user-1"
+
+    class FakeRuntimeState:
+        async def get_job(self, job_id: str):
+            return await fake_get_job(job_id)
+
+        def set_pool(self, pool):
+            raise AssertionError("pool should be None in this test")
+
+    monkeypatch.setattr(workspace_routes, "get_pg_pool", fake_get_pg_pool, raising=False)
+    monkeypatch.setattr("backend.db_pg.get_pg_pool", fake_get_pg_pool)
+    monkeypatch.setattr("backend.server._assert_job_owner_match", fake_assert_owner)
+    monkeypatch.setattr("backend.orchestration.runtime_state.get_job", fake_get_job)
+    monkeypatch.setattr(workspace_routes, "_project_workspace_path", lambda pid: Path("/tmp/workspaces/projects") / pid)
+
+    import asyncio
+
+    workspace = asyncio.get_event_loop().run_until_complete(
+        workspace_routes._assert_job_access("tsk_runtime", {"id": "user-1"})
+    )
+
+    assert workspace.as_posix().endswith("/projects/project-from-runtime")
