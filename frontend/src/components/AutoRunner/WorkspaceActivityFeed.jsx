@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Check, Loader2, Circle } from 'lucide-react';
+import { formatWorkspaceActivityEvent } from '../../workspace/workspaceActivityEvents';
 import './WorkspaceActivityFeed.css';
 
 function humanizeAgentLabel(raw) {
@@ -174,7 +175,7 @@ export default function WorkspaceActivityFeed({
   const feedEvents = useMemo(() => {
     const lines = [];
     for (const ev of events) {
-      const text = formatEvent(ev);
+      const text = formatWorkspaceActivityEvent(ev);
       if (text) lines.push({ id: ev.id ?? `${text}-${lines.length}`, text });
     }
     return lines.slice(-40);
