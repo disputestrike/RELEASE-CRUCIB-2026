@@ -148,8 +148,8 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             disabled={isLoading}
             className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all ${
               isRecording
-                ? 'bg-gray-200 text-gray-900 animate-pulse'
-                : 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A]'
+                ? 'bg-gray-100 text-red-500 animate-pulse'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
             } disabled:opacity-50`}
             title={isRecording ? 'Stop recording' : 'Start recording'}
           >
@@ -162,10 +162,10 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-slate-700/50 rounded-lg border border-slate-600"
+            className="p-3 bg-gray-50 rounded-lg border border-gray-200"
           >
-            <div className="text-xs text-slate-400 mb-1">Transcribed:</div>
-            <div className="text-sm text-slate-200">{transcript}</div>
+            <div className="text-xs text-gray-500 mb-1">Transcribed:</div>
+            <div className="text-sm text-gray-700">{transcript}</div>
           </motion.div>
         )}
 
@@ -174,25 +174,25 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-gray-900/30 border border-gray-700/50 rounded-lg"
+            className="p-4 bg-gray-50 border border-gray-200 rounded-lg"
           >
             <div className="flex items-center gap-2 mb-3">
-              <Palette size={16} className="text-[#1A1A1A]" />
-              <span className="font-medium text-gray-300">Vibe Analysis</span>
+              <Palette size={16} className="text-gray-600" />
+              <span className="font-medium text-gray-900">Vibe Analysis</span>
             </div>
 
-            <div className="space-y-2 text-sm text-slate-300">
+            <div className="space-y-2 text-sm text-gray-600">
               <div>
-                <span className="text-slate-400">Style:</span>
-                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.style}</span>
+                <span className="text-gray-500">Style:</span>
+                <span className="ml-2 text-gray-900 font-medium">{vibeAnalysis.style}</span>
               </div>
               <div>
-                <span className="text-slate-400">Complexity:</span>
-                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.complexity}</span>
+                <span className="text-gray-500">Complexity:</span>
+                <span className="ml-2 text-gray-900 font-medium">{vibeAnalysis.complexity}</span>
               </div>
               <div>
-                <span className="text-slate-400">Tone:</span>
-                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.tone}</span>
+                <span className="text-gray-500">Tone:</span>
+                <span className="ml-2 text-gray-900 font-medium">{vibeAnalysis.tone}</span>
               </div>
             </div>
           </motion.div>
@@ -205,8 +205,8 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-2"
           >
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Zap size={14} />
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Zap size={14} className="text-gray-400" />
               <span>AI Suggestions</span>
             </div>
             <div className="space-y-2">
@@ -214,7 +214,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
                 <button
                   key={idx}
                   onClick={() => applySuggestion(suggestion)}
-                  className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors text-sm text-slate-300 hover:text-[#1A1A1A]"
+                  className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors text-sm text-gray-700"
                 >
                   {suggestion.text}
                 </button>
@@ -228,7 +228,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
       <button
         onClick={handleSubmit}
         disabled={!input.trim() || isLoading}
-        className="w-full bg-gradient-to-r from-gray-600 to-gray-600 hover:from-gray-700 hover:to-gray-700 text-[#1A1A1A] font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-gray-900 hover:bg-black text-white font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>

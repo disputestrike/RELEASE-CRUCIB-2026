@@ -18,6 +18,7 @@ const PRESETS = [
 export default function WhatIfPage() {
   const { token } = useAuth();
   const [scenario, setScenario] = useState(PRESETS[0].text);
+  const [mode, setMode] = useState('decision');
   const [population, setPopulation] = useState(48);
   const [rounds, setRounds] = useState(4);
   const [cost, setCost] = useState(0.30);
@@ -49,6 +50,7 @@ export default function WhatIfPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
+          mode: mode,
           scenario: s,
           population_size: Math.max(3, Math.min(256, Number(population) || 48)),
           rounds: Math.max(1, Math.min(8, Number(rounds) || 4)),
@@ -97,6 +99,7 @@ export default function WhatIfPage() {
         <textarea
           className="whatif-textarea"
           value={scenario}
+        <div style={{ marginTop: "10px", display: "flex", gap: "12px", alignItems: "center" }}>          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Mode:</label>          <select            value={mode}            onChange={(e) => setMode(e.target.value)}            style={{              padding: "6px 10px",              borderRadius: "6px",              border: "1px solid #d1d5db",              fontSize: "12px",              fontWeight: "500",              cursor: "pointer",              backgroundColor: "#fff",              color: "#1f2937",            }}          >            <option value="decision">Decision Mode</option>            <option value="forecast">Forecast Mode</option>            <option value="market_reaction">Market Reaction Mode</option>          </select>        </div>
           onChange={(e) => setScenario(e.target.value)}
           rows={4}
           placeholder="What if we…"
@@ -173,6 +176,11 @@ export default function WhatIfPage() {
               <strong>Uncertainty:</strong> {recommendation.uncertainty}
             </div>
           )}
+          {Array.isArray(recommendation.data_sources) && recommendation.data_sources.length > 0 && (
+            <div className="mb-3 text-xs text-gray-500">
+              <strong>Data Sources:</strong> {recommendation.data_sources.join(', ')}
+            </div>
+          )}
           {Array.isArray(recommendation.tradeoffs) && recommendation.tradeoffs.length > 0 && (
             <div className="whatif-reco-tradeoffs">
               <div className="whatif-reco-tradeoffs-label">Key arguments</div>
@@ -235,7 +243,7 @@ export default function WhatIfPage() {
                     const pct = result.population_size
                       ? (Number(c.size) / result.population_size) * 100 : 0;
                     const color =
-                      c.id === 'cluster_a' ? '#3b82f6'
+                      c.id === 'cluster_a' ? '#059669'
                       : c.id === 'cluster_b' ? '#10b981'
                       : '#9ca3af';
                     return (

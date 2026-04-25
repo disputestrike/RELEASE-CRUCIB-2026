@@ -38,12 +38,16 @@ class SimulationOrchestrator:
         self,
         *,
         scenario: str,
+        mode: str,
         population_size: int,
         rounds: int,
         agent_roles: Optional[List[str]] = None,
         priors: Optional[Dict[str, float]] = None,
         seed: Optional[int] = None,
     ) -> Dict[str, Any]:
+        # 1. Scenario Validation (LIFTED: All scenarios allowed)
+
+
         personas = SimulationEngine.generate_personas(
             population_size=population_size,
             agent_roles=agent_roles,
@@ -64,6 +68,7 @@ class SimulationOrchestrator:
             {
                 "simulation_id": self.simulation_id,
                 "scenario": scenario,
+                "mode": mode,
                 "population_size": len(persona_rows),
                 "rounds": rounds,
             },
@@ -71,6 +76,7 @@ class SimulationOrchestrator:
 
         result = SimulationEngine.run_simulation(
             scenario=scenario,
+            mode=mode,
             population_size=population_size,
             rounds=rounds,
             agent_roles=agent_roles,
@@ -117,6 +123,7 @@ class SimulationOrchestrator:
         self,
         *,
         scenario: str,
+        mode: str,
         population_size: int,
         rounds: int,
         agent_roles: Optional[List[str]] = None,
@@ -125,6 +132,7 @@ class SimulationOrchestrator:
     ) -> AsyncIterator[str]:
         out = await self.run(
             scenario=scenario,
+            mode=mode,
             population_size=population_size,
             rounds=rounds,
             agent_roles=agent_roles,
