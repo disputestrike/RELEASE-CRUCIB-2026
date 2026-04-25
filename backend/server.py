@@ -1849,9 +1849,26 @@ async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optiona
         pass
     return None
 
+def _asgi_static_http_only(static_asgi):
+    """Wrap StaticFiles so WebSocket handshakes never hit Starlette's assert scope['type']=='http'."""
+    async def app(scope, receive, send):
+        if scope["type"] == "websocket":
+            from starlette.websockets import WebSocket
+
+            ws = WebSocket(scope, receive, send)
+            await ws.close(code=1000)
+            return
+        if scope["type"] != "http":
+            return
+        await static_asgi(scope, receive, send)
+
+    return app
+
+
 # Serve static files from the 'static' directory
 if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
-    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+    _static_files = StaticFiles(directory=str(STATIC_DIR), html=True)
+    app.mount("/", _asgi_static_http_only(_static_files), name="static")
     @app.exception_handler(404)
     async def not_found_handler(_, __):
         return FileResponse(str(STATIC_DIR / "index.html"))

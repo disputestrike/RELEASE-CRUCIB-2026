@@ -17,6 +17,47 @@ from typing import Any, Dict, List
 logger = logging.getLogger(__name__)
 
 
+def _coerce_swarm_output_to_str(val: Any) -> str:
+    """Normalize agent/LLM payload to a string (Anthropic/OpenAI may return dict or block lists)."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val
+    if isinstance(val, dict):
+        if isinstance(val.get("text"), str):
+            return val["text"]
+        c = val.get("content")
+        if isinstance(c, str):
+            return c
+        if isinstance(c, list):
+            parts: List[str] = []
+            for block in c:
+                if isinstance(block, dict):
+                    if block.get("type") == "text" and isinstance(block.get("text"), str):
+                        parts.append(block["text"])
+                    elif isinstance(block.get("content"), str):
+                        parts.append(block["content"])
+                elif isinstance(block, str):
+                    parts.append(block)
+            if parts:
+                return "\n".join(parts)
+        for key in ("output", "result", "message"):
+            inner = val.get(key)
+            if isinstance(inner, str) and inner:
+                return inner
+            if isinstance(inner, (dict, list)):
+                nested = _coerce_swarm_output_to_str(inner)
+                if nested:
+                    return nested
+        try:
+            return json.dumps(val, ensure_ascii=False)
+        except Exception:
+            return str(val)
+    if isinstance(val, list):
+        return _coerce_swarm_output_to_str({"content": val})
+    return str(val)
+
+
 def _extract_artifact_from_llm_output(
     llm_response: str, artifact_path: str
 ) -> str:
@@ -601,7 +642,8 @@ async def run_swarm_agent_step(
             if dep in previous_outputs:
                 out = previous_outputs[dep]
                 raw = out.get("output") or out.get("result") or out.get("code") or ""
-                if isinstance(raw, str) and raw.strip():
+                raw = _coerce_swarm_output_to_str(raw)
+                if raw.strip():
                     per = int(3000 * factor) if factor > 0 else 0
                     reduced_outputs[dep] = {**out, "output": raw[:per]}
                     total += per
@@ -698,15 +740,17 @@ async def run_swarm_agent_step(
         
         if workspace_path and agent_name in ARTIFACT_PATHS:
             artifact_rel_path = ARTIFACT_PATHS[agent_name]
-            llm_output = result.get("output") or result.get("result") or ""
-            
+            llm_output = _coerce_swarm_output_to_str(
+                result.get("output") or result.get("result") or ""
+            )
+
             logger.info(
                 "artifact_materialization: agent=%s path=%s output_size=%d",
                 agent_name,
                 artifact_rel_path,
                 len(llm_output) if llm_output else 0
             )
-            
+
             if llm_output and llm_output.strip():
                 extracted = _extract_artifact_from_llm_output(
                     llm_output, artifact_rel_path
@@ -781,7 +825,9 @@ async def run_swarm_agent_step(
     if agent_name == "Planner" and workspace_path:
         try:
             from .build_memory import update_build_memory
-            llm_out = result.get("output") or result.get("result") or ""
+            llm_out = _coerce_swarm_output_to_str(
+                result.get("output") or result.get("result") or ""
+            )
             _updates: dict = {}
             # Detect build type from planner output
             _out_lower = llm_out.lower()
@@ -799,7 +845,9 @@ async def run_swarm_agent_step(
         try:
             from .build_memory import update_build_memory
             import json as _json
-            llm_out = result.get("output") or result.get("result") or ""
+            llm_out = _coerce_swarm_output_to_str(
+                result.get("output") or result.get("result") or ""
+            )
             # Try to parse JSON stack from output
             _stack_match = re.search(r'\{[^{}]*(?:frontend|backend|database)[^{}]*\}', llm_out, re.DOTALL | re.IGNORECASE)
             if _stack_match:
@@ -817,7 +865,9 @@ async def run_swarm_agent_step(
             logger.warning("build_memory stack parse failed: %s", _bm_err)
 
     return {
-        "output": result.get("output") or result.get("result") or "",
+        "output": _coerce_swarm_output_to_str(
+            result.get("output") or result.get("result") or ""
+        ),
         "result": result,
         "output_files": changed_files,
         "artifacts": artifacts,
