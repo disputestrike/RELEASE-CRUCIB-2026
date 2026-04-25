@@ -76,15 +76,15 @@ function formatCoachReply(guidance) {
   return lines.join('\n\n').trim();
 }
 
-/** E6: map persisted `workspace_transcript` (user) events → chat rows (assistant uses brain_guidance separately). */
-function userTranscriptLinesFromEvents(events, jobId) {
+/** E6: map `workspace_transcript` events (user + steer `assistant`) → chat rows. Orchestrator `brain_guidance` still mapped separately. */
+function jobTranscriptLinesFromEvents(events, jobId) {
   if (!Array.isArray(events) || !jobId) return [];
   const rows = [];
   for (const ev of events) {
     const t = ev?.type || ev?.event_type;
     if (t !== 'workspace_transcript') continue;
     const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
-    if (p.role && p.role !== 'user') continue;
+    const role = p.role === 'assistant' ? 'assistant' : 'user';
     const text = String(p.text || p.body || '').trim();
     if (!text) continue;
     const created = ev.created_at;
@@ -98,7 +98,7 @@ function userTranscriptLinesFromEvents(events, jobId) {
     rows.push({
       id: ev.id || `wt_${rows.length}_${ts}`,
       body: text,
-      role: 'user',
+      role,
       jobId,
       pendingBind: false,
       ts,
@@ -363,8 +363,9 @@ export default function UnifiedWorkspace() {
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
-  const persistUserTranscriptLine = useCallback(
-    (body) => {
+  const persistTranscriptLine = useCallback(
+    (role, body) => {
+      const r = role === 'assistant' ? 'assistant' : 'user';
       const t = (body || '').trim();
       if (!t || !token || !API) return;
       const jid = jobId || jobIdFromUrl;
@@ -373,7 +374,7 @@ export default function UnifiedWorkspace() {
       void axios
         .post(
           `${API}/jobs/${encodeURIComponent(jid)}/transcript`,
-          { role: 'user', body: t },
+          { role: r, body: t },
           { headers, timeout: 15000 },
         )
         .catch(() => {});
@@ -394,11 +395,11 @@ export default function UnifiedWorkspace() {
         const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
         const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
         if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
-        persistUserTranscriptLine(body);
+        persistTranscriptLine('user', body);
         return [...prev, msg];
       });
     },
-    [jobId, jobIdFromUrl, persistUserTranscriptLine],
+    [jobId, jobIdFromUrl, persistTranscriptLine],
   );
 
   const clearBuildError = useCallback(() => {
@@ -701,7 +702,7 @@ export default function UnifiedWorkspace() {
     if (transcriptRebuiltForJobRef.current === effectiveJobId) return;
     const hasT = events.some((e) => (e?.type || e?.event_type) === 'workspace_transcript');
     if (!hasT) return;
-    const users = userTranscriptLinesFromEvents(events, effectiveJobId);
+    const fromJob = jobTranscriptLinesFromEvents(events, effectiveJobId);
     setUserChatMessages((prev) => {
       if (prev.length > 0) {
         const onlyHydrate = prev.every((m) => String(m.id || '').startsWith('hydrate-'));
@@ -710,12 +711,12 @@ export default function UnifiedWorkspace() {
           return prev;
         }
       }
-      if (users.length === 0) {
+      if (fromJob.length === 0) {
         transcriptRebuiltForJobRef.current = effectiveJobId;
         return prev;
       }
       transcriptRebuiltForJobRef.current = effectiveJobId;
-      return users;
+      return fromJob;
     });
   }, [API, events, effectiveJobId, token]);
 
@@ -982,6 +983,7 @@ export default function UnifiedWorkspace() {
               ts: Date.now(),
             },
           ]);
+          persistTranscriptLine('assistant', coachText);
         }
         setStage('running');
         refresh();
@@ -1043,6 +1045,7 @@ export default function UnifiedWorkspace() {
             };
             const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
             if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
+            persistTranscriptLine('assistant', coachText);
             return [...prev, msg];
           });
         }

@@ -28,7 +28,7 @@
 | C-E3 | Activity hidden during run | Feed was `stage === 'input'` only | Condition `stage === 'input' \|\| effectiveJobId` |
 | C-E4 | Preview URL not loading | `dev-preview` never called without `jobId` on panel | `PreviewPanel` props from `UnifiedWorkspace` |
 | C-E5 | Dual brain (Dashboard `/ai/chat` vs job) | **Advisory** note on Home chat + link to Workspace (minimal) | `Dashboard.jsx` + `Dashboard.css` |
-| C-E6 | No server chat log per job | User lines → `workspace_transcript`; reload/switch rehydrates users; assistant from `brain_guidance` (existing) | `jobs.py` `POST .../transcript`, `UnifiedWorkspace.jsx` |
+| C-E6 | No server chat log per job | User + **steer coach** → `workspace_transcript`; rehydrate user+transcript assistant from `GET /events`; build brain from `brain_guidance` (existing) | `jobs.py` `POST .../transcript`, `UnifiedWorkspace.jsx`, `WorkspaceActivityFeed.jsx` |
 
 ---
 
@@ -65,13 +65,14 @@
 | File | Change |
 |------|--------|
 | `frontend/src/pages/UnifiedWorkspace.jsx` | Task/job URL sync after plan; show activity feed for active job; pass preview auth props |
-| `frontend/src/components/AutoRunner/WorkspaceActivityFeed.jsx` | Richer `formatEvent`; live strip; larger event buffer |
+| `frontend/src/components/AutoRunner/WorkspaceActivityFeed.jsx` | Richer `formatEvent` (incl. `workspace_transcript`); live strip; larger event buffer |
 | `frontend/src/components/AutoRunner/WorkspaceActivityFeed.css` | Styles for live strip |
 | `frontend/src/hooks/useJobStream.js` | `job_failed` → same job row fetch as completed (latestFailure) |
 | `frontend/src/pages/AutoRunnerPage.css` | Failure callout in composer |
 | `frontend/src/pages/Dashboard.jsx` + `Dashboard.css` | Advisory channel hint (C-E5) |
 | `backend/routes/jobs.py` | `POST /{job_id}/transcript` → `workspace_transcript` job event |
-| `frontend/src/pages/UnifiedWorkspace.jsx` (E6) | `persistUserTranscriptLine`, `userTranscriptLinesFromEvents`, rehydration effect |
+| `frontend/src/pages/UnifiedWorkspace.jsx` (E6) | `persistTranscriptLine(user|assistant)`, `jobTranscriptLinesFromEvents`, rehydration; steer coach → transcript |
+| `backend/tests/test_control_plane_transcript.py` | Pytest: `workspace_transcript` user+assistant on job events |
 
 ---
 
@@ -80,8 +81,20 @@
 - **Build:** `cd frontend && npm run build` must pass.
 - **Manual:** Start build from `/app/workspace` without prior `taskId` → URL gains `taskId` + `jobId`; sidebar entry links back with both.
 - **Manual:** During `running`, “Behind the scenes” shows live strip with step/DAG lines without opening “Timeline & steps”.
-- **Manual (E6):** Send a user message with a job active → refresh page → user line returns from events (plus brain lines when present).
+- **Manual (E6):** Send a user message with a job active → refresh page → user line returns from events; steer once → refresh → user + coach reply lines (orchestrator `brain_guidance` still appears as before).
 
 ---
 
 **Program status:** Phases **0–6** implemented in repo; **operator-only** gates remain in §4 (Railway / E2E smoke).
+
+---
+
+## 7. Operator verification (local or staging)
+
+After deploy, you can smoke the API with a real JWT and `JOB_ID` (use browser devtools → Network on any authenticated `GET /api/jobs/...` request).
+
+1. **Append transcript (user):** `POST /api/jobs/{JOB_ID}/transcript` with body `{"role":"user","body":"test line"}` and `Authorization: Bearer <token>`.
+2. **Read back:** `GET /api/jobs/{JOB_ID}/events` — at least one event has `event_type` `workspace_transcript` and payload with `text`.
+3. **UI:** open `/app/workspace?jobId=...` after step 1 — after refresh, the user line appears in the center column (rehydration).
+
+**Automated (dev):** `cd backend && python -m pytest tests/test_control_plane_transcript.py -q`

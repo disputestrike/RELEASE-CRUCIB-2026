@@ -85,6 +85,12 @@ function formatEvent(ev) {
       if (payload.headline) return String(payload.headline).trim().slice(0, 160);
       if (payload.summary) return String(payload.summary).trim().slice(0, 160);
       return 'Brain update';
+    case 'workspace_transcript': {
+      const isAsst = payload.role === 'assistant';
+      const line = (payload.text || payload.body || '').trim().slice(0, 120);
+      if (!line) return null;
+      return isAsst ? `Reply: ${line}` : `You: ${line}`;
+    }
     default:
       return null;
   }
