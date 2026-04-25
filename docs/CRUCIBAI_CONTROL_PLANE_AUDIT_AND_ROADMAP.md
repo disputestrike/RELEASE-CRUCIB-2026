@@ -32,6 +32,88 @@
 
 ---
 
+## Part B2 — **Comparative operations & “agent internals” (the five, vs us)**
+
+This is the **per-product** comparison that was **missing** in the first deep pass: for **each** reference, we state **how that class of system typically operates** (from public patterns + your research framing), then **where CrucibAI’s implementation matches, diverges, or is undefined**. This is not marketing copy; it is a **rubric to beat**.
+
+### B2.1 OpenAI **Codex** (product class: computer use + runs + artifacts)
+
+| Typical **operations** (what “good” looks like) | **CrucibAI in this repo** | **Delta (honest)** |
+|--------------------------------------------------|-----------------------------|----------------------|
+| One **durable** “run” or session object the UI always points at | `job_id` + `GET/POST` under `/api/jobs`, `useJobStream` on **`/api/jobs/{id}/stream`** | **Match** in backend shape; **UX** can still show **no** `jobId` in URL if plan handoff lags. |
+| **Transcript of work** = tool + file + step output in **one** feed | `events` in job stream; **center chat** = **user** + **`brain_guidance` → assistant** in `UnifiedWorkspace` | **Weaker** unless **orchestrator** emits rich guidance, or we **map more event types** to the feed. |
+| **Preview** is first-class, URL-backed, reloads on change | `PreviewPanel`, `dev-preview`, iframe, **WS** `preview-watch` | **Match in UI**; **weaker** if **`job` lacks URLs** or **files** never land. |
+| “Background” and multi-tool automation | `orchestrator/plan`, `orchestrator/run-auto`, long-running job | **Partial** — depends on **host** and **orchestrator** health on Railway. |
+
+**Bottom line vs Codex:** We have the **skeleton** (job, stream, preview component); **Codex** wins when **one run** always **drives** the whole UI. We still split **advisory** `/ai/chat` and **durable** job runs — that **operational** split is a **key** difference from “artifact-centric” UPs.
+
+---
+
+### B2.2 **Cursor** (Composer: IDE agent, tools, repo-grounded)
+
+| Typical **operations** | **CrucibAI** | **Delta** |
+|-------------------------|-------------|-----------|
+| **Turns** in one workspace; “truth” = **read files + terminal** | Build truth is **server job workspace** + API file routes; not the same as **one local clone in Cursor** | **Different topology** (hosted job workspace vs local repo). Ours is **closer to** a **web control plane** than to Cursor’s local loop. |
+| **No** hidden job table in the *model*; CI/git are truth | We **intentionally** have a **server job** table and stream — that’s a **strategic** difference (more “Manus than Cursor” for the run object). | **By design** we are **not** imitating Cursor’s **ephemeral** chat-only truth. **Risk:** if **chat** in Dashboard **sounds** like source of truth, we **violate** both Cursor and our own “job is truth” rule. |
+| Fast **edit** loop | Ours is **orchestrated** multi-step, not 50 single-file turns | **Slower** by nature; our wedge is **proof + simulation**, not edit latency. |
+
+**Bottom line vs Cursor:** Cursor’s **strength** is **grounding in one tree**. Ours is **orchestrated** **build**; we must be **candid** in UI that the **file tree** is the **job workspace on the server**, and **rehydrate** that tree **reliably** (no empty “code room” without explanation).
+
+---
+
+### B2.3 **Claude Code** (headless / terminal / single-project depth)
+
+| Typical **operations** | **CrucibAI** | **Delta** |
+|-------------------------|-------------|-----------|
+| **One** working directory, one process mental model | **One** `job_id` and workspace paths under that job on API | **Match** in concept. **Diverge** if **user** can open **Workspace** + **WorkspaceManus** + **classic** and get **confused** — multiple shells in `App.js`. |
+| **Terminal + patch** are the actuators | Our actuators are **orchestrator** + **file_writer**-style **backend** processes | **Stronger** for **SaaS**; **weaker** for “I need raw shell on my machine” unless we expose that honestly. |
+| **Long** serial reasoning | `brain_guidance` + `events` | **Weaker** if the **transcript** doesn’t show **all** model-facing steps, only a subset. |
+
+**Bottom line vs Claude Code:** We trade **raw terminal intimacy** for **orchestrated** output and **proof**; the **comparative** risk is **depth of trace** in the **chat** view, not lack of a **job** object.
+
+---
+
+### B2.4 **Goose** (extensibility, connectors, “do work in the user world”)
+
+| Typical **operations** | **CrucibAI** | **Delta** |
+|-------------------------|-------------|-----------|
+| **Plugins** / MCP / many integrations, clearly labeled | Skills, channels, **many** `App.js` routes; **capability** notices from orchestrator plan | **Match** in ambition; must **not** mark connectors **live** when they’re stubbed (per your directive Class 5). |
+| **Local** execution on user machine for some tools | Ours is **server-centric** (Railway) | **Strategic** difference: our **wedge** is **hosted** **build + verify**, not on-device. |
+
+**Bottom line vs Goose:** We win on **unified** **job + proof** in **one** product; we lose if we **imply** external integrations that aren’t **wired**.
+
+---
+
+### B2.5 **Manus** (archetype in *your* checklists — intent, DAG, recovery)
+
+| **Checklist** layer (from `validation_checklist.md` frame) | **CrucibAI in code** | **Delta** |
+|---------------------------------------------------------|------------------------|-----------|
+| **Intent** as structured object | `orchestrator/plan` with **goal**, **build_target** — **not** the full JSON “IntentSchema” the checklist names | **Partial**; checklist is **aspirational**; **code** is **thinner** than the 160+ checklist. |
+| **DAG** visible & enforced | `steps` from API + `dag_node_*` in stream; `events` in `useJobStream` | **Match** in **data**; **UI** must not hide **graph** in favor of only chat. |
+| **Clarification gate** for ambiguity | **Not** a hard product gate in `UnifiedWorkspace` in the way the checklist describes | **Weaker**; we often **act** (plan/run) without **clarify-first** **UI**. |
+| **Recovery / repair** | `latestFailure`, `repair` endpoints in tests, **AutoRunner** resume/cancel in workspace | **Partial**; must stay **visible** on failure (your “disappearing” history). |
+| **Proof** | `GET /api/jobs/{id}/proof` + `Proof` pane patterns | **Strong** in API; must stay **tied to** **UI** and **not** a fake paragraph. |
+
+**Bottom line vs your Manus model:** The **back end** and **stream** are **on the right track**; the **gaps** are **front-end** **honesty** (always show state), **clarify** (optional product choice), and **transcript = events**, not just **`brain_guidance`**.
+
+---
+
+## Part B3 — **Issues the audit found *without* you listing them** (independent findings)
+
+These are **additional** gaps or risks spotted while reading code — they overlap **your** five but are **not** the same list.
+
+1. **Dual “brain” for text:** `Dashboard` → **`/ai/chat`** and workspace → **orchestrator** + **SSE** — the user can get **two** incompatible explanations for “what is happening” unless we **unify** or **label** the channels.
+2. **Narrow “assistant” channel during build:** only **`brain_guidance`** (plus manual chat) is clearly wired into **`userChatMessages` → assistant** for live build; **all other** `events` are **in `events` state** but not necessarily **in the main conversational column** — feels “not talking.”
+3. **Task↔job binding:** if **`addTask` / history row** has **no** `jobId` until late, `Sidebar` **opens** `?taskId=…` without `jobId=…` — stream **can’t** attach; **comparative** to **Codex** (always has run id) and **Manus** (run is primary key).
+4. **Multiple workspace surfaces:** `UnifiedWorkspace` vs `Workspace` vs `WorkspaceManus` in `App.js` — same company, **three** “internal” UIs; **operational** risk for users and for **us** (bugs fixed in one, not the other).
+5. **Client-only task persistence:** `useTaskStore` is **not** a **cross-device** or **compliance** store — if we claim “history” in an enterprise sense, we’re **weaker** than any **SaaS** with a real **DB**-backed task list.
+6. **Rehydration vs reset:** on **job switch**, chat is **cleared** by design; **rehydration** from **`GET /events`** for that job’s chat-like lines is **not** guaranteed in one shot — can feel like “no memory.”
+7. **Preview and proof depend on** **`job` DTO** fields populated by the **orchestrator** on your **hosting**; front-end can be **green** and still **empty** if **backend** never sets `dev_server_url` / file tree.
+
+**Count:** the **user-listed** problems are the **highest pain**; the **independent** list is **why** the product can still “feel” wrong even as **tickets** close one by one.
+
+---
+
 ## Part C — Your reported issues → what the code actually does
 
 ### C1. “Conversational chat / middle pane frozen; not showing what is building; AI doesn’t know itself”
@@ -142,12 +224,13 @@
 
 ---
 
-## Part F — “Weak doc” self-critique: what this revision fixes
+## Part F — Document history (what each revision added)
 
-- **Names real files and hooks** (`useJobStream`, `UnifiedWorkspace`, `PreviewPanel`, `useTaskStore`, `Sidebar` query params) instead of only “Class 1–8.”
-- **Maps** your **concrete** complaints to **line-of-business** code paths.
-- **Explicitly** uses **Competitor** only as a **rubric** — the **wedge** is **your** **What-If + proof + job** design, with **gaps** called honestly.
-- **Does not** claim line-by-line **every** file — **Part E** is the **punch list**; extend with **tickets** per bullet.
+- **Revision 1 (too thin):** Class-style matrix only — **you** were right: not enough **comparative** depth.
+- **Revision 2:** **Part C–E** + your five issues tied to **code**.
+- **Revision 3 (this):** **Part B2** — **full five-way** **operational** comparison (Codex, Cursor, Claude Code, Goose, Manus-as-checklist) with **match / delta** tables; **Part B3** — **independent** issues found in review **besides** your five.
+
+**Still not claiming:** access to **private** vendor internals — **Manus** here means **your** checklist archetype, not proprietary server maps.
 
 ---
 
