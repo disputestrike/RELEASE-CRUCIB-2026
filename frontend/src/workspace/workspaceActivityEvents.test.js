@@ -23,6 +23,30 @@ describe('workspaceActivityEvents', () => {
     );
   });
 
+  test('formats events when payload is serialized JSON', () => {
+    expect(
+      formatWorkspaceActivityEvent({
+        type: 'file_written',
+        payload: JSON.stringify({ path: 'src/App.jsx' }),
+      }),
+    ).toBe('Saved file: App.jsx');
+    expect(
+      formatWorkspaceActivityEvent({
+        type: 'verification_result',
+        payload: JSON.stringify({ passed: true, score: 92 }),
+      }),
+    ).toBe('Verify: passed (92)');
+  });
+
+  test('falls back to payload_json when payload is absent', () => {
+    expect(
+      formatWorkspaceActivityEvent({
+        type: 'code_repair_applied',
+        payload_json: JSON.stringify({ failure_type: 'syntax_error', files: ['src/App.jsx'] }),
+      }),
+    ).toBe('Repair applied after syntax error: App.jsx');
+  });
+
   test('formats repair and artifact delta events', () => {
     expect(
       formatWorkspaceActivityEvent({

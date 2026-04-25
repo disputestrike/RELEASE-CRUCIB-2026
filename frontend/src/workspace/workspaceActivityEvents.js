@@ -10,6 +10,14 @@ export function humanizeActivityAgentLabel(raw) {
 function payloadFromEvent(ev) {
   const direct = ev?.payload && typeof ev.payload === 'object' ? ev.payload : {};
   if (Object.keys(direct).length) return direct;
+  if (typeof ev?.payload === 'string' && ev.payload.trim()) {
+    try {
+      const parsed = JSON.parse(ev.payload);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
   try {
     return JSON.parse(ev?.payload_json || '{}');
   } catch {
