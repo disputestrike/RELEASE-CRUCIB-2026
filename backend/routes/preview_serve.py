@@ -15,7 +15,7 @@ import logging
 import mimetypes
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -124,6 +124,36 @@ def _resolve_serve_root(workspace: Path) -> Optional[Path]:
     return workspace.resolve()
 
 
+def _preview_readiness_snapshot(workspace: Path, serve_root: Optional[Path]) -> Dict[str, Any]:
+    """Return a compact preview state descriptor for UI and support."""
+    checked_roots = [str(workspace / sub) for sub in ("build", "dist", "out", "public")]
+    if serve_root is None:
+        return {
+            "workspace_exists": workspace.exists(),
+            "serve_root": None,
+            "has_index": False,
+            "file_count": 0,
+            "checked_roots": checked_roots,
+            "state": "waiting_for_workspace",
+            "reason": "workspace_not_found" if not workspace.exists() else "no_serve_root",
+        }
+    try:
+        files = [p for p in serve_root.rglob("*") if p.is_file()]
+    except Exception:
+        files = []
+    has_index = (serve_root / "index.html").exists()
+    return {
+        "workspace_exists": workspace.exists(),
+        "serve_root": str(serve_root),
+        "has_index": has_index,
+        "file_count": len(files),
+        "checked_roots": checked_roots,
+        "state": "ready" if has_index else "waiting_for_index",
+        "reason": None if has_index else "index_html_missing",
+        "sample_files": [str(p.relative_to(serve_root)).replace("\\", "/") for p in files[:12]],
+    }
+
+
 async def _resolve_root_for_job(job_id: str) -> Optional[Path]:
     """Async helper: look up project_id, then resolve serve root."""
     project_id = await _get_project_id_for_job(job_id)
@@ -194,6 +224,7 @@ async def dev_preview(job_id: str, request: Request):
     project_id = await _get_project_id_for_job(job_id)
     workspace = _job_workspace_root(job_id, project_id)
     serve_root = _resolve_serve_root(workspace)
+    readiness = _preview_readiness_snapshot(workspace, serve_root)
 
     if serve_root is None:
         return JSONResponse(
@@ -201,6 +232,8 @@ async def dev_preview(job_id: str, request: Request):
             content={
                 "dev_server_url": None,
                 "status": "pending",
+                "preview_state": "waiting_for_workspace",
+                "readiness": readiness,
                 "detail": "Workspace not ready yet — build may still be running",
             },
         )
@@ -212,6 +245,8 @@ async def dev_preview(job_id: str, request: Request):
             content={
                 "dev_server_url": None,
                 "status": "building",
+                "preview_state": "waiting_for_index",
+                "readiness": readiness,
                 "detail": "Build in progress — no index.html yet",
             },
         )
@@ -240,4 +275,6 @@ async def dev_preview(job_id: str, request: Request):
         "project_id": project_id,
         "workspace_path": str(workspace),
         "serve_root": str(serve_root),
+        "preview_state": "ready",
+        "readiness": readiness,
     }

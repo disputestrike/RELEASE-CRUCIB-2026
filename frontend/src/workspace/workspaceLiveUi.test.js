@@ -2,6 +2,7 @@ import {
   computeDockMeta,
   computeDockMetaPreJob,
   deriveRightRailSubtitle,
+  derivePreviewReadiness,
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from './workspaceLiveUi';
@@ -106,5 +107,35 @@ describe('selectWorkspacePreviewStatus', () => {
     expect(
       selectWorkspacePreviewStatus({ jobStatus: 'completed', stage: 'completed', isCompleted: true }),
     ).toBe('ready');
+  });
+});
+
+describe('derivePreviewReadiness', () => {
+  test('shows remote URL as live', () => {
+    const r = derivePreviewReadiness({ previewUrl: 'https://example.com', hasSandpack: false });
+    expect(r.state).toBe('remote_live');
+    expect(r.severity).toBe('ok');
+  });
+
+  test('prefers Sandpack fallback when files are packable', () => {
+    const r = derivePreviewReadiness({ previewStatus: 'building', hasSandpack: true });
+    expect(r.state).toBe('sandpack_fallback');
+    expect(r.label).toBe('File preview');
+  });
+
+  test('reports waiting for index with file count', () => {
+    const r = derivePreviewReadiness({
+      previewStatus: 'building',
+      hasSandpack: false,
+      devPreviewStatus: { preview_state: 'waiting_for_index', readiness: { file_count: 7 } },
+    });
+    expect(r.state).toBe('waiting_for_index');
+    expect(r.detail).toContain('7 files');
+  });
+
+  test('reports completed build without preview target as warning', () => {
+    const r = derivePreviewReadiness({ previewStatus: 'ready', hasSandpack: false });
+    expect(r.state).toBe('ready_without_target');
+    expect(r.severity).toBe('warn');
   });
 });

@@ -8,6 +8,7 @@ import ErrorOverlay from '../ErrorOverlay';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 import SandpackErrorBoundary from '../SandpackErrorBoundary';
+import { derivePreviewReadiness } from '../../workspace/workspaceLiveUi';
 import '../SandpackErrorBoundary.css';
 import './PreviewPanel.css';
 
@@ -59,6 +60,7 @@ export default function PreviewPanel({
   const iframeRef = useRef(null);
   const [devServerUrl, setDevServerUrl] = useState(null);
   const [devPreviewError, setDevPreviewError] = useState(null);
+  const [devPreviewStatus, setDevPreviewStatus] = useState(null);
   const [isBootingDevPreview, setIsBootingDevPreview] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
 
@@ -84,6 +86,7 @@ export default function PreviewPanel({
 
     setIsBootingDevPreview(true);
     setDevPreviewError(null);
+    setDevPreviewStatus(null);
 
     const scheduleRetry = (delayMs) => {
       if (cancelled) return;
@@ -102,6 +105,7 @@ export default function PreviewPanel({
           timeout: 20000,
         });
         if (cancelled) return;
+        setDevPreviewStatus(res.data || null);
         setIsBootingDevPreview(false);
         const u = res.data?.dev_server_url;
         if (u) {
@@ -117,6 +121,7 @@ export default function PreviewPanel({
         }
       } catch (e) {
         if (cancelled) return;
+        setDevPreviewStatus(e?.response?.data || null);
         setIsBootingDevPreview(false);
         setDevServerUrl(null);
         attempt += 1;
@@ -171,8 +176,16 @@ export default function PreviewPanel({
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
-          ? 'Preview'
-          : 'Next up';
+        ? 'Preview'
+        : 'Next up';
+  const readiness = derivePreviewReadiness({
+    previewStatus: status,
+    previewUrl: resolvedRemoteUrl || remotePreviewUrl,
+    hasSandpack,
+    devPreviewStatus,
+    devPreviewError,
+    isBootingDevPreview,
+  });
 
   return (
     <div className="preview-panel">
@@ -207,6 +220,10 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        <div className={`pp-preview-state-strip pp-preview-state-strip--${readiness.severity}`} role="status">
+          <span className="pp-preview-state-label">{readiness.label}</span>
+          <span className="pp-preview-state-detail">{readiness.detail}</span>
+        </div>
         <ErrorOverlay
           title={isBootingDevPreview ? 'Starting live preview' : 'Preview issue'}
           message={isBootingDevPreview ? 'Booting a workspace dev server so preview updates without a manual refresh.' : devPreviewError}

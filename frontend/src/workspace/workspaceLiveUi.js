@@ -209,6 +209,99 @@ export function selectWorkspacePreviewStatus({ jobStatus, stage, isCompleted }) 
   return 'idle';
 }
 
+export function derivePreviewReadiness({
+  previewStatus,
+  previewUrl,
+  hasSandpack,
+  devPreviewStatus,
+  devPreviewError,
+  isBootingDevPreview,
+}) {
+  if (previewStatus === 'blocked') {
+    return {
+      state: 'blocked',
+      label: 'Paused',
+      detail: devPreviewError || 'Build stopped before preview could be refreshed.',
+      severity: 'error',
+    };
+  }
+  if (previewUrl) {
+    return {
+      state: 'remote_live',
+      label: 'Live URL',
+      detail: 'Rendering from a real preview or deployment URL.',
+      severity: 'ok',
+    };
+  }
+  const serverState = devPreviewStatus?.preview_state || devPreviewStatus?.readiness?.state || devPreviewStatus?.status;
+  if (serverState === 'ready' && devPreviewStatus?.dev_server_url) {
+    return {
+      state: 'dev_server_ready',
+      label: 'Dev preview ready',
+      detail: 'Backend preview server returned a loadable app URL.',
+      severity: 'ok',
+    };
+  }
+  if (hasSandpack) {
+    return {
+      state: 'sandpack_fallback',
+      label: 'File preview',
+      detail: 'Rendering directly from generated workspace files while the live server catches up.',
+      severity: 'ok',
+    };
+  }
+  if (isBootingDevPreview) {
+    return {
+      state: 'booting',
+      label: 'Starting server',
+      detail: 'Checking the job workspace for a build, dist, out, public, or index.html preview root.',
+      severity: 'working',
+    };
+  }
+  if (serverState === 'waiting_for_index' || devPreviewStatus?.status === 'building') {
+    const fileCount = devPreviewStatus?.readiness?.file_count;
+    return {
+      state: 'waiting_for_index',
+      label: 'Waiting for app entry',
+      detail:
+        typeof fileCount === 'number'
+          ? `${fileCount} files found, but no index.html is ready yet.`
+          : 'Workspace exists, but no index.html is ready yet.',
+      severity: 'working',
+    };
+  }
+  if (serverState === 'waiting_for_workspace' || devPreviewStatus?.status === 'pending') {
+    return {
+      state: 'waiting_for_workspace',
+      label: 'Waiting for files',
+      detail: 'No preview workspace is ready yet. The build may still be planning or writing files.',
+      severity: 'working',
+    };
+  }
+  if (devPreviewError) {
+    return {
+      state: 'error',
+      label: 'Preview issue',
+      detail: devPreviewError,
+      severity: 'error',
+    };
+  }
+  if (previewStatus === 'ready') {
+    return {
+      state: 'ready_without_target',
+      label: 'Ready, no target',
+      detail: 'Build is complete, but no live URL or packable preview files were found.',
+      severity: 'warn',
+    };
+  }
+  return {
+    state: 'idle',
+    label: 'Next up',
+    detail: 'Preview will appear after files land or a live preview URL is assigned.',
+    severity: 'idle',
+  };
+}
+
 /** Status strip when there is no job id yet (input / plan / loading). */
 export function computeDockMetaPreJob({ stage, loading }) {
   if (loading) {
