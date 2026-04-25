@@ -56,6 +56,11 @@ import {
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from '../workspace/workspaceLiveUi';
+import {
+  bindWorkspaceSearchParams,
+  taskEntryFromJob,
+  taskStatusFromJobStatus,
+} from '../workspace/workspaceTaskBinding';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
@@ -117,7 +122,7 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask, addTask, tasks } = useTaskStore();
+  const { updateTask, upsertTask, addTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
   /** Same-tick handoff goal when router state + session can race with the autostart effect. */
@@ -451,12 +456,40 @@ export default function UnifiedWorkspace() {
   useEffect(() => {
     if (!taskIdFromUrl || !effectiveJobId) return;
     const patch = { jobId: effectiveJobId };
-    const st = job?.status;
-    if (st === 'completed') patch.status = 'completed';
-    else if (st === 'failed' || st === 'cancelled') patch.status = 'failed';
-    else if (st) patch.status = 'running';
+    if (job?.status) patch.status = taskStatusFromJobStatus(job.status);
     updateTask(taskIdFromUrl, patch);
   }, [taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
+
+  const taskJobBindingRef = useRef('');
+  useEffect(() => {
+    if (!effectiveJobId || !job) return;
+    const existingByTask = taskIdFromUrl ? tasks.find((t) => t.id === taskIdFromUrl) : null;
+    const existingByJob = tasks.find((t) => t.jobId === effectiveJobId);
+    const bindingTaskId = taskIdFromUrl || existingByJob?.id || '';
+    const entry = taskEntryFromJob({
+      job,
+      jobId: effectiveJobId,
+      taskId: bindingTaskId,
+      existingTask: existingByTask || existingByJob,
+      fallbackPrompt: buildDisplayTitle,
+    });
+    if (!entry?.id) return;
+    const key = `${entry.id}|${entry.jobId}|${entry.status}|${entry.prompt}|${job?.project_id || ''}`;
+    if (taskJobBindingRef.current !== key) {
+      taskJobBindingRef.current = key;
+      upsertTask(entry);
+    }
+    if (!taskIdFromUrl || taskIdFromUrl !== entry.id) {
+      setSearchParams(
+        (prev) => bindWorkspaceSearchParams(prev, {
+          jobId: effectiveJobId,
+          taskId: entry.id,
+          projectId: job?.project_id || projectIdFromUrl || null,
+        }),
+        { replace: true },
+      );
+    }
+  }, [effectiveJobId, job, taskIdFromUrl, tasks, upsertTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
