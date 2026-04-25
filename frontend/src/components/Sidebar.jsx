@@ -349,7 +349,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     || (user?.email && !String(user.email).toLowerCase().includes('guest') ? (user.email.split('@')[0] || 'User') : null)
     || 'Guest';
 
-  // Collapsed rail has overflow hidden — the account dropdown was clipped. Portaled to body; position to the right of the avatar.
+  // Collapsed rail: portaled to body. Anchor like expanded footer: menu *above* the G button (drop-up), not top-aligned to mid-screen.
   useLayoutEffect(() => {
     if (!accountMenuOpen || !collapsed) {
       setAccountMenuPortaledStyle(null);
@@ -364,26 +364,26 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       const r = el.getBoundingClientRect();
       const menuGuessW = 240;
       const m = 8;
+      const gap = 6; // space between bottom of menu and top of G button (matches expanded margin feel)
       let left = r.right + m;
       if (left + menuGuessW > window.innerWidth - m) {
         left = Math.max(m, r.left - menuGuessW - m);
       }
-      const maxH = Math.min(window.innerHeight * 0.6, 420);
-      let top = r.top;
-      if (top + maxH > window.innerHeight - m) {
-        top = Math.max(m, window.innerHeight - m - maxH);
-      }
-      top = Math.max(m, Math.min(top, window.innerHeight - m - 120));
+      // Bottom of menu = just above the avatar (y from viewport top) — same idea as .sidebar-account-menu { bottom: 100% } on the expanded footer
+      const menuBottomY = Math.max(m, r.top - gap);
+      const bottomPx = window.innerHeight - menuBottomY;
+      const maxSpaceAbove = menuBottomY - m;
+      const maxH = Math.min(420, maxSpaceAbove, window.innerHeight * 0.55);
       setAccountMenuPortaledStyle({
         position: 'fixed',
         left: `${left}px`,
-        top: `${top}px`,
+        bottom: `${bottomPx}px`,
+        top: 'auto',
         zIndex: 10050,
-        maxHeight: 'min(60vh, 420px)',
+        maxHeight: `${Math.max(120, maxH)}px`,
         overflowY: 'auto',
         margin: 0,
         right: 'auto',
-        bottom: 'auto',
       });
     };
     place();
