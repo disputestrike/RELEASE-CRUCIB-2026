@@ -5,6 +5,10 @@ param(
 $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot
 
+if ([string]::IsNullOrWhiteSpace($DatabaseUrl)) {
+  throw "DatabaseUrl cannot be empty."
+}
+
 Write-Host "[1/3] Backend smoke"
 & (Join-Path $scriptDir "smoke-backend.ps1") -DatabaseUrl $DatabaseUrl
 
