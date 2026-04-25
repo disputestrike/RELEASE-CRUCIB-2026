@@ -331,6 +331,8 @@ export default function UnifiedWorkspace() {
     transcriptRebuiltForJobRef.current = null;
   }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
+  /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
+  const sandpackWorkspaceFetchKeyRef = useRef('');
 
   const sandpackMergeFiles = useMemo(() => {
     const base = { ...DEFAULT_FILES, ...files };
@@ -563,6 +565,49 @@ export default function UnifiedWorkspace() {
       cancelled = true;
     };
   }, [effectiveProjectId, effectiveJobId, token, workspacePullKey, API]);
+
+  // Sandpack only merges `files` + opened-file cache; without bulk fetch, preview stays blank
+  // while Explorer lists paths. Pull text bodies for packable files after each list refresh.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API || !wsPaths.length) return;
+    const candidates = wsPaths
+      .filter(
+        (p) =>
+          /\.(jsx?|tsx?|css|html?|json)$/i.test(p) &&
+          !/node_modules|(\.(test|spec)\.[jt]sx?)$/i.test(p),
+      )
+      .slice(0, 60);
+    if (!candidates.length) return;
+    const key = `${effectiveJobId}\0${workspacePullKey}\0${[...candidates].sort().join('\n')}`;
+    if (sandpackWorkspaceFetchKeyRef.current === key) return;
+    sandpackWorkspaceFetchKeyRef.current = key;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    (async () => {
+      const patch = {};
+      await Promise.all(
+        candidates.map(async (rel) => {
+          try {
+            const r = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file`, {
+              params: { path: rel },
+              headers,
+              timeout: 25000,
+            });
+            const text = r.data?.content ?? '';
+            const slash = rel.startsWith('/') ? rel : `/${rel}`;
+            patch[slash] = { code: text };
+          } catch {
+            /* ignore per-file */
+          }
+        }),
+      );
+      if (cancelled || !Object.keys(patch).length) return;
+      setFiles((prev) => ({ ...prev, ...patch }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveJobId, token, API, wsPaths, workspacePullKey]);
 
   const traceByPath = useMemo(() => buildTraceIndexFromEvents(events, steps), [events, steps]);
 
@@ -1440,12 +1485,10 @@ export default function UnifiedWorkspace() {
     stage,
     isCompleted,
   });
+  // Do not default to /published/{jobId}/ when the job has no real publish URL. That value made
+  // PreviewPanel use an empty iframe, skipped GET /jobs/.../dev-preview, and hid Sandpack.
   const previewUrl =
-    job?.dev_server_url ||
-    job?.preview_url ||
-    job?.published_url ||
-    job?.deploy_url ||
-    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
+    job?.dev_server_url || job?.preview_url || job?.published_url || job?.deploy_url || null;
 
   const proofItemCount = useMemo(() => {
     if (!proof) return 0;
