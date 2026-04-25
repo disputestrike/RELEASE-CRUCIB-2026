@@ -17,3 +17,7 @@
 ## Notes
 - Validation executed against PostgreSQL-backed local test environment.
 - No fake/stub API response paths were introduced for these checks.
+
+## Cycle 2 rerun
+- Command repeated with same suite and database wiring.
+- Result: **31 passed**.
