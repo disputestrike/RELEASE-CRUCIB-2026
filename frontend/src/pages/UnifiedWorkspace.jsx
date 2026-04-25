@@ -84,7 +84,7 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask, tasks } = useTaskStore();
+  const { updateTask, addTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
   /** Same-tick handoff goal when router state + session can race with the autostart effect. */
@@ -775,10 +775,27 @@ export default function UnifiedWorkspace() {
         if (res.data.build_target) setBuildTarget(res.data.build_target);
         setEstimate(res.data.estimate);
         setJobId(newJid);
+        const namePreview = (trimmed || '').slice(0, 120) || 'Build';
+        let createdTaskId = null;
+        if (taskIdFromUrl) {
+          updateTask(taskIdFromUrl, { jobId: newJid, name: namePreview, status: 'running' });
+        } else {
+          createdTaskId = addTask({
+            name: namePreview,
+            prompt: trimmed,
+            status: 'running',
+            type: 'build',
+            jobId: newJid,
+            createdAt: Date.now(),
+            ...(projectIdFromUrl ? { linkedProjectId: projectIdFromUrl } : {}),
+          });
+        }
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
             if (newJid) next.set('jobId', newJid);
+            if (createdTaskId) next.set('taskId', createdTaskId);
+            if (projectIdFromUrl) next.set('projectId', projectIdFromUrl);
             return next;
           },
           { replace: true },
@@ -810,7 +827,7 @@ export default function UnifiedWorkspace() {
         sendInFlightRef.current = false;
       }
     },
-    [API, token, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
+    [API, token, buildTargets, projectIdFromUrl, taskIdFromUrl, addTask, updateTask, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -1310,7 +1327,7 @@ export default function UnifiedWorkspace() {
               repairQueueLen={repairQueueLen}
               steps={steps}
             />
-            {stage === 'input' && (
+            {(stage === 'input' || effectiveJobId) && (
               <WorkspaceActivityFeed
                 stage={stage}
                 plan={plan}
@@ -1548,6 +1565,9 @@ export default function UnifiedWorkspace() {
                     filesReadyKey={filesReadyKey}
                     sandpackIsFallback={sandpackIsFallback}
                     blockedDetail={previewBlockedDetail}
+                    jobId={effectiveJobId}
+                    token={token}
+                    apiBase={API}
                   />
                 )}
                 {activePane === 'timeline' && (

@@ -41,8 +41,16 @@ function humanizeJobStatus(status) {
 
 function formatEvent(ev) {
   const t = ev.type || ev.event_type;
-  const p = ev.payload || {};
-  const name = humanizeAgentLabel(p.agent_name || p.step_key || p.step || ev.step || '');
+  const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
+  const fromJson = () => {
+    try {
+      return JSON.parse(ev?.payload_json || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const payload = Object.keys(p).length ? p : fromJson();
+  const name = humanizeAgentLabel(payload.agent_name || payload.step_key || payload.step || ev.step || payload.node_key || '');
   switch (t) {
     case 'step_started':
       return name && name !== 'Step' ? `Working on: ${name}` : 'Working on the next step';
@@ -58,6 +66,25 @@ function formatEvent(ev) {
       return 'Build completed';
     case 'job_failed':
       return 'Build failed';
+    case 'dag_node_started':
+      return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
+    case 'dag_node_completed': {
+      const files = payload.output_files;
+      if (Array.isArray(files) && files.length) {
+        const short = files.slice(0, 4).map((x) => String(x).split('/').pop() || x);
+        return `Wrote ${files.length} file(s): ${short.join(', ')}${files.length > 4 ? '…' : ''}`;
+      }
+      return name && name !== 'Step' ? `DAG: done — ${name}` : 'DAG node completed';
+    }
+    case 'user_steering':
+      return 'Steering applied';
+    case 'job_reactivated':
+      return 'Run reactivated';
+    case 'brain_guidance':
+      // Center chat also maps brain_guidance; keep a one-line echo here for the live strip only.
+      if (payload.headline) return String(payload.headline).trim().slice(0, 160);
+      if (payload.summary) return String(payload.summary).trim().slice(0, 160);
+      return 'Brain update';
     default:
       return null;
   }
@@ -97,7 +124,7 @@ export default function WorkspaceActivityFeed({
       const text = formatEvent(ev);
       if (text) lines.push({ id: ev.id ?? `${text}-${lines.length}`, text });
     }
-    return lines.slice(-14);
+    return lines.slice(-40);
   }, [events]);
 
   // Auto-scroll the live stream to the bottom as new events arrive so users see
@@ -131,6 +158,11 @@ export default function WorkspaceActivityFeed({
   const goalTruncated = goalRaw.length > 240;
 
   const hasOptionalLog = sortedSteps.length > 0 || feedEvents.length > 0 || totalSteps > 0;
+  /** Always-visible lines (not tucked inside the disclosure) until the run is terminal. */
+  const showLiveStrip =
+    feedEvents.length > 0 &&
+    job?.status &&
+    !['completed', 'failed', 'cancelled'].includes(String(job.status).toLowerCase());
 
   return (
     <section className="uw-activity-feed" aria-label="Behind the scenes">
@@ -163,6 +195,14 @@ export default function WorkspaceActivityFeed({
             {goalLine}
             {goalTruncated ? '…' : ''}
           </p>
+        )}
+
+        {showLiveStrip && (
+          <ul className="uw-af-live-strip" aria-live="polite" aria-label="Live activity from your run">
+            {feedEvents.slice(-10).map((row) => (
+              <li key={row.id}>{row.text}</li>
+            ))}
+          </ul>
         )}
 
         {runningStep && (

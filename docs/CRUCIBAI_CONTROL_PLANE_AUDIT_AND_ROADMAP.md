@@ -224,6 +224,10 @@ These are **additional** gaps or risks spotted while reading code — they overl
 
 ---
 
+**Implementation program (phases, crosswalk matrix, compliance checklist, proof):** `docs/CRUCIBAI_CONTROL_PLANE_IMPLEMENTATION.md`
+
+---
+
 ## Part F — Document history (what each revision added)
 
 - **Revision 1 (too thin):** Class-style matrix only — **you** were right: not enough **comparative** depth.
