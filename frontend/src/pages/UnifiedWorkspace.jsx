@@ -33,6 +33,7 @@ import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
+import WorkspaceLiveControl from '../components/AutoRunner/WorkspaceLiveControl';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
@@ -59,7 +60,7 @@ import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
 
-const RIGHT_ORDER = ['preview', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
+const RIGHT_ORDER = ['preview', 'live', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
 
 function sanitizePane(raw) {
   const pane = String(raw || '').trim().toLowerCase();
@@ -1884,6 +1885,30 @@ export default function App() {
                     token={token}
                     apiBase={API}
                     jobStatus={job?.status}
+                  />
+                )}
+                {activePane === 'live' && (
+                  <WorkspaceLiveControl
+                    job={job}
+                    stage={stage}
+                    steps={steps}
+                    events={events}
+                    proof={proof}
+                    previewStatus={previewStatus}
+                    previewUrl={previewUrl}
+                    hasSandpack={Boolean(sandpackFiles && Object.keys(sandpackFiles).length > 0)}
+                    workspacePathCount={wsPaths.length}
+                    latestFailure={latestFailure}
+                    blockedDetail={previewBlockedDetail}
+                    connectionMode={connectionMode}
+                    isConnected={isConnected}
+                    proofItemCount={proofItemCount}
+                    activeAgentCount={activeAgentCount}
+                    healthLatencyMs={healthMs}
+                    onOpenPreview={() => setActivePane('preview')}
+                    onOpenProof={() => setActivePane('proof')}
+                    onOpenCode={() => setActivePane('code')}
+                    onOpenFailure={() => setActivePane('failure')}
                   />
                 )}
                 {activePane === 'timeline' && (
