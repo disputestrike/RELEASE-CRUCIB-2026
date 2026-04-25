@@ -282,6 +282,12 @@ def list_computer_use_actions() -> List[Dict[str, Any]]:
             audit_fields=["action_id", "target", "artifact_ref", "timestamp", "status", "error"],
         ),
         ComputerUseAction(
+            action="navigate",
+            status="disabled",
+            required_fields=["target"],
+            audit_fields=["action_id", "target", "url", "timestamp", "status", "error"],
+        ),
+        ComputerUseAction(
             action="wait",
             status="disabled",
             required_fields=["milliseconds"],
