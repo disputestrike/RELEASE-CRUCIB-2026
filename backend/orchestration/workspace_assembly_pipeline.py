@@ -212,9 +212,46 @@ def parse_proposed_files(
         single = _extract_code_for_path(raw, default_rel)
         if single.strip():
             dr = _norm_rel(default_rel)
-            if dr:
+            if dr and not _is_prose_content(single, dr):
                 out.append((dr, single))
     return out
+
+
+def _is_prose_content(content: str, rel_path: str) -> bool:
+    """Return True if content looks like prose/JSON rather than code.
+    Used to prevent LLM prose from being written into code files as a fallback.
+    """
+    if not content:
+        return False
+    ext = os.path.splitext(rel_path)[1].lower()
+    code_exts = {".jsx", ".tsx", ".js", ".ts", ".py", ".mjs", ".cjs"}
+    if ext not in code_exts:
+        return False
+    stripped = content.strip()
+    # JSON object written into a code file
+    if stripped.startswith('{"') or stripped.startswith("{'"): 
+        try:
+            import json as _json
+            parsed = _json.loads(stripped)
+            if isinstance(parsed, dict):
+                return True  # Pure JSON object in a code file
+        except (ValueError, TypeError):
+            pass
+    first = stripped.split("\n")[0].strip().lower()
+    # Markdown heading in a code file
+    if first.startswith("# ") or first.startswith("**"):
+        return True
+    # Plain English sentence with no code tokens
+    PROSE_STARTS = (
+        "i ", "i'", "here ", "here'", "appreciate", "certainly", "sure,",
+        "below", "based on", "as requested", "i have", "i'll", "let me",
+        "of course", "happy to", "glad to", "please find", "the following",
+        "above is", "this is", "note:", "note that", "in this", "we have",
+        "i am the", "i am a", "as the",
+    )
+    if any(first.startswith(p) for p in PROSE_STARTS):
+        return True
+    return False
 
 
 def merge_last_writer(pairs: List[Tuple[str, str, str]]) -> Dict[str, Tuple[str, str]]:

@@ -118,6 +118,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       isProject: false,
       createdAt: t.createdAt ?? Date.now(),
       linkedProjectId: t.linkedProjectId || null,
+      jobId: t.jobId || null,  // CRITICAL: must be mapped so openTask can pass jobId in URL
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
