@@ -106,21 +106,40 @@ export default function WhatIfPage() {
       const simulationId = created?.simulation?.id;
       if (!simulationId) throw new Error('Simulation create response did not include an id.');
 
+      const runPayload = {
+        simulation_id: simulationId,
+        prompt: cleanPrompt,
+        assumptions,
+        attachments,
+        rounds,
+        agent_count: agentCount,
+        metadata: { surface: 'simulation_command_center' },
+      };
       const runRes = await fetch(`${API}/simulations/run`, {
         method: 'POST',
         credentials: 'include',
         headers,
-        body: JSON.stringify({
-          simulation_id: simulationId,
-          prompt: cleanPrompt,
-          assumptions,
-          attachments,
-          rounds,
-          agent_count: agentCount,
-          metadata: { surface: 'simulation_command_center' },
-        }),
+        body: JSON.stringify(runPayload),
       });
-      setResult(await readJsonResponse(runRes, 'Run simulation'));
+      try {
+        setResult(await readJsonResponse(runRes, 'Run simulation'));
+      } catch (runErr) {
+        const fallbackRes = await fetch(`${API}/runtime/what-if`, {
+          method: 'POST',
+          credentials: 'include',
+          headers,
+          body: JSON.stringify({
+            scenario: cleanPrompt,
+            assumptions,
+            attachments,
+            rounds,
+            population_size: agentCount,
+            metadata: { surface: 'simulation_command_center', fallback_from: 'simulations_run' },
+          }),
+        });
+        const fallback = await readJsonResponse(fallbackRes, 'Run simulation fallback');
+        setResult({ ...fallback, fallback_used: 'runtime_what_if' });
+      }
     } catch (err) {
       setError(err?.message || 'Simulation failed.');
     } finally {
