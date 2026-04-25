@@ -61,6 +61,7 @@ import {
   taskEntryFromJob,
   taskStatusFromJobStatus,
 } from '../workspace/workspaceTaskBinding';
+import { failureStepFromLatestFailure } from '../workspace/workspaceFailureUtils';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
@@ -1523,7 +1524,11 @@ export default function App() {
     }
   }, [activePane, effectiveJobId, refresh]);
 
-  const failureStep = failedStep || latestFailedStep;
+  const checkpointFailureStep = useMemo(
+    () => failureStepFromLatestFailure(latestFailure),
+    [latestFailure],
+  );
+  const failureStep = failedStep || latestFailedStep || checkpointFailureStep;
 
   useEffect(() => {
     if (job?.status !== 'failed' || !effectiveJobId) return;

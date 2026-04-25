@@ -51,7 +51,7 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
   const diagnosis = step.diagnosis || {};
   const repairActions = diagnosis.repair_actions || step.retry_plan || [];
   const fixStrategy = step.fix_strategy || diagnosis.fix_strategy || 'targeted_patch';
-  const canRetry = retryCount < MAX_STEP_RETRIES;
+  const canRetry = step.can_retry === false ? false : retryCount < MAX_STEP_RETRIES;
 
   const handleRetryAuto = () => {
     setRetryTriggered(true);
