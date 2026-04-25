@@ -99,11 +99,40 @@ export default function WhatIfPage() {
         <textarea
           className="whatif-textarea"
           value={scenario}
-        <div style={{ marginTop: "10px", display: "flex", gap: "12px", alignItems: "center" }}>          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Mode:</label>          <select            value={mode}            onChange={(e) => setMode(e.target.value)}            style={{              padding: "6px 10px",              borderRadius: "6px",              border: "1px solid #d1d5db",              fontSize: "12px",              fontWeight: "500",              cursor: "pointer",              backgroundColor: "#fff",              color: "#1f2937",            }}          >            <option value="decision">Decision Mode</option>            <option value="forecast">Forecast Mode</option>            <option value="market_reaction">Market Reaction Mode</option>          </select>        </div>
           onChange={(e) => setScenario(e.target.value)}
           rows={4}
           placeholder="What if we…"
         />
+        <div
+          style={{
+            marginTop: "10px",
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>
+            Mode:
+          </label>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "6px",
+              border: "1px solid #d1d5db",
+              fontSize: "12px",
+              fontWeight: "500",
+              cursor: "pointer",
+              backgroundColor: "#fff",
+              color: "#1f2937",
+            }}
+          >
+            <option value="decision">Decision Mode</option>
+            <option value="forecast">Forecast Mode</option>
+            <option value="market_reaction">Market Reaction Mode</option>
+          </select>
+        </div>
         <div className="whatif-presets">
           {PRESETS.map((p) => (
             <button key={p.title} type="button" className="whatif-preset" onClick={() => setScenario(p.text)}>
