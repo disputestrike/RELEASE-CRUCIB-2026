@@ -1439,6 +1439,11 @@ export default function UnifiedWorkspace() {
             {(effectiveJobId || effectiveProjectId) && (
               <div className="uw-build-identity" aria-label="Active build">
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>
+                {effectiveJobId && (
+                  <p className="uw-build-identity-sub">
+                    This run is authoritative: job stream, workspace files, proof, and preview—not Home chat.
+                  </p>
+                )}
               </div>
             )}
             <BrainGuidancePanel

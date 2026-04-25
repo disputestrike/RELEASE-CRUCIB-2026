@@ -424,7 +424,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         ) : (
           <>
             <TaskStatusIcon status={item.status} type={item.type} />
-            <span className="sidebar-task-label">{item.name}</span>
+            <span className="sidebar-task-label-wrap">
+              <span className="sidebar-task-label">{item.name}</span>
+              {isLocalTask && !item.jobId && (
+                <span
+                  className="sidebar-task-norun"
+                  title="No run linked yet — open Workspace and start a plan to attach a job_id to this task."
+                >
+                  no run
+                </span>
+              )}
+            </span>
             <button
               type="button"
               className="sidebar-task-menu-btn"

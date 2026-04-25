@@ -101,6 +101,7 @@ backend/workspace/
 screenshots/
 
 # Local dev / test artifacts (do not push)
+workspaces/
 .tmp_pytest_manual/
 local_evidence_pack/
 TRACKED_FILES_MANIFEST.txt

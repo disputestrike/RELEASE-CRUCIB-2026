@@ -2,7 +2,7 @@
 
 **Status:** This document **supersedes** the short “class matrix only” pass. It is **code-grounded**, ties **your reported symptoms** to **file-level behavior**, and situates CrucibAI against **Codex-class**, **Manus-style**, **Claude Code**, **Goose**, and **Cursor** expectations using the same research lens as `research/` and your Manus/Codex checklists (e.g. `validation_checklist.md`).
 
-**How to use:** Each issue lists **evidence in repo** and **what “best in class” does differently**. This is the baseline to **not** be weak: implementation work should **tick** these findings, not re-argue from zero.
+**How to use:** Each issue lists **evidence in repo** and **what “best in class” does differently**. This is the baseline to **not** be weak: implementation work should **tick** these findings, not re-argue from zero. For a **competitor × axis × code-path** pass (including **terminal**), see `CRUCIBAI_COMPETITOR_MATRIX.md`.
 
 ---
 
@@ -224,7 +224,8 @@ These are **additional** gaps or risks spotted while reading code — they overl
 
 ---
 
-**Implementation program (phases, crosswalk matrix, compliance checklist, proof):** `docs/CRUCIBAI_CONTROL_PLANE_IMPLEMENTATION.md`
+**Implementation program (phases, crosswalk matrix, compliance checklist, proof):** `docs/CRUCIBAI_CONTROL_PLANE_IMPLEMENTATION.md`  
+**After deploy (Railway / prod smoke):** `docs/CRUCIBAI_RAILWAY_OPERATOR_RUNBOOK.md`
 
 ---
 

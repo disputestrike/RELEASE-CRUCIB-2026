@@ -64,8 +64,11 @@ function formatEvent(ev) {
       return 'Build started';
     case 'job_completed':
       return 'Build completed';
-    case 'job_failed':
-      return 'Build failed';
+    case 'job_failed': {
+      const r = payload.reason || payload.failure_reason || payload.error;
+      const msg = (typeof r === 'string' && r.trim()) ? r.trim().slice(0, 120) : '';
+      return msg ? `Build failed: ${msg}` : 'Build failed';
+    }
     case 'dag_node_started':
       return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
     case 'dag_node_completed': {
@@ -91,6 +94,50 @@ function formatEvent(ev) {
       if (!line) return null;
       return isAsst ? `Reply: ${line}` : `You: ${line}`;
     }
+    case 'preflight_report': {
+      const pf = payload.preflight || payload;
+      const n = Array.isArray(pf?.issues) ? pf.issues.length : 0;
+      if (pf?.passed === true && n === 0) return 'Preflight: environment OK';
+      if (pf?.passed === true) return `Preflight: OK (${n} note(s))`;
+      if (pf?.passed === false) return `Preflight: ${n || 'some'} issue(s) (run may still proceed)`;
+      return n ? `Preflight: ${n} note(s)` : 'Preflight: completed';
+    }
+    case 'spec_guardian': {
+      const sg = payload.spec_guard || payload;
+      if (sg?.blocks_run) return 'Spec check: blocked run (goal out of template scope)';
+      return 'Spec check: OK';
+    }
+    case 'file_written': {
+      const path = (payload.path || '').trim();
+      const base = path ? path.split('/').pop() || path : '';
+      return base ? `Saved file: ${base}` : 'File written';
+    }
+    case 'brain_prebuild_briefing': {
+      const sim = payload.similar_builds_found;
+      const pred = Array.isArray(payload.predicted_failures) ? payload.predicted_failures.length : 0;
+      if (typeof sim === 'number' && sim > 0) return `Pre-build: ${sim} similar past build(s); ${pred} risk flag(s)`;
+      if (pred > 0) return `Pre-build: ${pred} predicted risk(s)`;
+      return payload.intelligence_available ? 'Pre-build intelligence loaded' : null;
+    }
+    case 'verification_result': {
+      const ok = payload.passed === true || payload.passed === 'true';
+      const sc = payload.score;
+      if (ok) return typeof sc === 'number' ? `Verify: passed (${sc})` : 'Verify: passed';
+      return typeof sc === 'number' ? `Verify: needs work (${sc})` : 'Verify: needs work';
+    }
+    case 'verification_attempt_failed':
+      return 'Verify: retrying after issue';
+    case 'step_retry_exhausted':
+      return 'Step: retries exhausted, continuing';
+    case 'step_verifying':
+      return name && name !== 'Step' ? `Verifying: ${name}` : 'Verifying step';
+    case 'scheduler_deadlock_detected':
+      return 'Scheduler: deadlock resolved';
+    case 'execution_authority':
+    case 'step_created':
+    case 'job_status_changed':
+    case 'step_status_changed':
+      return null;
     default:
       return null;
   }

@@ -465,7 +465,7 @@
 
 .sidebar-task-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 6px 8px;
   border-radius: 8px;
@@ -500,14 +500,33 @@
 
 .sidebar-task-row .sidebar-item-icon {
   flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sidebar-task-label-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .sidebar-task-label {
-  flex: 1;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
+}
+
+.sidebar-task-norun {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-muted, #a1a1aa);
+  opacity: 0.9;
+  line-height: 1.2;
 }
 
 .sidebar-task-menu-btn {
@@ -517,6 +536,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
+  margin-top: 2px;
   border-radius: 6px;
   border: none;
   background: none;

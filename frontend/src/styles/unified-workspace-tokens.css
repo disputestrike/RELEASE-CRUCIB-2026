@@ -145,6 +145,14 @@
   line-height: 1.4;
 }
 
+.uw-build-identity-sub {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
 .uw-build-identity-meta {
   display: flex;
   flex-wrap: wrap;

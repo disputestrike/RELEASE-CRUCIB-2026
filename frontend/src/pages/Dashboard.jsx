@@ -1234,8 +1234,10 @@ const Dashboard = () => {
           <div className="dashboard-chat-shell">
             <div className="dashboard-chat-inner">
               <p className="dashboard-chat-channel-hint" role="note">
-                Advisory chat (session-based). For a live run with job stream, proof, and code room, open{' '}
-                <Link to="/app/workspace">Workspace</Link>.
+                <strong>Advisory channel</strong> (session-based, not the job system of record). Durable state—plan, steps, files,
+                stream, and proof—lives in{' '}
+                <Link to="/app/workspace">Workspace</Link>
+                {' '}on a <code className="dashboard-chat-hint-code">job_id</code>.
               </p>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
               {chatMessages.map((msg, i) => {

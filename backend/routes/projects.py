@@ -684,8 +684,8 @@ async def build_plan(
 
 @projects_router.get("/settings/capabilities")
 async def get_capabilities(user: dict = Depends(get_optional_user)):
-    """Return platform capability flags used by the frontend."""
-    return {
+    """Return platform capability flags and honest integration posture (no secrets)."""
+    out: Dict[str, Any] = {
         "llm": True,
         "agents": True,
         "deploy": True,
@@ -693,3 +693,27 @@ async def get_capabilities(user: dict = Depends(get_optional_user)):
         "git": True,
         "terminal": True,
     }
+    try:
+        from ..services.connector_manager import connector_manager
+
+        out["connectors_configured"] = dict(connector_manager.status())
+    except Exception:
+        out["connectors_configured"] = {}
+    mcp_payload: Dict[str, Any] = {
+        "mode": "in_process_adapters",
+        "note": (
+            "Narrow tool dispatch (mcp.<server>.<tool>); not a full MCP stdio/JSON-RPC host. "
+            "Servers list shows in-process adapters and whether each is enabled (credentials)."
+        ),
+        "servers": [],
+    }
+    try:
+        from ..services.mcp_client import bootstrap_registry, registry
+
+        bootstrap_registry()
+        mcp_payload["servers"] = registry.list_servers()
+    except Exception as exc:
+        logger = logging.getLogger(__name__)
+        logger.debug("capabilities MCP bootstrap: %s", exc)
+    out["mcp"] = mcp_payload
+    return out

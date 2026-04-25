@@ -148,6 +148,25 @@ const Settings = () => {
     if (t && TABS.some((x) => x.id === t)) setTab(t);
   }, [location.state, location.key]);
 
+  useEffect(() => {
+    if (!token) {
+      setCapPayload(null);
+      return;
+    }
+    let cancelled = false;
+    axios
+      .get(`${API}/settings/capabilities`, { headers: { Authorization: `Bearer ${token}` }, timeout: 12000 })
+      .then((res) => {
+        if (!cancelled) setCapPayload(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setCapPayload(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   /** Sidebar “Runs” / “Marketplace” land here first — scroll the matching Engine room row into view */
   useLayoutEffect(() => {
     if (tab !== 'engine' || !focusEngineHref || !engineListRef.current) return;
@@ -209,6 +228,9 @@ const Settings = () => {
   const [notifs, setNotifs] = useState({ email: true, push: false, marketing: false, task_complete: true });
   const [nSaving, setNSaving] = useState(false);
   const [nMsg, setNMsg] = useState(null);
+
+  /** Honest server-side integration flags (connectors + MCP adapters) from GET /api/settings/capabilities */
+  const [capPayload, setCapPayload] = useState(null);
 
   // Privacy
   const [priv, setPriv] = useState({ analytics: true, training: true, crash: true });
@@ -651,6 +673,111 @@ const Settings = () => {
                     <span style={{ flex: 1 }}>{item.label}</span>
                     {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.muted, border: `1px solid ${T.border}`, padding: '2px 6px', borderRadius: 4 }}>Beta</span>}
                     <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
+                  </Link>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <SectionTitle>Server integration status</SectionTitle>
+              <p style={{ fontSize: 13, color: T.muted, marginBottom: 14, lineHeight: 1.5 }}>
+                Which backend connectors have credentials on this host (not your account secrets). Use this to avoid over-claiming integrations in demos or support.
+              </p>
+              {!capPayload && (
+                <p style={{ fontSize: 12, color: T.muted }}>Loading…</p>
+              )}
+              {capPayload && (
+                <>
+                  <Label>Connectors (env on server)</Label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                    {Object.keys(capPayload.connectors_configured || {}).length === 0 ? (
+                      <p style={{ fontSize: 12, color: T.muted }}>No connector map returned.</p>
+                    ) : (
+                      Object.entries(capPayload.connectors_configured).map(([k, ok]) => (
+                        <div
+                          key={k}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            background: T.input,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            fontSize: 13,
+                          }}
+                        >
+                          <span style={{ color: T.text }}>{k}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: ok ? T.success : T.muted }}>
+                            {ok ? 'Configured' : 'Not configured'}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <Label>MCP-style tools</Label>
+                  <p style={{ fontSize: 12, color: T.muted, marginBottom: 8, lineHeight: 1.5 }}>
+                    {capPayload.mcp?.note || 'In-process tool adapters only.'}
+                  </p>
+                  {Array.isArray(capPayload.mcp?.servers) && capPayload.mcp.servers.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {capPayload.mcp.servers.map((s) => (
+                        <div
+                          key={s.name}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            background: T.input,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            fontSize: 13,
+                          }}
+                        >
+                          <span style={{ color: T.text }}>{s.name}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: s.enabled ? T.success : T.muted }}>
+                            {s.enabled ? 'Enabled' : 'Disabled'}{s.reason ? ` — ${s.reason}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: T.muted }}>No MCP adapters registered.</p>
+                  )}
+                </>
+              )}
+            </Card>
+
+            <Card>
+              <SectionTitle>Workspace surfaces</SectionTitle>
+              <p style={{ fontSize: 13, color: T.muted, marginBottom: 12, lineHeight: 1.5 }}>
+                The primary build control plane is <strong style={{ color: T.text }}>Workspace</strong> (job stream, proof, code room, terminal strip). Other routes are optional or legacy layouts.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {[
+                  { href: '/app/workspace', label: 'Workspace (primary)', sub: 'Orchestrated build + job' },
+                  { href: '/app/ide', label: 'Unified IDE', sub: 'Editor-oriented shell' },
+                  { href: '/app/workspace-classic', label: 'Workspace classic', sub: 'Earlier layout' },
+                  { href: '/app/workspace-manus', label: 'Workspace (Manus-style)', sub: 'Alternate flow' },
+                ].map((row) => (
+                  <Link
+                    key={row.href}
+                    to={row.href}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      textDecoration: 'none',
+                      color: T.text,
+                      fontSize: 13,
+                      background: T.input,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{row.label}</span>
+                    <span style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{row.sub}</span>
                   </Link>
                 ))}
               </div>
