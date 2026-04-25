@@ -756,9 +756,22 @@ async def _run_single_agent_with_context(
                 + "\n---\n"
             )
     enriched_prompt = project_prompt + context_block
+    # Use the AGENT_DAG system_prompt so each agent gets its full code-writing
+    # instructions (e.g. "Output ONLY complete JSX code") instead of the bare
+    # "Frontend Generation execution" stub that caused agents to return prose.
+    try:
+        from backend.agent_dag import AGENT_DAG as _AGENT_DAG
+        _dag_entry = _AGENT_DAG.get(agent_name, {})
+        _dag_system_prompt = (_dag_entry.get("system_prompt") or "").strip()
+    except Exception:
+        _dag_system_prompt = ""
+    system_message = _dag_system_prompt or (
+        f"You are {agent_name}. Output ONLY production-ready code. "
+        "No prose, no markdown explanation. Start your response with the first line of code."
+    )
     output, _meta = await _call_llm_with_fallback(
         message=enriched_prompt,
-        system_message=f"{agent_name} execution",
+        system_message=system_message,
         session_id=f"{project_id}:{agent_name}",
         model_chain=model_chain,
         api_keys=effective,
@@ -1721,6 +1734,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.orchestrator", "router", False),
     ("backend.routes.jobs", "router", False),
     ("backend.routes.workspace", "router", False),
+    ("backend.routes.preview_serve", "router", False),
     ("backend.adapter.routes.preview", "router", True),
     ("backend.adapter.routes.deploy", "router", True),
     ("backend.adapter.routes.trust", "router", True),

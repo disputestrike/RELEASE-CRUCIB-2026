@@ -55,6 +55,13 @@ _FENCE_LANG_PATH = re.compile(
     r"))\s*\n(?P<body>.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+# Fence with comment-style path on first line: ```lang\n// src/App.jsx\n...
+_FENCE_COMMENT_PATH = re.compile(
+    r"```(?P<lang>[\w+\-.#]*)\s*\n"
+    r"(?://|#)\s*(?P<path>[A-Za-z0-9_./\-]+\.(?:jsx?|tsx?|ts|js|py|json|ya?ml|yml|md|html|htm|css|scss|sql|sh|graphql|prisma|toml|xml|txt|mjs|cjs))\s*\n"
+    r"(?P<body>.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
 # Body line: // file: x or # file: x
 _FILE_HINT = re.compile(
     r"^\s*(?://|#)\s*file(?:path)?\s*:\s*(?P<path>[A-Za-z0-9_./\-]+\.(?:jsx?|tsx?|ts|js|py|json|ya?ml|yml|md|html|css|scss|sql))\s*$",
@@ -166,7 +173,14 @@ def parse_proposed_files(
             return
         out.append((rel, body))
 
+    # Highest priority: comment-style path on first line (// src/App.jsx or # backend/main.py)
+    for m in _FENCE_COMMENT_PATH.finditer(raw):
+        add(m.group("path"), m.group("body"))
+        seen_spans.add((m.start(), m.end()))
+
     for m in _FENCE_LANG_PATH.finditer(raw):
+        if any(m.start() >= a and m.end() <= b for a, b in seen_spans):
+            continue
         add(m.group("path"), m.group("body"))
         seen_spans.add((m.start(), m.end()))
 

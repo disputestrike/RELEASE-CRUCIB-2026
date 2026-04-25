@@ -301,12 +301,69 @@ async def get_projects(
     limit: int = Query(100, ge=1, le=500),
     user: dict = Depends(get_current_user),
 ):
+    """List projects for the current user. Uses PostgreSQL as the source of
+    truth (MongoDB is not available in production Railway deployments)."""
+    user_id = str((user or {}).get("id") or "")
+    # --- PostgreSQL path (production) ---
+    try:
+        from ..db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        if pool:
+            async with pool.acquire() as conn:
+                # 1. Try the JSONB projects table first
+                rows = await conn.fetch(
+                    """
+                    SELECT doc FROM projects
+                    WHERE doc->>'user_id' = $1
+                    ORDER BY (doc->>'created_at') DESC NULLS LAST
+                    LIMIT $2
+                    """,
+                    user_id,
+                    limit,
+                )
+                if rows:
+                    projects = [json.loads(r["doc"]) for r in rows]
+                    return {"projects": projects}
+                # 2. Fall back to deriving projects from the jobs table
+                job_rows = await conn.fetch(
+                    """
+                    SELECT DISTINCT ON (doc->>'project_id')
+                        doc->>'project_id' AS project_id,
+                        doc->>'goal'       AS goal,
+                        doc->>'status'     AS status,
+                        doc->>'created_at' AS created_at,
+                        doc->>'updated_at' AS updated_at,
+                        doc->>'id'         AS job_id
+                    FROM jobs
+                    WHERE doc->>'user_id' = $1
+                      AND doc->>'project_id' IS NOT NULL
+                    ORDER BY doc->>'project_id', (doc->>'created_at') DESC NULLS LAST
+                    LIMIT $2
+                    """,
+                    user_id,
+                    limit,
+                )
+                projects = [
+                    {
+                        "id": r["project_id"],
+                        "user_id": user_id,
+                        "name": (r["goal"] or "")[:60] or "Untitled project",
+                        "status": r["status"] or "unknown",
+                        "created_at": r["created_at"],
+                        "updated_at": r["updated_at"],
+                        "latest_job_id": r["job_id"],
+                    }
+                    for r in job_rows
+                    if r["project_id"]
+                ]
+                return {"projects": projects}
+    except Exception as _pg_err:
+        logger.warning("get_projects: pg query failed: %s", _pg_err)
+    # --- MongoDB fallback (dev / legacy) ---
     db = get_db()
     if db is None:
-        if os.environ.get("CRUCIBAI_DEV") == "1":
-            return {"projects": []}
-        raise HTTPException(status_code=503, detail="Database not ready")
-    cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+        return {"projects": []}
+    cursor = db.projects.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1)
     projects = await cursor.to_list(limit)
     return {"projects": projects}
 

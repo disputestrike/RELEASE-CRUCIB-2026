@@ -2,24 +2,26 @@
 
 Exposes:
     GET /api/preview/{job_id}/serve/{path:path}
+    GET /api/preview/{job_id}/serve            (index.html alias)
+    GET /api/jobs/{job_id}/dev-preview         (returns serve URL for PreviewPanel)
 
-Resolves the job's workspace directory (prefers ``build/`` or ``dist/``
-subdirectories if they exist, else the workspace root), serves files with
-appropriate MIME types, guards against path traversal, and falls back to
-``index.html`` for SPA routes.
+Resolves the job's workspace directory via the job's project_id
+(``WORKSPACE_ROOT/projects/{project_id}``), then prefers build/ or dist/
+subdirectories if they exist, else the workspace root.
 """
 from __future__ import annotations
 
 import logging
 import mimetypes
+import os
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/preview", tags=["preview-serve"])
+router = APIRouter(tags=["preview-serve"])
 
 
 # Extensions that text/binary MIME lookup commonly misses.
@@ -57,25 +59,61 @@ def _guess_mime(path: Path) -> str:
     return guess or "application/octet-stream"
 
 
-def _job_workspace_root(job_id: str) -> Path:
+def _workspace_root() -> Path:
+    """Return the configured WORKSPACE_ROOT."""
+    try:
+        from backend.config import WORKSPACE_ROOT
+        return Path(WORKSPACE_ROOT)
+    except Exception:
+        try:
+            from backend.project_state import WORKSPACE_ROOT
+            return Path(WORKSPACE_ROOT)
+        except Exception:
+            return Path("/tmp/workspaces")
+
+
+async def _get_project_id_for_job(job_id: str) -> Optional[str]:
+    """Look up the project_id for a job from runtime_state."""
+    try:
+        from backend.orchestration.runtime_state import get_job
+        job = await get_job(job_id)
+        if job:
+            return job.get("project_id") or job.get("id")
+    except Exception as exc:
+        logger.debug("preview_serve: could not look up job %s: %s", job_id, exc)
+    return None
+
+
+def _job_workspace_root(job_id: str, project_id: Optional[str] = None) -> Path:
     """Resolve the workspace directory for a job.
 
-    Mirrors the pattern used in ``adapter/routes/files.py`` —
-    ``WORKSPACE_ROOT / job_id`` when available, else ``/tmp/workspaces/{job_id}``.
+    Priority:
+    1. WORKSPACE_ROOT/projects/{project_id}  (canonical — matches executor.py)
+    2. WORKSPACE_ROOT/projects/{job_id}      (fallback when project_id == job_id)
+    3. WORKSPACE_ROOT/{job_id}               (legacy path)
+    4. /tmp/workspaces/{job_id}              (last resort)
     """
-    try:
-        from server import WORKSPACE_ROOT  # type: ignore
-        return Path(WORKSPACE_ROOT) / job_id
-    except Exception:
-        return Path(f"/tmp/workspaces/{job_id}")
+    root = _workspace_root()
+    pid = project_id or job_id
+
+    candidates = [
+        root / "projects" / pid,
+        root / "projects" / job_id,
+        root / job_id,
+        Path(f"/tmp/workspaces/{job_id}"),
+    ]
+    for c in candidates:
+        if c.exists() and c.is_dir():
+            return c
+    # Return the canonical path even if it doesn't exist yet
+    return root / "projects" / pid
 
 
-def _resolve_serve_root(job_id: str) -> Optional[Path]:
+def _resolve_serve_root(workspace: Path) -> Optional[Path]:
     """Pick the best serve root — prefer build/ or dist/ if present.
 
     Returns ``None`` if the workspace doesn't exist yet.
     """
-    workspace = _job_workspace_root(job_id)
     if not workspace.exists() or not workspace.is_dir():
         return None
     # Prefer conventional output directories. Order matters — first hit wins.
@@ -84,6 +122,13 @@ def _resolve_serve_root(job_id: str) -> Optional[Path]:
         if candidate.exists() and candidate.is_dir():
             return candidate.resolve()
     return workspace.resolve()
+
+
+async def _resolve_root_for_job(job_id: str) -> Optional[Path]:
+    """Async helper: look up project_id, then resolve serve root."""
+    project_id = await _get_project_id_for_job(job_id)
+    workspace = _job_workspace_root(job_id, project_id)
+    return _resolve_serve_root(workspace)
 
 
 def _safe_join(root: Path, rel: str) -> Optional[Path]:
@@ -102,13 +147,13 @@ def _safe_join(root: Path, rel: str) -> Optional[Path]:
     return full
 
 
-@router.get("/{job_id}/serve/{path:path}")
+@router.get("/api/preview/{job_id}/serve/{path:path}")
 async def serve_preview(job_id: str, path: str):
     """Serve a static file from the job's workspace, falling back to
     ``index.html`` for SPA client-side routes."""
-    root = _resolve_serve_root(job_id)
+    root = await _resolve_root_for_job(job_id)
     if root is None:
-        raise HTTPException(status_code=404, detail="No workspace yet")
+        raise HTTPException(status_code=404, detail="No workspace yet — build may still be running")
 
     target = _safe_join(root, path)
     if target is None:
@@ -132,7 +177,57 @@ async def serve_preview(job_id: str, path: str):
     raise HTTPException(status_code=404, detail="File not found")
 
 
-@router.get("/{job_id}/serve")
+@router.get("/api/preview/{job_id}/serve")
 async def serve_preview_root(job_id: str):
     """Convenience alias: ``/api/preview/{job_id}/serve`` → index.html."""
     return await serve_preview(job_id, "index.html")
+
+
+@router.get("/api/jobs/{job_id}/dev-preview")
+async def dev_preview(job_id: str):
+    """Return a serve URL for the PreviewPanel iframe.
+
+    Called by the frontend PreviewPanel when no remote preview_url is set.
+    Returns the /api/preview/{job_id}/serve URL so the iframe can load the
+    built workspace files directly from the backend.
+    """
+    project_id = await _get_project_id_for_job(job_id)
+    workspace = _job_workspace_root(job_id, project_id)
+    serve_root = _resolve_serve_root(workspace)
+
+    if serve_root is None:
+        return JSONResponse(
+            status_code=202,
+            content={
+                "dev_server_url": None,
+                "status": "pending",
+                "detail": "Workspace not ready yet — build may still be running",
+            },
+        )
+
+    has_index = (serve_root / "index.html").exists()
+    if not has_index:
+        return JSONResponse(
+            status_code=202,
+            content={
+                "dev_server_url": None,
+                "status": "building",
+                "detail": "Build in progress — no index.html yet",
+            },
+        )
+
+    base = (
+        os.environ.get("CRUCIBAI_PUBLIC_BASE_URL", "").rstrip("/")
+        or os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
+        or ""
+    )
+    serve_url = f"{base}/api/preview/{job_id}/serve" if base else f"/api/preview/{job_id}/serve"
+
+    return {
+        "dev_server_url": serve_url,
+        "status": "ready",
+        "job_id": job_id,
+        "project_id": project_id,
+        "workspace_path": str(workspace),
+        "serve_root": str(serve_root),
+    }

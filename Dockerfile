@@ -27,6 +27,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
+# esbuild is required by the verification step to compile-check generated JS/JSX/TS files.
+# Install it globally so `npx esbuild` works without a network download at runtime.
+RUN npm install -g esbuild@0.21 --no-audit --no-fund --loglevel=error
+
 # Single source of truth for Python deps (matches CI / local backend dev).
 COPY backend/requirements.txt ./requirements.txt
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"

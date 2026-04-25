@@ -29,9 +29,13 @@ def _get_optional_user():
 
 
 def _get_db():
-    from .. import server
-
-    return server.db
+    """Return a MongoDB-compatible DB handle, or None if unavailable.
+    In production (no MongoDB), returns None — callers handle this gracefully."""
+    try:
+        from ..deps import get_db as _deps_get_db
+        return _deps_get_db()
+    except Exception:
+        return None
 
 
 SYSTEM_SKILLS = [
