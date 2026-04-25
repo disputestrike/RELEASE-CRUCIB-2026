@@ -67,3 +67,18 @@
 2. Normalize Node runtime to a supported version (package engines target <=22).
 3. Decide policy for committing generated `frontend/build` artifacts and benchmark output directories.
 4. Add focused CI lanes that mirror `scripts/validate-all.ps1` to keep regression signal fast and deterministic.
+
+## Cycle 2 progress
+- Fixed `agent_recursive_learning` cursor handling so both async and mock cursor paths work.
+- Added compatibility return wrapper for `code_validator` so both dict and tuple-style callers succeed.
+- Modernized `test_suite.py` client construction and auth handling for current `httpx`/FastAPI behavior.
+- Added legacy-agent compatibility anchors and `AGENT_DEFINITIONS` scaffolding in `server.py` for compatibility checks.
+- Updated `test_agent_system.py` mock collection query matching to support `$gte` filters.
+
+### Cycle 2 validation
+- `python -m pytest test_agent_system.py test_suite.py tests/test_agents.py test_comprehensive_suite.py -q --tb=short`
+  - Result: **76 passed, 10 skipped**
+- `python -m pytest tests/test_phase2_runtime_wiring.py tests/test_runtime_product_endpoints.py tests/test_integration.py tests/test_orchestration_ui_contract.py -q --tb=short`
+  - Result: **31 passed**
+- `scripts/validate-all.ps1`
+  - Result: **pass**
