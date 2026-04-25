@@ -9,6 +9,25 @@ from typing import Any, Awaitable, Callable, Optional
 from fastapi import HTTPException
 
 
+def _normalized_email(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+async def _find_user_by_email(db: Any, email: Any) -> Optional[dict]:
+    target = _normalized_email(email)
+    if not target:
+        return None
+    user = await db.users.find_one({"email": target}, {"_id": 0})
+    if user:
+        return user
+    # Compatibility fallback for legacy rows with non-normalized email values.
+    candidates = await db.users.find({}, {"_id": 0}).limit(5000).to_list(5000)
+    for row in candidates:
+        if _normalized_email(row.get("email")) == target:
+            return row
+    return None
+
+
 async def register_user_service(
     *,
     data: Any,
@@ -22,15 +41,16 @@ async def register_user_service(
 ) -> dict:
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready. Set DATABASE_URL in environment.")
-    if is_disposable_email(data.email):
+    normalized_email = _normalized_email(data.email)
+    if is_disposable_email(normalized_email):
         raise HTTPException(status_code=400, detail="Disposable email addresses are not allowed.")
-    existing = await db.users.find_one({"email": data.email})
+    existing = await _find_user_by_email(db, normalized_email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     user_id = str(uuid.uuid4())
     user = {
         "id": user_id,
-        "email": data.email,
+        "email": normalized_email,
         "password": hash_password(data.password),
         "name": data.name,
         "token_balance": 0,
@@ -62,7 +82,7 @@ async def login_user_service(
 ) -> dict:
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready. Set DATABASE_URL in environment.")
-    user = await db.users.find_one({"email": data.email}, {"_id": 0})
+    user = await _find_user_by_email(db, data.email)
     if not user or not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if len(user["password"]) == 64 and all(c in "0123456789abcdef" for c in user["password"].lower()):

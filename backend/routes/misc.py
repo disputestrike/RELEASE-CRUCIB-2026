@@ -122,7 +122,7 @@ except ImportError:
 
 @router.post("/ai/analyze")
 async def ai_analyze(
-    data: DocumentProcess, user: dict = Depends(_get_authenticated_or_api_user())
+    data: DocumentProcess, user: Optional[dict] = Depends(_get_optional_user())
 ):
     """Document analysis with AI (Anthropic/Cerebras only). Uses your Settings keys when set."""
     (
@@ -313,7 +313,7 @@ async def rag_query(
 
 @router.post("/search")
 async def hybrid_search(
-    data: SearchQuery, user: dict = Depends(_get_authenticated_or_api_user())
+    data: SearchQuery, user: Optional[dict] = Depends(_get_optional_user())
 ):
     """Hybrid search: AI-enhanced results. Uses your Settings keys when set."""
     (

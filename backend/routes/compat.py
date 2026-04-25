@@ -14,6 +14,12 @@ def _get_auth():
     return get_current_user
 
 
+def _get_optional_user():
+    from deps import get_optional_user
+
+    return get_optional_user
+
+
 def _get_db():
     import server
 
@@ -46,7 +52,7 @@ class AgentRunBody(BaseModel):
 
 @router.post("/ai/validate-and-fix")
 async def validate_and_fix_compat(
-    data: ValidateAndFixCompatBody, _user: dict = Depends(_get_auth())
+    data: ValidateAndFixCompatBody, _user: dict | None = Depends(_get_optional_user())
 ):
     return {"fixed_code": data.code or "", "valid": True, "language": data.language}
 

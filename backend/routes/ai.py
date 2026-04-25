@@ -36,6 +36,12 @@ def _get_authenticated_or_api_user():
     return get_authenticated_or_api_user
 
 
+def _get_optional_user():
+    from server import get_optional_user
+
+    return get_optional_user
+
+
 def _get_auth():
     from server import get_current_user
 
@@ -93,7 +99,7 @@ class AIDocsGenerateRequest(BaseModel):
 @router.post("/ai/chat")
 async def ai_chat(
     data: ChatMessage,
-    user: dict = Depends(_get_authenticated_or_api_user()),
+    user: Optional[dict] = Depends(_get_optional_user()),
 ):
     """Multi-model AI chat with auto-selection and fallback on failure."""
     from fastapi import Request as _Req
@@ -510,7 +516,7 @@ async def image_to_code(
 
 @router.post("/ai/validate-and-fix")
 async def validate_and_fix(
-    data: ValidateAndFixBody, user: dict = Depends(_get_authenticated_or_api_user())
+    data: ValidateAndFixBody, user: Optional[dict] = Depends(_get_optional_user())
 ):
     """Validate code with LLM; if issues found, run auto-fix and return fixed code."""
     from server import (

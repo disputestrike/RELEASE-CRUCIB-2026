@@ -225,7 +225,8 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
     )
-    new_cred = _user_credits(user) + credits
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    new_cred = _user_credits(updated_user or user)
     if bundle_key in ("builder", "pro", "scale", "teams"):
         await db.users.update_one({"id": user["id"]}, {"$set": {"plan": bundle_key}})
     return {
@@ -272,7 +273,8 @@ async def purchase_tokens_custom(
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
     )
-    new_cred = _user_credits(user) + credits
+    updated_user = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    new_cred = _user_credits(updated_user or user)
     return {
         "message": "Purchase successful",
         "new_balance": new_cred,

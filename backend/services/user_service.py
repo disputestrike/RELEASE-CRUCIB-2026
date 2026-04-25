@@ -67,12 +67,31 @@ async def delete_account_service(*, body: Any, user: dict, db: Any, verify_passw
     projects = await db.projects.find({"user_id": uid}, {"id": 1}).to_list(500)
     for p in projects:
         pid = p["id"]
-        await db.project_logs.delete_many({"project_id": pid})
-        await db.agent_status.delete_many({"project_id": pid})
-        await db.shares.delete_many({"project_id": pid})
+        for coll_name in ("project_logs", "agent_status", "shares"):
+            coll = getattr(db, coll_name, None)
+            if coll is None:
+                continue
+            try:
+                await coll.delete_many({"project_id": pid})
+            except Exception:
+                continue
     await db.projects.delete_many({"user_id": uid})
-    for coll in [db.workspace_env, db.chat_history, db.token_ledger, db.shares, db.user_agents, db.backup_codes, db.mfa_setup_temp]:
-        await coll.delete_many({"user_id": uid})
+    for coll_name in (
+        "workspace_env",
+        "chat_history",
+        "token_ledger",
+        "shares",
+        "user_agents",
+        "backup_codes",
+        "mfa_setup_temp",
+    ):
+        coll = getattr(db, coll_name, None)
+        if coll is None:
+            continue
+        try:
+            await coll.delete_many({"user_id": uid})
+        except Exception:
+            continue
     await db.users.delete_one({"id": uid})
     return Response(status_code=204)
 
