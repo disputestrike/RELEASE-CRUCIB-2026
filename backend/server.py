@@ -96,6 +96,22 @@ def _needs_live_data(message: str) -> bool:
     }
     if m in pure_greetings:
         return False
+
+    # Short questions that still need the web (or the session date line in system prompt is not enough for news).
+    import re as _re2
+
+    if _re2.search(
+        r"^\s*(date|todays? date|current date|what\s*'?s?\s*the\s*date|date\s+today|today\??s?\s*date|time\??|what\s*day|what\s*'?s?\s*today)\s*[\?\.!]*\s*$",
+        m,
+        _re2.I,
+    ):
+        return True
+    if _re2.search(
+        r"^\s*(us|u\.s\.?|american)\s*president|^\s*who\s+is\s+the\s+(us|u\.s\.?|current)\s+president|^\s*president(\s+of\s+(the\s+)?us\??a?)?\s*[\?\.!]*\s*$",
+        m,
+        _re2.I,
+    ):
+        return True
     if len(m) < 8:
         return False
 

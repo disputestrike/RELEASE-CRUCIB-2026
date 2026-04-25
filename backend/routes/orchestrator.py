@@ -824,12 +824,19 @@ async def run_auto(
                 },
             )
 
+        # Must match preview_serve._get_project_id_for_job and workspace._assert_job_access:
+        # use project_id, else the job id (e.g. tsk_…), so writes land under
+        # WORKSPACE_ROOT/projects/{id} and the file explorer can find them.
         ws = ""
-        pid = job.get("project_id")
+        pid = (str(job.get("project_id") or "").strip() or str(job.get("id") or "").strip())
         if pid:
             root = _project_workspace_path(pid).resolve()
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)
+        else:
+            logger.warning(
+                "orchestrator/run-auto: no project_id or job id for workspace; executor will not write files"
+            )
 
         background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
 

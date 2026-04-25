@@ -115,7 +115,6 @@ async def ai_chat(
     """Multi-model AI chat with auto-selection and fallback on failure."""
     from fastapi import Request as _Req
     from ..server import (
-        CHAT_WITH_SEARCH_SYSTEM,
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
         _build_chat_system_prompt_for_request,
@@ -172,19 +171,27 @@ async def ai_chat(
 
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
-        system_message = (
-            data.system_message
-            or await _maybe_await(
-                _build_chat_system_prompt_for_request(message, user_id_for_skill)
-            )
+        # Gold prompt (date, identity, voice) is always the base. Client `system_message`
+        # (e.g. Dashboard Home) is merged as surface guidance only.
+        base_prompt = await _maybe_await(
+            _build_chat_system_prompt_for_request(message, user_id_for_skill)
         )
+        if data.system_message and str(data.system_message).strip():
+            system_message = (
+                base_prompt
+                + "\n\n--- Surface guidance (Home, embed, or client) ---\n"
+                + str(data.system_message).strip()
+            )
+        else:
+            system_message = base_prompt
         if _needs_live_data(message):
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
-                if not data.system_message:
-                    from datetime import datetime, timezone as _tz
-                    _today = datetime.now(_tz.utc).strftime("%B %d, %Y")
-                    system_message = f"TODAY'S DATE: {_today}.\n\n" + CHAT_WITH_SEARCH_SYSTEM
+                system_message = (
+                    system_message
+                    + "\n\nThe user message may include a \"Live search results\" block. "
+                    "Use it for time-sensitive or disputed real-world facts; keep voice per rules above."
+                )
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
@@ -597,7 +604,6 @@ async def ai_streaming_chat(
 ):
     """Multi-model AI streaming chat with auto-selection and fallback on failure."""
     from ..server import (
-        CHAT_WITH_SEARCH_SYSTEM,
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
         _build_chat_system_prompt_for_request,
@@ -646,19 +652,25 @@ async def ai_streaming_chat(
 
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
-        system_message = (
-            data.system_message
-            or await _maybe_await(
-                _build_chat_system_prompt_for_request(message, user_id_for_skill)
-            )
+        base_prompt = await _maybe_await(
+            _build_chat_system_prompt_for_request(message, user_id_for_skill)
         )
+        if data.system_message and str(data.system_message).strip():
+            system_message = (
+                base_prompt
+                + "\n\n--- Surface guidance (Home, embed, or client) ---\n"
+                + str(data.system_message).strip()
+            )
+        else:
+            system_message = base_prompt
         if _needs_live_data(message):
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
-                if not data.system_message:
-                    from datetime import datetime, timezone as _tz
-                    _today = datetime.now(_tz.utc).strftime("%B %d, %Y")
-                    system_message = f"TODAY'S DATE: {_today}.\n\n" + CHAT_WITH_SEARCH_SYSTEM
+                system_message = (
+                    system_message
+                    + "\n\nThe user message may include a \"Live search results\" block. "
+                    "Use it for time-sensitive or disputed real-world facts; keep voice per rules above."
+                )
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
