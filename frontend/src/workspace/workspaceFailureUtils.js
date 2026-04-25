@@ -46,3 +46,33 @@ export function failureStepFromLatestFailure(latestFailure) {
     synthetic: true,
   };
 }
+
+export function describeFailureRecovery(step, { maxStepRetries = 8 } = {}) {
+  const maxRetries = Number.isFinite(Number(maxStepRetries)) ? Number(maxStepRetries) : 8;
+  const maxAttempts = maxRetries + 1;
+  const retryCount = Number.isFinite(Number(step?.retry_count)) ? Number(step.retry_count) : 0;
+  const hasRetryAuthority = step?.can_retry === false ? false : true;
+  const attemptsExhausted = retryCount >= maxRetries;
+  const canRetry = Boolean(step) && hasRetryAuthority && !attemptsExhausted;
+
+  let disabledReason = '';
+  if (!step) {
+    disabledReason = 'No failed step is selected.';
+  } else if (!hasRetryAuthority && step.synthetic) {
+    disabledReason = 'This failure is a job checkpoint, not a retryable step. Add steering or resume the run from the workspace.';
+  } else if (!hasRetryAuthority) {
+    disabledReason = 'This failure cannot be retried automatically.';
+  } else if (attemptsExhausted) {
+    disabledReason = `All ${maxAttempts} attempts have been used. Add steering before resuming.`;
+  }
+
+  return {
+    canRetry,
+    retryCount,
+    maxRetries,
+    maxAttempts,
+    currentAttempt: Math.min(retryCount + 1, maxAttempts),
+    nextAttempt: Math.min(retryCount + 2, maxAttempts),
+    disabledReason,
+  };
+}

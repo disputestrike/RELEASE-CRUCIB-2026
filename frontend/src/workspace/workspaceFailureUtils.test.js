@@ -1,4 +1,8 @@
-import { failureStepFromLatestFailure, failureTypeFromReason } from './workspaceFailureUtils';
+import {
+  describeFailureRecovery,
+  failureStepFromLatestFailure,
+  failureTypeFromReason,
+} from './workspaceFailureUtils';
 
 describe('workspaceFailureUtils', () => {
   test('classifies common failure reasons for the existing FailureDrawer labels', () => {
@@ -53,5 +57,30 @@ describe('workspaceFailureUtils', () => {
   test('returns null when no checkpoint exists', () => {
     expect(failureStepFromLatestFailure(null)).toBeNull();
     expect(failureStepFromLatestFailure(undefined)).toBeNull();
+  });
+
+  test('describes synthetic checkpoint failures as non-retryable job checkpoints', () => {
+    const step = failureStepFromLatestFailure({
+      step_key: 'deployment',
+      status: 'step_exception',
+      error_message: 'Railway deployment timed out',
+    });
+
+    const recovery = describeFailureRecovery(step, { maxStepRetries: 8 });
+
+    expect(recovery.canRetry).toBe(false);
+    expect(recovery.disabledReason).toContain('job checkpoint');
+    expect(recovery.currentAttempt).toBe(1);
+  });
+
+  test('describes exhausted retry budget honestly', () => {
+    const recovery = describeFailureRecovery(
+      { step_key: 'frontend', retry_count: 8, can_retry: true },
+      { maxStepRetries: 8 },
+    );
+
+    expect(recovery.canRetry).toBe(false);
+    expect(recovery.disabledReason).toBe('All 9 attempts have been used. Add steering before resuming.');
+    expect(recovery.currentAttempt).toBe(9);
   });
 });
