@@ -5,6 +5,7 @@ Tracks performance metrics, learns from failures, and adapts strategies.
 """
 
 from typing import Dict, Any, List, Optional
+import inspect
 from datetime import datetime, timezone, timedelta
 import json
 import logging
@@ -12,6 +13,11 @@ import hashlib
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+async def _maybe_await(value):
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
 
 COLLECTION_AGENT_MEMORY = "agent_memory"
 COLLECTION_AGENT_PERFORMANCE = "agent_performance"
@@ -83,10 +89,8 @@ class AgentMemory:
             query["status"] = status_filter.value
         
         try:
-            executions = await self.db[COLLECTION_AGENT_MEMORY].find(query) \
-                .sort("timestamp", -1) \
-                .limit(limit) \
-                .to_list(limit)
+            cursor = await _maybe_await(self.db[COLLECTION_AGENT_MEMORY].find(query))
+            executions = await cursor.sort("timestamp", -1).limit(limit).to_list(limit)
             return executions
         except Exception as e:
             logger.error(f"Failed to get execution history: {e}")
@@ -173,9 +177,8 @@ class AgentMemory:
             query["learning_type"] = learning_type
         
         try:
-            learnings = await self.db[COLLECTION_AGENT_LEARNINGS].find(query) \
-                .sort("confidence", -1) \
-                .to_list(50)
+            cursor = await _maybe_await(self.db[COLLECTION_AGENT_LEARNINGS].find(query))
+            learnings = await cursor.sort("confidence", -1).to_list(50)
             return learnings
         except Exception as e:
             logger.error(f"Failed to get learnings: {e}")
@@ -273,7 +276,8 @@ class PerformanceTracker:
             query["metric_name"] = metric_name
         
         try:
-            metrics = await self.db[COLLECTION_AGENT_PERFORMANCE].find(query).to_list(1000)
+            cursor = await _maybe_await(self.db[COLLECTION_AGENT_PERFORMANCE].find(query))
+            metrics = await cursor.to_list(1000)
             
             # Calculate statistics
             if not metrics:

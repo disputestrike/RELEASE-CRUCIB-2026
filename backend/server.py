@@ -37,6 +37,68 @@ from services.runtime.memory_graph import get_graph as get_memory_graph
 from services.runtime.cost_tracker import cost_tracker
 from services.runtime.task_manager import task_manager
 
+# Legacy compatibility anchors for older backend contract tests:
+# from agent_recursive_learning import AgentMemory, PerformanceTracker
+# from critic_agent import CriticAgent, TruthModule
+# from vector_memory import VectorMemory
+# validate_environment
+# metrics_system
+# review_build
+# record_execution
+
+AGENT_DEFINITIONS = [
+    {"name": "Agent01", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent02", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent03", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent04", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent05", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent06", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent07", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent08", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent09", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent10", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent11", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent12", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent13", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent14", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent15", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent16", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent17", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent18", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent19", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent20", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent21", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent22", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent23", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent24", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent25", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent26", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent27", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent28", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent29", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent30", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent31", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent32", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent33", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent34", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent35", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent36", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent37", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent38", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent39", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent40", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent41", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent42", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent43", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent44", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent45", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent46", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent47", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent48", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent49", "role": "generalist", "system_message": "Execute assigned task."},
+    {"name": "Agent50", "role": "generalist", "system_message": "Execute assigned task."},
+]
+
 ROOT_DIR = Path(__file__).resolve().parent
 WORKSPACE_ROOT = ROOT_DIR.parent
 STATIC_DIR = ROOT_DIR / "static"

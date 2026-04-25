@@ -12,6 +12,16 @@ from typing import Dict, Any, Tuple, List
 logger = logging.getLogger(__name__)
 
 
+class ValidationResult(dict):
+    """Dict result with legacy tuple-unpack compatibility."""
+
+    def __iter__(self):
+        error_message = ""
+        if self.get("errors"):
+            error_message = str(self["errors"][0])
+        return iter((bool(self.get("is_valid")), error_message))
+
+
 class CodeValidator:
     """Validates generated code for syntax and type errors."""
     
@@ -29,14 +39,14 @@ class CodeValidator:
             "warnings": [str]
         }
         """
-        result = {
+        result = ValidationResult({
             "is_valid": True,
             "syntax_valid": True,
             "type_valid": True,
             "lint_valid": True,
             "errors": [],
             "warnings": []
-        }
+        })
         
         # 1. Syntax check with ast.parse
         try:
@@ -113,12 +123,12 @@ class CodeValidator:
             "warnings": [str]
         }
         """
-        result = {
+        result = ValidationResult({
             "is_valid": True,
             "syntax_valid": True,
             "errors": [],
             "warnings": []
-        }
+        })
         
         # 1. Basic syntax check
         try:
@@ -186,12 +196,12 @@ class CodeValidator:
             "warnings": [str]
         }
         """
-        result = {
+        result = ValidationResult({
             "is_valid": True,
             "syntax_valid": True,
             "errors": [],
             "warnings": []
-        }
+        })
         
         # Try sqlparse
         try:

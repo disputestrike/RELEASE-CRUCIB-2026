@@ -46,8 +46,17 @@ class MockCollection:
                 return doc
         return None
     
-    async def find(self, query):
-        return MockCursor([d for d in self.data if all(d.get(k) == v for k, v in query.items())])
+    def _matches(self, doc, query):
+        for k, v in query.items():
+            if isinstance(v, dict):
+                if "$gte" in v and not (doc.get(k, 0) >= v["$gte"]):
+                    return False
+            elif doc.get(k) != v:
+                return False
+        return True
+
+    def find(self, query):
+        return MockCursor([d for d in self.data if self._matches(d, query)])
     
     async def update_one(self, query, update):
         for doc in self.data:
