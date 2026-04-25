@@ -4,6 +4,15 @@ Use this after deploy to close the **post-deploy** gates in `CRUCIBAI_CONTROL_PL
 
 ---
 
+## 0. Logs you may see (what they mean)
+
+- **`get_projects: pg query failed: column "doc" does not exist`** — fixed in app by `ALTER TABLE projects ADD COLUMN ... doc` + a corrected jobs fallback. Redeploy backend; the warning should stop after deploy.
+- **`GET .../dev-preview` → `202`** — no `index.html` in the job workspace yet (build still writing files, or output path differs). Preview iframe stays empty until this returns `200` with `dev_server_url`. Not a “lost UI” bug by itself.
+- **Set `CRUCIBAI_PUBLIC_BASE_URL` or `BACKEND_PUBLIC_BASE_URL`** on Railway to your **this** service’s public origin (e.g. `https://vigilant-youth-production-5aa6.up.railway.app`) so when preview **is** ready, the iframe gets an absolute URL.
+- **Tavily 432** — search quota; chat may still work via other tools. Optional: disable or upgrade Tavily in env.
+
+---
+
 ## 1. Get `TOKEN` and `JOB_ID`
 
 1. Log in to the app in the browser.

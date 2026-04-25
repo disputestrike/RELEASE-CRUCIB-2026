@@ -272,6 +272,8 @@ const QUICK_START_CHIPS = [
 /** First row on home (Manus-style); Import + templates live under “More”. */
 const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 5);
 
+const HOME_CHAT_SYSTEM = `You are CrucibAI on the user's Home screen. Reply with real substance: answer the question properly, use clear paragraphs when helpful, and avoid one-line brush-offs. If they ask about you, explain in a few sentences what you can do (clarify goals, design and build web apps and sites, run builds in Workspace with live progress and preview). Stay practical; offer a concrete next step when it fits.`;
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -349,14 +351,17 @@ const Dashboard = () => {
 
   // Restore chat when opening a chat task from sidebar (state or URL). Stay on task until user navigates away or New Task.
   const chatTaskIdRef = useRef(null);
-  const prevChatTaskIdRef = useRef(null);
+  const LAST_HOME_CHAT_KEY = 'crucibai_last_home_chat_task_id';
+
   useEffect(() => {
     const chatTaskId = location.state?.chatTaskId || searchParams.get('chatTaskId');
     const newAgent = location.state?.newAgent;
 
     if (newAgent) {
+      try {
+        sessionStorage.removeItem('crucibai_last_home_chat_task_id');
+      } catch (_) { void 0; }
       chatTaskIdRef.current = null;
-      prevChatTaskIdRef.current = null;
       setChatMessages([]);
       setConversationStarted(false);
       setPrompt('');
@@ -366,24 +371,44 @@ const Dashboard = () => {
     }
 
     if (chatTaskId) {
-      if (prevChatTaskIdRef.current === chatTaskId) return; // already on this task, don't overwrite
-      prevChatTaskIdRef.current = chatTaskId;
       chatTaskIdRef.current = chatTaskId;
+      try {
+        sessionStorage.setItem(LAST_HOME_CHAT_KEY, chatTaskId);
+      } catch (_) { void 0; }
       const task = storeTasks?.find(t => t.id === chatTaskId);
       const msgs = task?.messages;
       if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-        setChatMessages(normalizeMessagesForStore(msgs));
+        setChatMessages((prev) => {
+          const next = normalizeMessagesForStore(msgs);
+          // Merge: trust task store when it has at least as many turns (fixes async save + remount)
+          if (next.length >= prev.length || prev.length === 0) return next;
+          return prev;
+        });
         setConversationStarted(true);
       }
-      // If task has no messages yet (mid-send), keep in-memory chat — never clear optimistic turns
       setPrompt('');
       inputRef.current?.focus();
       return;
     }
 
-    prevChatTaskIdRef.current = null;
+    // No ?chatTaskId= — restore last Home chat so leaving to Workspace and back does not wipe the thread
+    try {
+      const last = sessionStorage.getItem(LAST_HOME_CHAT_KEY);
+      if (last) {
+        const task = storeTasks?.find(t => t.id === last && t.type === 'chat');
+        const msgs = task?.messages;
+        if (msgs && Array.isArray(msgs) && msgs.length > 0) {
+          chatTaskIdRef.current = last;
+          setChatMessages(normalizeMessagesForStore(msgs));
+          setConversationStarted(true);
+          navigate(`/app?chatTaskId=${encodeURIComponent(last)}`, { replace: true });
+          return;
+        }
+      }
+    } catch (_) { void 0; }
+
     chatTaskIdRef.current = null;
-  }, [location.state?.chatTaskId, location.state?.newAgent, searchParams.get('chatTaskId'), storeTasks]);
+  }, [location.state?.chatTaskId, location.state?.newAgent, searchParams.get('chatTaskId'), storeTasks, navigate]);
 
   // Autofocus prompt on load
   useEffect(() => {
@@ -475,6 +500,7 @@ const Dashboard = () => {
       message: userText,
       session_id: `chat_${taskId}`,
       model: 'auto',
+      system_message: HOME_CHAT_SYSTEM,
       ...(priorTurns?.length ? { prior_turns: priorTurns } : {}),
       ...(attachments?.length ? { attachments } : {}),
     }, { headers, timeout: 120000 });
@@ -1233,12 +1259,6 @@ const Dashboard = () => {
         {hasChat && (
           <div className="dashboard-chat-shell">
             <div className="dashboard-chat-inner">
-              <p className="dashboard-chat-channel-hint" role="note">
-                <strong>Advisory channel</strong> (session-based, not the job system of record). Durable state—plan, steps, files,
-                stream, and proof—lives in{' '}
-                <Link to="/app/workspace">Workspace</Link>
-                {' '}on a <code className="dashboard-chat-hint-code">job_id</code>.
-              </p>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
               {chatMessages.map((msg, i) => {
                 const userAskedCode = msg.role === 'assistant' && userRequestedCodeBlock(lastUserContentBeforeIndex(chatMessages, i));

@@ -322,22 +322,35 @@ async def get_projects(
                     limit,
                 )
                 if rows:
-                    projects = [json.loads(r["doc"]) for r in rows]
-                    return {"projects": projects}
-                # 2. Fall back to deriving projects from the jobs table
+                    out = []
+                    for r in rows:
+                        d = r["doc"]
+                        if d is None:
+                            continue
+                        if isinstance(d, (dict, list)):
+                            out.append(d)
+                        else:
+                            try:
+                                out.append(json.loads(d))
+                            except Exception:
+                                continue
+                    if out:
+                        return {"projects": out}
+                # 2. Fall back: relational `jobs` table (no JSONB `doc` column)
                 job_rows = await conn.fetch(
                     """
-                    SELECT DISTINCT ON (doc->>'project_id')
-                        doc->>'project_id' AS project_id,
-                        doc->>'goal'       AS goal,
-                        doc->>'status'     AS status,
-                        doc->>'created_at' AS created_at,
-                        doc->>'updated_at' AS updated_at,
-                        doc->>'id'         AS job_id
+                    SELECT DISTINCT ON (project_id)
+                        project_id,
+                        goal,
+                        status,
+                        created_at,
+                        updated_at,
+                        id AS job_id
                     FROM jobs
-                    WHERE doc->>'user_id' = $1
-                      AND doc->>'project_id' IS NOT NULL
-                    ORDER BY doc->>'project_id', (doc->>'created_at') DESC NULLS LAST
+                    WHERE user_id = $1
+                      AND project_id IS NOT NULL
+                      AND TRIM(project_id) <> ''
+                    ORDER BY project_id, created_at DESC NULLS LAST
                     LIMIT $2
                     """,
                     user_id,

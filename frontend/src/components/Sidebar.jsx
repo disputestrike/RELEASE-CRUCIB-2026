@@ -426,12 +426,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <TaskStatusIcon status={item.status} type={item.type} />
             <span className="sidebar-task-label-wrap">
               <span className="sidebar-task-label">{item.name}</span>
-              {isLocalTask && !item.jobId && (
+              {isLocalTask && !item.jobId && item.type === 'build' && (
                 <span
                   className="sidebar-task-norun"
-                  title="No run linked yet — open Workspace and start a plan to attach a job_id to this task."
+                  title="Build not started yet — open Workspace to run a plan."
                 >
-                  no run
+                  draft
                 </span>
               )}
             </span>
