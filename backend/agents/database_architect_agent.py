@@ -265,7 +265,9 @@ class DatabaseArchitectAgent:
 
     def __init__(self, llm_client):
         self.llm = llm_client
-        self.model = normalize_anthropic_model(ANTHROPIC_SONNET_MODEL)
+        import os as _os
+        # Use Cerebras as primary; Anthropic Sonnet only if CEREBRAS_API_KEY not set
+        self.model = "cerebras" if _os.getenv("CEREBRAS_API_KEY") else normalize_anthropic_model(ANTHROPIC_SONNET_MODEL)
 
     async def execute(self, context: Dict) -> Dict:
         """

@@ -247,9 +247,15 @@ class BaseAgent(ABC):
             Tuple of (response_text, tokens_used)
         """
         anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+        cerebras_key = os.getenv("CEREBRAS_API_KEY", "").strip()
+
+        # Cerebras is always primary — treat any claude-* model as a request for
+        # Cerebras first, with Anthropic as fallback (in case Anthropic has no credits)
+        if model.startswith("claude-") and cerebras_key:
+            model = "cerebras"  # redirect to Cerebras primary path
 
         # Use Cerebras by default (free tier, streaming is more reliable)
-        if model == "cerebras" or not anthropic_key:
+        if model == "cerebras" or (not anthropic_key and cerebras_key):
             if self._cerebras_context_too_large(user_prompt, system_prompt, max_tokens):
                 if anthropic_key:
                     logger.info(
@@ -310,6 +316,19 @@ class BaseAgent(ABC):
 
             except Exception as e:
                 logger.error(f"{self.name}: Cerebras API call failed: {e}")
+                # Fallback to Anthropic if available
+                if anthropic_key and not self._cerebras_context_too_large(
+                    user_prompt, system_prompt, max_tokens
+                ):
+                    logger.info(f"{self.name} Cerebras failed, falling back to Anthropic")
+                    return await self.call_llm(
+                        user_prompt,
+                        system_prompt,
+                        ANTHROPIC_FALLBACK_MODEL,
+                        temperature,
+                        max_tokens,
+                        stream=False,
+                    )
                 raise AgentValidationError(
                     f"{self.name}: Cerebras API call failed: {e}"
                 )

@@ -323,7 +323,7 @@ Code snippet:
 Provide concise, actionable suggestions."""
 
             response = await self.llm_client.messages.create(
-                model="claude-3-5-haiku-20241022",
+                model="cerebras",
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )

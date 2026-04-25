@@ -46,24 +46,29 @@ ANTHROPIC_API_KEY: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 # ---------------------------------------------------------------------------
 
 MODEL_CONFIG: Dict[str, Dict[str, str]] = {
-    "code": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "analysis": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "general": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "creative": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "fast": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "code": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "analysis": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "general": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "creative": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "fast": {"provider": "cerebras", "model": CEREBRAS_MODEL},
 }
 
 MODEL_FALLBACK_CHAINS: List[Dict[str, str]] = [
+    {"provider": "cerebras", "model": CEREBRAS_MODEL},
     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 
 MODEL_CHAINS: Dict[str, Any] = {
     "auto": None,  # resolved dynamically via MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "haiku": [{"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}],
+    "haiku": [
+        {"provider": "cerebras", "model": CEREBRAS_MODEL},
+        {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    ],
 }
 
 # Vision-capable model chain
 VISION_MODEL_CHAIN: List[Dict[str, str]] = [
+    {"provider": "cerebras", "model": CEREBRAS_MODEL},
     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 
@@ -353,6 +358,9 @@ def _provider_has_key(
             return bool(effective_keys.get("anthropic"))
         return bool(os.environ.get("ANTHROPIC_API_KEY"))
     if provider == "cerebras":
+        # Check effective_keys first (workspace-level keys), then env
+        if effective_keys:
+            return bool(effective_keys.get("cerebras") or os.environ.get("CEREBRAS_API_KEY"))
         return bool(os.environ.get("CEREBRAS_API_KEY"))
     return False
 
@@ -374,8 +382,8 @@ def _get_model_chain(
 ) -> List[Dict[str, str]]:
     """Return a list of {provider, model} dicts to try in order.
 
-    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) for fast/simple tasks; Haiku for complex/build tasks.
-    ``force_complex=True`` always selects Haiku (for iterative builds).
+    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) is always primary.
+    Anthropic Haiku is fallback only (used when Cerebras key absent or fails).
     """
     cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
         "CEREBRAS_API_KEY"
@@ -398,7 +406,8 @@ def _get_model_chain(
             complexity = (
                 "complex" if force_complex else _classify_task_complexity(message)
             )
-            if complexity == "fast" and cerebras_key:
+            # Cerebras is always primary; Anthropic is fallback only
+            if cerebras_key:
                 chain = [
                     {"provider": "cerebras", "model": CEREBRAS_MODEL},
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
@@ -406,10 +415,7 @@ def _get_model_chain(
             elif anthropic_key:
                 chain = [
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                    {"provider": "cerebras", "model": CEREBRAS_MODEL},
                 ]
-            elif cerebras_key:
-                chain = [{"provider": "cerebras", "model": CEREBRAS_MODEL}]
             else:
                 chain = MODEL_FALLBACK_CHAINS
     else:

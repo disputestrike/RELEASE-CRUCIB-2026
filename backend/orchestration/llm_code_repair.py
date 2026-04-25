@@ -75,10 +75,32 @@ async def _call_anthropic_repair(
     user_prompt: str,
     max_tokens: int = 4096,
 ) -> Optional[str]:
-    """Call Anthropic Claude for a repair task."""
+    """Call LLM for a repair task. Cerebras is primary; Anthropic is fallback."""
+    # ── Cerebras primary ────────────────────────────────────────────────────────────
+    cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+    if cerebras_key:
+        try:
+            from backend.llm_cerebras import invoke_cerebras_stream
+            content = ""
+            async for chunk in invoke_cerebras_stream(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=max_tokens,
+                temperature=0.1,
+            ):
+                content += chunk
+            if content:
+                logger.info("llm_code_repair: got %d chars from Cerebras", len(content))
+                return content
+        except Exception as e:
+            logger.warning("llm_code_repair: Cerebras failed, trying Anthropic: %s", e)
+
+    # ── Anthropic fallback ──────────────────────────────────────────────────────────
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
-        logger.warning("llm_code_repair: ANTHROPIC_API_KEY not set")
+        logger.warning("llm_code_repair: no LLM keys available")
         return None
 
     try:

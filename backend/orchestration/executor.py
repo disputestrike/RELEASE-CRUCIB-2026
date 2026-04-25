@@ -19,6 +19,7 @@ from backend.agents.database_architect_agent import (
     heuristic_schema_from_requirements,
 )
 from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
+from backend.llm_router import CEREBRAS_MODEL
 
 from .compliance_sketch import build_compliance_sketch_markdown
 from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
@@ -853,7 +854,7 @@ async def handle_frontend_generate(
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
-                    "llm_model": job.get("llm_model") or ANTHROPIC_HAIKU_MODEL,
+                    "llm_model": job.get("llm_model") or CEREBRAS_MODEL,
                     "max_tokens": 12000,
                 }
             )

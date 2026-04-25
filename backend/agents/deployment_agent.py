@@ -184,7 +184,7 @@ Quality expectations:
         response, tokens = await self.call_llm(
             user_prompt=user_prompt + context_info,
             system_prompt=system_prompt,
-            model="claude-haiku-4-5-20251001",
+            model="cerebras",
             temperature=0.7,
             max_tokens=1500,
         )
@@ -194,7 +194,7 @@ Quality expectations:
 
         # Add metadata
         data["_tokens_used"] = tokens
-        data["_model_used"] = "claude-haiku-4-5-20251001"
+        data["_model_used"] = "cerebras"
         data["_agent"] = self.name
 
         return data
