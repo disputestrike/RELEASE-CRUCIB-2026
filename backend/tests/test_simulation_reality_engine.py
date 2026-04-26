@@ -42,6 +42,11 @@ async def test_lakers_prompt_is_sports_forecast_not_business_decision(app_client
     assert payload["trust_score"]["components"]["data_completeness"] < 0.7
     assert "unsupported_consensus_penalty" in payload["trust_score"]["components"]
     assert "evidence_policy" in payload["report"]["evidence_summary"]
+    policy = payload["report"]["evidence_summary"]["evidence_policy"]
+    assert policy["source_precedence"][0] == "official_api_fetcher"
+    assert policy["terminal_states"] == ["Yes", "No", "Unclear", "Insufficient Evidence"]
+    assert "next_best_action" in policy["output_contract"]
+    assert payload["final_verdict"]["next_best_action"]
     rendered = str(payload).lower()
     assert "implementation plan" not in rendered
     assert "no verified live source" in rendered
@@ -155,4 +160,5 @@ async def test_simulation_contract_covers_research_qa_scenarios(app_client):
         assert payload["population_model"]["method"] == "core_agents_plus_synthetic_population"
         assert payload["trust_score"]["formula"] == "0.25Q + 0.15F + 0.15C + 0.15T + 0.10D + 0.10K + 0.10(1-P)"
         assert payload["report"]["replay_metadata"]["replay_scope"] == "core-agent transcript plus aggregated population cohorts"
+        assert payload["report"]["evidence_summary"]["evidence_policy"]["output_contract"]
     app.dependency_overrides.pop(dep, None)

@@ -6,13 +6,25 @@ from .models import ScenarioClassification
 
 
 SOURCE_PRECEDENCE = [
-    "official_api",
+    "official_api_fetcher",
     "authorized_enterprise_connector",
     "targeted_web_search",
     "controlled_browser_crawl",
     "user_upload",
     "generic_web_source",
 ]
+
+OUTPUT_CONTRACT = [
+    "one_line_verdict",
+    "calibrated_probability_interval",
+    "top_supporting_claims",
+    "top_opposing_claims",
+    "sensitivity_triggers",
+    "next_best_action",
+    "replay_handle",
+]
+
+TERMINAL_STATES = ["Yes", "No", "Unclear", "Insufficient Evidence"]
 
 
 DOMAIN_POLICIES: Dict[str, Dict[str, Any]] = {
@@ -84,7 +96,7 @@ DOMAIN_POLICIES: Dict[str, Dict[str, Any]] = {
             "customer sentiment",
             "experiment or rollout plan",
         ],
-        "preferred_connectors": ["Stripe", "Salesforce", "warehouse", "support export", "targeted Tavily search"],
+        "preferred_connectors": ["Braintree", "Salesforce", "warehouse", "support export", "targeted Tavily search"],
         "minimum_coverage": 0.6,
         "official_required_for_strong_verdict": False,
         "verdict_style": "recommendation_with_expected_impact",
@@ -138,6 +150,8 @@ def build_evidence_policy(classification: ScenarioClassification, prompt: str) -
         "required_evidence_classes": required,
         "preferred_connectors": list(domain_policy["preferred_connectors"]),
         "source_precedence": list(SOURCE_PRECEDENCE),
+        "output_contract": list(OUTPUT_CONTRACT),
+        "terminal_states": list(TERMINAL_STATES),
         "minimum_coverage": float(domain_policy["minimum_coverage"]),
         "official_required_for_strong_verdict": bool(domain_policy["official_required_for_strong_verdict"]),
         "verdict_style": domain_policy["verdict_style"],
