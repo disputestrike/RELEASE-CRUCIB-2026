@@ -33,6 +33,23 @@ const loadBraintreeDropin = () => new Promise((resolve, reject) => {
   document.body.appendChild(script);
 });
 
+const formatBraintreeError = (detail) => {
+  if (!detail) return 'Braintree checkout could not complete. Please try again.';
+  if (typeof detail === 'string') return detail;
+  if (detail.error === 'braintree_requires_config') {
+    const required = Array.isArray(detail.required_config) ? detail.required_config.join(', ') : 'Braintree credentials';
+    return `Braintree is not configured yet. Add ${required} in Railway variables, then redeploy.`;
+  }
+  if (detail.error === 'braintree_sdk_missing') {
+    return 'Braintree SDK is not installed in this deployment yet. Redeploy after the latest backend dependency update.';
+  }
+  if (detail.error === 'braintree_transaction_failed') {
+    return 'Braintree rejected the transaction. Please check the card details or try another payment method.';
+  }
+  if (detail.message) return String(detail.message);
+  return 'Braintree checkout could not complete. Please try again.';
+};
+
 const TokenCenter = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -90,24 +107,6 @@ const TokenCenter = () => {
     }
   }, [addonFromPricing, loading, bundles]);
 
-  const handlePurchase = async (bundleKey) => {
-    setPurchasing(bundleKey);
-    try {
-      await axios.post(`${API}/tokens/purchase`, { bundle: bundleKey }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await refreshUser();
-      const historyRes = await axios.get(`${API}/tokens/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setHistory(historyRes.data.history);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPurchasing(null);
-    }
-  };
-
   const openBraintreeCheckout = (target) => {
     if (!token) {
       window.location.href = '/login';
@@ -137,23 +136,6 @@ const TokenCenter = () => {
     openBraintreeCheckout({ credits: boundedCredits, label: `${boundedCredits} credits`, amount: Math.round(boundedCredits * pricePerCredit * 100) / 100 });
   }, [creditsFromPricing]);
 
-  const handlePurchaseCustom = async () => {
-    setPurchasing('custom');
-    try {
-      await axios.post(`${API}/tokens/purchase-custom`, { credits: customCredits }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await refreshUser();
-      const historyRes = await axios.get(`${API}/tokens/history`, { headers: { Authorization: `Bearer ${token}` } });
-      setHistory(historyRes.data.history);
-    } catch (e) {
-      logApiError('TokenCenter purchase-custom', e);
-      openBraintreeCheckout({ credits: customCredits, label: `${customCredits} credits`, amount: customTotal });
-    } finally {
-      setPurchasing(null);
-    }
-  };
-
   const completeBraintreeCheckout = async () => {
     if (!braintreeTarget || !braintreeInstanceRef.current) return;
     setPurchasing('braintree');
@@ -175,8 +157,7 @@ const TokenCenter = () => {
       setHistory(historyRes.data.history);
       setBraintreeTarget(null);
     } catch (e) {
-      const detail = e.response?.data?.detail;
-      setBraintreeError(typeof detail === 'string' ? detail : 'Braintree checkout could not complete. Please try again.');
+      setBraintreeError(formatBraintreeError(e.response?.data?.detail));
       logApiError('TokenCenter Braintree checkout', e);
     } finally {
       setPurchasing(null);
@@ -208,8 +189,7 @@ const TokenCenter = () => {
         braintreeInstanceRef.current = instance;
         setBraintreeReady(true);
       } catch (e) {
-        const detail = e.response?.data?.detail || e.message || 'Braintree is not configured yet.';
-        setBraintreeError(detail);
+        setBraintreeError(formatBraintreeError(e.response?.data?.detail || e.message));
         logApiError('TokenCenter Braintree setup', e);
       }
     };
