@@ -10,7 +10,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+
+from backend.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/voice", tags=["voice"])
@@ -23,6 +25,7 @@ async def transcribe(
     audio: UploadFile = File(...),
     session_id: Optional[str] = Form(None),
     language: Optional[str] = Form("auto"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Real speech-to-text via OpenAI Whisper when OPENAI_API_KEY is set.
 

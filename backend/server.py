@@ -1642,11 +1642,36 @@ app.add_middleware(
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "healthy",
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 @app.get("/api/v1/health")
 async def health_check_v1():
     return {"status": "ok", "version": "v1", "timestamp": str(datetime.now())}
+
+
+@app.get("/api/")
+async def api_root():
+    return {
+        "message": "CrucibAI API",
+        "status": "healthy",
+        "simulation": "reality_engine",
+    }
+
+
+@app.get("/api/release/version")
+async def release_version():
+    return {
+        "status": "healthy",
+        "release_contract": "simulation_reality_engine_v2",
+        "simulation_route": "/api/simulations",
+        "simulation_page": "/app/what-if",
+        "frontend_source": "fresh_build_required",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 
@@ -1761,6 +1786,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.project_memory", "router", False),
     ("backend.routes.automation", "router", False),
     ("backend.routes.community", "router", False),
+    ("backend.routes.voice_input", "router", False),
     ("backend.routes.crucib_workspace_adapter", "router", False),
     ("backend.routes.crucib_ws_events", "router", False),
     ("backend.routes.deploy", "router", False),

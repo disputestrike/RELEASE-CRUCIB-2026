@@ -17,9 +17,8 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../App', () => ({
+jest.mock('../authContext', () => ({
   useAuth: () => ({ user: null, token: null }),
-  API: '/api',
 }));
 
 jest.mock('axios', () => ({ get: () => Promise.resolve({ data: {} }) }));
@@ -125,7 +124,7 @@ describe('Nav and pages — link and click-through verification', () => {
     );
     expect(screen.getByRole('button', { name: /our solution/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing');
-    expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
+    expect(screen.getByRole('link', { name: /projects/i })).toHaveAttribute('href', '/our-projects');
     expect(screen.queryByRole('link', { name: /^blog$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
     expect(screen.queryByRole('link', { name: /^sign up$/i })).not.toBeInTheDocument();
