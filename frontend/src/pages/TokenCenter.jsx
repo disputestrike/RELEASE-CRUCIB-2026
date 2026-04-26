@@ -67,6 +67,7 @@ const TokenCenter = () => {
   const [braintreeTarget, setBraintreeTarget] = useState(null);
   const [braintreeReady, setBraintreeReady] = useState(false);
   const [braintreeError, setBraintreeError] = useState('');
+  const [braintreeStatus, setBraintreeStatus] = useState(null);
   const braintreeInstanceRef = useRef(null);
   const bundleRefs = useRef({});
   const creditsFromPricing = Number(location.state?.customCredits || searchParams.get('credits') || 0);
@@ -75,16 +76,18 @@ const TokenCenter = () => {
     const fetchData = async () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [bundlesRes, historyRes, usageRes, codeRes, statsRes] = await Promise.all([
+        const [bundlesRes, historyRes, usageRes, codeRes, statsRes, paymentStatusRes] = await Promise.all([
           axios.get(`${API}/tokens/bundles`),
           axios.get(`${API}/tokens/history`, { headers }),
           axios.get(`${API}/tokens/usage`, { headers }),
           token ? axios.get(`${API}/referrals/code`, { headers }).catch((e) => { logApiError('TokenCenter referrals/code', e); return { data: {} }; }) : Promise.resolve({ data: {} }),
-          token ? axios.get(`${API}/referrals/stats`, { headers }).catch((e) => { logApiError('TokenCenter referrals/stats', e); return { data: {} }; }) : Promise.resolve({ data: {} })
+          token ? axios.get(`${API}/referrals/stats`, { headers }).catch((e) => { logApiError('TokenCenter referrals/stats', e); return { data: {} }; }) : Promise.resolve({ data: {} }),
+          axios.get(`${API}/payments/braintree/status`).catch((e) => { logApiError('TokenCenter braintree/status', e); return { data: { provider: 'braintree', configured: false } }; })
         ]);
         setBundles(bundlesRes.data.bundles);
         setHistory(historyRes.data.history);
         setUsage(usageRes.data);
+        setBraintreeStatus(paymentStatusRes.data);
         setReferralCode(codeRes.data?.code ?? null);
         setReferralStats(statsRes.data ? { this_month: statsRes.data.this_month, total: statsRes.data.total, cap: statsRes.data.cap } : null);
       } catch (e) {
@@ -115,6 +118,12 @@ const TokenCenter = () => {
     setBraintreeError('');
     setBraintreeReady(false);
     setBraintreeTarget(target);
+    if (braintreeStatus?.configured === false) {
+      setBraintreeError(formatBraintreeError({
+        error: 'braintree_requires_config',
+        required_config: braintreeStatus.required_config,
+      }));
+    }
   };
 
   const bundleOrder = ['builder', 'pro', 'scale', 'teams'];
@@ -168,6 +177,13 @@ const TokenCenter = () => {
     if (!braintreeTarget) return undefined;
     let cancelled = false;
     const setup = async () => {
+      if (braintreeStatus?.configured === false) {
+        setBraintreeError(formatBraintreeError({
+          error: 'braintree_requires_config',
+          required_config: braintreeStatus.required_config,
+        }));
+        return;
+      }
       try {
         const [{ data }, dropin] = await Promise.all([
           axios.get(`${API}/payments/braintree/client-token`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -201,7 +217,7 @@ const TokenCenter = () => {
       braintreeInstanceRef.current = null;
       instance?.teardown?.().catch(() => {});
     };
-  }, [braintreeTarget, token]);
+  }, [braintreeTarget, braintreeStatus, token]);
 
   const usageChartData = usage?.by_agent ? Object.entries(usage.by_agent).map(([name, value]) => ({
     name,
@@ -297,6 +313,11 @@ const TokenCenter = () => {
       <div className="mb-4">
         <h2 className="credit-center-heading text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>Pricing & usage</h2>
         <p className="text-sm credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Credits for builds. Usage this period: {usage?.total_used?.toLocaleString() ?? 0} tokens</p>
+        {braintreeStatus?.configured === false && (
+          <p className="mt-2 text-sm text-amber-700">
+            Braintree checkout is awaiting production credentials. Plans and pricing are ready; add the Braintree Railway variables to accept payments.
+          </p>
+        )}
       </div>
 
       {/* Tabs */}
