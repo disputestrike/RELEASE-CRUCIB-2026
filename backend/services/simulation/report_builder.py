@@ -17,6 +17,7 @@ def build_report(
     trust: Dict[str, Any],
     simulation_id: str,
     run_id: str,
+    population_model: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     disagreements = []
     for cluster in debate.get("clusters") or []:
@@ -42,6 +43,7 @@ def build_report(
             "agreement": debate.get("agreement"),
             "major_disagreements": disagreements,
         },
+        "population_model": population_model or {},
         "belief_shifts": (debate.get("belief_updates") or [])[:20],
         "outcomes": outcomes,
         "recommendation": recommendation,

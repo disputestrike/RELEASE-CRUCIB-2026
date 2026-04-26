@@ -164,7 +164,8 @@ async def swarm_capabilities(_user: dict = Depends(_get_auth())):
 class WhatIfBody(BaseModel):
     scenario: str = Field(..., min_length=1, max_length=8000)
     mode: str = Field(default="decision") # decision, forecast, market_reaction
-    population_size: int = Field(default=48, ge=3, le=256)
+    depth: str = Field(default="balanced")
+    population_size: int = Field(default=1000, ge=3, le=10000)
     rounds: int = Field(default=4, ge=1, le=8)
     priors: Dict[str, float] = Field(default_factory=dict)
     agent_roles: Optional[list] = None
@@ -194,6 +195,8 @@ async def run_what_if(body: WhatIfBody, user: dict = Depends(_get_auth())):
         prompt=body.scenario,
         assumptions=[],
         attachments=[],
+        depth=body.depth,
+        population_size=max(100, min(10000, int(body.population_size or 1000))),
         rounds=body.rounds,
         agent_count=max(3, min(24, int(body.population_size or 8))),
         metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},

@@ -45,12 +45,17 @@ def build_trust_score(
         components["evidence_quality"] * 0.18
         + components["evidence_freshness"] * 0.12
         + components["source_reliability"] * 0.12
-        + components["data_completeness"] * 0.18
-        + components["agent_agreement"] * 0.12
+        + components["data_completeness"] * 0.22
+        + min(components["agent_agreement"], components["data_completeness"] + 0.18) * 0.08
         + components["simulation_stability"] * 0.1
         + components["domain_fit"] * 0.1
     )
-    penalty = components["uncertainty_level"] * 0.15 + (0.08 if components["recency_sensitivity"] > 0.7 and not live_data else 0)
+    weak_evidence_penalty = 0.12 if completeness < 0.45 and agreement > 0.75 else 0
+    penalty = (
+        components["uncertainty_level"] * 0.15
+        + (0.08 if components["recency_sensitivity"] > 0.7 and not live_data else 0)
+        + weak_evidence_penalty
+    )
     score = max(0.05, min(0.95, positive - penalty))
     warnings: List[str] = []
     if not live_data and classification.time_sensitivity == "current":
@@ -59,6 +64,8 @@ def build_trust_score(
         warnings.append("Important evidence is missing; treat forecast and recommendation as provisional.")
     if agreement < 0.65:
         warnings.append("Agent disagreement is material.")
+    if completeness < 0.45 and agreement > 0.75:
+        warnings.append("High agent agreement is not strong proof because evidence completeness is weak.")
 
     return {
         "id": new_id("trust"),
@@ -76,4 +83,3 @@ def build_trust_score(
         },
         "created_at": now_iso(),
     }
-

@@ -17,6 +17,10 @@ class SimulationRunRequest(BaseModel):
     prompt: Optional[str] = Field(default=None, max_length=12000)
     assumptions: List[str] = Field(default_factory=list)
     attachments: List[Dict[str, Any]] = Field(default_factory=list)
+    depth: str = Field(default="balanced", max_length=24)
+    use_live_evidence: bool = True
+    population_size: Optional[int] = Field(default=None, ge=100, le=10000)
+    evidence_depth: Optional[int] = Field(default=None, ge=1, le=10)
     rounds: int = Field(default=5, ge=1, le=8)
     agent_count: int = Field(default=8, ge=3, le=24)
     metadata: Dict[str, Any] = Field(default_factory=dict)

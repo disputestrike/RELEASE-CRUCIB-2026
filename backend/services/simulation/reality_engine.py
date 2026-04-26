@@ -7,9 +7,34 @@ from .classifier import classify_scenario
 from .debate_engine import run_debate
 from .evidence_engine import build_evidence
 from .outcome_engine import build_outcomes, build_recommendation
+from .population_engine import build_population_model
 from .report_builder import build_report
 from .repository import new_id, now_iso, repository
 from .trust_engine import build_trust_score
+
+
+DEPTH_CONFIG = {
+    "fast": {"rounds": 3, "agent_count": 6, "population_size": 250, "evidence_depth": 2},
+    "balanced": {"rounds": 5, "agent_count": 8, "population_size": 1000, "evidence_depth": 4},
+    "deep": {"rounds": 6, "agent_count": 12, "population_size": 5000, "evidence_depth": 6},
+    "maximum": {"rounds": 8, "agent_count": 16, "population_size": 10000, "evidence_depth": 8},
+}
+
+
+def _depth_config(depth: str, rounds: int, agent_count: int, population_size: Optional[int], evidence_depth: Optional[int]) -> Dict[str, Any]:
+    key = (depth or "balanced").strip().lower()
+    if key not in DEPTH_CONFIG:
+        key = "balanced"
+    cfg = dict(DEPTH_CONFIG[key])
+    if population_size:
+        cfg["population_size"] = max(100, min(10000, int(population_size)))
+    if evidence_depth:
+        cfg["evidence_depth"] = max(1, min(10, int(evidence_depth)))
+    if key == "balanced":
+        cfg["rounds"] = max(1, min(int(rounds or cfg["rounds"]), 8))
+        cfg["agent_count"] = max(3, min(int(agent_count or cfg["agent_count"]), 24))
+    cfg["depth"] = key
+    return cfg
 
 
 class RealityEngine:
@@ -60,10 +85,15 @@ class RealityEngine:
         prompt: str,
         assumptions: Optional[List[str]] = None,
         attachments: Optional[List[Dict[str, Any]]] = None,
+        depth: str = "balanced",
+        use_live_evidence: bool = True,
+        population_size: Optional[int] = None,
+        evidence_depth: Optional[int] = None,
         rounds: int = 5,
         agent_count: int = 8,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        config = _depth_config(depth, rounds, agent_count, population_size, evidence_depth)
         run_id = new_id("run")
         now = now_iso()
         run_doc = {
@@ -71,8 +101,11 @@ class RealityEngine:
             "simulation_id": simulation_id,
             "user_id": user_id,
             "status": "running",
-            "rounds_requested": rounds,
-            "agent_count_requested": agent_count,
+            "depth": config["depth"],
+            "rounds_requested": config["rounds"],
+            "agent_count_requested": config["agent_count"],
+            "population_size_requested": config["population_size"],
+            "evidence_depth_requested": config["evidence_depth"],
             "metadata": metadata or {},
             "created_at": now,
             "updated_at": now,
@@ -100,13 +133,15 @@ class RealityEngine:
             payload=classification.model_dump(),
         )
 
-        evidence = build_evidence(
+        evidence = await build_evidence(
             simulation_id=simulation_id,
             run_id=run_id,
             prompt=prompt,
             classification=classification,
             assumptions=assumptions or [],
             attachments=attachments or [],
+            use_live_evidence=use_live_evidence,
+            evidence_depth=config["evidence_depth"],
         )
         for source in evidence["sources"]:
             await repository.insert("simulation_sources", source)
@@ -122,7 +157,7 @@ class RealityEngine:
                 "source_count": len(evidence["sources"]),
                 "fact_count": len(evidence["evidence"]),
                 "missing_evidence": evidence["missing_evidence"],
-                "live_data_used": False,
+                "live_data_used": (evidence.get("quality") or {}).get("live_data_used"),
             },
         )
 
@@ -130,7 +165,7 @@ class RealityEngine:
             simulation_id=simulation_id,
             run_id=run_id,
             classification=classification,
-            agent_count=agent_count,
+            agent_count=config["agent_count"],
             evidence_summary=evidence,
         )
         for agent in agents:
@@ -148,7 +183,7 @@ class RealityEngine:
             classification=classification,
             agents=agents,
             evidence_summary=evidence,
-            rounds=rounds,
+            rounds=config["rounds"],
         )
         for row in debate["rounds"]:
             await repository.insert("simulation_rounds", row)
@@ -159,6 +194,29 @@ class RealityEngine:
             await repository.insert("simulation_belief_updates", row)
         for row in debate["clusters"]:
             await repository.insert("simulation_clusters", row)
+
+        population_model = build_population_model(
+            simulation_id=simulation_id,
+            run_id=run_id,
+            prompt=prompt,
+            classification=classification,
+            debate=debate,
+            evidence_summary=evidence,
+            depth=config["depth"],
+            requested_population_size=config["population_size"],
+        )
+        for row in population_model.get("clusters") or []:
+            await repository.insert("simulation_clusters", row)
+        await self._event(
+            simulation_id=simulation_id,
+            run_id=run_id,
+            event_type="simulation.population_modeled",
+            payload={
+                "population_size": population_model.get("population_size"),
+                "cluster_count": len(population_model.get("clusters") or []),
+                "method": population_model.get("method"),
+            },
+        )
 
         outcomes = build_outcomes(
             simulation_id=simulation_id,
@@ -192,6 +250,7 @@ class RealityEngine:
             trust=trust,
             simulation_id=simulation_id,
             run_id=run_id,
+            population_model=population_model,
         )
 
         completed = {
@@ -239,6 +298,7 @@ class RealityEngine:
             "agent_messages": debate["messages"],
             "belief_updates": debate["belief_updates"],
             "clusters": debate["clusters"],
+            "population_model": population_model,
             "outcomes": outcomes,
             "recommendation": recommendation,
             "trust_score": trust,

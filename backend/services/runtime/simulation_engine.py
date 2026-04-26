@@ -225,7 +225,7 @@ class SimulationEngine:
         cls,
         *,
         scenario: str,
-        mode: str,
+        mode: str = "decision",
         population_size: int,
         rounds: int,
         agent_roles: Optional[List[str]] = None,

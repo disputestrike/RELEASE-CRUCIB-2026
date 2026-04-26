@@ -129,9 +129,63 @@
 
 .simulation-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr minmax(180px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.36fr);
   gap: 14px;
   margin-top: 14px;
+}
+
+.simulation-input-tools {
+  margin-top: 10px;
+  max-width: 260px;
+}
+
+.simulation-depth {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.simulation-depth legend {
+  grid-column: 1 / -1;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.simulation-depth button {
+  text-align: left;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.simulation-depth button.active {
+  border-color: #059669;
+  background: #ecfdf5;
+}
+
+.simulation-depth button strong,
+.simulation-depth button span {
+  display: block;
+}
+
+.simulation-depth button strong {
+  color: #111827;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.simulation-depth button span {
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
 }
 
 .simulation-controls label {
@@ -281,7 +335,8 @@
 }
 
 .simulation-agent-grid,
-.simulation-outcomes {
+.simulation-outcomes,
+.simulation-population-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
@@ -289,6 +344,7 @@
 
 .simulation-agent,
 .simulation-outcome,
+.simulation-population,
 .simulation-round {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -349,6 +405,11 @@
   font-size: 11px;
 }
 
+.simulation-population footer {
+  color: #6b7280;
+  font-size: 11px;
+}
+
 .simulation-timeline {
   display: grid;
   gap: 10px;
@@ -395,9 +456,11 @@
   .simulation-grid.four,
   .simulation-agent-grid,
   .simulation-outcomes,
+  .simulation-population-grid,
   .simulation-trust-grid,
   .simulation-evidence-layout,
-  .simulation-controls {
+  .simulation-controls,
+  .simulation-depth {
     grid-template-columns: 1fr;
   }
 }

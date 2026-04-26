@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
+import VoiceInput from '../components/VoiceInput';
 import './WhatIfPage.css';
 
 const PROMPTS = [
@@ -65,8 +66,7 @@ export default function WhatIfPage() {
   const { token } = useAuth();
   const [prompt, setPrompt] = useState(PROMPTS[0]);
   const [assumptionsText, setAssumptionsText] = useState('');
-  const [rounds, setRounds] = useState(5);
-  const [agentCount, setAgentCount] = useState(8);
+  const [depth, setDepth] = useState('balanced');
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -111,9 +111,9 @@ export default function WhatIfPage() {
         prompt: cleanPrompt,
         assumptions,
         attachments,
-        rounds,
-        agent_count: agentCount,
-        metadata: { surface: 'simulation_command_center' },
+        depth,
+        use_live_evidence: true,
+        metadata: { surface: 'simulation_command_center', depth },
       };
       const runRes = await fetch(`${API}/simulations/run`, {
         method: 'POST',
@@ -132,9 +132,8 @@ export default function WhatIfPage() {
             scenario: cleanPrompt,
             assumptions,
             attachments,
-            rounds,
-            population_size: agentCount,
-            metadata: { surface: 'simulation_command_center', fallback_from: 'simulations_run' },
+            depth,
+            metadata: { surface: 'simulation_command_center', fallback_from: 'simulations_run', depth },
           }),
         });
         const fallback = await readJsonResponse(fallbackRes, 'Run simulation fallback');
@@ -156,6 +155,8 @@ export default function WhatIfPage() {
   const outcomes = Array.isArray(result?.outcomes) ? result.outcomes : [];
   const evidence = Array.isArray(result?.evidence) ? result.evidence : [];
   const sources = Array.isArray(result?.sources) ? result.sources : [];
+  const populationModel = result?.population_model || report?.population_model || {};
+  const populationClusters = Array.isArray(populationModel?.clusters) ? populationModel.clusters : [];
   const missingEvidence = Array.isArray(result?.missing_evidence) ? result.missing_evidence : [];
   const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
 
@@ -179,6 +180,19 @@ export default function WhatIfPage() {
           rows={5}
           placeholder="Ask any forecast, decision, market reaction, product, sports, business, finance, policy, or engineering scenario..."
         />
+        <div className="simulation-input-tools">
+          <VoiceInput
+            apiEndpoint={API}
+            token={token}
+            disabled={loading}
+            onTranscribed={(text) => {
+              setPrompt((current) => {
+                const existing = String(current || '').trim();
+                return existing ? `${existing}\n${text}` : text;
+              });
+            }}
+          />
+        </div>
         <div className="simulation-presets">
           {PROMPTS.map((item) => (
             <button type="button" key={item} onClick={() => setPrompt(item)}>
@@ -194,14 +208,25 @@ export default function WhatIfPage() {
           placeholder="Optional assumptions, one per line. Example: LeBron is healthy. CAC is $90. Railway is the target host."
         />
         <div className="simulation-controls">
-          <label>
-            <span>Agents <strong>{agentCount}</strong></span>
-            <input type="range" min="3" max="16" step="1" value={agentCount} onChange={(event) => setAgentCount(Number(event.target.value))} />
-          </label>
-          <label>
-            <span>Rounds <strong>{rounds}</strong></span>
-            <input type="range" min="1" max="8" step="1" value={rounds} onChange={(event) => setRounds(Number(event.target.value))} />
-          </label>
+          <fieldset className="simulation-depth">
+            <legend>Simulation Depth</legend>
+            {[
+              ['fast', 'Fast', 'Quick read with light evidence retrieval.'],
+              ['balanced', 'Balanced', 'Best default for most decisions and forecasts.'],
+              ['deep', 'Deep', 'More evidence, debate, and population modeling.'],
+              ['maximum', 'Maximum', 'Largest audited run for high-stakes scenarios.'],
+            ].map(([value, label, description]) => (
+              <button
+                type="button"
+                key={value}
+                className={depth === value ? 'active' : ''}
+                onClick={() => setDepth(value)}
+              >
+                <strong>{label}</strong>
+                <span>{description}</span>
+              </button>
+            ))}
+          </fieldset>
           <label className="simulation-file">
             <span>Attachments</span>
             <input
@@ -264,7 +289,7 @@ export default function WhatIfPage() {
             </div>
           </Panel>
 
-          <Panel title="Agent Arena" icon={Users} aside={`${agents.length} agents`}>
+          <Panel title="Agent Arena" icon={Users} aside={`${agents.length} core agents`}>
             <div className="simulation-agent-grid">
               {agents.map((agent) => (
                 <div className="simulation-agent" key={agent.id}>
@@ -274,10 +299,31 @@ export default function WhatIfPage() {
                   </div>
                   <p>{agent.domain_expertise}</p>
                   <div className="simulation-meter"><i style={{ width: pct(agent.current_belief) }} /></div>
+                  {agent.latest_argument && <p>{agent.latest_argument}</p>}
                   <footer>confidence {pct(agent.confidence)} / {agent.persona}</footer>
                 </div>
               ))}
             </div>
+          </Panel>
+
+          <Panel title="Population Reaction" icon={RadioTower} aside={populationModel.population_size ? `${Number(populationModel.population_size).toLocaleString()} perspectives` : 'modeled perspectives'}>
+            <p className="simulation-interpretation">{populationModel.summary || 'Population modeling will appear when a run completes.'}</p>
+            <div className="simulation-population-grid">
+              {populationClusters.map((cluster) => (
+                <div className="simulation-population" key={cluster.id || cluster.label}>
+                  <div className="simulation-outcome-head">
+                    <strong>{cluster.label}</strong>
+                    <span>{pct(cluster.share)}</span>
+                  </div>
+                  <div className="simulation-meter"><i style={{ width: pct(cluster.share) }} /></div>
+                  <p>{cluster.rationale}</p>
+                  <footer>{Number(cluster.size || 0).toLocaleString()} modeled perspectives / {cluster.expected_shift}</footer>
+                </div>
+              ))}
+            </div>
+            {(populationModel.warnings || []).map((warning) => (
+              <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
+            ))}
           </Panel>
 
           <Panel title="Debate Timeline" icon={GitBranch}>
