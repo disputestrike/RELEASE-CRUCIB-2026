@@ -1773,7 +1773,23 @@ async def cost_tracker_endpoint(user: User = Depends(get_current_user)):
 
 @app.get("/api/provider-readiness")
 async def provider_readiness_endpoint(user: User = Depends(get_current_user)):
-    return await build_provider_readiness(user)
+    return build_provider_readiness(
+        user_tier="admin" if getattr(user, "is_admin", False) else "free",
+        available_credits=int(getattr(user, "credit_balance", 0) or 0),
+    )
+
+
+@app.get("/api/health/llm")
+async def llm_health_check():
+    readiness = build_provider_readiness()
+    return {
+        "status": readiness.get("status", "not_configured"),
+        "ok": readiness.get("status") == "ready",
+        "live_invocation": readiness.get("live_invocation"),
+        "secret_values_included": False,
+        "warnings": readiness.get("warnings") or [],
+        "providers": readiness.get("providers") or {},
+    }
 
 
 # Dynamically load all routers from the routes directory.
