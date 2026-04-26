@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.services.enterprise_readiness import build_enterprise_readiness
 from backend.services.proof_manifest import build_replay_plan, verify_manifest
+from backend.services.public_proof_readiness import build_public_proof_readiness
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,11 @@ def create_trust_router(root_dir: Path) -> APIRouter:
     async def trust_enterprise_readiness():
         """Honest enterprise, governance, payment, and cost-control readiness matrix."""
         return build_enterprise_readiness(root_dir)
+
+    @router.get("/trust/public-proof-readiness")
+    async def trust_public_proof_readiness():
+        """Map public growth claims to proof artifacts, routes, and remaining gaps."""
+        return build_public_proof_readiness(root_dir)
 
     @router.get("/trust/full-systems-summary")
     async def trust_full_systems_summary():
