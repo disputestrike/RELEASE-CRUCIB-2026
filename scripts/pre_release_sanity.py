@@ -56,6 +56,9 @@ def main() -> int:
     check("GET", "/api/health", {200})
     check("GET", "/api/settings/capabilities", {200, 401, 404, 500})
     check("GET", "/api/payments/braintree/status", {200})
+    check("GET", "/api/cost/governance", {200})
+    check("GET", "/api/trust/enterprise-readiness", {200})
+    check("GET", "/api/trust/public-proof-readiness", {200})
 
     if failed:
         print("failures:", file=sys.stderr)
