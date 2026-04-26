@@ -710,6 +710,8 @@ REQUIRED_TABLES = [
     "computer_use_tasks",
     "computer_use_actions",
     "asset_generation_requests",
+    "connector_credentials",
+    "connector_oauth_states",
     "capability_registry_snapshots",
     "audit_log",
     "simulations",
@@ -790,6 +792,8 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (id TEXT PRIMARY KEY, doc JSONB NOT N
 CREATE TABLE IF NOT EXISTS computer_use_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS computer_use_actions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS asset_generation_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS connector_credentials (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS connector_oauth_states (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS capability_registry_snapshots (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_log (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulations (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');

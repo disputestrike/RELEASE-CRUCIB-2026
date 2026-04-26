@@ -56,10 +56,22 @@ def _configured(name: str) -> bool:
     return bool(os.environ.get(name))
 
 
-def _status_for_env(env_name: str, *, coming_soon: bool = False) -> CapabilityStatus:
-    if coming_soon:
-        return "coming_soon"
+def _status_for_env(env_name: str) -> CapabilityStatus:
     return "available" if _configured(env_name) else "requires_config"
+
+
+def _google_oauth_status() -> CapabilityStatus:
+    return "available" if (_configured("GOOGLE_CLIENT_ID") and _configured("GOOGLE_CLIENT_SECRET")) else "requires_config"
+
+
+def _notion_status() -> CapabilityStatus:
+    return "available" if _configured("NOTION_API_KEY") else "requires_config"
+
+
+def _computer_use_status() -> CapabilityStatus:
+    # Docker installs Playwright Chromium for production. If a deployment strips
+    # browser dependencies, the run endpoint still reports the exact failure.
+    return "available"
 
 
 def build_capability_registry() -> Dict[str, Any]:
@@ -111,40 +123,41 @@ def build_capability_registry() -> Dict[str, Any]:
         CapabilityEntry(
             name="gmail_connector",
             type="connector",
-            status="coming_soon",
-            description="Future Gmail connector for inbox-driven workflows.",
-            required_config=["Google OAuth client", "tenant consent", "scoped credential store"],
-            supported_actions=["read_messages", "draft_reply"],
+            status=_google_oauth_status(),
+            description="Gmail OAuth connector with encrypted credential storage, validation, and inbox workflow contracts.",
+            required_config=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "user OAuth consent"],
+            supported_actions=["oauth_connect", "validate_connection", "read_messages", "draft_reply", "summarize_threads"],
             artifact_outputs=["message_digest"],
-            notes=["Not live. Do not show as executable until OAuth and credential storage exist."],
+            notes=["Use /api/connectors/google/oauth-url?connector=gmail to start OAuth. Actions require a connected user credential."],
         ),
         CapabilityEntry(
             name="calendar_connector",
             type="connector",
-            status="coming_soon",
-            description="Future calendar connector for schedule-aware briefs and automations.",
-            required_config=["Calendar OAuth client", "tenant consent", "scoped credential store"],
-            supported_actions=["list_events", "summarize_schedule"],
+            status=_google_oauth_status(),
+            description="Calendar OAuth connector with encrypted credential storage, validation, and schedule workflow contracts.",
+            required_config=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "user OAuth consent"],
+            supported_actions=["oauth_connect", "validate_connection", "list_events", "summarize_schedule"],
             artifact_outputs=["calendar_digest"],
-            notes=["Not live. Chief-of-staff template depends on this before real execution."],
+            notes=["Use /api/connectors/google/oauth-url?connector=calendar to start OAuth. Chief-of-staff execution requires a connected credential."],
         ),
         CapabilityEntry(
             name="notion_connector",
             type="connector",
-            status="coming_soon",
-            description="Future Notion connector for tasks, docs, and project context.",
-            required_config=["Notion OAuth or integration token", "workspace authorization"],
-            supported_actions=["read_pages", "read_tasks"],
+            status=_notion_status(),
+            description="Notion connector with encrypted integration-token storage and validation.",
+            required_config=["NOTION_API_KEY or user integration token", "workspace authorization"],
+            supported_actions=["save_token", "validate_connection", "read_pages", "read_databases", "read_tasks"],
             artifact_outputs=["task_digest", "page_summary"],
+            notes=["Use /api/connectors/notion/credentials to store a user token, then /api/connectors/notion/validate."],
         ),
         CapabilityEntry(
             name="computer_use_task_layer",
             type="computer_use",
-            status="disabled",
-            description="Safe see/click/type action queue contract with status and audit fields; execution is intentionally disabled until a governed runner is attached.",
+            status=_computer_use_status(),
+            description="Governed Playwright runner for safe browser actions with policy checks, status, screenshots, and audit fields.",
             supported_actions=["see", "click", "type", "wait", "screenshot", "navigate"],
             artifact_outputs=["audit_log", "screenshot", "error_capture"],
-            notes=["Action model only. Real computer-use execution is not claimed live."],
+            notes=["Use /api/capabilities/computer-use/queue/run. Interaction actions require explicit allow_interaction policy."],
         ),
         CapabilityEntry(
             name="rich_preview_support",
@@ -158,18 +171,18 @@ def build_capability_registry() -> Dict[str, Any]:
             name="image_asset_generation_hook",
             type="asset_generation",
             status=_status_for_env("TOGETHER_API_KEY"),
-            description="Provider abstraction for future image/asset generation with artifact metadata.",
+            description="Provider-backed image/asset generation with request persistence and artifact metadata.",
             required_config=["TOGETHER_API_KEY"],
-            supported_actions=["create_asset_request", "store_artifact_metadata"],
-            artifact_outputs=["image", "asset_metadata"],
-            notes=["No fake image URL is returned by this registry."],
+            supported_actions=["validate_asset_request", "generate_image", "store_artifact_metadata"],
+            artifact_outputs=["image_url", "data_url", "asset_metadata"],
+            notes=["Use /api/capabilities/assets/requests/generate. No fake image URL is returned when provider credentials are missing."],
         ),
         CapabilityEntry(
             name="nano_banana_asset_provider",
             type="asset_generation",
-            status="coming_soon",
-            description="Reserved provider slot for Nano Banana-style image generation.",
-            required_config=["provider endpoint", "provider API key", "usage policy"],
+            status="requires_config",
+            description="Configurable secondary image-generation provider slot.",
+            required_config=["NANO_BANANA_ENDPOINT", "NANO_BANANA_API_KEY", "usage policy"],
             supported_actions=["generate_image"],
             artifact_outputs=["image", "asset_metadata"],
         ),
@@ -217,7 +230,7 @@ def build_capability_registry() -> Dict[str, Any]:
 
     return {
         "version": "2026-04-25.wave2",
-        "status_values": ["available", "disabled", "requires_config", "coming_soon"],
+        "status_values": ["available", "disabled", "requires_config"],
         "capabilities": [asdict(e) for e in entries],
         "summary": {
             "available": sum(1 for e in entries if e.status == "available"),
@@ -282,37 +295,39 @@ def list_computer_use_actions() -> List[Dict[str, Any]]:
     actions = [
         ComputerUseAction(
             action="see",
-            status="disabled",
+            status="available",
             required_fields=["target"],
             audit_fields=["action_id", "target", "screenshot_ref", "timestamp", "status"],
         ),
         ComputerUseAction(
             action="click",
-            status="disabled",
+            status="available",
             required_fields=["target", "selector_or_coordinates"],
             audit_fields=["action_id", "target", "selector_or_coordinates", "timestamp", "status", "error"],
+            notes=["Requires allow_interaction policy on the run request."],
         ),
         ComputerUseAction(
             action="type",
-            status="disabled",
+            status="available",
             required_fields=["target", "text"],
             audit_fields=["action_id", "target", "redacted_text_summary", "timestamp", "status", "error"],
+            notes=["Requires allow_interaction policy and refuses likely password/secret fields."],
         ),
         ComputerUseAction(
             action="screenshot",
-            status="disabled",
+            status="available",
             required_fields=["target"],
             audit_fields=["action_id", "target", "artifact_ref", "timestamp", "status", "error"],
         ),
         ComputerUseAction(
             action="navigate",
-            status="disabled",
+            status="available",
             required_fields=["target"],
             audit_fields=["action_id", "target", "url", "timestamp", "status", "error"],
         ),
         ComputerUseAction(
             action="wait",
-            status="disabled",
+            status="available",
             required_fields=["milliseconds"],
             audit_fields=["action_id", "milliseconds", "timestamp", "status"],
         ),
@@ -355,8 +370,8 @@ def list_asset_providers() -> List[Dict[str, Any]]:
         {
             "name": "nano_banana",
             "type": "image_generation",
-            "status": "coming_soon",
-            "required_config": ["provider endpoint", "provider API key"],
+            "status": "available" if (_configured("NANO_BANANA_ENDPOINT") and _configured("NANO_BANANA_API_KEY")) else "requires_config",
+            "required_config": ["NANO_BANANA_ENDPOINT", "NANO_BANANA_API_KEY"],
             "supported_actions": ["generate_image"],
             "artifact_outputs": ["image_url", "image_file", "metadata"],
         },

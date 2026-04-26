@@ -1822,6 +1822,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.capabilities", "router", False),
     ("backend.routes.trust", "router", False),
     ("backend.routes.knowledge", "router", False),
+    ("backend.routes.connectors", "router", False),
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),
     ("backend.routes.tokens", "router", False),

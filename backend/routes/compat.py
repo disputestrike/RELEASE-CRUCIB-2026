@@ -546,14 +546,15 @@ async def schedules_compat(_user: dict = Depends(_get_optional_user())):
 
 @router.post("/assets/generate")
 async def assets_generate_compat(payload: Dict[str, Any], _user: dict = Depends(_get_optional_user())):
-    return {
-        "status": "requires_config",
-        "generated": False,
-        "provider": payload.get("provider") or "default",
-        "artifact": None,
-        "next_best_endpoint": "/api/capabilities/assets/requests/validate",
-        "note": "No fake images are returned. Configure an asset provider to generate.",
-    }
+    from .capabilities import AssetRequestGenerateBody, generate_asset_request
+
+    body = AssetRequestGenerateBody(
+        prompt=str(payload.get("prompt") or payload.get("description") or ""),
+        asset_type=str(payload.get("asset_type") or "image"),
+        provider=payload.get("provider"),
+        metadata=payload.get("metadata") or {},
+    )
+    return await generate_asset_request(body, _user)
 
 
 @router.get("/mobile/jobs")
