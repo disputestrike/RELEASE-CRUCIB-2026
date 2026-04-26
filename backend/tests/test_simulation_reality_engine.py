@@ -109,6 +109,22 @@ async def test_runtime_what_if_compatibility_uses_reality_engine(app_client):
     app.dependency_overrides.pop(dep, None)
 
 
+async def test_flat_simulation_run_accepts_prompt_without_existing_id(app_client):
+    app, dep = _install_fake_auth()
+    run = await app_client.post(
+        "/api/simulations/run",
+        json={"prompt": "Will Brazil win the World Cup?", "depth": "fast"},
+        timeout=20,
+    )
+    assert run.status_code == 200
+    payload = run.json()
+    assert payload["success"] is True
+    assert payload["simulation"]["id"]
+    assert payload["classification"]["domain"] == "sports"
+    assert payload["classification"]["scenario_type"] == "forecast"
+    app.dependency_overrides.pop(dep, None)
+
+
 async def test_simulation_depth_hides_raw_ui_counts_but_backend_autoscales(app_client):
     app, dep = _install_fake_auth()
     create = await app_client.post(

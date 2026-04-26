@@ -80,7 +80,17 @@ async def _run_simulation_for_id(simulation_id: str, body: SimulationRunRequest,
 async def run_simulation_flat(body: SimulationRunRequest, user: dict = Depends(_get_auth())):
     simulation_id = (body.simulation_id or "").strip()
     if not simulation_id:
-        raise HTTPException(status_code=400, detail="simulation_id is required")
+        prompt = (body.prompt or "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="simulation_id or prompt is required")
+        simulation = await reality_engine.create_simulation(
+            user_id=_user_id(user),
+            prompt=prompt,
+            assumptions=body.assumptions,
+            attachments=body.attachments,
+            metadata={**(body.metadata or {}), "source": "flat_run"},
+        )
+        simulation_id = simulation["id"]
     return await _run_simulation_for_id(simulation_id, body, user)
 
 
