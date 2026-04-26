@@ -1915,7 +1915,11 @@ if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
     _static_files = StaticFiles(directory=str(STATIC_DIR), html=True)
     app.mount("/", _asgi_static_http_only(_static_files), name="static")
     @app.exception_handler(404)
-    async def not_found_handler(_, __):
+    async def not_found_handler(request, exc):
+        path = getattr(getattr(request, "url", None), "path", "")
+        if path.startswith("/api/"):
+            detail = getattr(exc, "detail", "Not Found")
+            return JSONResponse(status_code=404, content={"detail": detail})
         return FileResponse(str(STATIC_DIR / "index.html"))
 else:
     logger.warning(

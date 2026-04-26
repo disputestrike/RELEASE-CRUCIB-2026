@@ -43,7 +43,19 @@ async def create_simulation(body: SimulationCreate, user: dict = Depends(_get_au
 
 
 async def _run_simulation_for_id(simulation_id: str, body: SimulationRunRequest, user: dict) -> Dict[str, Any]:
-    sim = await _require_owned_simulation(simulation_id, user)
+    sim = await repository.find_one("simulations", {"id": simulation_id})
+    if sim and str(sim.get("user_id") or "") not in {"", _user_id(user)}:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not sim:
+        if not (body.prompt or "").strip():
+            raise HTTPException(status_code=404, detail="Simulation not found")
+        sim = {
+            "id": simulation_id,
+            "user_id": _user_id(user),
+            "prompt": body.prompt,
+            "assumptions": body.assumptions,
+            "attachments": body.attachments,
+        }
     prompt = (body.prompt or sim.get("prompt") or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="Simulation prompt is required")
