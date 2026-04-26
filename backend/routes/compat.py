@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -105,6 +106,17 @@ def _agent_by_name(agent_name: str) -> Dict[str, Any] | None:
     return None
 
 
+def _coerce_model_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        for key in ("text", "content", "message", "summary"):
+            if value.get(key):
+                return str(value.get(key))
+        return json.dumps(value, ensure_ascii=False)[:4000]
+    return str(value or "")
+
+
 # CF33 — Removed compat /ai/chat stub that was masking the real
 # routes/ai.py implementation and returning "Compat reply: ..." to users.
 # The real endpoint lives at routes/ai.py line ~86 and talks to LLM providers.
@@ -186,11 +198,13 @@ async def run_agent_compat(
                 agent_name=agent_label,
                 api_keys=effective,
             )
+            text = _coerce_model_text(text)
             execution_status = "live_model"
     except Exception as exc:
         text = f"{agent_label} could not invoke a live model in this context: {str(exc)[:220]}"
         execution_status = "fallback_structured"
 
+    text = _coerce_model_text(text)
     if not text:
         text = (
             f"{agent_label} reviewed the request and recommends running it through a durable job "
