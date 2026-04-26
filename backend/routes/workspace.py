@@ -280,6 +280,120 @@ def _workspace_manifest_payload(workspace: Path, job_id: str, files: List[Dict[s
     }
 
 
+def _stable_task_id_for_job(job_id: str) -> str:
+    clean = str(job_id or "").strip()
+    return f"task_job_{clean}" if clean else ""
+
+
+def _job_id_from_task_id(task_id: Optional[str]) -> Optional[str]:
+    raw = str(task_id or "").strip()
+    if raw.startswith("task_job_") and len(raw) > len("task_job_"):
+        return raw[len("task_job_"):]
+    return None
+
+
+def _job_id_from_session_id(session_id: Optional[str]) -> Optional[str]:
+    raw = str(session_id or "").strip()
+    if raw.startswith("job:") and len(raw) > len("job:"):
+        return raw[len("job:"):]
+    return _job_id_from_task_id(raw)
+
+
+def _project_id_from_session_id(session_id: Optional[str]) -> Optional[str]:
+    raw = str(session_id or "").strip()
+    if raw.startswith("project:") and len(raw) > len("project:"):
+        return raw[len("project:"):]
+    return None
+
+
+async def _load_job_for_session(job_id: str, user: dict) -> Dict[str, Any]:
+    try:
+        from ..db_pg import get_pg_pool
+        from ..server import _assert_job_owner_match
+        from ..orchestration import runtime_state as _runtime_state
+
+        try:
+            pool = await get_pg_pool()
+        except Exception as exc:
+            logger.warning("workspace session: continuing without DB pool for job %s: %s", job_id, exc)
+            pool = None
+        if pool is not None:
+            _runtime_state.set_pool(pool)
+        job = await _runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
+        return dict(job)
+    except HTTPException:
+        raise
+    except (ImportError, AttributeError) as exc:
+        raise HTTPException(status_code=503, detail=f"Workspace session resolver unavailable: {exc}")
+
+
+def _preview_status_for_session(job_id: str, workspace: Path, files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    manifest = _workspace_manifest_payload(workspace, job_id, files)
+    serve_root: Optional[Path] = None
+    try:
+        from .preview_serve import _resolve_serve_root
+
+        for candidate in _workspace_candidates(workspace, job_id):
+            root = _resolve_serve_root(candidate)
+            if root is not None and (root / "index.html").exists():
+                serve_root = root
+                break
+    except Exception as exc:
+        logger.debug("workspace session: preview readiness scan skipped for %s: %s", job_id, exc)
+
+    if serve_root is not None:
+        status = "ready"
+        url = f"/api/preview/{job_id}/serve" if job_id else None
+    elif manifest.get("has_package_json") or manifest.get("has_app_entry"):
+        status = "building"
+        url = None
+    elif manifest.get("workspace_exists"):
+        status = "preparing"
+        url = None
+    else:
+        status = "unavailable"
+        url = None
+
+    return {
+        "status": status,
+        "url": url,
+        "serveRoot": str(serve_root) if serve_root is not None else None,
+        "manifest": manifest,
+    }
+
+
+def _workspace_session_payload(
+    *,
+    job: Optional[Dict[str, Any]],
+    job_id: Optional[str],
+    task_id: Optional[str],
+    project_id: Optional[str],
+    workspace: Path,
+    files: List[Dict[str, Any]],
+    resolved_from: str,
+) -> Dict[str, Any]:
+    durable_job_id = str((job_id or (job.get("id") if job else "")) or "").strip()
+    durable_project_id = str((project_id or (job.get("project_id") if job else "")) or "").strip()
+    durable_task_id = str(_stable_task_id_for_job(durable_job_id) or task_id or "").strip()
+    session_id = f"job:{durable_job_id}" if durable_job_id else f"project:{durable_project_id}"
+    return {
+        "sessionId": session_id,
+        "taskId": durable_task_id or None,
+        "jobId": durable_job_id or None,
+        "projectId": durable_project_id or None,
+        "status": (job or {}).get("status") or ("idle" if durable_project_id else "unknown"),
+        "goal": (job or {}).get("goal") or "",
+        "threadId": f"job:{durable_job_id}" if durable_job_id else None,
+        "workspacePath": str(workspace),
+        "workspaceExists": any(p.exists() and p.is_dir() for p in _workspace_candidates(workspace, durable_job_id)),
+        "previewStatus": _preview_status_for_session(durable_job_id, workspace, files),
+        "resolvedFrom": resolved_from,
+    }
+
+
 def _resolve_job_workspace_file(workspace: Path, rel: str, job_id: str = "") -> Path:
     for candidate in _workspace_candidates(workspace, job_id):
         try:
@@ -289,6 +403,65 @@ def _resolve_job_workspace_file(workspace: Path, rel: str, job_id: str = "") -> 
         if full.exists() and full.is_file():
             return full
     return _safe_resolve(workspace, rel)
+
+
+@router.get("/workspace/session/resolve")
+async def resolve_workspace_session(
+    sessionId: Optional[str] = Query(None, description="Canonical session id, e.g. job:{id}"),
+    taskId: Optional[str] = Query(None, description="Frontend task id, including task_job_{jobId}"),
+    jobId: Optional[str] = Query(None, description="Backend job id"),
+    projectId: Optional[str] = Query(None, description="Project id fallback"),
+    user: dict = Depends(_get_auth()),
+):
+    """Resolve scattered workspace identifiers into one canonical session.
+
+    This is the backend contract the frontend uses before binding chat, preview,
+    files, proof, timeline, and task history to a workspace. It intentionally
+    does not build or mutate the workspace; preview materialization remains in
+    /api/jobs/{job_id}/dev-preview and final gates.
+    """
+    resolved_job_id = (
+        str(jobId or "").strip()
+        or _job_id_from_session_id(sessionId)
+        or _job_id_from_task_id(taskId)
+    )
+    resolved_project_id = str(projectId or "").strip() or _project_id_from_session_id(sessionId)
+
+    if resolved_job_id:
+        job = await _load_job_for_session(resolved_job_id, user)
+        resolved_project_id = str(job.get("project_id") or resolved_project_id or resolved_job_id)
+        workspace = _project_workspace_path(resolved_project_id)
+        files = _collect_job_workspace_files(workspace, resolved_job_id)
+        return {
+            "success": True,
+            "session": _workspace_session_payload(
+                job=job,
+                job_id=resolved_job_id,
+                task_id=taskId,
+                project_id=resolved_project_id,
+                workspace=workspace,
+                files=files,
+                resolved_from="job",
+            ),
+        }
+
+    if resolved_project_id:
+        workspace = await _assert_project_access(resolved_project_id, user)
+        files = _collect_job_workspace_files(workspace, "")
+        return {
+            "success": True,
+            "session": _workspace_session_payload(
+                job=None,
+                job_id=None,
+                task_id=taskId,
+                project_id=resolved_project_id,
+                workspace=workspace,
+                files=files,
+                resolved_from="project",
+            ),
+        }
+
+    raise HTTPException(status_code=400, detail="Provide jobId, taskId, sessionId, or projectId")
 
 
 # ── Project workspace file routes ─────────────────────────────────────────────

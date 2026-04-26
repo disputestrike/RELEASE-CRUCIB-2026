@@ -58,6 +58,7 @@ import {
 } from '../workspace/workspaceLiveUi';
 import {
   bindWorkspaceSearchParams,
+  stableTaskIdForJob,
   taskEntryFromJob,
   taskStatusFromJobStatus,
 } from '../workspace/workspaceTaskBinding';
@@ -123,7 +124,7 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask, upsertTask, addTask, tasks } = useTaskStore();
+  const { updateTask, upsertTask, addTask, removeTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
   /** Same-tick handoff goal when router state + session can race with the autostart effect. */
@@ -218,6 +219,7 @@ export default function UnifiedWorkspace() {
   const [buildTargetMeta, setBuildTargetMeta] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [jobId, setJobId] = useState(null);
+  const [activeWorkspaceSession, setActiveWorkspaceSession] = useState(null);
   const [stage, setStage] = useState('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -249,6 +251,53 @@ export default function UnifiedWorkspace() {
       setBuildTargetMeta(row);
     }
   }, [plan, buildTargets]);
+
+  useEffect(() => {
+    if (!token || !API) return undefined;
+    const resolverJobId = jobIdFromUrl || jobId || '';
+    const hasResolverInput = Boolean(resolverJobId || taskIdFromUrl || projectIdFromUrl);
+    if (!hasResolverInput) {
+      setActiveWorkspaceSession(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (resolverJobId) params.set('jobId', resolverJobId);
+    if (taskIdFromUrl) params.set('taskId', taskIdFromUrl);
+    if (projectIdFromUrl) params.set('projectId', projectIdFromUrl);
+
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/workspace/session/resolve?${params.toString()}`, { headers, timeout: 15000 })
+      .then((r) => {
+        if (cancelled) return;
+        const session = r.data?.session;
+        if (!session || typeof session !== 'object') return;
+        setActiveWorkspaceSession(session);
+        const canonicalJobId = session.jobId || '';
+        const canonicalTaskId = session.taskId || (canonicalJobId ? stableTaskIdForJob(canonicalJobId) : '');
+        if (canonicalJobId && canonicalJobId !== jobId) setJobId(canonicalJobId);
+        setSearchParams(
+          (prev) => {
+            const next = bindWorkspaceSearchParams(prev, {
+              jobId: canonicalJobId || null,
+              taskId: canonicalTaskId || taskIdFromUrl || null,
+              projectId: session.projectId || projectIdFromUrl || null,
+            });
+            return next.toString() === prev.toString() ? prev : next;
+          },
+          { replace: true },
+        );
+      })
+      .catch(() => {
+        if (!cancelled && !resolverJobId) setActiveWorkspaceSession(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, jobIdFromUrl, taskIdFromUrl, projectIdFromUrl, jobId, setSearchParams]);
 
   useEffect(() => {
     if (!jobIdFromUrl || !token || !API) return;
@@ -361,7 +410,11 @@ export default function UnifiedWorkspace() {
   const sandpackDeps = useMemo(() => computeSandpackDeps(sandpackMergeFiles), [sandpackMergeFiles]);
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
-  const effectiveJobId = jobIdFromUrl || jobId;
+  const sessionJobId = activeWorkspaceSession?.jobId || null;
+  const sessionProjectId = activeWorkspaceSession?.projectId || null;
+  const sessionTaskId = activeWorkspaceSession?.taskId || null;
+
+  const effectiveJobId = sessionJobId || jobIdFromUrl || jobId;
 
   useEffect(() => {
     transcriptRebuiltForJobRef.current = null;
@@ -372,14 +425,14 @@ export default function UnifiedWorkspace() {
     token,
   );
 
-  const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
+  const effectiveProjectId = job?.project_id || sessionProjectId || projectIdFromUrl || null;
 
   const persistTranscriptLine = useCallback(
     (role, body) => {
       const r = role === 'assistant' ? 'assistant' : 'user';
       const t = (body || '').trim();
       if (!t || !token || !API) return;
-      const jid = jobId || jobIdFromUrl;
+      const jid = effectiveJobId;
       if (!jid) return;
       const headers = { Authorization: `Bearer ${token}` };
       void axios
@@ -390,7 +443,7 @@ export default function UnifiedWorkspace() {
         )
         .catch(() => {});
     },
-    [token, API, jobId, jobIdFromUrl],
+    [token, API, effectiveJobId],
   );
 
   const appendUserChat = useCallback(
@@ -399,7 +452,7 @@ export default function UnifiedWorkspace() {
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
           : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      const jidAt = jobId || jobIdFromUrl || null;
+      const jidAt = effectiveJobId || null;
       // Dedup: if the very last user message has the same body+jobId, skip —
       // this eliminates the duplicate-initial-prompt bug on first run.
       setUserChatMessages((prev) => {
@@ -410,7 +463,7 @@ export default function UnifiedWorkspace() {
         return [...prev, msg];
       });
     },
-    [jobId, jobIdFromUrl, persistTranscriptLine],
+    [effectiveJobId, persistTranscriptLine],
   );
 
   const clearBuildError = useCallback(() => {
@@ -455,18 +508,19 @@ export default function UnifiedWorkspace() {
   }, [effectiveJobId]);
 
   useEffect(() => {
-    if (!taskIdFromUrl || !effectiveJobId) return;
+    const activeTaskId = sessionTaskId || taskIdFromUrl;
+    if (!activeTaskId || !effectiveJobId) return;
     const patch = { jobId: effectiveJobId };
     if (job?.status) patch.status = taskStatusFromJobStatus(job.status);
-    updateTask(taskIdFromUrl, patch);
-  }, [taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
+    updateTask(activeTaskId, patch);
+  }, [sessionTaskId, taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
 
   const taskJobBindingRef = useRef('');
   useEffect(() => {
     if (!effectiveJobId || !job) return;
     const existingByTask = taskIdFromUrl ? tasks.find((t) => t.id === taskIdFromUrl) : null;
     const existingByJob = tasks.find((t) => t.jobId === effectiveJobId);
-    const bindingTaskId = taskIdFromUrl || existingByJob?.id || '';
+    const bindingTaskId = sessionTaskId || taskIdFromUrl || existingByJob?.id || stableTaskIdForJob(effectiveJobId);
     const entry = taskEntryFromJob({
       job,
       jobId: effectiveJobId,
@@ -480,17 +534,21 @@ export default function UnifiedWorkspace() {
       taskJobBindingRef.current = key;
       upsertTask(entry);
     }
+    if (sessionTaskId && taskIdFromUrl && taskIdFromUrl !== sessionTaskId) {
+      const oldTask = tasks.find((t) => t.id === taskIdFromUrl);
+      if (oldTask && (!oldTask.jobId || oldTask.jobId === effectiveJobId)) removeTask(taskIdFromUrl);
+    }
     if (!taskIdFromUrl || taskIdFromUrl !== entry.id) {
       setSearchParams(
         (prev) => bindWorkspaceSearchParams(prev, {
           jobId: effectiveJobId,
           taskId: entry.id,
-          projectId: job?.project_id || projectIdFromUrl || null,
+          projectId: job?.project_id || sessionProjectId || projectIdFromUrl || null,
         }),
         { replace: true },
       );
     }
-  }, [effectiveJobId, job, taskIdFromUrl, tasks, upsertTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
+  }, [effectiveJobId, job, sessionTaskId, sessionProjectId, taskIdFromUrl, tasks, upsertTask, removeTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
@@ -1005,7 +1063,7 @@ export default function App() {
   const sendInFlightRef = useRef(false);
 
   const handleApprove = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) {
       setError('No job to run — generate a plan first (or open a valid job link).');
       setErrorRaw(null);
@@ -1066,6 +1124,8 @@ export default function App() {
         setJobId(newJid);
         const namePreview = (trimmed || '').slice(0, 120) || 'Build';
         let createdTaskId = null;
+        const canonicalTaskId = taskIdFromUrl || stableTaskIdForJob(newJid);
+        const canonicalProjectId = res.data.project_id || projectIdFromUrl || null;
         if (taskIdFromUrl) {
           const prev = tasks.find((t) => t.id === taskIdFromUrl);
           // Keep the first build title in History; do not rename the row to every follow-up message.
@@ -1078,21 +1138,31 @@ export default function App() {
           });
         } else {
           createdTaskId = addTask({
+            id: canonicalTaskId,
             name: namePreview,
             prompt: trimmed,
             status: 'running',
             type: 'build',
             jobId: newJid,
             createdAt: Date.now(),
-            ...(projectIdFromUrl ? { linkedProjectId: projectIdFromUrl } : {}),
+            ...(canonicalProjectId ? { linkedProjectId: canonicalProjectId } : {}),
           });
         }
+        setActiveWorkspaceSession({
+          sessionId: `job:${newJid}`,
+          taskId: taskIdFromUrl || canonicalTaskId,
+          jobId: newJid,
+          projectId: canonicalProjectId,
+          status: 'planned',
+          goal: trimmed,
+          threadId: `job:${newJid}`,
+        });
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
             if (newJid) next.set('jobId', newJid);
-            if (createdTaskId) next.set('taskId', createdTaskId);
-            if (projectIdFromUrl) next.set('projectId', projectIdFromUrl);
+            if (taskIdFromUrl || createdTaskId || canonicalTaskId) next.set('taskId', taskIdFromUrl || createdTaskId || canonicalTaskId);
+            if (canonicalProjectId) next.set('projectId', canonicalProjectId);
             return next;
           },
           { replace: true },
@@ -1135,7 +1205,7 @@ export default function App() {
     if (!goal.trim() || authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
-    const activeJobId = jobId || jobIdFromUrl;
+    const activeJobId = effectiveJobId;
 
     const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
     /** Steer+resume whenever the job is terminal/blocked or steps failed (do not require quiescent workers — UI can lag). */
@@ -1356,7 +1426,7 @@ export default function App() {
     if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
-    if (jobIdFromUrl || jobId) {
+    if (effectiveJobId) {
       try {
         sessionStorage.removeItem('crucibai_autostart_goal');
       } catch (_) { void 0; }
@@ -1421,7 +1491,7 @@ export default function App() {
         /* runNewPlanAndAuto surfaces errors via applyBuildError */
       }
     })();
-  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams, jobIdFromUrl, jobId]);
+  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams, effectiveJobId]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
   // PERSISTENCE FIX: When navigating back via sidebar (?taskId=... but no jobId),
@@ -1454,7 +1524,7 @@ export default function App() {
   }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length, setSearchParams]);
 
   const handleCancel = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1465,7 +1535,7 @@ export default function App() {
   };
 
   const handleResume = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1476,7 +1546,7 @@ export default function App() {
   };
 
   const handleRetryStep = async (step) => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1500,6 +1570,7 @@ export default function App() {
     setBuildTargetMeta(null);
     setEstimate(null);
     setJobId(null);
+    setActiveWorkspaceSession(null);
     setStage('input');
     clearBuildError();
     setUserChatMessages([]);
