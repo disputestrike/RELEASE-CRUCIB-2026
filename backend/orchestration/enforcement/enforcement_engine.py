@@ -72,12 +72,17 @@ def mocked_claimed_as_implemented(
     impl = sections.get("implemented") or ""
     mocked = sections.get("mocked") or ""
     skips = skip_checks_from_flat(flat)
-    if "stripe" in impl and "stripe_replay_skipped" in skips:
+    payment_verification_skipped = (
+        "stripe_replay_skipped" in skips or "payment_webhook_replay_skipped" in skips
+    )
+    if (
+        "stripe" in impl or "braintree" in impl or "payment" in impl
+    ) and payment_verification_skipped:
         issues.append(
-            "Implemented mentions Stripe but stripe verification was skipped — classify as Mocked/Unverified"
+            "Implemented mentions payment integration but webhook verification was skipped - classify as Mocked/Unverified"
         )
     if re.search(r"\breal\s+(stripe|payments?)\b", impl) and (
-        "mock" in mocked or "stripe_replay_skipped" in skips
+        "mock" in mocked or payment_verification_skipped
     ):
         issues.append(
             "Implemented claims real payments but evidence shows mock or skipped verification"
@@ -119,7 +124,8 @@ def _evaluate_feature(
             relevant = True
         if (
             feat.id == "integration_behavior"
-            and check == "stripe_webhook_idempotency_proven"
+            and check
+            in ("stripe_webhook_idempotency_proven", "payment_webhook_idempotency_proven")
         ):
             relevant = True
         if feat.id == "security_controls" and check == "npm_audit":
@@ -206,7 +212,10 @@ def _claim_blocks(
     if "tenant_safe" in claims and "tenancy_isolation_proven" not in checks:
         issues.append("Claim tenant-safe: missing tenancy_isolation_proven")
     if "integration_complete" in claims and "integration_behavior" in scoped_ids:
-        if "stripe_webhook_idempotency_proven" not in checks:
+        if (
+            "stripe_webhook_idempotency_proven" not in checks
+            and "payment_webhook_idempotency_proven" not in checks
+        ):
             issues.append(
                 "Claim integration complete: missing webhook/idempotency proof"
             )
@@ -375,3 +384,4 @@ async def run_completion_enforcement_gate(
 
     result["metadata"] = meta
     return result
+

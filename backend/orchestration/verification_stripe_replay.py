@@ -1,5 +1,9 @@
 """
-verification.stripe_replay — prove webhook idempotency table semantics (SQLite stand-in for ON CONFLICT DO NOTHING).
+Payment webhook replay verification.
+
+The historical module name is kept for import compatibility, but the proof
+surface is provider-neutral. CrucibAI's active checkout provider is Braintree,
+so new proof bundles should not imply Stripe is the active payment rail.
 """
 
 from __future__ import annotations
@@ -11,6 +15,16 @@ from typing import Any, Dict, List
 from .verification_security import _pi
 
 
+SKIP_CHECK = "payment_webhook_replay_skipped"
+PROVEN_CHECK = "payment_webhook_idempotency_proven"
+LEGACY_TABLES = (
+    "braintree_events_processed",
+    "payment_events_processed",
+    "webhook_events_processed",
+    "stripe_events_processed",
+)
+
+
 def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
     issues: List[str] = []
     proof: List[Dict[str, Any]] = []
@@ -19,8 +33,12 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         proof.append(
             _pi(
                 "verification",
-                "Stripe replay skipped (no workspace)",
-                {"check": "stripe_replay_skipped", "reason": "no_workspace"},
+                "Payment webhook replay skipped (no workspace)",
+                {
+                    "check": SKIP_CHECK,
+                    "reason": "no_workspace",
+                    "provider": "braintree",
+                },
                 verification_class="presence",
             ),
         )
@@ -31,8 +49,12 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         proof.append(
             _pi(
                 "verification",
-                "Stripe replay skipped (no migrations dir)",
-                {"check": "stripe_replay_skipped", "reason": "no_migrations"},
+                "Payment webhook replay skipped (no migrations dir)",
+                {
+                    "check": SKIP_CHECK,
+                    "reason": "no_migrations",
+                    "provider": "braintree",
+                },
                 verification_class="presence",
             ),
         )
@@ -49,7 +71,7 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
                 body = fh.read().lower()
         except OSError:
             continue
-        if "stripe_events_processed" in body:
+        if any(table in body for table in LEGACY_TABLES):
             has_sketch = True
             break
 
@@ -57,8 +79,13 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         proof.append(
             _pi(
                 "verification",
-                "Stripe replay skipped (no stripe_events_processed migration)",
-                {"check": "stripe_replay_skipped", "reason": "no_stripe_migration"},
+                "Payment webhook replay skipped (no idempotency migration)",
+                {
+                    "check": SKIP_CHECK,
+                    "reason": "no_payment_idempotency_migration",
+                    "provider": "braintree",
+                    "accepted_tables": list(LEGACY_TABLES),
+                },
                 verification_class="presence",
             ),
         )
@@ -79,14 +106,14 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         n = con.execute("SELECT count(*) FROM stripe_events_processed").fetchone()[0]
         if n != 1:
             issues.append(
-                f"Stripe replay: duplicate webhook id should dedupe to 1 row, got {n}"
+                f"Payment webhook replay: duplicate webhook id should dedupe to 1 row, got {n}"
             )
         else:
             proof.append(
                 _pi(
                     "verification",
-                    "Stripe replay: second insert with same event id did not create a second row",
-                    {"check": "stripe_webhook_idempotency_proven"},
+                    "Payment webhook replay: second insert with same event id did not create a second row",
+                    {"check": PROVEN_CHECK, "provider": "braintree"},
                     verification_class="runtime",
                 ),
             )
