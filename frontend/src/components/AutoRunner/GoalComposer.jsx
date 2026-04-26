@@ -160,23 +160,55 @@ export default function GoalComposer({
 
   useEffect(() => () => stopVoice(), [stopVoice]);
 
-  const toggleVoice = useCallback(() => {
+  const toggleVoice = useCallback(async () => {
     setVoiceError(null);
     if (listening) {
       stopVoice();
       return;
     }
-    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (typeof window === 'undefined') return;
+    if (!window.isSecureContext) {
+      setVoiceError('Voice input requires HTTPS or localhost.');
+      return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       setVoiceError('Voice input needs Chrome or Edge (Web Speech API).');
       return;
     }
+
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    } catch (err) {
+      const name = err?.name || '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setVoiceError('Microphone permission was blocked. Allow microphone access in the browser, then try again.');
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setVoiceError('No microphone was found on this device.');
+      } else {
+        setVoiceError('Could not access microphone - check browser permissions.');
+      }
+      return;
+    }
+
     const r = new SR();
     r.lang = 'en-US';
     r.continuous = true;
     r.interimResults = false;
-    r.onerror = () => {
-      setVoiceError('Voice recognition error — try again or type.');
+    r.onstart = () => setListening(true);
+    r.onerror = (ev) => {
+      const code = ev?.error || 'unknown';
+      const messages = {
+        'not-allowed': 'Microphone permission was blocked. Allow microphone access in the browser, then try again.',
+        'service-not-allowed': 'Speech recognition service is blocked by this browser or profile.',
+        'audio-capture': 'No microphone input was detected.',
+        network: 'Speech recognition network error - try again.',
+        'no-speech': 'No speech was detected - try again or type.',
+      };
+      setVoiceError(messages[code] || `Voice recognition error (${code}) - try again or type.`);
       stopVoice();
     };
     r.onend = () => {
@@ -199,9 +231,9 @@ export default function GoalComposer({
     recogRef.current = r;
     try {
       r.start();
-      setListening(true);
-    } catch {
-      setVoiceError('Could not start microphone — check permissions.');
+    } catch (err) {
+      setVoiceError(`Could not start microphone${err?.message ? `: ${err.message}` : ' - check permissions.'}`);
+      stopVoice();
     }
   }, [listening, onGoalChange, stopVoice]);
 

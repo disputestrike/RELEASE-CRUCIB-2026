@@ -102,7 +102,7 @@ def _serve_dist(dist_dir: str) -> Tuple[ThreadingHTTPServer, threading.Thread, i
 
 
 def _run_npm(args: List[str], cwd: str, timeout: int) -> Tuple[int, str]:
-    npm = shutil.which("npm")
+    npm = shutil.which("npm.cmd" if os.name == "nt" else "npm") or shutil.which("npm")
     if not npm:
         return -1, "npm not found on PATH"
     try:
@@ -188,8 +188,8 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     )
 
     dist_dir = os.path.join(ws, "dist")
-    if not os.path.isdir(dist_dir):
-        issues.append("Browser preview: dist/ missing after build.")
+    if not os.path.isfile(os.path.join(dist_dir, "index.html")):
+        issues.append("Browser preview: dist/index.html missing after build.")
         return {"passed": False, "issues": issues, "proof": proof}
 
     try:
@@ -339,20 +339,109 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     return {"passed": passed, "issues": issues, "proof": proof}
 
 
+def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
+    """Build dist/index.html even when Chromium verification is disabled."""
+    proof: List[Dict[str, Any]] = []
+    ws = (workspace_path or "").strip()
+    if not ws or not os.path.isdir(ws):
+        return {
+            "passed": False,
+            "issues": ["Preview build: invalid workspace path."],
+            "proof": proof,
+        }
+
+    pkg_path = os.path.join(ws, "package.json")
+    if not os.path.isfile(pkg_path):
+        return {
+            "passed": False,
+            "issues": ["Preview build: package.json missing."],
+            "proof": proof,
+        }
+
+    try:
+        with open(pkg_path, encoding="utf-8") as fh:
+            pkg = json.load(fh)
+    except json.JSONDecodeError as e:
+        return {
+            "passed": False,
+            "issues": [f"Preview build: package.json invalid JSON: {e}"],
+            "proof": proof,
+        }
+
+    if not (pkg.get("scripts") or {}).get("build"):
+        return {
+            "passed": False,
+            "issues": ["Preview build: add scripts.build to package.json."],
+            "proof": proof,
+        }
+
+    install_timeout = int(os.environ.get("CRUCIBAI_NPM_INSTALL_TIMEOUT", "300"))
+    build_timeout = int(os.environ.get("CRUCIBAI_NPM_BUILD_TIMEOUT", "180"))
+
+    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
+    if code != 0:
+        return {
+            "passed": False,
+            "issues": [f"npm install failed (exit {code}): {log[:500]}"],
+            "proof": proof,
+        }
+    proof.append(
+        _proof(
+            "verification",
+            "npm install completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
+    )
+
+    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    if code != 0:
+        return {
+            "passed": False,
+            "issues": [f"npm run build failed (exit {code}): {log[:800]}"],
+            "proof": proof,
+        }
+    proof.append(
+        _proof(
+            "verification",
+            "npm run build completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
+    )
+
+    dist_index = os.path.join(ws, "dist", "index.html")
+    if not os.path.isfile(dist_index):
+        return {
+            "passed": False,
+            "issues": ["Preview build: dist/index.html missing after npm run build."],
+            "proof": proof,
+        }
+
+    proof.append(
+        _proof(
+            "verification",
+            "Preview artifact materialized",
+            {"relative_path": "dist/index.html"},
+            verification_class="runtime",
+        )
+    )
+    return {"passed": True, "issues": [], "proof": proof}
+
+
 async def verify_browser_preview(workspace_path: str) -> Dict[str, Any]:
     """
     npm install + npm run build + Playwright E2E. Runs heavy work off the event loop.
     """
     if skip_browser_preview_env():
-        return {
-            "passed": True,
-            "issues": [],
-            "proof": [
-                _proof(
-                    "verification",
-                    "Browser preview skipped (CRUCIBAI_SKIP_BROWSER_PREVIEW)",
-                    {},
-                ),
-            ],
-        }
+        result = await asyncio.to_thread(_materialize_dist_without_playwright, workspace_path)
+        result.setdefault("proof", []).append(
+            _proof(
+                "verification",
+                "Chromium browser preview skipped; static preview build still enforced",
+                {"env": "CRUCIBAI_SKIP_BROWSER_PREVIEW"},
+                verification_class="runtime",
+            )
+        )
+        return result
     return await asyncio.to_thread(_verify_browser_preview_sync, workspace_path)

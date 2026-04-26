@@ -11,9 +11,14 @@ subdirectories if they exist, else the workspace root.
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import mimetypes
 import os
+import shutil
+import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -73,14 +78,48 @@ def _workspace_root() -> Path:
 
 
 async def _get_project_id_for_job(job_id: str) -> Optional[str]:
-    """Look up the project_id for a job from runtime_state."""
+    """Look up the project_id for a job.
+
+    Runtime state is in-memory and may be empty after a deploy/restart. Preview
+    serving still needs to find completed workspaces, so fall back to Postgres.
+    """
     try:
         from backend.orchestration.runtime_state import get_job
         job = await get_job(job_id)
         if job:
             return job.get("project_id") or job.get("id")
     except Exception as exc:
-        logger.debug("preview_serve: could not look up job %s: %s", job_id, exc)
+        logger.debug("preview_serve: runtime_state lookup failed for %s: %s", job_id, exc)
+
+    try:
+        from backend.db_pg import get_pg_pool
+
+        pool = await get_pg_pool()
+        if pool:
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT project_id FROM jobs WHERE id = $1 LIMIT 1",
+                    job_id,
+                )
+                if row and row.get("project_id"):
+                    return str(row["project_id"])
+    except Exception as exc:
+        logger.debug("preview_serve: jobs.project_id lookup failed for %s: %s", job_id, exc)
+
+    try:
+        from backend.db_pg import get_pg_pool
+
+        pool = await get_pg_pool()
+        if pool:
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT doc->>'project_id' AS project_id FROM jobs WHERE id = $1 LIMIT 1",
+                    job_id,
+                )
+                if row and row.get("project_id"):
+                    return str(row["project_id"])
+    except Exception as exc:
+        logger.debug("preview_serve: jobs.doc project_id lookup failed for %s: %s", job_id, exc)
     return None
 
 
@@ -110,18 +149,22 @@ def _job_workspace_root(job_id: str, project_id: Optional[str] = None) -> Path:
 
 
 def _resolve_serve_root(workspace: Path) -> Optional[Path]:
-    """Pick the best serve root — prefer build/ or dist/ if present.
+    """Pick the best serve root.
 
-    Returns ``None`` if the workspace doesn't exist yet.
+    A directory is only servable when it has an index.html. Returning an
+    arbitrary build/ or public/ folder without an app entry makes the UI poll
+    forever and hides the generated source preview.
     """
     if not workspace.exists() or not workspace.is_dir():
         return None
-    # Prefer conventional output directories. Order matters — first hit wins.
-    for sub in ("build", "dist", "out", "public"):
+
+    for sub in ("dist", "build", "out", "public"):
         candidate = workspace / sub
-        if candidate.exists() and candidate.is_dir():
+        if candidate.exists() and candidate.is_dir() and (candidate / "index.html").exists():
             return candidate.resolve()
-    return workspace.resolve()
+    if (workspace / "index.html").exists():
+        return workspace.resolve()
+    return None
 
 
 def _preview_readiness_snapshot(workspace: Path, serve_root: Optional[Path]) -> Dict[str, Any]:
@@ -159,6 +202,130 @@ async def _resolve_root_for_job(job_id: str) -> Optional[Path]:
     project_id = await _get_project_id_for_job(job_id)
     workspace = _job_workspace_root(job_id, project_id)
     return _resolve_serve_root(workspace)
+
+
+def _npm_bin() -> Optional[str]:
+    return shutil.which("npm.cmd" if os.name == "nt" else "npm")
+
+
+def _run_preview_build_sync(workspace: Path) -> Dict[str, Any]:
+    """Materialize dist/index.html for preview when the job left source only."""
+    meta_dir = workspace / ".crucibai"
+    try:
+        meta_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    fail_marker = meta_dir / "preview_build_failed.json"
+    ok_marker = meta_dir / "preview_build_ok.json"
+
+    dist_index = workspace / "dist" / "index.html"
+    if dist_index.exists():
+        return {
+            "ok": True,
+            "reason": "dist_already_exists",
+            "serve_root": str(dist_index.parent.resolve()),
+        }
+
+    try:
+        cooldown_sec = int(os.environ.get("CRUCIBAI_PREVIEW_BUILD_RETRY_COOLDOWN", "90"))
+    except ValueError:
+        cooldown_sec = 90
+    if fail_marker.exists() and time.time() - fail_marker.stat().st_mtime < max(10, cooldown_sec):
+        try:
+            cached = json.loads(fail_marker.read_text(encoding="utf-8", errors="replace"))
+            return {"ok": False, "reason": "recent_build_failure", **cached}
+        except Exception:
+            return {"ok": False, "reason": "recent_build_failure"}
+
+    pkg_path = workspace / "package.json"
+    if not pkg_path.exists():
+        return {"ok": False, "reason": "package_json_missing"}
+    try:
+        pkg = json.loads(pkg_path.read_text(encoding="utf-8", errors="replace"))
+    except Exception as exc:
+        return {"ok": False, "reason": "package_json_invalid", "error": str(exc)[:300]}
+    if not (pkg.get("scripts") or {}).get("build"):
+        return {"ok": False, "reason": "build_script_missing"}
+
+    npm = _npm_bin()
+    if not npm:
+        return {"ok": False, "reason": "npm_missing"}
+
+    try:
+        install_timeout = int(os.environ.get("CRUCIBAI_NPM_INSTALL_TIMEOUT", "300"))
+    except ValueError:
+        install_timeout = 300
+    try:
+        build_timeout = int(os.environ.get("CRUCIBAI_NPM_BUILD_TIMEOUT", "180"))
+    except ValueError:
+        build_timeout = 180
+
+    logs = []
+    env = os.environ.copy()
+    env.setdefault("CI", "true")
+    commands = [
+        ([npm, "install", "--include=dev", "--no-fund", "--no-audit"], install_timeout),
+        ([npm, "run", "build"], build_timeout),
+    ]
+    for cmd, timeout in commands:
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=str(workspace),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired:
+            payload = {
+                "ok": False,
+                "reason": "preview_build_timeout",
+                "cmd": " ".join(cmd),
+            }
+            _write_preview_build_marker(fail_marker, payload)
+            return payload
+        except Exception as exc:
+            payload = {
+                "ok": False,
+                "reason": "preview_build_exception",
+                "cmd": " ".join(cmd),
+                "error": str(exc)[:500],
+            }
+            _write_preview_build_marker(fail_marker, payload)
+            return payload
+
+        log = ((result.stdout or "") + (result.stderr or ""))[-2500:]
+        logs.append({"cmd": " ".join(cmd), "exit": result.returncode, "log": log})
+        if result.returncode != 0:
+            payload = {"ok": False, "reason": "preview_build_failed", "logs": logs}
+            _write_preview_build_marker(fail_marker, payload)
+            return payload
+
+    if dist_index.exists():
+        payload = {"ok": True, "reason": "preview_build_materialized", "logs": logs[-1:]}
+        _write_preview_build_marker(ok_marker, payload)
+        try:
+            fail_marker.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return payload
+
+    payload = {"ok": False, "reason": "dist_index_missing_after_build", "logs": logs}
+    _write_preview_build_marker(fail_marker, payload)
+    return payload
+
+
+def _write_preview_build_marker(path: Path, payload: Dict[str, Any]) -> None:
+    try:
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except OSError:
+        logger.debug("preview_serve: could not write preview build marker %s", path)
+
+
+async def _maybe_materialize_preview(workspace: Path) -> Dict[str, Any]:
+    return await asyncio.to_thread(_run_preview_build_sync, workspace)
 
 
 def _safe_join(root: Path, rel: str) -> Optional[Path]:
@@ -224,7 +391,14 @@ async def dev_preview(job_id: str, request: Request):
     project_id = await _get_project_id_for_job(job_id)
     workspace = _job_workspace_root(job_id, project_id)
     serve_root = _resolve_serve_root(workspace)
+    materialize = None
+    if serve_root is None and workspace.exists() and (workspace / "package.json").exists():
+        materialize = await _maybe_materialize_preview(workspace)
+        serve_root = _resolve_serve_root(workspace)
+
     readiness = _preview_readiness_snapshot(workspace, serve_root)
+    if materialize:
+        readiness["materialize"] = materialize
 
     if serve_root is None:
         return JSONResponse(
