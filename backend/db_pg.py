@@ -717,6 +717,7 @@ REQUIRED_TABLES = [
     "simulation_inputs",
     "simulation_sources",
     "simulation_evidence",
+    "simulation_claims",
     "simulation_agents",
     "simulation_rounds",
     "simulation_agent_messages",
@@ -724,8 +725,11 @@ REQUIRED_TABLES = [
     "simulation_clusters",
     "simulation_outcomes",
     "simulation_trust_scores",
+    "simulation_trust_snapshots",
+    "simulation_population_models",
     "simulation_assumptions",
     "simulation_events",
+    "simulation_replay_events",
     "examples",
     "exports",
     "monitoring_events",
@@ -793,6 +797,7 @@ CREATE TABLE IF NOT EXISTS simulation_runs (id TEXT PRIMARY KEY, doc JSONB NOT N
 CREATE TABLE IF NOT EXISTS simulation_inputs (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_sources (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_evidence (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS simulation_claims (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_agents (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_rounds (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_agent_messages (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
@@ -800,8 +805,11 @@ CREATE TABLE IF NOT EXISTS simulation_belief_updates (id TEXT PRIMARY KEY, doc J
 CREATE TABLE IF NOT EXISTS simulation_clusters (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_outcomes (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_trust_scores (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS simulation_trust_snapshots (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS simulation_population_models (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_assumptions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulation_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS simulation_replay_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS examples (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS exports (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');

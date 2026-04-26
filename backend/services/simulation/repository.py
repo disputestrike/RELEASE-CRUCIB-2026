@@ -11,6 +11,7 @@ SIMULATION_COLLECTIONS = [
     "simulation_inputs",
     "simulation_sources",
     "simulation_evidence",
+    "simulation_claims",
     "simulation_agents",
     "simulation_rounds",
     "simulation_agent_messages",
@@ -18,8 +19,11 @@ SIMULATION_COLLECTIONS = [
     "simulation_clusters",
     "simulation_outcomes",
     "simulation_trust_scores",
+    "simulation_trust_snapshots",
+    "simulation_population_models",
     "simulation_assumptions",
     "simulation_events",
+    "simulation_replay_events",
 ]
 
 
@@ -94,4 +98,3 @@ class SimulationRepository:
 
 
 repository = SimulationRepository()
-

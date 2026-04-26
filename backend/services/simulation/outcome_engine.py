@@ -23,6 +23,8 @@ def build_outcomes(
     avg = float(debate.get("average_belief") or 0.42)
     missing = evidence_summary.get("missing_evidence") or []
     evidence_refs = [ev["id"] for ev in (evidence_summary.get("evidence") or [])[:3]]
+    policy = (evidence_summary.get("quality") or {}).get("evidence_policy") or {}
+    coverage = float((evidence_summary.get("quality") or {}).get("policy_coverage", 0.25) or 0.25)
     style = classification.output_style
     now = now_iso()
 
@@ -47,6 +49,10 @@ def build_outcomes(
 
     outcomes: List[Dict[str, Any]] = []
     for label, likelihood, rationale in templates:
+        interval_width = max(0.08, min(0.32, 0.28 - coverage * 0.12))
+        lower_bound = max(0.01, likelihood - interval_width)
+        upper_bound = min(0.99, likelihood + interval_width)
+        watch_triggers = missing[:3] or ["A new high-reliability source contradicts the current claim graph."]
         outcomes.append(
             {
                 "id": new_id("outcome"),
@@ -54,13 +60,18 @@ def build_outcomes(
                 "run_id": run_id,
                 "label": label,
                 probability_key: round(likelihood, 3),
+                "lower_bound": round(lower_bound, 3),
+                "upper_bound": round(upper_bound, 3),
+                "probability_interval": f"{_probability_label(lower_bound)}-{_probability_label(upper_bound)}",
                 "display_likelihood": _probability_label(likelihood),
                 "rationale": rationale,
                 "key_drivers": classification.required_evidence[:4],
                 "risks": missing[:4],
                 "assumptions": classification.assumptions,
                 "evidence_refs": evidence_refs,
-                "what_would_change": missing[:3] or ["More complete verified evidence would change the outcome."],
+                "what_would_change": watch_triggers,
+                "watch_triggers": watch_triggers,
+                "evidence_policy_style": policy.get("verdict_style"),
                 "created_at": now,
             }
         )
@@ -90,4 +101,3 @@ def build_recommendation(classification: ScenarioClassification, outcomes: List[
         "recommendation": "Use the base case as the default and validate the strongest uncertainty before action.",
         "recommendation_strength": likelihood,
     }
-

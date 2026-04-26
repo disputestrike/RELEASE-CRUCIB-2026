@@ -18,6 +18,7 @@ def build_report(
     simulation_id: str,
     run_id: str,
     population_model: Dict[str, Any] | None = None,
+    final_verdict: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     disagreements = []
     for cluster in debate.get("clusters") or []:
@@ -29,14 +30,29 @@ def build_report(
             }
         )
 
+    verdict = final_verdict or {}
+    executive = verdict.get("verdict")
+    if executive:
+        executive = (
+            f"{executive}: {recommendation.get('summary')} "
+            f"Interval {round(float(verdict.get('lower_bound', 0)) * 100)}-"
+            f"{round(float(verdict.get('upper_bound', 0)) * 100)}%."
+        )
+    else:
+        executive = recommendation.get("summary")
+
     return {
-        "executive_summary": recommendation.get("summary"),
+        "executive_summary": executive,
+        "final_verdict": verdict,
         "scenario_interpretation": classification.model_dump(),
         "evidence_summary": {
             "sources_used": len(evidence_summary.get("sources") or []),
             "facts_extracted": len(evidence_summary.get("evidence") or []),
+            "claims_created": len(evidence_summary.get("claims") or []),
             "missing_evidence": evidence_summary.get("missing_evidence") or [],
             "unsupported_claims": evidence_summary.get("unsupported_claims") or [],
+            "evidence_policy": (evidence_summary.get("quality") or {}).get("evidence_policy") or {},
+            "claim_graph_preview": (evidence_summary.get("claims") or [])[:8],
         },
         "agent_consensus_disagreement": {
             "agent_count": len(agents),
@@ -48,6 +64,8 @@ def build_report(
         "outcomes": outcomes,
         "recommendation": recommendation,
         "trust_score": trust,
+        "strongest_evidence_for": verdict.get("strongest_evidence_for") or [],
+        "strongest_evidence_against": verdict.get("strongest_evidence_against") or [],
         "what_would_change_the_outcome": sorted(
             {
                 item
@@ -62,5 +80,6 @@ def build_report(
             "input_prompt": prompt,
             "engine": "Reality Engine V1",
             "live_data_used": bool((evidence_summary.get("quality") or {}).get("live_data_used")),
+            "replay_scope": "core-agent transcript plus aggregated population cohorts",
         },
     }

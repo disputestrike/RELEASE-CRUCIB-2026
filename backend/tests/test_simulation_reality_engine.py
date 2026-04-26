@@ -34,8 +34,14 @@ async def test_lakers_prompt_is_sports_forecast_not_business_decision(app_client
     assert payload["classification"]["scenario_type"] == "forecast"
     assert "sports championship forecast" in payload["classification"]["interpretation"]
     assert payload["outcomes"]
+    assert payload["final_verdict"]["verdict"] in {"Yes", "No", "Unclear", "Insufficient Evidence"}
+    assert payload["final_verdict"]["verdict"] == "Insufficient Evidence"
+    assert payload["final_verdict"]["official_gate_failed"] is True
+    assert payload["claims"]
     assert payload["population_model"]["population_size"] >= 100
     assert payload["trust_score"]["components"]["data_completeness"] < 0.7
+    assert "unsupported_consensus_penalty" in payload["trust_score"]["components"]
+    assert "evidence_policy" in payload["report"]["evidence_summary"]
     rendered = str(payload).lower()
     assert "implementation plan" not in rendered
     assert "no verified live source" in rendered
@@ -71,6 +77,10 @@ async def test_simulation_run_is_replayable_with_events(app_client):
     assert data["belief_updates"]
     assert data["outcomes"]
     assert data["events"]
+    assert data["claims"]
+    assert data["replay_events"]
+    assert data["trust_snapshots"]
+    assert data["population_models"]
     assert data["run"]["depth"] == "deep"
     app.dependency_overrides.pop(dep, None)
 
@@ -90,6 +100,7 @@ async def test_runtime_what_if_compatibility_uses_reality_engine(app_client):
     assert payload["classification"]["scenario_type"] == "forecast"
     assert payload["engine"] == "Reality Engine V1"
     assert payload["population_model"]["method"] == "core_agents_plus_synthetic_population"
+    assert payload["final_verdict"]["contract"].startswith("Every run resolves")
     app.dependency_overrides.pop(dep, None)
 
 
@@ -113,4 +124,35 @@ async def test_simulation_depth_hides_raw_ui_counts_but_backend_autoscales(app_c
     assert payload["run"]["rounds_requested"] == 8
     assert payload["population_model"]["population_size"] == 10000
     assert sum(cluster["size"] for cluster in payload["population_model"]["clusters"]) == 10000
+    app.dependency_overrides.pop(dep, None)
+
+
+async def test_simulation_contract_covers_research_qa_scenarios(app_client):
+    app, dep = _install_fake_auth()
+    scenarios = [
+        ("Will the Lakers win the NBA championship?", "sports", "forecast"),
+        ("Will Brazil win the World Cup?", "sports", "forecast"),
+        ("Should we raise prices by 30%?", "business", "decision"),
+        ("Should we migrate off AWS?", "engineering", "decision"),
+        ("Will customers hate this redesign?", "business", "market_reaction"),
+    ]
+    for prompt, domain, scenario_type in scenarios:
+        create = await app_client.post("/api/simulations", json={"prompt": prompt}, timeout=10)
+        assert create.status_code == 200
+        simulation_id = create.json()["simulation"]["id"]
+        run = await app_client.post(
+            "/api/simulations/run",
+            json={"simulation_id": simulation_id, "prompt": prompt, "depth": "fast", "use_live_evidence": False},
+            timeout=20,
+        )
+        assert run.status_code == 200
+        payload = run.json()
+        assert payload["classification"]["domain"] == domain
+        assert payload["classification"]["scenario_type"] == scenario_type
+        assert payload["final_verdict"]["verdict"] in {"Yes", "No", "Unclear", "Insufficient Evidence"}
+        assert payload["final_verdict"]["lower_bound"] <= payload["final_verdict"]["upper_bound"]
+        assert payload["report"]["evidence_summary"]["claims_created"] == len(payload["claims"])
+        assert payload["population_model"]["method"] == "core_agents_plus_synthetic_population"
+        assert payload["trust_score"]["formula"] == "0.25Q + 0.15F + 0.15C + 0.15T + 0.10D + 0.10K + 0.10(1-P)"
+        assert payload["report"]["replay_metadata"]["replay_scope"] == "core-agent transcript plus aggregated population cohorts"
     app.dependency_overrides.pop(dep, None)

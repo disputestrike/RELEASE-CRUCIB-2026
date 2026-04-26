@@ -5,12 +5,14 @@ from typing import Any, Dict, List, Optional
 from .agent_factory import build_agents
 from .classifier import classify_scenario
 from .debate_engine import run_debate
+from .domain_policy import build_evidence_policy
 from .evidence_engine import build_evidence
 from .outcome_engine import build_outcomes, build_recommendation
 from .population_engine import build_population_model
 from .report_builder import build_report
 from .repository import new_id, now_iso, repository
 from .trust_engine import build_trust_score
+from .verdict_engine import build_final_verdict
 
 
 DEPTH_CONFIG = {
@@ -48,6 +50,17 @@ class RealityEngine:
             "created_at": now_iso(),
         }
         await repository.insert("simulation_events", event)
+        await repository.insert(
+            "simulation_replay_events",
+            {
+                "id": new_id("replay"),
+                "simulation_id": simulation_id,
+                "run_id": run_id,
+                "event_type": event_type,
+                "event_payload": payload,
+                "created_at": event["created_at"],
+            },
+        )
         return event
 
     async def create_simulation(
@@ -133,6 +146,13 @@ class RealityEngine:
             payload=classification.model_dump(),
         )
 
+        evidence_policy = build_evidence_policy(classification, prompt)
+        await self._event(
+            simulation_id=simulation_id,
+            run_id=run_id,
+            event_type="simulation.evidence_policy_created",
+            payload=evidence_policy,
+        )
         evidence = await build_evidence(
             simulation_id=simulation_id,
             run_id=run_id,
@@ -142,11 +162,14 @@ class RealityEngine:
             attachments=attachments or [],
             use_live_evidence=use_live_evidence,
             evidence_depth=config["evidence_depth"],
+            evidence_policy=evidence_policy,
         )
         for source in evidence["sources"]:
             await repository.insert("simulation_sources", source)
         for fact in evidence["evidence"]:
             await repository.insert("simulation_evidence", fact)
+        for claim in evidence.get("claims") or []:
+            await repository.insert("simulation_claims", claim)
         for assumption in evidence["assumptions"]:
             await repository.insert("simulation_assumptions", assumption)
         await self._event(
@@ -158,6 +181,7 @@ class RealityEngine:
                 "fact_count": len(evidence["evidence"]),
                 "missing_evidence": evidence["missing_evidence"],
                 "live_data_used": (evidence.get("quality") or {}).get("live_data_used"),
+                "policy_coverage": (evidence.get("quality") or {}).get("policy_coverage"),
             },
         )
 
@@ -205,6 +229,16 @@ class RealityEngine:
             depth=config["depth"],
             requested_population_size=config["population_size"],
         )
+        await repository.insert(
+            "simulation_population_models",
+            {
+                "id": new_id("pop_model"),
+                "simulation_id": simulation_id,
+                "run_id": run_id,
+                **population_model,
+                "created_at": now_iso(),
+            },
+        )
         for row in population_model.get("clusters") or []:
             await repository.insert("simulation_clusters", row)
         await self._event(
@@ -239,6 +273,33 @@ class RealityEngine:
             debate=debate,
         )
         await repository.insert("simulation_trust_scores", trust)
+        await repository.insert(
+            "simulation_trust_snapshots",
+            {
+                "id": new_id("trust_snapshot"),
+                "simulation_id": simulation_id,
+                "run_id": run_id,
+                "phase": "final",
+                "trust_score": trust.get("trust_score"),
+                "score": trust.get("score"),
+                "components": trust.get("components") or {},
+                "formula": trust.get("formula"),
+                "warnings": trust.get("warnings") or [],
+                "created_at": now_iso(),
+            },
+        )
+        final_verdict = build_final_verdict(
+            classification=classification,
+            evidence_summary=evidence,
+            outcomes=outcomes,
+            trust=trust,
+        )
+        await self._event(
+            simulation_id=simulation_id,
+            run_id=run_id,
+            event_type="simulation.final_verdict_generated",
+            payload=final_verdict,
+        )
         report = build_report(
             prompt=prompt,
             classification=classification,
@@ -251,6 +312,7 @@ class RealityEngine:
             simulation_id=simulation_id,
             run_id=run_id,
             population_model=population_model,
+            final_verdict=final_verdict,
         )
 
         completed = {
@@ -259,6 +321,7 @@ class RealityEngine:
             "classification": classification.model_dump(),
             "recommendation": recommendation,
             "trust_score": trust,
+            "final_verdict": final_verdict,
             "report": report,
             "completed_at": now_iso(),
             "updated_at": now_iso(),
@@ -280,7 +343,11 @@ class RealityEngine:
             simulation_id=simulation_id,
             run_id=run_id,
             event_type="simulation.completed",
-            payload={"recommendation": recommendation, "trust_score": trust.get("trust_score")},
+            payload={
+                "recommendation": recommendation,
+                "trust_score": trust.get("trust_score"),
+                "final_verdict": final_verdict.get("verdict"),
+            },
         )
 
         return {
@@ -290,6 +357,7 @@ class RealityEngine:
             "classification": classification.model_dump(),
             "sources": evidence["sources"],
             "evidence": evidence["evidence"],
+            "claims": evidence.get("claims") or [],
             "missing_evidence": evidence["missing_evidence"],
             "unsupported_claims": evidence["unsupported_claims"],
             "assumptions": evidence["assumptions"],
@@ -301,6 +369,7 @@ class RealityEngine:
             "population_model": population_model,
             "outcomes": outcomes,
             "recommendation": recommendation,
+            "final_verdict": final_verdict,
             "trust_score": trust,
             "report": report,
             "engine": "Reality Engine V1",
@@ -314,6 +383,7 @@ class RealityEngine:
             "inputs": await repository.list("simulation_inputs", {"run_id": run_id}, limit=20),
             "sources": await repository.list("simulation_sources", {"run_id": run_id}, limit=100),
             "evidence": await repository.list("simulation_evidence", {"run_id": run_id}, limit=200),
+            "claims": await repository.list("simulation_claims", {"run_id": run_id}, limit=300),
             "agents": await repository.list("simulation_agents", {"run_id": run_id}, limit=100),
             "rounds": await repository.list("simulation_rounds", {"run_id": run_id}, limit=100),
             "agent_messages": await repository.list("simulation_agent_messages", {"run_id": run_id}, limit=500),
@@ -321,8 +391,11 @@ class RealityEngine:
             "clusters": await repository.list("simulation_clusters", {"run_id": run_id}, limit=100),
             "outcomes": await repository.list("simulation_outcomes", {"run_id": run_id}, limit=50),
             "trust_scores": await repository.list("simulation_trust_scores", {"run_id": run_id}, limit=10),
+            "trust_snapshots": await repository.list("simulation_trust_snapshots", {"run_id": run_id}, limit=20),
             "assumptions": await repository.list("simulation_assumptions", {"run_id": run_id}, limit=100),
             "events": await repository.list("simulation_events", {"run_id": run_id}, limit=500),
+            "replay_events": await repository.list("simulation_replay_events", {"run_id": run_id}, limit=500),
+            "population_models": await repository.list("simulation_population_models", {"run_id": run_id}, limit=20),
         }
 
 

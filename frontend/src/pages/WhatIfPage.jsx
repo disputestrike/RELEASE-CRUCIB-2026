@@ -159,6 +159,8 @@ export default function WhatIfPage() {
   const populationClusters = Array.isArray(populationModel?.clusters) ? populationModel.clusters : [];
   const missingEvidence = Array.isArray(result?.missing_evidence) ? result.missing_evidence : [];
   const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
+  const finalVerdict = result?.final_verdict || report?.final_verdict || {};
+  const evidencePolicy = report?.evidence_summary?.evidence_policy || result?.trust_score?.evidence_policy || {};
 
   return (
     <div className="simulation-page">
@@ -270,6 +272,21 @@ export default function WhatIfPage() {
             )}
           </Panel>
 
+          {finalVerdict.verdict && (
+            <Panel title="Final Verdict" icon={CheckCircle2} aside={finalVerdict.confidence_label}>
+              <div className="simulation-grid four">
+                <div><span>Verdict</span><strong>{finalVerdict.verdict}</strong></div>
+                <div><span>Probability</span><strong>{pct(finalVerdict.probability)}</strong></div>
+                <div><span>Interval</span><strong>{pct(finalVerdict.lower_bound)}-{pct(finalVerdict.upper_bound)}</strong></div>
+                <div><span>Coverage</span><strong>{pct(finalVerdict.evidence_coverage)}</strong></div>
+              </div>
+              <p className="simulation-interpretation">{finalVerdict.next_best_action}</p>
+              {finalVerdict.official_gate_failed && (
+                <div className="simulation-warning"><AlertTriangle size={13} /> Strong verdict is gated until fresh primary or trusted evidence is available.</div>
+              )}
+            </Panel>
+          )}
+
           <Panel title="Evidence Panel" icon={FileText} aside={`${sources.length} sources / ${evidence.length} facts`}>
             <div className="simulation-evidence-layout">
               <div>
@@ -283,6 +300,9 @@ export default function WhatIfPage() {
               </div>
               <div>
                 <h3>Evidence gaps</h3>
+                {evidencePolicy.minimum_coverage && (
+                  <div className="simulation-gap">Policy minimum coverage: {pct(evidencePolicy.minimum_coverage)}</div>
+                )}
                 {missingEvidence.map((item) => <div className="simulation-gap" key={item}>{item}</div>)}
                 {unsupportedClaims.map((item) => <div className="simulation-warning" key={item}>{item}</div>)}
               </div>

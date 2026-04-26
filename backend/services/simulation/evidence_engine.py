@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 from .models import ScenarioClassification
 from .repository import new_id, now_iso
+from .domain_policy import build_evidence_policy, policy_missing_evidence
 
 
 DOMAIN_MISSING = {
@@ -39,13 +40,27 @@ DOMAIN_MISSING = {
 }
 
 
-def _source_reliability(url: str, title: str) -> Tuple[str, float]:
+def _source_reliability(url: str, title: str) -> Tuple[str, float, str]:
     lowered = f"{url} {title}".lower()
-    if any(domain in lowered for domain in [".gov", "nba.com", "fifa.com", "espn.", "reuters.", "apnews.", "sec.gov"]):
-        return "high", 0.85
+    if any(domain in lowered for domain in [".gov", "sec.gov", "federalregister.gov", "clinicaltrials.gov", "fda.gov", "cdc.gov", "who.int"]):
+        return "official_primary", 1.0, "official_api_or_primary_web"
+    if any(domain in lowered for domain in ["nba.com", "fifa.com", "mlb.com", "nfl.com"]):
+        return "official_league", 0.92, "official_api_or_primary_web"
+    if any(domain in lowered for domain in ["sportradar", "fred.stlouisfed.org", "reuters.", "apnews.", "espn."]):
+        return "trusted_structured_or_press", 0.78, "trusted_commercial_or_nonprofit"
     if any(domain in lowered for domain in ["wikipedia", "blog", "reddit", "forum"]):
-        return "medium", 0.55
-    return "medium_high", 0.7
+        return "community_or_secondary", 0.38, "weak_secondary"
+    return "secondary_web", 0.62, "targeted_web_search"
+
+
+def _fit_to_policy(text: str, policy: Dict[str, Any]) -> float:
+    lowered = text.lower()
+    hits = 0
+    for item in policy.get("required_evidence_classes") or []:
+        tokens = [token for token in str(item).lower().replace("/", " ").split() if len(token) > 4]
+        if any(token in lowered for token in tokens):
+            hits += 1
+    return round(min(1.0, 0.25 + hits * 0.18), 3)
 
 
 def _queries(prompt: str, classification: ScenarioClassification, evidence_depth: int) -> List[str]:
@@ -117,8 +132,10 @@ async def build_evidence(
     attachments: List[Dict[str, Any]],
     use_live_evidence: bool = True,
     evidence_depth: int = 4,
+    evidence_policy: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     now = now_iso()
+    policy = evidence_policy or build_evidence_policy(classification, prompt)
     sources: List[Dict[str, Any]] = [
         {
             "id": new_id("src"),
@@ -130,6 +147,11 @@ async def build_evidence(
             "reliability": "medium",
             "freshness": "current_input",
             "url": None,
+            "source_precedence": "user_upload",
+            "reliability_score": 0.55,
+            "freshness_score": 1.0,
+            "traceability_score": 1.0,
+            "fit_score": _fit_to_policy(prompt, policy),
             "created_at": now,
         }
     ]
@@ -146,6 +168,11 @@ async def build_evidence(
                 "reliability": "user_supplied",
                 "freshness": "unknown",
                 "url": attachment.get("url"),
+                "source_precedence": "user_upload",
+                "reliability_score": 0.6,
+                "freshness_score": 0.55,
+                "traceability_score": 0.75 if attachment.get("url") else 0.55,
+                "fit_score": _fit_to_policy(str(attachment), policy),
                 "metadata": attachment,
                 "created_at": now,
             }
@@ -164,7 +191,7 @@ async def build_evidence(
         if not url or url in seen_urls:
             continue
         seen_urls.add(url)
-        reliability, reliability_score = _source_reliability(url, title)
+        reliability, reliability_score, source_precedence = _source_reliability(url, title)
         sources.append(
             {
                 "id": new_id("src"),
@@ -176,6 +203,11 @@ async def build_evidence(
                 "reliability": reliability,
                 "freshness": "retrieved_now",
                 "url": url,
+                "source_precedence": source_precedence,
+                "reliability_score": reliability_score,
+                "freshness_score": 0.85,
+                "traceability_score": 0.9,
+                "fit_score": _fit_to_policy(f"{title} {result.get('content') or result.get('snippet') or ''}", policy),
                 "metadata": {
                     "score": result.get("score"),
                     "query_count": len(search_queries),
@@ -196,6 +228,8 @@ async def build_evidence(
             "reliability_score": 0.7,
             "freshness_score": 1.0,
             "confidence": 0.7,
+            "traceability_score": 1.0,
+            "fit_score": _fit_to_policy(prompt, policy),
             "created_at": now,
         },
         {
@@ -208,6 +242,8 @@ async def build_evidence(
             "reliability_score": 0.65,
             "freshness_score": 1.0,
             "confidence": 0.65,
+            "traceability_score": 1.0,
+            "fit_score": _fit_to_policy(classification.interpretation, policy),
             "created_at": now,
         },
     ]
@@ -222,7 +258,7 @@ async def build_evidence(
         content = str(result.get("content") or result.get("snippet") or "").strip()
         if not content:
             continue
-        _, reliability_score = _source_reliability(url, str(result.get("title") or ""))
+        _, reliability_score, _ = _source_reliability(url, str(result.get("title") or ""))
         facts.append(
             {
                 "id": new_id("fact"),
@@ -235,6 +271,8 @@ async def build_evidence(
                 "freshness_score": 0.82,
                 "confidence": min(0.88, reliability_score + 0.03),
                 "url": url,
+                "traceability_score": 0.9,
+                "fit_score": _fit_to_policy(content, policy),
                 "created_at": now,
             }
         )
@@ -251,16 +289,32 @@ async def build_evidence(
                 "reliability_score": 0.55,
                 "freshness_score": 1.0,
                 "confidence": 0.55,
+                "traceability_score": 0.7,
+                "fit_score": _fit_to_policy(assumption, policy),
                 "created_at": now,
             }
         )
 
-    missing = DOMAIN_MISSING.get(classification.domain, ["verified current data", "external corroborating sources"])
+    missing = policy_missing_evidence(
+        policy,
+        DOMAIN_MISSING.get(classification.domain, ["verified current data", "external corroborating sources"]),
+    )
     unsupported_claims = []
     live_data_used = bool(live_source_ids)
     if classification.time_sensitivity == "current" and not live_data_used:
         unsupported_claims.append("No verified live source was used in this V1 run unless uploaded evidence was provided.")
+    if policy.get("official_required_for_strong_verdict") and not live_data_used:
+        unsupported_claims.append("The evidence policy requires fresh primary or trusted external sources before a strong verdict.")
 
+    policy_hits = set()
+    for fact in facts:
+        text = str(fact.get("claim") or "").lower()
+        for idx, item in enumerate(policy.get("required_evidence_classes") or []):
+            tokens = [token for token in str(item).lower().replace("/", " ").split() if len(token) > 4]
+            if any(token in text for token in tokens):
+                policy_hits.add(idx)
+    policy_total = max(1, len(policy.get("required_evidence_classes") or []))
+    policy_coverage = min(1.0, len(policy_hits) / policy_total + (0.1 if live_data_used else 0))
     data_completeness = min(
         0.9,
         0.25
@@ -271,10 +325,57 @@ async def build_evidence(
     )
     if classification.domain == "general":
         data_completeness = min(data_completeness, 0.55)
+    data_completeness = round(max(data_completeness, min(0.9, policy_coverage * 0.75 + data_completeness * 0.25)), 2)
+
+    claims: List[Dict[str, Any]] = []
+    for idx, fact in enumerate(facts):
+        supports_or_refutes = "supports" if fact.get("evidence_type") in {"prompt_fact", "live_web_extract", "user_assumption"} else "context"
+        if fact.get("evidence_type") == "scenario_interpretation":
+            supports_or_refutes = "context"
+        claims.append(
+            {
+                "id": new_id("clm"),
+                "simulation_id": simulation_id,
+                "run_id": run_id,
+                "claim_text": fact.get("claim"),
+                "evidence_id": fact.get("id"),
+                "source_id": fact.get("source_id"),
+                "supports_or_refutes": supports_or_refutes,
+                "reliability_score": fact.get("reliability_score"),
+                "freshness_score": fact.get("freshness_score"),
+                "traceability_score": fact.get("traceability_score"),
+                "fit_score": fact.get("fit_score"),
+                "entities": [],
+                "time_scope": classification.time_sensitivity,
+                "claim_features": {"rank": idx + 1, "evidence_type": fact.get("evidence_type")},
+                "created_at": now,
+            }
+        )
+    for item in missing[:5]:
+        claims.append(
+            {
+                "id": new_id("clm"),
+                "simulation_id": simulation_id,
+                "run_id": run_id,
+                "claim_text": item,
+                "evidence_id": None,
+                "source_id": None,
+                "supports_or_refutes": "refutes",
+                "reliability_score": 0.0,
+                "freshness_score": 0.0,
+                "traceability_score": 0.0,
+                "fit_score": 1.0,
+                "entities": [],
+                "time_scope": classification.time_sensitivity,
+                "claim_features": {"missing_evidence": True},
+                "created_at": now,
+            }
+        )
 
     return {
         "sources": sources,
         "evidence": facts,
+        "claims": claims,
         "missing_evidence": missing,
         "unsupported_claims": unsupported_claims,
         "assumptions": [
@@ -295,5 +396,15 @@ async def build_evidence(
             "live_data_used": live_data_used,
             "search_queries": search_queries if use_live_evidence else [],
             "live_source_count": len(live_source_ids),
+            "policy_coverage": round(policy_coverage, 3),
+            "evidence_policy": policy,
+            "traceability": round(
+                sum(float(item.get("traceability_score") or 0) for item in facts) / max(1, len(facts)),
+                3,
+            ),
+            "fit_to_query": round(
+                sum(float(item.get("fit_score") or 0) for item in facts) / max(1, len(facts)),
+                3,
+            ),
         },
     }
