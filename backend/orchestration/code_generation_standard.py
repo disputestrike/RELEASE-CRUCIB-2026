@@ -37,6 +37,10 @@ Quantity bar:
 - medium app: 40-80 source files
 - large admin/SaaS/workflow/internal tool: 80-150 source files
 - enterprise/platform app: 150+ files when needed
+- complex admin/workflow/internal tools should expand to 8-15 pages,
+  20-40 reusable components, 5-12 feature modules, 5-15 hooks,
+  5-15 service/API files, typed schemas, state, tests, seed/mock data,
+  and documentation
 
 Mandatory generated docs:
 - README.md
@@ -57,6 +61,8 @@ Document ingestion persistence:
 
 Quality gates:
 - no giant App file, route file, or all-in-one component
+- component files should stay under 250 lines where practical; pages and
+  services should stay under 300 lines unless a generated framework requires more
 - no direct random fetch calls in components; use services/apiClient
 - reusable UI primitives for buttons, inputs, selects, modals, drawers, cards, badges, tabs, tooltips
 - layout, data-table, form, and feedback components for serious apps
@@ -66,6 +72,7 @@ Quality gates:
 - document-derived features must trace back to persisted ingestion artifacts
 - no fake placeholder logic, TODO-only files, dead imports, temp/final/fixed filenames
 - inspect the final file tree before saying done; if the prompt is complex and the tree is thin, keep generating
+- final inspection question: would a senior engineer accept this as a real production codebase?
 """.strip()
 
 
@@ -95,6 +102,8 @@ should include `client`, `server`, `shared`, `db` or `drizzle`, `docs`, and
 - Every serious app includes reusable UI primitives, feedback states, forms,
   tables, design tokens, state, docs, and tests.
 - File count must match complexity.
+- Large apps must expand into multiple pages, feature modules, services, hooks,
+  tests, seed/mock data, and docs rather than one generic dashboard.
 - Document ingestion artifacts must be saved under `docs/` and `runtime/ingestion/`.
 
 ## Completion Inspection

@@ -17,6 +17,9 @@ def test_generation_agents_receive_senior_codebase_standard(monkeypatch):
     assert "CODE_MANIFEST.md" in prompt
     assert "runtime/ingestion" in prompt
     assert "REQUIREMENTS_FROM_DOCUMENTS.md" in prompt
+    assert "8-15 pages" in prompt
+    assert "20-40 reusable components" in prompt
+    assert "senior engineer accept" in prompt
     assert "App thin" in prompt or "App entry files stay thin" in CODE_GENERATION_AGENT_APPENDIX
 
 
