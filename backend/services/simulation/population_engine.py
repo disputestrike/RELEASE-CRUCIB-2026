@@ -87,9 +87,14 @@ def build_population_model(
     total = sum(raw_weights) or 1
     now = now_iso()
     clusters: List[Dict[str, Any]] = []
+    allocated = 0
     for idx, (label, bias, rationale) in enumerate(cohorts):
         share = raw_weights[idx] / total
-        size = int(round(population_size * share))
+        if idx == len(cohorts) - 1:
+            size = max(0, population_size - allocated)
+        else:
+            size = int(round(population_size * share))
+            allocated += size
         stance_score = max(0.01, min(0.99, average_belief + bias))
         clusters.append(
             {

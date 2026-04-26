@@ -112,4 +112,5 @@ async def test_simulation_depth_hides_raw_ui_counts_but_backend_autoscales(app_c
     assert payload["run"]["agent_count_requested"] == 16
     assert payload["run"]["rounds_requested"] == 8
     assert payload["population_model"]["population_size"] == 10000
+    assert sum(cluster["size"] for cluster in payload["population_model"]["clusters"]) == 10000
     app.dependency_overrides.pop(dep, None)
