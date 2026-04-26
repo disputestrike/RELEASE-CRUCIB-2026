@@ -10,7 +10,7 @@ from typing import Iterable
 
 from fastapi import APIRouter, HTTPException
 
-from services.proof_manifest import build_replay_plan, verify_manifest
+from backend.services.proof_manifest import build_replay_plan, verify_manifest
 
 logger = logging.getLogger(__name__)
 
