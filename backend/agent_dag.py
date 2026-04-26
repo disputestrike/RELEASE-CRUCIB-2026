@@ -417,7 +417,7 @@ Rules: Production-ready. Health checks on all services. Secrets via environment 
     },
     "Payment Setup Agent": {
         "depends_on": ["Stack Selector"],
-        "system_prompt": "You are a Payment Setup Agent. Suggest Stripe (or similar) integration: checkout, webhooks, subscription. Code or step list.",
+        "system_prompt": "You are a Payment Setup Agent. Suggest Braintree (or similar) integration: checkout, webhooks, subscription. Code or step list.",
     },
     "Monitoring Agent": {
         "depends_on": ["Deployment Agent"],
@@ -541,9 +541,9 @@ Rules: Production-ready. Health checks on all services. Secrets via environment 
         "depends_on": ["Auth Setup Agent"],
         "system_prompt": "You are a 2FA Agent. Suggest TOTP and backup codes. Plain text.",
     },
-    "Stripe Subscription Agent": {
+    "Braintree Subscription Agent": {
         "depends_on": ["Payment Setup Agent"],
-        "system_prompt": "You are a Stripe Subscription Agent. Suggest plans, metering, downgrade. Plain text.",
+        "system_prompt": "You are a Braintree Subscription Agent. Suggest plans, metering, downgrade. Plain text.",
     },
     "Invoice Agent": {
         "depends_on": ["Payment Setup Agent"],
@@ -939,12 +939,12 @@ Rules: Production-ready. Health checks on all services. Secrets via environment 
         "depends_on": ["Security Checker"],
         "system_prompt": "You are a Security Scanning Agent. Scan for vulnerabilities.\n\nRun:\n1. npm/pip audit\n2. SAST (SonarQube)\n3. Dependency scanning (Snyk)\n4. Secret detection (GitGuardian)\n5. OWASP Top 10 check\n\nOutput: Security scan results + remediation steps",
     },
-    "Stripe Integration Agent": {
+    "Braintree Integration Agent": {
         "depends_on": ["Payment Setup Agent"],
-        "system_prompt": "You are a Stripe Integration Agent. Integrate Stripe.\n\nImplement:\n1. Checkout flow\n2. Subscription management\n3. Webhook handlers\n4. Invoice generation\n5. Tax calculation\n\nOutput: Backend routes + frontend integration",
+        "system_prompt": "You are a Braintree Integration Agent. Integrate Braintree.\n\nImplement:\n1. Checkout flow\n2. Subscription management\n3. Webhook handlers\n4. Invoice generation\n5. Tax calculation\n\nOutput: Backend routes + frontend integration",
     },
     "Subscription Management Agent": {
-        "depends_on": ["Stripe Integration Agent"],
+        "depends_on": ["Braintree Integration Agent"],
         "system_prompt": "You are a Subscription Management Agent. Implement subscriptions.\n\nCreate:\n1. Multiple pricing tiers\n2. Upgrade/downgrade flow\n3. Trial period logic\n4. Cancellation workflow\n5. Usage-based billing\n\nOutput: Business logic + database schema",
     },
     "Typography System Agent": {
@@ -1321,7 +1321,7 @@ OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
     "Documentation Agent": "Documentation. README: setup, env, run, deploy.",
     "Validation Agent": "Validation. 3–5 rules + Zod/Yup.",
     "Auth Setup Agent": "Auth. JWT/OAuth flow, protected routes.",
-    "Payment Setup Agent": "Payment. Stripe checkout, webhooks.",
+    "Payment Setup Agent": "Payment. Braintree checkout, webhooks.",
     "Monitoring Agent": "Monitoring. Sentry, analytics setup.",
     "Accessibility Agent": "Accessibility. 3–5 a11y improvements.",
     "DevOps Agent": "DevOps. CI/CD, Dockerfile.",
@@ -1352,7 +1352,7 @@ OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
     "Session Agent": "Session. Storage, expiry.",
     "OAuth Provider Agent": "OAuth. Google/GitHub.",
     "2FA Agent": "2FA. TOTP, backup codes.",
-    "Stripe Subscription Agent": "Stripe. Plans, metering.",
+    "Braintree Subscription Agent": "Braintree. Plans, metering.",
     "Invoice Agent": "Invoice. PDF generation.",
     "CDN Agent": "CDN. Static, cache headers.",
     "SSR Agent": "SSR. Next.js hints.",

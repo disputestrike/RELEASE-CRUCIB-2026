@@ -13,7 +13,7 @@ import { logApiError } from '../utils/apiError';
 const DEFAULT_BUNDLES = {
   free:    { credits: 200,  price: 0,   name: 'Free' },
   builder: { credits: 500,  price: 15,  name: 'Builder' },
-  pro:     { credits: 1000, price: 15,  name: 'Pro' },
+  pro:     { credits: 1000, price: 30,  name: 'Pro' },
   scale:   { credits: 2000, price: 60,  name: 'Scale' },
   teams:   { credits: 5000, price: 150, name: 'Teams' },
 };
@@ -30,7 +30,7 @@ const PLAN_FEATURES = {
   builder: [
     '5 complete production apps per month',
     'OR 10 landing pages · OR 3 mobile apps',
-    'Every app: frontend · backend · DB · auth · Stripe payments',
+    'Every app: frontend · backend · DB · auth · Braintree payments',
     'Mobile: Expo project + App Store & Play Store guide',
     'Voice input · image-to-code · agent swarm',
   ],
@@ -76,28 +76,9 @@ function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api,
     }
     setLoading(true);
     try {
-      await axios.post(`${api}/tokens/purchase-custom`, { credits }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      navigate('/app/tokens?success=1');
-      window.location.reload();
+      navigate('/app/tokens', { state: { customCredits: credits } });
     } catch (e) {
-      const detail = e.response?.data?.detail ?? '';
-      const useStripe = typeof detail === 'string' && detail.includes('Stripe');
-      if (useStripe) {
-        try {
-          const { data } = await axios.post(
-            `${api}/stripe/create-checkout-session-custom`,
-            { credits },
-            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-          );
-          if (data?.url) window.location.href = data.url;
-        } catch (e2) {
-          logApiError('Stripe custom checkout', e2);
-        }
-      } else {
-        logApiError('Purchase custom credits', e);
-      }
+      logApiError('Open Braintree credit checkout', e);
     } finally {
       setLoading(false);
     }
@@ -238,7 +219,7 @@ export default function Pricing() {
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
             <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI beats the others at every price point</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
-              <li>• Every build includes frontend + backend + database + auth + Stripe payments — not just a frontend.</li>
+              <li>• Every build includes frontend + backend + database + auth + Braintree payments — not just a frontend.</li>
               <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
               <li>• A swarm of agents and sub-agents, fully linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
             </ul>

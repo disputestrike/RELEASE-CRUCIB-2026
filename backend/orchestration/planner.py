@@ -89,8 +89,8 @@ def _detect_integrations(goal: str) -> list:
     """Word-boundary matching avoids substring false positives (e.g. 'payment' in unrelated words)."""
     g = goal.lower()
     integrations = []
-    if re.search(r"\b(stripe|payments?|billing|checkout)\b", g):
-        integrations.append("stripe")
+    if re.search(r"\b(braintree|payments?|billing|checkout)\b", g):
+        integrations.append("braintree")
     if re.search(r"\b(auth|authentication|login|sign[\s-]?up|oauth|jwt)\b", g):
         integrations.append("auth")
     if re.search(r"\b(database|postgres|postgresql|mysql|mongodb|sqlite|storage)\b", g):
@@ -211,10 +211,10 @@ def _detect_risk_flags(
 ) -> list:
     flags = []
     g = goal.lower()
-    if "stripe" in g and not (project_state or {}).get("env_vars", {}).get(
-        "STRIPE_SECRET_KEY"
+    if "Braintree" in g and not (project_state or {}).get("env_vars", {}).get(
+        "BRAINTREE_PRIVATE_KEY"
     ):
-        flags.append("stripe_keys_missing")
+        flags.append("Braintree_keys_missing")
     if len(goal) < 20:
         flags.append("goal_too_vague")
     thresh = _goal_len_advisory_threshold(project_state)
@@ -275,7 +275,7 @@ def _architecture_outline(
             if "multi_tenant" in ints
             else "single_tenant_template"
         ),
-        "billing_intent": "Stripe stubs + idempotency SQL sketch if stripe integration detected",
+        "billing_intent": "Braintree stubs + idempotency SQL sketch if Braintree integration detected",
         "frontend_stack": (
             "agent_swarm_requested_stack"
             if swarm_mode
@@ -632,13 +632,13 @@ def _build_phases(
         },
     ]
 
-    # Add Stripe steps if needed
-    if "stripe" in integrations:
+    # Add Braintree steps if needed
+    if "braintree" in integrations:
         phases[2]["steps"].append(
             {
-                "key": "backend.stripe",
+                "key": "backend.braintree",
                 "agent": "Payment Setup Agent",
-                "name": "Stripe integration",
+                "name": "Braintree integration",
                 "description": "Checkout, webhooks, billing portal",
                 "depends_on": ["backend.routes"],
             }
@@ -682,10 +682,10 @@ async def generate_plan(
     missing_inputs: list = []
     env_vars = (project_state or {}).get("env_vars", {})
 
-    if "stripe" in integrations and not env_vars.get("STRIPE_SECRET_KEY"):
+    if "braintree" in integrations and not env_vars.get("BRAINTREE_PRIVATE_KEY"):
         missing_inputs.append(
             _advisory_missing(
-                "STRIPE_SECRET_KEY",
+                "BRAINTREE_PRIVATE_KEY",
                 "For live charges add to backend/.env; dev builds can use checkout mocks / placeholders.",
                 blocking=True,
             )
@@ -730,8 +730,8 @@ async def generate_plan(
         "Authentication flow works end-to-end",
         "Preview iframe renders the application",
     ]
-    if "stripe" in integrations:
-        acceptance_criteria.append("Stripe checkout flow reachable")
+    if "braintree" in integrations:
+        acceptance_criteria.append("Braintree checkout flow reachable")
     if "compliance_sensitive" in integrations:
         acceptance_criteria.append(
             "Regulated-domain sketch doc present (docs/COMPLIANCE_SKETCH.md) — review with counsel before production",

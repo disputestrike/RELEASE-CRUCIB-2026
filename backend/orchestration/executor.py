@@ -22,7 +22,7 @@ from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
 from backend.llm_router import CEREBRAS_MODEL
 
 from .compliance_sketch import build_compliance_sketch_markdown
-from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
+from .domain_packs import compliance_regulated_intent, multitenant_intent, braintree_intent
 from .enterprise_command_pack import (
     build_enterprise_backend_file_set,
     build_enterprise_database_file_set,
@@ -255,43 +255,44 @@ def list_items():
 '''
 
 
-def _stripe_routes_sketch() -> str:
-    return '''"""Stripe webhook — idempotency + signature sketch (CrucibAI).
-1) Apply db/migrations/003_stripe_idempotency_sketch.sql
-2) pip install stripe && set STRIPE_WEBHOOK_SECRET
-3) stripe.Webhook.construct_event(...) then INSERT ... ON CONFLICT DO NOTHING
+def _braintree_routes_sketch() -> str:
+    return '''"""Braintree webhook — idempotency + signature sketch (CrucibAI).
+1) Apply db/migrations/003_braintree_idempotency_sketch.sql
+2) pip install braintree && set BRAINTREE_MERCHANT_ID/PUBLIC_KEY/PRIVATE_KEY
+3) gateway.webhook_notification.parse(bt_signature, bt_payload) then INSERT ... ON CONFLICT DO NOTHING
 """
 import os
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Form, HTTPException
 
-router = APIRouter(prefix="/api/stripe", tags=["stripe"])
+router = APIRouter(prefix="/api/braintree", tags=["braintree"])
 
 
 @router.post("/webhook")
-async def stripe_webhook(request: Request):
-    _ = await request.body()
-    if not os.environ.get("STRIPE_WEBHOOK_SECRET"):
-        raise HTTPException(status_code=503, detail="STRIPE_WEBHOOK_SECRET not configured")
-    # event = stripe.Webhook.construct_event(payload, sig_header, whsec)
-    # await db.execute("INSERT INTO stripe_events_processed (id) VALUES ($1) ON CONFLICT DO NOTHING", event["id"])
+async def braintree_webhook(bt_signature: str = Form(...), bt_payload: str = Form(...)):
+    if not all(os.environ.get(k) for k in ("BRAINTREE_MERCHANT_ID", "BRAINTREE_PUBLIC_KEY", "BRAINTREE_PRIVATE_KEY")):
+        raise HTTPException(status_code=503, detail="Braintree is not configured")
+    # import braintree
+    # gateway = braintree.BraintreeGateway(...)
+    # notification = gateway.webhook_notification.parse(bt_signature, bt_payload)
+    # await db.execute("INSERT INTO braintree_events_processed (id) VALUES ($1) ON CONFLICT DO NOTHING", notification.id)
     return {"received": True}
 '''
 
 
-def _ensure_stripe_router_mounted(workspace_path: str) -> None:
-    """Append Stripe router mount to backend/main.py once (after stripe_routes.py exists)."""
+def _ensure_braintree_router_mounted(workspace_path: str) -> None:
+    """Append Braintree router mount to backend/main.py once (after braintree_routes.py exists)."""
     rel = "backend/main.py"
     text = _read_text(workspace_path, rel)
-    if not text or "CRUCIBAI_STRIPE_ROUTER_MOUNT" in text:
+    if not text or "CRUCIBAI_BRAINTREE_ROUTER_MOUNT" in text:
         return
     if "FastAPI" not in text or "app =" not in text:
         return
     suffix = """
 
-# CRUCIBAI_STRIPE_ROUTER_MOUNT — Stripe webhook routes (backend/stripe_routes.py)
+# CRUCIBAI_BRAINTREE_ROUTER_MOUNT — Braintree webhook routes (backend/braintree_routes.py)
 try:
-    import stripe_routes
-    app.include_router(stripe_routes.router)
+    import braintree_routes
+    app.include_router(braintree_routes.router)
 except Exception:
     pass
 """
@@ -329,7 +330,7 @@ def _production_sketch_readme() -> str:
     return """# Production sketch checklist (CrucibAI)
 
 - [ ] Secrets only in env — run production gate scan (deploy.build verification)
-- [ ] Stripe: webhook signature + `stripe_events_processed` idempotency table
+- [ ] Braintree: webhook signature + `braintree_events_processed` idempotency table
 - [ ] Multi-tenant: apply `db/migrations/002_multitenancy_rls.sql` (RLS on `app_items`); extend policies to other tables
 - [ ] Auth: replace client-demo tokens with server session or JWT validation
 - [ ] Observability: JSON logs + trace context; optional `deploy/observability/*.stub.*` for local OTel/Prometheus/Grafana
@@ -1364,24 +1365,24 @@ PROTECTED_PREFIX = "/api/private"
                 },
             ]
 
-        elif key == "backend.stripe":
-            stripe_py = _stripe_routes_sketch()
-            w = _safe_write(workspace_path, "backend/stripe_routes.py", stripe_py)
+        elif key == "backend.braintree":
+            braintree_py = _braintree_routes_sketch()
+            w = _safe_write(workspace_path, "backend/braintree_routes.py", braintree_py)
             if w:
                 out_files.append(w)
-            _ensure_stripe_router_mounted(workspace_path)
+            _ensure_braintree_router_mounted(workspace_path)
             m = _read_text(workspace_path, "backend/main.py")
             if (
                 m
-                and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m
+                and "CRUCIBAI_BRAINTREE_ROUTER_MOUNT" in m
                 and "backend/main.py" not in out_files
             ):
                 out_files.append("backend/main.py")
             routes_added = [
                 {
                     "method": "POST",
-                    "path": "/api/stripe/webhook",
-                    "description": "Stripe webhook (idempotency sketch)",
+                    "path": "/api/braintree/webhook",
+                    "description": "Braintree webhook (idempotency sketch)",
                 },
             ]
 
@@ -1482,7 +1483,7 @@ async def handle_db_migration(
             }
 
         mt = multitenant_intent(job)
-        st = stripe_intent(job)
+        st = braintree_intent(job)
         if key == "database.migration":
             try:
                 schema = heuristic_schema_from_requirements(job.get("goal") or "")
@@ -1520,16 +1521,16 @@ async def handle_db_migration(
                 if w2:
                     out.append(w2)
             if st:
-                sql_st = """-- 003_stripe_idempotency_sketch.sql — webhook dedupe
-CREATE TABLE IF NOT EXISTS stripe_events_processed (
+                sql_st = """-- 003_braintree_idempotency_sketch.sql — webhook dedupe
+CREATE TABLE IF NOT EXISTS braintree_events_processed (
   id TEXT PRIMARY KEY,
   received_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_stripe_events_received ON stripe_events_processed(received_at);
+CREATE INDEX IF NOT EXISTS idx_braintree_events_received ON braintree_events_processed(received_at);
 """
                 w3 = _safe_write(
                     workspace_path,
-                    "db/migrations/003_stripe_idempotency_sketch.sql",
+                    "db/migrations/003_braintree_idempotency_sketch.sql",
                     sql_st,
                     job_id=job.get("id"),
                 )
@@ -1731,7 +1732,7 @@ Auto-generated manifest — refine in continuation runs as the product hardens.
 
 ## Mocked
 
-- Third-party APIs (Stripe, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
+- Third-party APIs (Braintree, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
 
 ## Stubbed
 
@@ -1806,7 +1807,7 @@ STEP_HANDLERS = {
     "backend.models": handle_backend_route,
     "backend.routes": handle_backend_route,
     "backend.auth": handle_backend_route,
-    "backend.stripe": handle_backend_route,
+    "backend.braintree": handle_backend_route,
     "database.migration": handle_db_migration,
     "database.seed": handle_db_migration,
     "verification.compile": handle_verification_step,

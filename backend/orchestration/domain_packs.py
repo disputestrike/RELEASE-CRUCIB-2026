@@ -24,9 +24,9 @@ def multitenant_intent(job_or_goal: Dict[str, Any] | str) -> bool:
     )
 
 
-def stripe_intent(job_or_goal: Dict[str, Any] | str) -> bool:
+def braintree_intent(job_or_goal: Dict[str, Any] | str) -> bool:
     g = _g(job_or_goal)
-    return bool(re.search(r"\b(stripe|checkout|subscription|billing webhook)\b", g))
+    return bool(re.search(r"\b(braintree|checkout|subscription|billing webhook|payments?)\b", g))
 
 
 from .multiregion_terraform_sketch import multiregion_terraform_intent

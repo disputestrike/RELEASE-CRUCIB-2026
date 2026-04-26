@@ -16,14 +16,14 @@ PRICING UPDATE — March 2026 (approved):
 
 What users build per plan (marketing copy basis):
   50 credits  = 1 landing page
-  100 credits = 1 full app (React + FastAPI + DB + auth + Stripe payments)
+  100 credits = 1 full app (React + FastAPI + DB + auth + Braintree payments)
   150 credits = 1 mobile app (Expo + App Store + Play Store submission guide)
 """
 
 # 1 credit = 1000 tokens
 CREDITS_PER_TOKEN = 1000
 
-# Linear pricing — fully doubled credits at every tier. $0.06/credit throughout.
+# Linear pricing — fully doubled credits at every tier. $0.03/credit throughout.
 CREDIT_PLANS = {
     "free": {
         "credits": 200,

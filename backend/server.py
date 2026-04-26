@@ -545,7 +545,14 @@ ANNUAL_PRICES: Dict[str, Any] = {
     "scale": 599.99,
     "teams": 1499.99,
 }
-STRIPE_SECRET = os.environ.get("STRIPE_SECRET", "")
+PAYMENT_PROVIDER = "braintree"
+BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
+BRAINTREE_MERCHANT_ID = os.environ.get("BRAINTREE_MERCHANT_ID", "")
+BRAINTREE_PUBLIC_KEY = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
+BRAINTREE_PRIVATE_KEY = os.environ.get("BRAINTREE_PRIVATE_KEY", "")
+BRAINTREE_MERCHANT_ACCOUNT_ID = os.environ.get("BRAINTREE_MERCHANT_ACCOUNT_ID", "")
+BRAINTREE_CONFIGURED = bool(BRAINTREE_MERCHANT_ID and BRAINTREE_PUBLIC_KEY and BRAINTREE_PRIVATE_KEY)
+STRIPE_SECRET = ""
 REFERRAL_CAP_PER_MONTH = 10
 MAX_TOKEN_USAGE_LIST = 100
 MIN_CREDITS_FOR_LLM = 0
@@ -693,7 +700,7 @@ def _is_conversational_message(message: str) -> bool:
     if len(flat) >= 160:
         tech_signals = [
             'react native', 'ios', 'android', 'expo', 'jest', 'playwright',
-            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'stripe',
+            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'braintree',
             'postgres', 'mongodb', 'tailwind', 'fastapi', 'next.js', 'vite',
             'kubernetes', 'docker', 'offline', 'multi-tenant', 'saas',
             'dashboard', 'crm', 'oauth', 'jwt', 'websocket', 'redis',
@@ -943,7 +950,7 @@ class SuggestNextBody(BaseModel):
     last_prompt: Optional[str] = None
 
 
-class InjectStripeBody(BaseModel):
+class InjectPaymentBody(BaseModel):
     model_config = _model_config()
     code: str = ""
     target: Optional[str] = "checkout"
@@ -1823,6 +1830,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.trust", "router", False),
     ("backend.routes.knowledge", "router", False),
     ("backend.routes.connectors", "router", False),
+    ("backend.routes.braintree_payments", "router", False),
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),
     ("backend.routes.tokens", "router", False),

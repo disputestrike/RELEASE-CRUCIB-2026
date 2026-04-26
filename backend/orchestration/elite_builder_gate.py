@@ -47,7 +47,7 @@ def _goal_suggests_critical(goal: str) -> List[str]:
     tags: List[str] = []
     if any(x in g for x in ("tenant", "multi-tenant", "rls", "row-level")):
         tags.append("tenancy")
-    if any(x in g for x in ("stripe", "payment", "checkout")):
+    if any(x in g for x in ("Braintree", "payment", "checkout")):
         tags.append("payments")
     if any(x in g for x in ("auth", "rbac", "jwt", "oauth", "login")):
         tags.append("auth")
@@ -83,7 +83,7 @@ def _critical_runtime_evidence(text: str, tags: List[str]) -> Tuple[bool, List[s
             )
     if "payments" in tags:
         ok = (
-            "mock" in tlow or "stripe" in tlow and ("webhook" in tlow or "test" in tlow)
+            "mock" in tlow or "Braintree" in tlow and ("webhook" in tlow or "test" in tlow)
         )
         if not ok:
             issues.append(
