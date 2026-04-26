@@ -1712,7 +1712,12 @@ export default function App() {
   // Do not default to /published/{jobId}/ when the job has no real publish URL. That value made
   // PreviewPanel use an empty iframe, skipped GET /jobs/.../dev-preview, and hid Sandpack.
   const previewUrl =
-    job?.dev_server_url || job?.preview_url || job?.published_url || job?.deploy_url || null;
+    job?.dev_server_url ||
+    job?.preview_url ||
+    job?.published_url ||
+    job?.deploy_url ||
+    activeWorkspaceSession?.previewStatus?.url ||
+    null;
 
   const proofItemCount = useMemo(() => {
     if (!proof) return 0;
