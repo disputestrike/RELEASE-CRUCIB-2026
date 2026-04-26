@@ -66,15 +66,9 @@ def _guess_mime(path: Path) -> str:
 
 def _workspace_root() -> Path:
     """Return the configured WORKSPACE_ROOT."""
-    try:
-        from backend.config import WORKSPACE_ROOT
-        return Path(WORKSPACE_ROOT)
-    except Exception:
-        try:
-            from backend.project_state import WORKSPACE_ROOT
-            return Path(WORKSPACE_ROOT)
-        except Exception:
-            return Path("/tmp/workspaces")
+    from backend.services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.workspace_root()
 
 
 async def _get_project_id_for_job(job_id: str) -> Optional[str]:
@@ -132,20 +126,9 @@ def _job_workspace_root(job_id: str, project_id: Optional[str] = None) -> Path:
     3. WORKSPACE_ROOT/{job_id}               (legacy path)
     4. /tmp/workspaces/{job_id}              (last resort)
     """
-    root = _workspace_root()
-    pid = project_id or job_id
+    from backend.services.workspace_resolver import workspace_resolver
 
-    candidates = [
-        root / "projects" / pid,
-        root / "projects" / job_id,
-        root / job_id,
-        Path(f"/tmp/workspaces/{job_id}"),
-    ]
-    for c in candidates:
-        if c.exists() and c.is_dir():
-            return c
-    # Return the canonical path even if it doesn't exist yet
-    return root / "projects" / pid
+    return workspace_resolver.workspace_for_job(job_id, project_id).workspace
 
 
 def _resolve_serve_root(workspace: Path) -> Optional[Path]:

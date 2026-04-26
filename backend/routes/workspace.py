@@ -33,22 +33,15 @@ def _get_auth():
 
 
 def _workspace_root() -> Path:
-    try:
-        from ..config import WORKSPACE_ROOT
-        return Path(WORKSPACE_ROOT) / "projects"
-    except ImportError:
-        from ..config import ROOT_DIR
-        return Path(ROOT_DIR) / "workspace"
+    from ..services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.workspace_root() / "projects"
 
 
 def _project_workspace_path(project_id: str) -> Path:
-    try:
-        from ..server import _project_workspace_path as _srv_wp
-        return _srv_wp(project_id)
-    except (ImportError, Exception):
-        root = _workspace_root()
-        safe = project_id.replace("/", "_").replace("\\", "_").replace("..", "_")
-        return root / safe
+    from ..services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.project_workspace_path(project_id)
 
 
 def _safe_resolve(workspace: Path, rel: str) -> Path:
@@ -148,36 +141,9 @@ def _workspace_candidates(primary: Path, job_id: str = "") -> List[Path]:
     Listing/reading must tolerate both so a completed build cannot show an empty
     file room just because one surface resolved a different workspace root.
     """
-    roots: List[Path] = []
-    try:
-        base = _workspace_root().resolve().parent
-    except Exception:
-        base = primary.resolve().parent
-    names = [primary.name]
-    if job_id and job_id not in names:
-        names.append(job_id)
-    raw = [primary]
-    for name in names:
-        if not name:
-            continue
-        raw.extend(
-            [
-                base / "projects" / name,
-                base / name,
-            ]
-        )
-    seen = set()
-    for p in raw:
-        try:
-            resolved = p.resolve()
-        except Exception:
-            continue
-        key = str(resolved)
-        if key in seen:
-            continue
-        seen.add(key)
-        roots.append(resolved)
-    return roots
+    from ..services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.candidates_for(primary, job_id)
 
 
 def _file_kind(rel: str, full: Path) -> str:
