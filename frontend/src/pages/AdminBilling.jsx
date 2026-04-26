@@ -49,7 +49,7 @@ const AdminBilling = () => {
           Billing transactions
         </h1>
       </div>
-      <p className="text-[#666666]">Who paid, when, amount (from Stripe webhook ledger).</p>
+      <p className="text-[#666666]">Who paid, when, amount (from Braintree webhook ledger).</p>
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-10 h-10 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />

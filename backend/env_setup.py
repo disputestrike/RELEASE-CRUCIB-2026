@@ -28,9 +28,11 @@ REQUIRED_VARS = {
 
 OPTIONAL_VARS = {
     "payment": {
-        "STRIPE_SECRET_KEY": "Stripe secret key for payment processing",
-        "STRIPE_WEBHOOK_SECRET": "Stripe webhook signing secret",
-        "STRIPE_PUBLISHABLE_KEY": "Stripe publishable key (frontend)",
+        "BRAINTREE_MERCHANT_ID": "Braintree merchant ID for payment processing",
+        "BRAINTREE_PUBLIC_KEY": "Braintree public key",
+        "BRAINTREE_PRIVATE_KEY": "Braintree private key",
+        "BRAINTREE_ENVIRONMENT": "Braintree environment: sandbox or production",
+        "BRAINTREE_MERCHANT_ACCOUNT_ID": "Optional Braintree merchant account ID",
     },
     "email": {
         "SMTP_HOST": "SMTP server hostname",

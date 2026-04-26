@@ -323,7 +323,7 @@ const OurProjectsPage = () => {
             </article>
             <article id="solution-developers" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Developers</h3>
-              <p className="text-sm text-kimi-muted mb-4">IDE extensions, import via paste / ZIP / Git, Stripe injection, README and API docs. The swarm handles the heavy lifting; you keep full code ownership.</p>
+              <p className="text-sm text-kimi-muted mb-4">IDE extensions, import via paste / ZIP / Git, Braintree injection, README and API docs. The swarm handles the heavy lifting; you keep full code ownership.</p>
               <Link to="/learn" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Docs &amp; API</Link>
             </article>
           </div>
@@ -373,8 +373,8 @@ const OurProjectsPage = () => {
             </article>
             <article id="use-case-full-app" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
               <h3 className="text-lg font-semibold text-kimi-text mb-2">Full apps &amp; SaaS</h3>
-              <p className="text-sm text-kimi-muted mb-4">Auth, database, Stripe, dashboards, and mobile-ready Expo paths. Same pipeline from landing to production — quality score and phase retry included.</p>
-              <button type="button" onClick={() => startBuild('Full-stack SaaS with auth and Stripe')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build a full product</button>
+              <p className="text-sm text-kimi-muted mb-4">Auth, database, Braintree, dashboards, and mobile-ready Expo paths. Same pipeline from landing to production — quality score and phase retry included.</p>
+              <button type="button" onClick={() => startBuild('Full-stack SaaS with auth and Braintree')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build a full product</button>
             </article>
             <article id="use-case-automation" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
               <h3 className="text-lg font-semibold text-kimi-text mb-2">Automation &amp; agents</h3>
@@ -387,10 +387,10 @@ const OurProjectsPage = () => {
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Real-time data, admin controls, export to PDF and Excel.', cta: 'Build a dashboard' },
               { title: 'Landing Pages', desc: 'Hero, features, waitlist, and pricing sections. Design-to-code from a screenshot. Live in 30 minutes.', cta: 'Start a landing page' },
               { title: 'Mobile Apps', desc: 'iOS and Android with Expo. Production-ready. App Store submission pack with step-by-step guides for App Store and Google Play.', cta: 'Build a mobile app' },
-              { title: 'E‑Commerce & Checkout', desc: 'Product catalog, cart, checkout, payments. Inject Stripe in one command. Full automation from product list to order confirmation.', cta: 'Build a store' },
+              { title: 'E‑Commerce & Checkout', desc: 'Product catalog, cart, checkout, payments. Inject Braintree in one command. Full automation from product list to order confirmation.', cta: 'Build a store' },
               { title: 'Automations & Agents', desc: 'Daily digest. Lead follow-up. Content pipeline. Webhook handlers. Describe it — we create it. Schedule or trigger by webhook.', cta: 'Create an agent' },
               { title: 'Internal Tools', desc: 'Admin tables, forms, approval workflows, CRUD. Step chaining between actions. Agentic: ship in hours, not months.', cta: 'Build an internal tool' },
-              { title: 'SaaS Products', desc: 'Full-stack SaaS with auth, Stripe subscriptions, user dashboard, and admin panel. Import the Auth + SaaS pattern and build from there.', cta: 'Start a SaaS' },
+              { title: 'SaaS Products', desc: 'Full-stack SaaS with auth, Braintree subscriptions, user dashboard, and admin panel. Import the Auth + SaaS pattern and build from there.', cta: 'Start a SaaS' },
               { title: 'Docs, Slides & Sheets', desc: 'Generate README, API docs, FAQ schema, presentations, and CSV data — directly from your project or from a prompt.', cta: 'Generate documents' }
             ].map((item, i) => (
               <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">

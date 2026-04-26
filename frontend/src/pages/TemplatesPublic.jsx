@@ -13,7 +13,7 @@ const FALLBACK_TEMPLATES = [
   { id: 'dashboard', name: 'Dashboard', description: 'Sidebar + stats cards + chart placeholder', prompt: 'Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.' },
   { id: 'blog', name: 'Blog', description: 'Blog layout with posts list and post detail', prompt: 'Build a blog with a list of posts and a post detail view. React and Tailwind.' },
   { id: 'saas-shell', name: 'SaaS shell', description: 'Auth shell with nav and settings', prompt: 'Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.' },
-  { id: 'ecommerce', name: 'E-Commerce Store', description: 'Product grid, cart, checkout flow with Stripe', prompt: 'Build an e-commerce store with product listing, cart, and checkout. React and Tailwind.' },
+  { id: 'ecommerce', name: 'E-Commerce Store', description: 'Product grid, cart, checkout flow with Braintree', prompt: 'Build an e-commerce store with product listing, cart, and checkout. React and Tailwind.' },
   { id: 'portfolio', name: 'Portfolio', description: 'Personal portfolio with projects, about, and contact', prompt: 'Create a personal portfolio site with hero, projects grid, about section, and contact form. React and Tailwind.' },
   { id: 'landing-page', name: 'Landing Page', description: 'Marketing landing page with hero, features, pricing, CTA', prompt: 'Build a marketing landing page with hero section, features grid, pricing table, and CTA. React and Tailwind.' },
   { id: 'crm', name: 'CRM Dashboard', description: 'Customer management with contacts, deals, pipeline', prompt: 'Create a CRM dashboard with contacts list, deals pipeline, and activity feed. React and Tailwind.' },

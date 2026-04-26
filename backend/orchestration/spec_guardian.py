@@ -1,5 +1,5 @@
-"""
-Spec Guardian — compares user goals to what the current CrucibAI pipeline can prove.
+﻿"""
+Spec Guardian â€” compares user goals to what the current CrucibAI pipeline can prove.
 
 Modes (CRUCIBAI_SPEC_GUARD_MODE):
 - off: no violations recorded
@@ -70,7 +70,7 @@ def evaluate_goal_against_runner(
     ):
         add(
             "stack_nextjs_requested",
-            "Goal requests Next.js / NextAuth — use the full-system builder path and verify the emitted workspace against the requested runtime.",
+            "Goal requests Next.js / NextAuth â€” use the full-system builder path and verify the emitted workspace against the requested runtime.",
             "Prefer build_target=full_system_generator when you want a real Next.js codebase instead of the default web scaffold.",
             strict_blocker=False,
         )
@@ -79,14 +79,14 @@ def evaluate_goal_against_runner(
     ):
         add(
             "stack_ts_backend_requested",
-            "Goal requests a TypeScript Node API — direct builder mode should generate the requested service stack rather than the default FastAPI pack.",
+            "Goal requests a TypeScript Node API â€” direct builder mode should generate the requested service stack rather than the default FastAPI pack.",
             "Use the full-system builder path and verify generated service entrypoints, tests, and runtime docs.",
             strict_blocker=False,
         )
     if "prisma" in g or "drizzle" in g:
         add(
             "orm_requested",
-            "Goal requests Prisma/Drizzle — ensure the run uses full-system builder mode so ORM files are generated explicitly.",
+            "Goal requests Prisma/Drizzle â€” ensure the run uses full-system builder mode so ORM files are generated explicitly.",
             "Verifier should confirm the requested ORM package/config is present in the workspace.",
             strict_blocker=False,
         )
@@ -104,16 +104,16 @@ def evaluate_goal_against_runner(
     ):
         add(
             "orm_js_requested",
-            "Goal requests a JS/TS ORM stack — direct builder mode should emit that ORM explicitly, not silently convert to SQL sketches.",
+            "Goal requests a JS/TS ORM stack â€” direct builder mode should emit that ORM explicitly, not silently convert to SQL sketches.",
             "Treat missing ORM files as an execution failure, not a template success.",
             strict_blocker=False,
         )
 
-    # Enterprise / tenancy — template RLS is single-table; schema-per-tenant is not automated
+    # Enterprise / tenancy â€” template RLS is single-table; schema-per-tenant is not automated
     if "schema per tenant" in g or "schema-per-tenant" in g:
         add(
             "tenancy_schema_per_tenant",
-            "Goal requests schema-per-tenant isolation — this is advanced and must be implemented explicitly, not assumed from shared-schema defaults.",
+            "Goal requests schema-per-tenant isolation â€” this is advanced and must be implemented explicitly, not assumed from shared-schema defaults.",
             "Keep the run honest: generate the schema-per-tenant design or fail with an explicit gap.",
             strict_blocker=False,
         )
@@ -129,7 +129,7 @@ def evaluate_goal_against_runner(
     ):
         add(
             "tenancy_template_scope",
-            "Goal mentions tenancy/RLS — runner emits db/migrations/002_multitenancy_rls.sql (RLS on app_items via app.tenant_id).",
+            "Goal mentions tenancy/RLS â€” runner emits db/migrations/002_multitenancy_rls.sql (RLS on app_items via app.tenant_id).",
             "Extend policies to your other tables and wire set_config from the API; run integration tests in CI.",
             strict_blocker=False,
         )
@@ -137,7 +137,7 @@ def evaluate_goal_against_runner(
     if multiregion_terraform_intent(goal or ""):
         add(
             "multiregion_terraform_sketch_emitted",
-            "Goal matches multi-region / Terraform + cloud — runner adds terraform/multiregion_sketch and module stubs on deploy.build.",
+            "Goal matches multi-region / Terraform + cloud â€” runner adds terraform/multiregion_sketch and module stubs on deploy.build.",
             "Configure remote state, IAM, networking, data replication, and DNS before any apply.",
             strict_blocker=False,
         )
@@ -153,7 +153,7 @@ def evaluate_goal_against_runner(
     ):
         add(
             "infra_depth_beyond_template",
-            "Goal names Terraform or AWS services without the multi-region sketch trigger — full ECS/ElastiCache/Route53 modules are not auto-generated.",
+            "Goal names Terraform or AWS services without the multi-region sketch trigger â€” full ECS/ElastiCache/Route53 modules are not auto-generated.",
             "Narrow the goal to include multi-region + cloud keywords for terraform stubs, or author infra separately.",
             strict_blocker=False,
         )
@@ -161,7 +161,7 @@ def evaluate_goal_against_runner(
     if any(k in g for k in ("bullmq", "testcontainers", "k6")):
         add(
             "queues_or_load_harness_not_in_template",
-            "Goal requests BullMQ, Testcontainers, or k6 — not emitted by this Auto-Runner scaffold.",
+            "Goal requests BullMQ, Testcontainers, or k6 â€” not emitted by this Auto-Runner scaffold.",
             "Add worker processes and load tests in a separate repo or phase.",
             strict_blocker=False,
         )
@@ -184,7 +184,7 @@ def evaluate_goal_against_runner(
     ):
         add(
             "observability_pack_scope",
-            "Goal mentions observability — runner adds deploy/observability/* stubs + docs/OBSERVABILITY_PACK.md on deploy.build.",
+            "Goal mentions observability â€” runner adds deploy/observability/* stubs + docs/OBSERVABILITY_PACK.md on deploy.build.",
             "Configure OTLP endpoints, Prometheus scrape targets, and Grafana dashboards for your stack.",
             strict_blocker=False,
         )
@@ -192,7 +192,7 @@ def evaluate_goal_against_runner(
     if any(k in g for k in ("datadog", "new relic", "honeycomb")):
         add(
             "observability_vendor_saas",
-            "Vendor APM named — stubs target OpenTelemetry + Prometheus/Grafana; install vendor agents or exporters separately.",
+            "Vendor APM named â€” stubs target OpenTelemetry + Prometheus/Grafana; install vendor agents or exporters separately.",
             "See vendor docs for FastAPI/Python instrumentation.",
             strict_blocker=False,
         )
@@ -200,15 +200,15 @@ def evaluate_goal_against_runner(
     if "mfa" in g or "totp" in g or "auth.js" in g:
         add(
             "auth_depth_mismatch",
-            "Goal mentions MFA / Auth.js depth — runner provides client-demo auth pattern only.",
+            "Goal mentions MFA / Auth.js depth â€” runner provides client-demo auth pattern only.",
             "Harden auth before production.",
             strict_blocker=False,
         )
 
-    if "idempotent" in g and "stripe" in g:
+    if "idempotent" in g and "braintree" in g:
         add(
-            "stripe_production_depth",
-            "Goal requires production-grade Stripe idempotency — runner adds route stubs only.",
+            "braintree_production_depth",
+            "Goal requires production-grade Braintree payment idempotency â€” runner adds route stubs only.",
             "Implement webhook dedupe table and signature verification before live charges.",
             strict_blocker=False,
         )

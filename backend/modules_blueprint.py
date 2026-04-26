@@ -1657,8 +1657,8 @@ async def create_product(
         "type": body.type,
         "is_active": True,
         "metadata": body.metadata or {},
-        "stripe_product_id": None,
-        "stripe_price_id": None,
+        "braintree_product_id": None,
+        "braintree_plan_id": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -1736,7 +1736,7 @@ async def get_order(order_id: str, user: dict = Depends(_resolve_current_user)):
 async def create_checkout(
     body: CheckoutCreate, request: Request, user: dict = Depends(_resolve_current_user)
 ):
-    """Create a Stripe checkout session for a product."""
+    """Create a Braintree checkout handoff for a product."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
@@ -1745,81 +1745,45 @@ async def create_checkout(
         raise HTTPException(status_code=404, detail="Product not found")
     if not product.get("is_active", True):
         raise HTTPException(status_code=400, detail="Product is not active")
-    stripe_secret = os.environ.get("STRIPE_SECRET_KEY")
-    if not stripe_secret:
-        raise HTTPException(status_code=503, detail="Stripe is not configured")
-    try:
-        import stripe
-
-        stripe.api_key = stripe_secret
-        frontend_url = os.environ.get("FRONTEND_URL", str(request.base_url)).rstrip("/")
-        success_url = (
-            body.success_url
-            or f"{frontend_url}/commerce/success?session_id={{CHECKOUT_SESSION_ID}}"
+    configured = bool(
+        os.environ.get("BRAINTREE_MERCHANT_ID")
+        and os.environ.get("BRAINTREE_PUBLIC_KEY")
+        and os.environ.get("BRAINTREE_PRIVATE_KEY")
+    )
+    if not configured:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "braintree_not_configured",
+                "required_config": [
+                    "BRAINTREE_MERCHANT_ID",
+                    "BRAINTREE_PUBLIC_KEY",
+                    "BRAINTREE_PRIVATE_KEY",
+                    "BRAINTREE_ENVIRONMENT",
+                ],
+            },
         )
-        cancel_url = body.cancel_url or f"{frontend_url}/commerce/cancel"
-        # Create or reuse Stripe price
-        stripe_price_id = product.get("stripe_price_id")
-        if not stripe_price_id:
-            # Create Stripe product + price on the fly
-            sp = stripe.Product.create(
-                name=product["name"],
-                description=product.get("description") or "",
-                metadata={"crucibai_product_id": product["id"], "user_id": user["id"]},
-            )
-            price_kwargs: Dict[str, Any] = {
-                "unit_amount": int(product["price"] * 100),
-                "currency": product["currency"],
-                "product": sp["id"],
-            }
-            if product.get("type") == "subscription":
-                price_kwargs["recurring"] = {"interval": "month"}
-            sp_price = stripe.Price.create(**price_kwargs)
-            stripe_price_id = sp_price["id"]
-            now = datetime.now(timezone.utc).isoformat()
-            await db.products.update_one(
-                {"id": product["id"]},
-                {
-                    "$set": {
-                        "stripe_product_id": sp["id"],
-                        "stripe_price_id": stripe_price_id,
-                        "updated_at": now,
-                    }
-                },
-            )
-        mode = "subscription" if product.get("type") == "subscription" else "payment"
-        checkout_session = stripe.checkout.Session.create(
-            line_items=[{"price": stripe_price_id, "quantity": body.quantity or 1}],
-            mode=mode,
-            success_url=success_url,
-            cancel_url=cancel_url,
-            client_reference_id=user["id"],
-            metadata={"product_id": product["id"]},
-            customer_email=user.get("email"),
-        )
-        # Create a pending order record
-        now = datetime.now(timezone.utc).isoformat()
-        order = {
-            "id": str(uuid.uuid4()),
-            "user_id": user["id"],
-            "product_id": product["id"],
-            "stripe_checkout_id": checkout_session["id"],
-            "amount": product["price"] * (body.quantity or 1),
-            "currency": product["currency"],
-            "status": "pending",
-            "quantity": body.quantity or 1,
-            "created_at": now,
-            "updated_at": now,
-        }
-        await db.orders.insert_one(order)
-        return {
-            "status": "ok",
-            "checkout_url": checkout_session["url"],
-            "checkout_session_id": checkout_session["id"],
-            "order_id": order["id"],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
+    now = datetime.now(timezone.utc).isoformat()
+    order = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "product_id": product["id"],
+        "payment_provider": "braintree",
+        "amount": product["price"] * (body.quantity or 1),
+        "currency": product["currency"],
+        "status": "pending",
+        "quantity": body.quantity or 1,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.orders.insert_one(order)
+    return {
+        "status": "ready",
+        "provider": "braintree",
+        "order_id": order["id"],
+        "client_token_endpoint": "/api/payments/braintree/client-token",
+        "checkout_endpoint": "/api/payments/braintree/checkout",
+    }
 
 
 @commerce_router.get("/commerce/stats")
@@ -1997,7 +1961,7 @@ def _generate_schema_heuristic(
             "subscription",
             "plan",
             "billing",
-            "stripe",
+            "braintree",
             "saas",
             "pricing",
             "tier",
@@ -2008,7 +1972,7 @@ def _generate_schema_heuristic(
     # Feature flag overrides
     if "teams" in feature_set or "organizations" in feature_set:
         has_teams = True
-    if "payments" in feature_set or "stripe" in feature_set:
+    if "payments" in feature_set or "braintree" in feature_set:
         has_orders = True
         has_products = True
         has_subscriptions = True
@@ -2240,8 +2204,8 @@ def _generate_schema_heuristic(
             "  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'fulfilling', 'completed', 'cancelled', 'refunded')),",
             "  total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,",
             "  currency TEXT NOT NULL DEFAULT 'usd',",
-            "  stripe_session_id TEXT,",
-            "  stripe_payment_intent TEXT,",
+            "  braintree_transaction_id TEXT,",
+            "  braintree_payment_method_nonce TEXT,",
             "  items JSONB NOT NULL DEFAULT '[]',",
             "  metadata JSONB NOT NULL DEFAULT '{}',",
             "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
@@ -2261,7 +2225,7 @@ def _generate_schema_heuristic(
             {
                 "method": "POST",
                 "path": "/checkout",
-                "description": "Create Stripe checkout session",
+                "description": "Create Braintree checkout handoff",
             },
             {"method": "GET", "path": "/orders", "description": "List user's orders"},
             {
@@ -2270,8 +2234,10 @@ def _generate_schema_heuristic(
                 "description": "Get order detail",
             },
         ]
-        env_vars.append("STRIPE_SECRET_KEY=<your-stripe-secret-key>")
-        env_vars.append("STRIPE_WEBHOOK_SECRET=<your-stripe-webhook-secret>")
+        env_vars.append("BRAINTREE_MERCHANT_ID=<your-braintree-merchant-id>")
+        env_vars.append("BRAINTREE_PUBLIC_KEY=<your-braintree-public-key>")
+        env_vars.append("BRAINTREE_PRIVATE_KEY=<your-braintree-private-key>")
+        env_vars.append("BRAINTREE_ENVIRONMENT=sandbox")
 
     if has_messages:
         tables_sql_parts += [
@@ -2457,8 +2423,8 @@ def _generate_schema_heuristic(
             "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  plan TEXT NOT NULL DEFAULT 'free',",
             "  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'past_due', 'cancelled', 'trialing')),",
-            "  stripe_subscription_id TEXT,",
-            "  stripe_customer_id TEXT,",
+            "  braintree_subscription_id TEXT,",
+            "  braintree_customer_id TEXT,",
             "  current_period_start TIMESTAMPTZ,",
             "  current_period_end TIMESTAMPTZ,",
             "  cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,",

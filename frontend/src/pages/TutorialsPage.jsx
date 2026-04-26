@@ -38,10 +38,10 @@ const TUTORIALS = [
     category: 'web-apps',
     icon: Layers,
     steps: [
-      { title: 'Choose the SaaS template', content: 'Go to Templates and select "SaaS Starter". This pre-configures: React frontend, Node.js backend, PostgreSQL, Stripe payments, and user dashboard.' },
-      { title: 'Customize with your prompt', content: 'In the Workspace, describe your SaaS: "Build a project management SaaS like Linear. Features: kanban boards, team collaboration, sprint planning, time tracking. Stripe billing with free/pro/enterprise tiers."' },
-      { title: 'Use patterns for common features', content: 'Open the Pattern Library. Apply "Auth Pattern" (saves ~2,000 tokens), "Stripe Pattern" (saves ~3,000 tokens), and "RBAC Pattern" for team permissions. Patterns are pre-built, tested code blocks.' },
-      { title: 'Iterate with @ mentions', content: 'After the first build, refine: "@Dashboard.jsx add a burndown chart using Chart.js" or "@server.py add a webhook endpoint for Stripe events". The @ symbol tells CrucibAI which file to modify.' },
+      { title: 'Choose the SaaS template', content: 'Go to Templates and select "SaaS Starter". This pre-configures: React frontend, Node.js backend, PostgreSQL, Braintree payments, and user dashboard.' },
+      { title: 'Customize with your prompt', content: 'In the Workspace, describe your SaaS: "Build a project management SaaS like Linear. Features: kanban boards, team collaboration, sprint planning, time tracking. Braintree billing with free/pro/enterprise tiers."' },
+      { title: 'Use patterns for common features', content: 'Open the Pattern Library. Apply "Auth Pattern" (saves ~2,000 tokens), "Braintree Pattern" (saves ~3,000 tokens), and "RBAC Pattern" for team permissions. Patterns are pre-built, tested code blocks.' },
+      { title: 'Iterate with @ mentions', content: 'After the first build, refine: "@Dashboard.jsx add a burndown chart using Chart.js" or "@server.py add a webhook endpoint for Braintree events". The @ symbol tells CrucibAI which file to modify.' },
       { title: 'Deploy to production', content: 'Click Export > One-Click Deploy > Vercel. Enter your Vercel token (Settings > Deploy Tokens). Your SaaS is live in under 60 seconds with a production URL.' },
     ]
   },

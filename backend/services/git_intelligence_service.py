@@ -89,7 +89,7 @@ def analyze_repo(workspace_path: str) -> Dict[str, Any]:
         "Tailwind": ["tailwind.config.js", "tailwind.config.ts"],
         "TypeScript": ["tsconfig.json"],
         "Docker": ["Dockerfile", "docker-compose.yml"],
-        "Stripe": ["stripe", "checkout"],
+        "Braintree": ["braintree", "checkout"],
     }
     for tech, indicators in checks.items():
         for indicator in indicators:

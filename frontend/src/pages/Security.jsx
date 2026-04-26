@@ -20,7 +20,7 @@ export default function Security() {
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Platform security</h2>
           <ul className="list-disc pl-6 space-y-2 text-[#333]">
             <li><strong className="text-[#1A1A1A]">Authentication:</strong> Passwords hashed with bcrypt; JWT for sessions; optional MFA (TOTP). We never return passwords or hashes in API responses.</li>
-            <li><strong className="text-[#1A1A1A]">Secrets:</strong> API keys and webhook secrets are stored securely. We do not expose webhook secrets in list endpoints. Stripe webhooks are verified by signature.</li>
+            <li><strong className="text-[#1A1A1A]">Secrets:</strong> API keys and webhook secrets are stored securely. We do not expose webhook secrets in list endpoints. Braintree webhooks are verified by signature.</li>
             <li><strong className="text-[#1A1A1A]">Rate limiting:</strong> Requests are rate-limited per user and IP to prevent abuse.</li>
             <li><strong className="text-[#1A1A1A]">Security headers:</strong> We send headers such as X-Content-Type-Options, X-Frame-Options, HSTS, Content-Security-Policy, and Referrer-Policy to reduce XSS and related risks.</li>
             <li><strong className="text-[#1A1A1A]">HTTPS:</strong> Use HTTPS in production; we send Strict-Transport-Security so browsers enforce TLS.</li>
@@ -28,7 +28,7 @@ export default function Security() {
             <li><strong className="text-[#1A1A1A]">Terminal:</strong> Terminal access is project-scoped, command-audited, and launch-gated. Broad public host-shell exposure remains blocked until sandbox boundaries are complete.</li>
             <li><strong className="text-[#1A1A1A]">Generated-code sandbox:</strong> Generated code uses the sandbox executor with timeout, output, file-size, memory, CPU, and process limits before public terminal exposure is considered.</li>
             <li><strong className="text-[#1A1A1A]">Community templates:</strong> Launch templates are curated and moderation-gated before public listing.</li>
-            <li><strong className="text-[#1A1A1A]">Payments:</strong> We use Stripe for payments. Card data is handled by Stripe; we do not store full card numbers.</li>
+            <li><strong className="text-[#1A1A1A]">Payments:</strong> We use Braintree for payments. Card data is handled by Braintree; we do not store full card numbers.</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Your code and projects</h2>

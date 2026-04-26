@@ -102,7 +102,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
     "saas-mvp-builder": [
         "saas",
         "subscription",
-        "stripe billing",
+        "braintree billing",
         "mvp with billing",
         "paid app",
         "saas mvp",
@@ -115,7 +115,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
         "shop",
         "sell products",
         "product catalog",
-        "stripe checkout",
+        "braintree checkout",
         "marketplace",
         "shopify",
     ],

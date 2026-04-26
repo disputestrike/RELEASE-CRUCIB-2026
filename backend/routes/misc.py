@@ -92,7 +92,7 @@ try:
         GenerateDocsBody,
         GenerateFaqSchemaBody,
         GenerateReadmeBody,
-        InjectStripeBody,
+        InjectPaymentBody,
         OptimizeBody,
         ProjectEnvBody,
         QualityGateBody,
@@ -796,8 +796,8 @@ async def get_patterns(user: dict = Depends(_get_optional_user())):
             "tokens_saved": 45000,
         },
         {
-            "id": "stripe-checkout",
-            "name": "Stripe Checkout Flow",
+            "id": "braintree-checkout",
+            "name": "Braintree Checkout Flow",
             "category": "payments",
             "usage_count": 890,
             "tokens_saved": 60000,
@@ -937,9 +937,9 @@ PROMPT_TEMPLATES = [
         "category": "marketing",
     },
     {
-        "id": "stripe-saas",
-        "name": "Stripe subscription SaaS",
-        "prompt": "Build a SaaS landing page with pricing cards and Stripe Checkout integration for subscription. React and Tailwind.",
+        "id": "braintree-saas",
+        "name": "Braintree subscription SaaS",
+        "prompt": "Build a SaaS landing page with pricing cards and Braintree checkout integration for subscription payments. React and Tailwind.",
         "category": "app",
     },
     {
@@ -1109,14 +1109,14 @@ async def suggest_next(
     return {"suggestions": ["Add loading state", "Add tests", "Deploy"]}
 
 
-# ==================== INJECT STRIPE / ENV / SHARE ====================
+# ==================== INJECT PAYMENTS / ENV / SHARE ====================
 
 
-@router.post("/ai/inject-stripe")
-async def inject_stripe(
-    data: InjectStripeBody, user: dict = Depends(_get_authenticated_or_api_user())
+@router.post("/ai/inject-braintree")
+async def inject_braintree(
+    data: InjectPaymentBody, user: dict = Depends(_get_authenticated_or_api_user())
 ):
-    """Inject Stripe Checkout or subscription into React code. Uses your Settings keys when set."""
+    """Inject a Braintree checkout client into React code. Uses workspace model keys when set."""
     (
         _call_llm_with_fallback,
         _get_model_chain,
@@ -1125,8 +1125,21 @@ async def inject_stripe(
     ) = _get_llm_helpers()
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
-    model_chain = _get_model_chain("auto", "stripe", effective_keys=effective)
-    prompt = f"Add Stripe Checkout to this React code. Target: {data.target}. Use @stripe/react-stripe-js or Stripe.js. Add a checkout button and handle success. Use env var STRIPE_PUBLISHABLE_KEY. Return ONLY the full updated code.\n\n```\n{data.code[:8000]}\n```"
+    model_chain = _get_model_chain("auto", "braintree", effective_keys=effective)
+    prompt = f"""Add a Braintree Drop-in checkout flow to this React code.
+Target: {data.target}.
+
+Requirements:
+- Use the public Braintree Drop-in script or an npm-ready Braintree Drop-in integration.
+- Fetch a client token from /api/payments/braintree/client-token.
+- Submit payment_method_nonce to /api/payments/braintree/checkout with the selected plan or amount.
+- Do not use Stripe packages, Stripe.js, STRIPE_* env vars, or fake checkout URLs.
+- If server credentials are missing, render a clear disabled state that says Braintree credentials are required.
+- Return ONLY the full updated React code. No markdown.
+
+```jsx
+{data.code[:8000]}
+```"""
     response, _ = await _call_llm_with_fallback(
         message=prompt,
         system_message="Output only valid React code. No markdown.",
@@ -1144,6 +1157,21 @@ async def inject_stripe(
         .strip()
     )
     return {"code": code or data.code}
+
+
+@router.post("/ai/inject-stripe")
+async def inject_stripe_removed(
+    data: InjectPaymentBody, user: dict = Depends(_get_authenticated_or_api_user())
+):
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "error": "stripe_injector_removed",
+            "replacement": "/api/ai/inject-braintree",
+            "status_endpoint": "/api/payments/braintree/status",
+            "message": "CrucibAI payment generation now targets Braintree.",
+        },
+    )
 
 
 @router.post("/ai/generate-readme")

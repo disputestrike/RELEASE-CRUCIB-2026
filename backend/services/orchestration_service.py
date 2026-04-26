@@ -8,8 +8,10 @@ async def planner_project_state_service(user: Optional[dict], *, user_credits: C
     env_vars: Dict[str, str] = {}
     import os
     for key in (
-        "STRIPE_SECRET_KEY",
-        "STRIPE_PUBLISHABLE_KEY",
+        "BRAINTREE_MERCHANT_ID",
+        "BRAINTREE_PUBLIC_KEY",
+        "BRAINTREE_PRIVATE_KEY",
+        "BRAINTREE_ENVIRONMENT",
         "ANTHROPIC_API_KEY",
         "CEREBRAS_API_KEY",
         "LLAMA_API_KEY",

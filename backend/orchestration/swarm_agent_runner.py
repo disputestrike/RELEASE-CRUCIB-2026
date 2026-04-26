@@ -301,7 +301,7 @@ AGENT_MODEL_TIER: Dict[str, str] = {
     "Session Agent": "cerebras",
     "OAuth Provider Agent": "cerebras",
     "2FA Agent": "cerebras",
-    "Stripe Subscription Agent": "cerebras",
+    "Braintree Subscription Agent": "cerebras",
     "Invoice Agent": "cerebras",
     "CDN Agent": "cerebras",
     "SSR Agent": "cerebras",

@@ -407,7 +407,7 @@ export default function SystemExplorer({
               Environment variables are injected at deploy time. Sensitive values are never stored in code.
             </div>
             {['DATABASE_URL', 'ANTHROPIC_API_KEY', 'CEREBRAS_API_KEY', 'OPENAI_API_KEY',
-              'JWT_SECRET', 'STRIPE_SECRET_KEY', 'GOOGLE_CLIENT_ID'].map(k => (
+              'JWT_SECRET', 'BRAINTREE_MERCHANT_ID', 'GOOGLE_CLIENT_ID'].map(k => (
               <div key={k} className="se-env-item">
                 <span className="se-env-key">{k}</span>
                 <span className="se-env-val">= ••••••••</span>

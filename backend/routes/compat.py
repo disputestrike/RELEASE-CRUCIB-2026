@@ -407,7 +407,7 @@ async def cost_balance_compat(_user: dict = Depends(_get_optional_user())):
 async def payment_plans_compat():
     return {
         "status": "ready",
-        "checkout": "requires_stripe_configuration",
+        "checkout": "requires_braintree_configuration",
         "plans": [
             {"id": "free", "name": "Free", "credits": 200},
             {"id": "builder", "name": "Builder"},
@@ -485,7 +485,7 @@ async def integrations_status_compat(_user: dict = Depends(_get_optional_user())
             "vercel": "requires_config",
             "netlify": "requires_config",
             "slack": "requires_config",
-            "stripe": "requires_config",
+            "braintree": "requires_config",
             "tavily": "requires_config",
         },
         "note": "Integration contracts are surfaced honestly; live connector actions require credentials.",
@@ -564,7 +564,7 @@ async def mobile_jobs_compat(_user: dict = Depends(_get_optional_user())):
 
 @router.get("/commerce/products")
 async def commerce_products_compat(_user: dict = Depends(_get_optional_user())):
-    return {"products": [], "status": "foundation", "requires": ["Stripe or product data connector"]}
+    return {"products": [], "status": "foundation", "requires": ["Braintree or product data connector"]}
 
 
 @router.get("/channels")
@@ -619,13 +619,14 @@ async def create_project_from_template_compat(
 async def create_checkout_session_compat(
     payload: Dict[str, Any], _user: dict = Depends(_get_auth())
 ):
-    bundle = (payload or {}).get("bundle")
-    if bundle not in {"builder", "pro", "scale", "teams"}:
-        raise HTTPException(status_code=400, detail="Invalid bundle")
-    return {
-        "id": f"cs_test_{bundle}",
-        "url": f"https://checkout.stripe.com/c/pay/{bundle}",
-    }
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "error": "stripe_checkout_removed",
+            "replacement": "/api/payments/braintree/checkout",
+            "status_endpoint": "/api/payments/braintree/status",
+        },
+    )
 
 
 @router.post("/build/from-reference")

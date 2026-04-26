@@ -60,7 +60,12 @@ def _install_safe_import_stubs() -> dict[str, object]:
         server_stub.MAX_USER_PROJECTS_DASHBOARD = 100
         server_stub.TOKEN_BUNDLES = {}
         server_stub.ANNUAL_PRICES = {}
-        server_stub.STRIPE_SECRET = ""
+        server_stub.BRAINTREE_ENVIRONMENT = "sandbox"
+        server_stub.BRAINTREE_MERCHANT_ID = ""
+        server_stub.BRAINTREE_PUBLIC_KEY = ""
+        server_stub.BRAINTREE_PRIVATE_KEY = ""
+        server_stub.BRAINTREE_MERCHANT_ACCOUNT_ID = ""
+        server_stub.BRAINTREE_CONFIGURED = False
         server_stub.REFERRAL_CAP_PER_MONTH = 0
         server_stub.MAX_TOKEN_USAGE_LIST = 100
         server_stub.MIN_CREDITS_FOR_LLM = 0
@@ -100,7 +105,7 @@ def _install_safe_import_stubs() -> dict[str, object]:
             "GenerateDocsBody": _SimpleBody,
             "GenerateFaqSchemaBody": _SimpleBody,
             "GenerateReadmeBody": _SimpleBody,
-            "InjectStripeBody": _SimpleBody,
+            "InjectPaymentBody": _SimpleBody,
             "OptimizeBody": _SimpleBody,
             "ProjectEnvBody": _SimpleBody,
             "QualityGateBody": _SimpleBody,

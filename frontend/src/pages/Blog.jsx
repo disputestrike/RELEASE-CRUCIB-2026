@@ -46,7 +46,7 @@ const POSTS = [
     date: '2026-02',
     body: [
       'We take security in two places: the platform we run, and the code you build or bring.',
-      'On the platform we use rate limiting (per user and per IP), security headers (CSP, HSTS, X-Frame-Options, and more), request validation (max body size, blocking suspicious patterns), and CORS from configurable origins. Auth is JWT with bcrypt for passwords; we support MFA and API keys. We don’t return secrets in API responses; Stripe and webhook signatures are verified. We block disposable emails at signup and cap referral abuse. So the service itself is hardened for production use.',
+      'On the platform we use rate limiting (per user and per IP), security headers (CSP, HSTS, X-Frame-Options, and more), request validation (max body size, blocking suspicious patterns), and CORS from configurable origins. Auth is JWT with bcrypt for passwords; we support MFA and API keys. We don’t return secrets in API responses; Braintree and webhook signatures are verified. We block disposable emails at signup and cap referral abuse. So the service itself is hardened for production use.',
       'For your code we give you tools. In the Workspace you can run a Security scan on your project — we analyze the code and return a report. You can run an Accessibility check for labels, contrast, keyboard, and ARIA. When you bring code (paste, ZIP, or Git), you can run those same checks on the imported files. We don’t run your app in production; we help you see risks and fix them before you deploy.',
       'So: we protect the platform, and we give you visibility and checks for what you build and bring. No magic — just controls and feedback you can act on.',
     ],
