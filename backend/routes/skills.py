@@ -38,6 +38,12 @@ def _get_db():
         return None
 
 
+def _user_id(user) -> str:
+    if isinstance(user, dict):
+        return str(user.get("id") or user.get("user_id") or "guest")
+    return str(getattr(user, "id", None) or getattr(user, "user_id", None) or "guest")
+
+
 SYSTEM_SKILLS = [
     {
         "name": "web-app-builder",
@@ -405,22 +411,29 @@ async def get_active_skills(user: dict = Depends(_get_auth())):
     """Get all active skills for the current user."""
     db = _get_db()
     if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    user_doc = await db.users.find_one({"id": user["id"]})
+        return {"active_skill_ids": [], "status": "ready_without_persistence"}
+    user_doc = await db.users.find_one({"id": _user_id(user)})
     active_ids = (user_doc or {}).get("active_skill_ids", [])
     return {"active_skill_ids": active_ids}
 
 
 @router.get("/skills")
-async def list_skills(user: dict = Depends(_get_auth())):
+async def list_skills(user: dict = Depends(_get_optional_user())):
     """List all skills: system skills + user's custom skills + active state."""
     db = _get_db()
     if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    user_doc = await db.users.find_one({"id": user["id"]})
+        return {
+            "system_skills": SYSTEM_SKILLS,
+            "user_skills": [],
+            "active_skill_ids": [],
+            "status": "ready_without_persistence",
+        }
+    if not user:
+        return {"system_skills": SYSTEM_SKILLS, "user_skills": [], "active_skill_ids": []}
+    user_doc = await db.users.find_one({"id": _user_id(user)})
     active_ids = (user_doc or {}).get("active_skill_ids", [])
     # Fetch user's custom skills
-    user_skills_cursor = db.user_skills.find({"user_id": user["id"]})
+    user_skills_cursor = db.user_skills.find({"user_id": _user_id(user)})
     user_skills = await user_skills_cursor.to_list(200)
     return {
         "system_skills": SYSTEM_SKILLS,

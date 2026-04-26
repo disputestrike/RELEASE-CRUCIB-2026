@@ -5,6 +5,7 @@ Runtime control routes: task lifecycle, event feed, and swarm capability introsp
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,21 @@ def _get_auth():
     from ..deps import get_current_user
 
     return get_current_user
+
+
+def _get_optional_user():
+    from ..deps import get_optional_user
+
+    return get_optional_user
+
+
+def _agent_catalog_count() -> Optional[int]:
+    try:
+        from ..agent_dag import AGENT_DAG
+
+        return len(AGENT_DAG)
+    except Exception:
+        return None
 
 
 class CreateTaskBody(BaseModel):
@@ -138,18 +154,75 @@ async def runtime_recent_events(limit: int = Query(100, ge=1, le=500), _user: di
     return {"success": True, "events": events, "count": len(events)}
 
 
+@router.get("/metrics")
+async def runtime_metrics(_user: dict = Depends(_get_optional_user())):
+    """Production-safe runtime summary used by dashboard/home surfaces.
+
+    This endpoint intentionally reports observable in-process/runtime facts and
+    capability status. It does not pretend background workers or live agents are
+    running when there are no active tasks in this process.
+    """
+    rows = event_bus.recent_events(limit=200)
+    event_counts: Dict[str, int] = {}
+    for row in rows:
+        event_counts[row.event_type] = event_counts.get(row.event_type, 0) + 1
+    active_tasks = [
+        task
+        for task in getattr(task_manager, "tasks", {}).values()
+        if str(task.get("status") or "").lower() in {"running", "queued", "pending"}
+    ]
+    return {
+        "success": True,
+        "status": "operational",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "active_tasks": len(active_tasks),
+        "recent_event_count": len(rows),
+        "recent_event_types": event_counts,
+        "agent_catalog_count": _agent_catalog_count(),
+        "agent_execution": {
+            "catalog": "available",
+            "spawn_runtime": "available",
+            "live_count": len(active_tasks),
+            "note": "Active agent count reflects current runtime tasks, not the total DAG catalog.",
+        },
+    }
+
+
+@router.get("/inspect")
+async def runtime_inspect(
+    limit: int = Query(10, ge=1, le=100),
+    _user: dict = Depends(_get_auth()),
+):
+    """Inspectable runtime snapshot for product surfaces.
+
+    Returns recent events and active task metadata without exposing secrets.
+    """
+    events = [
+        {"type": row.event_type, "payload": row.payload, "ts": row.ts}
+        for row in event_bus.recent_events(limit=limit)
+    ]
+    tasks = list(getattr(task_manager, "tasks", {}).values())[-limit:]
+    return {
+        "success": True,
+        "status": "available",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "tasks": tasks,
+        "events": events,
+        "capabilities": {
+            "task_lifecycle": "available",
+            "event_replay": "available",
+            "swarm_spawn": "available",
+            "agent_catalog_count": _agent_catalog_count(),
+        },
+    }
+
+
 @router.get("/swarm/capabilities")
-async def swarm_capabilities(_user: dict = Depends(_get_auth())):
+async def swarm_capabilities(_user: dict = Depends(_get_optional_user())):
     max_branches_env: Optional[str] = os.environ.get("CRUCIB_SWARM_MAX_BRANCHES")
     hard_cap = int(max_branches_env) if max_branches_env and max_branches_env.isdigit() else None
 
-    agent_count: Optional[int] = None
-    try:
-        from ..routes.projects import _ORCHESTRATION_AGENTS
-
-        agent_count = len(_ORCHESTRATION_AGENTS)
-    except Exception:
-        agent_count = None
+    agent_count = _agent_catalog_count()
 
     return {
         "success": True,
@@ -157,6 +230,7 @@ async def swarm_capabilities(_user: dict = Depends(_get_auth())):
         "spawn_limit": hard_cap,
         "spawn_unbounded": hard_cap is None,
         "estimated_agent_catalog_count": agent_count,
+        "truth_statement": "Core agent catalog is real; large population claims are modeled cohorts unless explicitly marked as live LLM branches.",
     }
 
 

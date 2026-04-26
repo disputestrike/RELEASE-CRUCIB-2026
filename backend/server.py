@@ -1728,16 +1728,23 @@ async def run_benchmark_job_direct(
 
 @app.get("/api/llm-config")
 async def llm_config(user: User = Depends(get_authenticated_or_api_user)):
-    effective = await _effective_api_keys(user)
+    user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    anthropic_ready = bool(effective.get("anthropic") or effective.get("ANTHROPIC_API_KEY"))
+    cerebras_ready = bool(effective.get("cerebras") or effective.get("CEREBRAS_API_KEY"))
     return {
         "anthropic_model": ANTHROPIC_HAIKU_MODEL,
-        "anthropic_api_key": bool(effective.get("ANTHROPIC_API_KEY")),
-        "cerebras_api_key": bool(effective.get("CEREBRAS_API_KEY")),
+        "anthropic_api_key": anthropic_ready,
+        "cerebras_api_key": cerebras_ready,
         "chat_with_search_system": CHAT_WITH_SEARCH_SYSTEM,
         "real_agent_no_llm_keys_detail": REAL_AGENT_NO_LLM_KEYS_DETAIL,
         "has_any_llm_api_key": bool(effective),
-        "has_anthropic_api_key": bool(effective.get("ANTHROPIC_API_KEY")),
-        "has_cerebras_api_key": bool(effective.get("CEREBRAS_API_KEY")),
+        "has_anthropic_api_key": anthropic_ready,
+        "has_cerebras_api_key": cerebras_ready,
+        "providers": {
+            "anthropic": {"configured": anthropic_ready, "model": ANTHROPIC_HAIKU_MODEL},
+            "cerebras": {"configured": cerebras_ready},
+        },
     }
 
 

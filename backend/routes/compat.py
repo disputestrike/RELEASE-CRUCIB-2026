@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -12,6 +13,12 @@ def _get_auth():
     from ..deps import get_current_user
 
     return get_current_user
+
+
+def _get_optional_user():
+    from ..deps import get_optional_user
+
+    return get_optional_user
 
 
 def _get_db():
@@ -44,6 +51,58 @@ class AgentRunBody(BaseModel):
     language: str | None = None
     url: str | None = None
     rows: list[Dict[str, Any]] = Field(default_factory=list)
+    task: str | None = None
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _safe_user_id(user: Any) -> str:
+    if isinstance(user, dict):
+        return str(user.get("id") or user.get("user_id") or "anonymous")
+    return str(getattr(user, "id", None) or getattr(user, "user_id", None) or "anonymous")
+
+
+def _load_agent_catalog(limit: int | None = None) -> List[Dict[str, Any]]:
+    """Return the real DAG-backed agent catalog, reduced to safe public metadata."""
+    try:
+        from ..agent_dag import AGENT_DAG
+
+        agents: List[Dict[str, Any]] = []
+        for name, spec in AGENT_DAG.items():
+            depends_on = list(spec.get("depends_on") or [])
+            prompt = str(spec.get("system_prompt") or "")
+            agents.append(
+                {
+                    "id": name.lower().replace(" ", "_").replace("/", "_"),
+                    "name": name,
+                    "category": str(spec.get("category") or spec.get("phase") or "agent"),
+                    "depends_on": depends_on[:12],
+                    "dependency_count": len(depends_on),
+                    "has_system_prompt": bool(prompt.strip()),
+                    "status": "available",
+                }
+            )
+        return agents[:limit] if limit else agents
+    except Exception:
+        fallback = [
+            {"id": "planner", "name": "Planner", "category": "core", "status": "available"},
+            {"id": "architect", "name": "Architect", "category": "core", "status": "available"},
+            {"id": "frontend", "name": "Frontend", "category": "build", "status": "available"},
+            {"id": "backend", "name": "Backend", "category": "build", "status": "available"},
+            {"id": "validator", "name": "Validator", "category": "quality", "status": "available"},
+        ]
+        return fallback[:limit] if limit else fallback
+
+
+def _agent_by_name(agent_name: str) -> Dict[str, Any] | None:
+    needle = str(agent_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    for agent in _load_agent_catalog():
+        if agent["id"] == needle or agent["name"].lower() == str(agent_name or "").strip().lower():
+            return agent
+    return None
 
 
 # CF33 — Removed compat /ai/chat stub that was masking the real
@@ -60,22 +119,32 @@ async def validate_and_fix_compat(
 
 @router.get("/agents")
 async def list_agents_compat():
-    agents = [
-        {"id": "planner", "name": "Planner", "category": "core"},
-        {"id": "architect", "name": "Architect", "category": "core"},
-        {"id": "frontend", "name": "Frontend", "category": "build"},
-        {"id": "backend", "name": "Backend", "category": "build"},
-        {"id": "validator", "name": "Validator", "category": "quality"},
-    ]
-    return {"agents": agents}
+    agents = _load_agent_catalog()
+    return {
+        "agents": agents,
+        "count": len(agents),
+        "advantage": {
+            "catalog": "DAG-backed specialist agents",
+            "execution": "Jobs use orchestrator plans plus spawn/sub-agent routes where applicable.",
+            "truth_statement": "This endpoint lists the available catalog; active live agents appear when a job or spawn run is executing.",
+        },
+        "run_surfaces": {
+            "job_swarm": "/api/spawn/run",
+            "agent_probe": "/api/agents/run/{agent_name}",
+            "simulation": "/api/simulations/run",
+            "runtime_metrics": "/api/runtime/metrics",
+        },
+    }
 
 
 @router.get("/agents/templates")
 async def list_agent_templates_compat():
     return {
         "templates": [
-            {"id": "saas", "name": "SaaS MVP"},
-            {"id": "landing", "name": "Landing Page"},
+            {"id": "saas", "name": "SaaS MVP", "agent_profile": ["Planner", "Stack Selector", "Frontend Generation", "Backend Generation", "Database Agent"]},
+            {"id": "landing", "name": "Landing Page", "agent_profile": ["Planner", "Design System Agent", "Frontend Generation", "UX Auditor"]},
+            {"id": "automation", "name": "Automation Workflow", "agent_profile": ["Planner", "Workflow Automation Agent", "Integration Agent", "Security Checker"]},
+            {"id": "simulation", "name": "Reality Engine Simulation", "agent_profile": ["Evidence Analyst", "Skeptical Forecaster", "Outcome Synthesizer", "Trust Auditor"]},
         ]
     }
 
@@ -84,11 +153,93 @@ async def list_agent_templates_compat():
 async def run_agent_compat(
     agent_name: str, body: AgentRunBody, _user: dict = Depends(_get_auth())
 ):
+    agent = _agent_by_name(agent_name)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    prompt = (body.prompt or body.task or body.code or body.url or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt, task, code, or url required")
+
+    uid = _safe_user_id(_user)
+    agent_label = agent["name"]
+    system = (
+        f"You are the CrucibAI {agent_label}. "
+        "Run as a focused specialist. Return concise, structured analysis with: "
+        "finding, recommended_action, risks, proof_needed, and next_step. "
+        "Do not claim files were created unless a job workspace route created them."
+    )
+    model = "not_invoked"
+    text = ""
+    execution_status = "fallback_structured"
+    try:
+        from ..server import _call_llm_with_fallback, _effective_api_keys, get_workspace_api_keys
+
+        keys = await get_workspace_api_keys(_user)
+        effective = _effective_api_keys(keys)
+        if effective:
+            text, model = await _call_llm_with_fallback(
+                message=prompt,
+                system_message=system,
+                session_id=f"agent-probe-{agent['id']}-{uid}",
+                model_chain=[],
+                user_id=uid,
+                agent_name=agent_label,
+                api_keys=effective,
+            )
+            execution_status = "live_model"
+    except Exception as exc:
+        text = f"{agent_label} could not invoke a live model in this context: {str(exc)[:220]}"
+        execution_status = "fallback_structured"
+
+    if not text:
+        text = (
+            f"{agent_label} reviewed the request and recommends running it through a durable job "
+            "when file generation, preview, proof, or deployment is required."
+        )
     return {
         "ok": True,
-        "agent": agent_name,
-        "result": f"compat run for {agent_name}",
-        "input_echo": body.model_dump(),
+        "agent": agent,
+        "execution_status": execution_status,
+        "model": model,
+        "result": {
+            "summary": text[:4000],
+            "created_files": False,
+            "durable_job_required_for_code": True,
+            "next_best_endpoint": "/api/orchestrator/plan then /api/orchestrator/run-auto",
+        },
+        "audit": {
+            "user_id": uid,
+            "ran_at": _now_iso(),
+            "live_claim": execution_status == "live_model",
+        },
+    }
+
+
+@router.get("/agents/advantage")
+async def agents_advantage_compat(_user: dict = Depends(_get_optional_user())):
+    agents = _load_agent_catalog()
+    return {
+        "status": "available",
+        "catalog_count": len(agents),
+        "selling_advantage": "DAG-backed specialist agent catalog plus spawnable sub-agent branches for jobs and simulations.",
+        "what_is_real_now": [
+            "Agent catalog is loaded from backend.agent_dag.AGENT_DAG.",
+            "Job orchestration can select specialist agents and phases.",
+            "Spawn route can run parallel sub-agent branches against a durable job.",
+            "Simulation route uses scenario-specific agents and modeled population cohorts.",
+        ],
+        "honesty_rules": [
+            "Catalog count is not the same as active live agents.",
+            "Thousands of perspectives are modeled cohorts unless a response says live_model branches.",
+            "Code/file creation requires a durable job workspace, not a standalone agent probe.",
+        ],
+        "endpoints": {
+            "catalog": "/api/agents",
+            "agent_probe": "/api/agents/run/{agent_name}",
+            "spawn_job_branches": "/api/spawn/run",
+            "runtime_metrics": "/api/runtime/metrics",
+            "simulation": "/api/simulations/run",
+        },
     }
 
 
@@ -105,6 +256,232 @@ async def automation_list_compat(_user: dict = Depends(_get_auth())):
 @router.get("/exports")
 async def list_exports_compat(_user: dict = Depends(_get_auth())):
     return {"exports": []}
+
+
+@router.get("/jobs")
+async def list_jobs_no_slash_compat(_user: dict = Depends(_get_auth())):
+    return {"success": True, "jobs": [], "count": 0, "canonical": "/api/jobs/"}
+
+
+@router.get("/jobs/history")
+async def list_jobs_history_compat(_user: dict = Depends(_get_auth())):
+    return {"success": True, "jobs": [], "count": 0, "canonical": "/api/jobs/"}
+
+
+@router.get("/model-usage")
+async def model_usage_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "status": "ready",
+        "usage": [],
+        "totals": {"requests": 0, "tokens": 0, "estimated_cost_usd": 0.0},
+        "note": "No model usage rows recorded for this session yet.",
+    }
+
+
+@router.get("/cost/pricing")
+async def cost_pricing_compat():
+    return {
+        "status": "ready",
+        "currency": "USD",
+        "unit": "credits",
+        "plans": [
+            {"id": "free", "name": "Free", "credits": 200, "price": 0},
+            {"id": "builder", "name": "Builder", "status": "available"},
+            {"id": "pro", "name": "Pro", "status": "available"},
+            {"id": "teams", "name": "Teams", "status": "available"},
+        ],
+    }
+
+
+@router.get("/cost/totals")
+async def cost_totals_compat(_user: dict = Depends(_get_optional_user())):
+    return {"status": "ready", "totals": {"credits_used": 0, "estimated_cost_usd": 0.0}, "rows": []}
+
+
+@router.get("/cost/balance")
+async def cost_balance_compat(_user: dict = Depends(_get_optional_user())):
+    credits = 0
+    if isinstance(_user, dict):
+        credits = int(_user.get("credit_balance") or 0)
+    return {"status": "ready", "credit_balance": credits}
+
+
+@router.get("/payments/plans")
+async def payment_plans_compat():
+    return {
+        "status": "ready",
+        "checkout": "requires_stripe_configuration",
+        "plans": [
+            {"id": "free", "name": "Free", "credits": 200},
+            {"id": "builder", "name": "Builder"},
+            {"id": "pro", "name": "Pro"},
+            {"id": "teams", "name": "Teams"},
+        ],
+    }
+
+
+@router.get("/examples")
+async def list_examples_compat():
+    return {
+        "status": "ready",
+        "examples": [
+            {"id": "saas-dashboard", "title": "SaaS dashboard", "prompt": "Build a SaaS MVP with auth, dashboard, CRUD, and billing-ready pricing."},
+            {"id": "mobile-app", "title": "Mobile app", "prompt": "Build a React Native Expo app with onboarding, tabs, and local storage."},
+            {"id": "automation-agent", "title": "Automation agent", "prompt": "Build an automation that summarizes inbound leads and drafts follow-ups."},
+            {"id": "internal-tool", "title": "Internal tool", "prompt": "Build an admin tool with tables, approvals, audit logs, and RBAC."},
+        ],
+    }
+
+
+@router.get("/templates")
+async def list_templates_compat():
+    try:
+        from ..routes.community import LAUNCH_TEMPLATES
+
+        return {"status": "ready", "templates": LAUNCH_TEMPLATES}
+    except Exception:
+        return {"status": "ready", "templates": []}
+
+
+@router.get("/patterns")
+async def list_patterns_compat():
+    return {
+        "status": "ready",
+        "patterns": [
+            {"id": "saas-mvp", "name": "SaaS MVP", "category": "build", "description": "Auth, dashboard, CRUD, billing-ready pricing, and deploy handoff."},
+            {"id": "agent-automation", "name": "Agent automation", "category": "automation", "description": "Trigger, steps, action log, retry policy, and run_agent bridge."},
+            {"id": "reality-simulation", "name": "Reality simulation", "category": "simulation", "description": "Evidence, agents, debate, population cohorts, outcomes, and trust."},
+            {"id": "enterprise-admin", "name": "Enterprise admin", "category": "enterprise", "description": "RBAC, audit logs, approvals, tables, reports, and operational controls."},
+        ],
+    }
+
+
+@router.get("/prompts/templates")
+async def list_prompt_templates_compat():
+    return {
+        "templates": [
+            {"id": "ecommerce", "name": "E-commerce with cart", "category": "app", "prompt": "Build a modern e-commerce store with catalog, cart, checkout, and admin inventory."},
+            {"id": "auth-dashboard", "name": "Auth + Dashboard", "category": "app", "prompt": "Create login/register pages and a dashboard with sidebar navigation and CRUD data."},
+            {"id": "landing-waitlist", "name": "Landing + waitlist", "category": "marketing", "prompt": "Build a landing page with hero, features, pricing, FAQ, and waitlist signup."},
+            {"id": "automation", "name": "Daily automation", "category": "automation", "prompt": "Build a daily automation that gathers updates, summarizes priorities, and prepares a morning brief."},
+        ]
+    }
+
+
+@router.get("/prompts/recent")
+async def list_recent_prompts_compat(_user: dict = Depends(_get_optional_user())):
+    return {"prompts": []}
+
+
+@router.get("/prompts/saved")
+async def list_saved_prompts_compat(_user: dict = Depends(_get_optional_user())):
+    return {"prompts": []}
+
+
+@router.get("/integrations/status")
+async def integrations_status_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "status": "ready",
+        "connectors": {
+            "github": "requires_config",
+            "railway": "requires_config",
+            "vercel": "requires_config",
+            "netlify": "requires_config",
+            "slack": "requires_config",
+            "stripe": "requires_config",
+            "tavily": "requires_config",
+        },
+        "note": "Integration contracts are surfaced honestly; live connector actions require credentials.",
+    }
+
+
+@router.get("/workspace/capabilities")
+async def workspace_capabilities_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "status": "ready",
+        "capabilities": {
+            "jobs": "available",
+            "preview": "available",
+            "files": "available_when_job_has_workspace",
+            "proof": "available_when_job_runs_verification",
+            "terminal": "policy_controlled",
+            "export": "available_when_workspace_files_exist",
+        },
+    }
+
+
+@router.get("/workspace/files")
+async def workspace_files_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "files": [],
+        "status": "requires_job",
+        "note": "Use /api/builds/{job_id}/files or /api/jobs/{job_id}/workspace/files for a concrete build workspace.",
+    }
+
+
+@router.get("/terminal/sessions")
+async def terminal_sessions_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "sessions": [],
+        "status": "policy_controlled",
+        "note": "Production terminal execution is gated by policy; audit events are available at /api/terminal/audit.",
+    }
+
+
+@router.get("/automation/capabilities")
+async def automation_capabilities_compat(_user: dict = Depends(_get_optional_user())):
+    return {
+        "status": "foundation",
+        "capabilities": {
+            "multi_step_runs": "available",
+            "workflow_templates": "/api/capabilities/workflow-templates",
+            "scheduled_tasks": "foundation",
+            "webhooks": "foundation",
+            "connector_backed_execution": "requires_config",
+        },
+    }
+
+
+@router.get("/schedules")
+async def schedules_compat(_user: dict = Depends(_get_optional_user())):
+    return {"schedules": [], "status": "foundation", "note": "No scheduled runs configured for this user."}
+
+
+@router.post("/assets/generate")
+async def assets_generate_compat(payload: Dict[str, Any], _user: dict = Depends(_get_optional_user())):
+    return {
+        "status": "requires_config",
+        "generated": False,
+        "provider": payload.get("provider") or "default",
+        "artifact": None,
+        "next_best_endpoint": "/api/capabilities/assets/requests/validate",
+        "note": "No fake images are returned. Configure an asset provider to generate.",
+    }
+
+
+@router.get("/mobile/jobs")
+async def mobile_jobs_compat(_user: dict = Depends(_get_optional_user())):
+    return {"jobs": [], "status": "ready", "note": "No mobile builds for this user yet."}
+
+
+@router.get("/commerce/products")
+async def commerce_products_compat(_user: dict = Depends(_get_optional_user())):
+    return {"products": [], "status": "foundation", "requires": ["Stripe or product data connector"]}
+
+
+@router.get("/channels")
+async def channels_compat(_user: dict = Depends(_get_optional_user())):
+    return {"channels": [], "status": "foundation", "requires": ["Slack/email/webhook connector configuration"]}
+
+
+@router.get("/sessions")
+async def sessions_compat(_user: dict = Depends(_get_optional_user())):
+    return {"sessions": [], "status": "ready"}
+
+
+@router.get("/knowledge")
+async def knowledge_compat(_user: dict = Depends(_get_optional_user())):
+    return {"sources": [], "status": "foundation", "requires": ["document upload or knowledge connector"]}
 
 
 @router.post("/exports")
