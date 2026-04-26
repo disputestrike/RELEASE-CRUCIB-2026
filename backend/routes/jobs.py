@@ -192,7 +192,6 @@ class JobStatusUpdate(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/", status_code=201)
 async def create_job(
     body: JobCreateRequest,
     user: dict = Depends(_get_auth()),
@@ -218,6 +217,10 @@ async def create_job(
     except Exception as e:
         logger.exception("POST /api/jobs error")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+router.add_api_route("", create_job, methods=["POST"], status_code=201, include_in_schema=False)
+router.add_api_route("/", create_job, methods=["POST"], status_code=201)
 
 
 @router.get("/")
