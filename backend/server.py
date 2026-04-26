@@ -1821,6 +1821,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.deploy", "router", False),
     ("backend.routes.ecosystem", "router", False),
     ("backend.routes.ai", "router", False),
+    ("backend.routes.images", "router", False),
+    ("backend.routes.migration", "router", False),
     ("backend.routes.git_sync", "router", False),
     ("backend.routes.ide", "router", True),
     ("backend.routes.mobile", "mobile_router", True),

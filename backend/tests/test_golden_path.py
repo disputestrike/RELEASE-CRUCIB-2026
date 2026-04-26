@@ -213,6 +213,7 @@ async def test_full_golden_path():
         status = final.get("status")
         print(f"  Final status: {status}")
         assert status != "timeout", f"Job timed out after {TIMEOUT_SECONDS}s"
+        assert status == "completed", f"Golden path must complete successfully, got {status}: {final}"
 
         # 3. Check steps completed
         r = await client.get(f"{BASE_URL}/api/jobs/{job_id}/steps", headers=headers)
@@ -276,6 +277,21 @@ async def test_full_golden_path():
             trust = proof.get("trust_score", 0)
             print(f"  Proof: quality={quality} trust={trust}")
             assert quality >= 50, f"Quality score too low: {quality}"
+
+        # 7. Verify backend preview readiness and static HTML serving.
+        r = await client.get(f"{BASE_URL}/api/jobs/{job_id}/dev-preview", headers=headers)
+        assert r.status_code == 200, f"dev-preview failed: {r.status_code} {r.text[:300]}"
+        preview = r.json()
+        assert preview.get("status") == "ready", f"Preview not ready: {preview}"
+        preview_url = preview.get("dev_server_url")
+        assert preview_url, f"Missing dev_server_url: {preview}"
+        if str(preview_url).startswith("/"):
+            preview_url = f"{BASE_URL}{preview_url}"
+        html_resp = await client.get(str(preview_url), headers=headers)
+        assert html_resp.status_code == 200, f"Preview serve failed: {html_resp.status_code} {html_resp.text[:200]}"
+        assert "text/html" in html_resp.headers.get("content-type", ""), html_resp.headers
+        html = html_resp.text.lower()
+        assert 'id="root"' in html or "id='root'" in html or 'id="app"' in html or "id='app'" in html
 
         print(f"\n  ✅ Golden path PASSED for job {job_id}")
 
