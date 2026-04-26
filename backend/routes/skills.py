@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -404,6 +405,167 @@ class UpdateUserSkillBody(BaseModel):
     short_desc: Optional[str] = Field(None, max_length=200)
     instructions: Optional[str] = Field(None, max_length=8000)
     trigger_phrases: Optional[list] = None
+
+
+class GenerateSkillBody(BaseModel):
+    description: str = Field(..., min_length=3, max_length=2000)
+    auto_create: bool = True
+    activate: bool = True
+    public: bool = False
+
+
+def _slugify_skill_name(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return slug[:54].strip("-") or "generated-skill"
+
+
+def _skill_keywords(description: str) -> list[str]:
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{2,}", description.lower())
+    stop = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "into",
+        "from",
+        "skill",
+        "create",
+        "build",
+        "make",
+        "turning",
+    }
+    out = []
+    for word in words:
+        if word in stop or word in out:
+            continue
+        out.append(word)
+        if len(out) >= 10:
+            break
+    return out
+
+
+def _infer_skill_category(description: str) -> str:
+    d = description.lower()
+    if any(k in d for k in ["pdf", "document", "docx", "ingest", "extract", "knowledge"]):
+        return "knowledge"
+    if any(k in d for k in ["cron", "schedule", "workflow", "automation", "webhook"]):
+        return "automate"
+    if any(k in d for k in ["image", "asset", "design", "brand", "logo"]):
+        return "asset"
+    if any(k in d for k in ["test", "qa", "verify", "security", "compliance"]):
+        return "quality"
+    return "build"
+
+
+def _draft_skill_contract(description: str, user_id: str) -> dict:
+    clean = " ".join((description or "").split())
+    keywords = _skill_keywords(clean)
+    category = _infer_skill_category(clean)
+    base_name = _slugify_skill_name(" ".join(keywords[:5]) or clean)
+    display = " ".join(w.capitalize() for w in base_name.split("-")[:5]) or "Generated Skill"
+    now = datetime.now(timezone.utc).isoformat()
+    instructions = f"""# {display}
+
+Purpose:
+{clean}
+
+Operating contract:
+- Treat this as a reusable CrucibAI skill, not a fake external integration.
+- First classify the user's request and identify required inputs, files, credentials, and expected artifacts.
+- Use existing CrucibAI capabilities before inventing new architecture.
+- If a required connector, credential, parser, or provider is missing, return an honest requires_config or unsupported state.
+- Persist source documents, extracted text, summaries, requirements, design notes, and technical constraints when document ingestion is involved.
+- Produce production-grade code structure when code is generated: modular files, typed contracts, services, tests, docs, and a code manifest.
+- Return clear artifacts, acceptance checks, and next actions.
+
+Inputs to request when missing:
+- Source files, URLs, or user assumptions.
+- Target platform or stack.
+- Data privacy requirements.
+- Deployment target and credentials, when relevant.
+
+Expected outputs:
+- skill_execution_plan
+- generated_or_updated_files
+- evidence_or_source_map
+- validation_results
+- next_steps
+"""
+    return {
+        "id": f"skill_{uuid.uuid4().hex}",
+        "user_id": user_id,
+        "name": f"generated-{base_name}",
+        "display_name": display,
+        "icon": "✨",
+        "color": "#7c3aed",
+        "category": category,
+        "short_desc": clean[:180],
+        "instructions": instructions[:8000],
+        "skill_md": instructions[:8000],
+        "trigger_phrases": keywords,
+        "trigger_prompt": clean,
+        "public": False,
+        "generated_by": "dynamic_skill_agent",
+        "execution_contract": {
+            "status": "available",
+            "kind": "instruction_skill",
+            "truth_policy": "do_not_claim_live_external_actions_without_config",
+            "artifact_outputs": [
+                "skill_execution_plan",
+                "generated_or_updated_files",
+                "source_map",
+                "validation_results",
+            ],
+        },
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+@router.post("/skills/generate")
+async def generate_skill(body: GenerateSkillBody, user: dict = Depends(_get_auth())):
+    """Dynamic Skill Agent: draft, persist, and optionally activate a reusable skill contract."""
+    user_id = _user_id(user)
+    draft = _draft_skill_contract(body.description, user_id)
+    draft["public"] = bool(body.public)
+    if not body.auto_create:
+        return {
+            "status": "drafted",
+            "persisted": False,
+            "activated": False,
+            "skill": draft,
+            "note": "auto_create=false, so the skill was drafted but not saved.",
+        }
+
+    db = _get_db()
+    if db is None:
+        return {
+            "status": "drafted_without_persistence",
+            "persisted": False,
+            "activated": False,
+            "skill": draft,
+            "note": "Database is not ready; returning a complete skill contract for the client.",
+        }
+
+    await db.user_skills.insert_one(draft)
+    activated = False
+    if body.activate:
+        await db.users.update_one(
+            {"id": user_id},
+            {"$addToSet": {"active_skill_ids": draft["id"]}},
+            upsert=True,
+        )
+        activated = True
+    saved = dict(draft)
+    saved.pop("_id", None)
+    return {
+        "status": "created",
+        "persisted": True,
+        "activated": activated,
+        "skill": saved,
+    }
 
 
 @router.get("/skills/active")
