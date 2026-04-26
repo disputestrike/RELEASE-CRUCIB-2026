@@ -8,6 +8,7 @@ import os
 from collections import deque
 from typing import Any, Dict, List, Set
 from .agents.schemas import IntentSchema
+from .orchestration.code_generation_standard import CODE_GENERATION_AGENT_APPENDIX
 
 # Agent names must match _ORCHESTRATION_AGENTS in server.py
 # depends_on = list of agent names that must complete before this one
@@ -1426,8 +1427,40 @@ def get_system_prompt_for_agent(agent_name: str) -> str:
     if agent_name not in AGENT_DAG:
         return ""
     if _use_token_optimized() and agent_name in OPTIMIZED_SYSTEM_PROMPTS:
-        return OPTIMIZED_SYSTEM_PROMPTS[agent_name]
-    return AGENT_DAG[agent_name].get("system_prompt", "")
+        prompt = OPTIMIZED_SYSTEM_PROMPTS[agent_name]
+    else:
+        prompt = AGENT_DAG[agent_name].get("system_prompt", "")
+    return _with_code_generation_standard(agent_name, prompt)
+
+
+_CODE_STANDARD_AGENTS = {
+    "Planner",
+    "Stack Selector",
+    "Frontend Generation",
+    "Backend Generation",
+    "Database Agent",
+    "API Integration",
+    "Test Generation",
+    "Deployment Agent",
+    "Documentation Agent",
+    "Code Review Agent",
+    "UX Auditor",
+    "Design System Agent",
+    "Component Library Agent",
+    "Table Agent",
+    "Form Builder Agent",
+    "Workflow Agent",
+    "Approval Flow Agent",
+}
+
+
+def _with_code_generation_standard(agent_name: str, prompt: str) -> str:
+    """Attach the senior codebase standard to agents that influence generated code."""
+    if agent_name not in _CODE_STANDARD_AGENTS:
+        return prompt
+    if "CRUCIBAI CODEBASE STANDARD" in prompt:
+        return prompt
+    return f"{prompt}\n\n{CODE_GENERATION_AGENT_APPENDIX}"
 
 
 def topological_sort(dag: Dict[str, Dict[str, Any]]) -> List[str]:
