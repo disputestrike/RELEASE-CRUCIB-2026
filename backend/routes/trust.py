@@ -209,6 +209,26 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             },
         }
 
+    @router.get("/trust/summary")
+    async def trust_summary():
+        """Compact trust summary consumed by app shell surfaces."""
+        benchmark = await trust_benchmark_summary()
+        security = await trust_security_posture()
+        full_systems = await trust_full_systems_summary()
+        benchmark_ready = benchmark.get("status") == "ready"
+        full_systems_ready = full_systems.get("status") == "ready"
+        return {
+            "status": "ready" if benchmark_ready and full_systems_ready else "partial",
+            "benchmark": benchmark,
+            "security": security,
+            "full_systems": full_systems,
+            "checks": {
+                "benchmark_ready": benchmark_ready,
+                "full_systems_ready": full_systems_ready,
+                "security_posture_ready": True,
+            },
+        }
+
     @router.post("/trust/proof-manifest/verify")
     async def trust_proof_manifest_verify(body: dict):
         """Verify signed proof manifest integrity with server-side HMAC secret."""
