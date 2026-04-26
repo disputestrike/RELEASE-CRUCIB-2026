@@ -51,6 +51,43 @@ class TranscriptAppend(BaseModel):
     role: Literal["user", "assistant"] = "user"
     body: str = Field(..., min_length=1, max_length=32000)
 
+
+def _event_payload(event: Dict[str, Any]) -> Dict[str, Any]:
+    payload = event.get("payload")
+    if isinstance(payload, dict):
+        return payload
+    try:
+        return _json.loads(event.get("payload_json") or "{}")
+    except Exception:
+        return {}
+
+
+def _transcript_messages_from_events(events: List[Dict[str, Any]], job_id: str) -> List[Dict[str, Any]]:
+    messages: List[Dict[str, Any]] = []
+    for event in events:
+        event_type = event.get("event_type") or event.get("type")
+        if event_type != "workspace_transcript":
+            continue
+        payload = _event_payload(event)
+        body = (payload.get("text") or payload.get("body") or "").strip()
+        if not body:
+            continue
+        role = payload.get("role") if payload.get("role") in {"user", "assistant"} else "user"
+        messages.append(
+            {
+                "id": event.get("id") or event.get("event_id"),
+                "jobId": job_id,
+                "role": role,
+                "body": body,
+                "text": body,
+                "created_at": event.get("created_at"),
+                "ts": payload.get("ts"),
+                "source": payload.get("source") or "workspace_transcript",
+            }
+        )
+    return messages
+
+
 @router.post("/benchmark/run")
 async def run_benchmark_job_fallback(
     body: BenchmarkRunRequest,
@@ -350,6 +387,33 @@ async def append_job_transcript(
         raise
     except Exception as e:
         logger.exception("POST /api/jobs/%s/transcript error", job_id)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/{job_id}/transcript")
+async def get_job_transcript(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Return durable workspace chat lines for a job."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        pool = await _get_pool()
+        if pool is not None:
+            rs.set_pool(pool)
+        events = await rs.get_job_events(job_id)
+        messages = _transcript_messages_from_events(events, job_id)
+        return {
+            "success": True,
+            "job_id": job_id,
+            "messages": messages,
+            "count": len(messages),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/transcript error", job_id)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

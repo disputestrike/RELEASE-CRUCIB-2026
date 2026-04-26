@@ -6,6 +6,7 @@ Raw server paths are never accepted from clients.
 """
 
 import io
+import hashlib
 import logging
 import mimetypes
 import os
@@ -254,6 +255,31 @@ def _collect_job_workspace_files(workspace: Path, job_id: str = "") -> List[Dict
     return files
 
 
+def _workspace_manifest_payload(workspace: Path, job_id: str, files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    paths = {str(row.get("path") or "") for row in files}
+    source_count = sum(1 for row in files if row.get("kind") == "source")
+    preview_count = sum(1 for row in files if row.get("kind") == "preview_artifact")
+    total_size = sum(int(row.get("size") or 0) for row in files)
+    candidate_exists = any(p.exists() and p.is_dir() for p in _workspace_candidates(workspace, job_id))
+    has_app_entry = any(
+        path.endswith(("App.jsx", "App.js", "App.tsx", "App.ts", "main.jsx", "main.tsx", "index.jsx", "index.tsx"))
+        for path in paths
+    )
+    digest = hashlib.sha256("\n".join(sorted(paths)[:200]).encode("utf-8")).hexdigest()[:16]
+    return {
+        "job_id": job_id,
+        "workspace_exists": candidate_exists,
+        "count": len(files),
+        "total_count": len(files),
+        "source_count": source_count,
+        "preview_artifact_count": preview_count,
+        "has_package_json": "package.json" in paths,
+        "has_app_entry": has_app_entry,
+        "has_dist_index": "dist/index.html" in paths,
+        "fingerprint": f"{len(files)}:{total_size}:{digest}",
+    }
+
+
 def _resolve_job_workspace_file(workspace: Path, rel: str, job_id: str = "") -> Path:
     for candidate in _workspace_candidates(workspace, job_id):
         try:
@@ -363,6 +389,17 @@ async def list_job_workspace_files(
         "has_more": has_more,
         "next_offset": off + lim if has_more else None,
     }
+
+
+@router.get("/jobs/{job_id}/workspace/manifest")
+async def get_job_workspace_manifest(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Compact workspace manifest for polling while a job is active."""
+    workspace = await _assert_job_access(job_id, user)
+    all_files = _collect_job_workspace_files(workspace, job_id)
+    return _workspace_manifest_payload(workspace, job_id, all_files)
 
 
 @router.get("/jobs/{job_id}/workspace/file")

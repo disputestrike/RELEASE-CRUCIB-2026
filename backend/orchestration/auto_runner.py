@@ -87,12 +87,23 @@ def _max_concurrent_steps(load_factor: float = 1.0) -> int:
 
 def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
     """
-    When verification.preview already completed, re-running full Playwright/npm at job end
-    often fails spuriously (port, timing) while the DAG already proved the bundle once.
-    Set CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW=0 to always run the final gate.
+    Optional local-dev escape hatch only.
+
+    Production completion must always re-run the final preview gate against the
+    final filesystem state. An earlier verification.preview step can become
+    stale after later writes, repairs, or deploy packaging.
     """
-    raw = os.environ.get("CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW", "1").strip().lower()
-    if raw in ("0", "false", "no", "off"):
+    prod_markers = (
+        os.environ.get("RAILWAY_ENVIRONMENT"),
+        os.environ.get("CRUCIBAI_ENV"),
+        os.environ.get("ENVIRONMENT"),
+        os.environ.get("NODE_ENV"),
+    )
+    if any(str(v or "").strip().lower() == "production" for v in prod_markers):
+        return False
+
+    raw = os.environ.get("CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW", "0").strip().lower()
+    if raw not in ("1", "true", "yes", "on"):
         return False
     return any(
         s.get("step_key") == "verification.preview" and s.get("status") == "completed"

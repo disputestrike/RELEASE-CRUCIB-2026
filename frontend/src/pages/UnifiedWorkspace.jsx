@@ -523,6 +523,37 @@ export default function UnifiedWorkspace() {
   }, [job?.status, effectiveJobId]);
 
   useEffect(() => {
+    if (!effectiveJobId || !token || !API) return undefined;
+    const active = isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }) || job?.status === 'blocked';
+    if (!active) return undefined;
+    let cancelled = false;
+    let lastFingerprint = '';
+    const headers = { Authorization: `Bearer ${token}` };
+    const pollManifest = async () => {
+      try {
+        const res = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/manifest`, {
+          headers,
+          timeout: 12000,
+        });
+        if (cancelled) return;
+        const fingerprint = String(res.data?.fingerprint || '');
+        if (fingerprint && fingerprint !== lastFingerprint) {
+          lastFingerprint = fingerprint;
+          setWorkspacePullKey((k) => k + 1);
+        }
+      } catch {
+        /* workspace may not exist yet while the run is booting */
+      }
+    };
+    void pollManifest();
+    const id = setInterval(pollManifest, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [effectiveJobId, token, API, job?.status, stage]);
+
+  useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
 
@@ -829,24 +860,52 @@ export default function App() {
   useEffect(() => {
     if (!effectiveJobId || !token || !API) return;
     if (transcriptRebuiltForJobRef.current === effectiveJobId) return;
-    const hasT = events.some((e) => (e?.type || e?.event_type) === 'workspace_transcript');
-    if (!hasT) return;
-    const fromJob = jobTranscriptLinesFromEvents(events, effectiveJobId);
-    setUserChatMessages((prev) => {
-      if (prev.length > 0) {
-        const onlyHydrate = prev.every((m) => String(m.id || '').startsWith('hydrate-'));
-        if (!onlyHydrate) {
-          transcriptRebuiltForJobRef.current = effectiveJobId;
-          return prev;
+    let cancelled = false;
+    const applyMessages = (fromJob) => {
+      if (cancelled || !fromJob.length) return;
+      setUserChatMessages((prev) => {
+        if (prev.length > 0) {
+          const onlyHydrate = prev.every((m) => String(m.id || '').startsWith('hydrate-'));
+          if (!onlyHydrate) {
+            transcriptRebuiltForJobRef.current = effectiveJobId;
+            return prev;
+          }
         }
-      }
-      if (fromJob.length === 0) {
         transcriptRebuiltForJobRef.current = effectiveJobId;
-        return prev;
-      }
-      transcriptRebuiltForJobRef.current = effectiveJobId;
-      return fromJob;
-    });
+        return fromJob;
+      });
+    };
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/transcript`, { headers, timeout: 12000 })
+      .then((res) => {
+        const rows = Array.isArray(res.data?.messages) ? res.data.messages : [];
+        const fromApi = rows
+          .map((m) => ({
+            id: m.id || `${m.role || 'user'}_${m.ts || m.created_at || Date.now()}`,
+            body: m.body || m.text || '',
+            role: m.role || 'user',
+            jobId: effectiveJobId,
+            pendingBind: false,
+            ts: m.ts ? Number(m.ts) * 1000 : (m.created_at ? new Date(m.created_at).getTime() : Date.now()),
+          }))
+          .filter((m) => m.body);
+        if (fromApi.length) {
+          applyMessages(fromApi);
+          return;
+        }
+        const fromEvents = jobTranscriptLinesFromEvents(events, effectiveJobId);
+        if (fromEvents.length) applyMessages(fromEvents);
+        else transcriptRebuiltForJobRef.current = effectiveJobId;
+      })
+      .catch(() => {
+        const hasT = events.some((e) => (e?.type || e?.event_type) === 'workspace_transcript');
+        if (!hasT || cancelled) return;
+        applyMessages(jobTranscriptLinesFromEvents(events, effectiveJobId));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [API, events, effectiveJobId, token]);
 
   // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
@@ -1297,6 +1356,12 @@ export default function App() {
     if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
+    if (jobIdFromUrl || jobId) {
+      try {
+        sessionStorage.removeItem('crucibai_autostart_goal');
+      } catch (_) { void 0; }
+      return;
+    }
 
     const urlParams = new URLSearchParams(locSearch);
     const autoStartUrl = urlParams.get('autoStart') === '1';
@@ -1356,7 +1421,7 @@ export default function App() {
         /* runNewPlanAndAuto surfaces errors via applyBuildError */
       }
     })();
-  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
+  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams, jobIdFromUrl, jobId]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
   // PERSISTENCE FIX: When navigating back via sidebar (?taskId=... but no jobId),
