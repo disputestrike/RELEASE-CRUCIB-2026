@@ -6,6 +6,7 @@ real STT wires in later via services/voice/stt_service.py.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -18,6 +19,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 
 _TRANSCRIPTS: Dict[str, Dict[str, Any]] = {}
+
+SUPPORTED_MIME_TYPES = [
+    "audio/webm",
+    "audio/wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/ogg",
+    "application/octet-stream",
+    "video/webm",
+]
+
+
+def _max_voice_upload_bytes() -> int:
+    try:
+        mb = float(os.environ.get("VOICE_MAX_UPLOAD_MB", "25"))
+    except ValueError:
+        mb = 25
+    return int(max(1, mb) * 1024 * 1024)
+
+
+def _voice_provider_status() -> Dict[str, Any]:
+    provider_present = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_KEY"))
+    return {
+        "speech_provider_configured": provider_present,
+        "provider": "openai-whisper" if provider_present else None,
+        "required_env": {
+            "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
+            "OPENAI_KEY": bool(os.environ.get("OPENAI_KEY")),
+        },
+        "missing_env": [] if provider_present else ["OPENAI_API_KEY"],
+        "test_transcription_mode_available": os.environ.get("CRUCIBAI_VOICE_TEST_MODE", "").lower()
+        in {"1", "true", "yes"},
+    }
 
 
 @router.post("/transcribe")
@@ -36,7 +70,6 @@ async def transcribe(
     frontend surfaces a useful error instead of pasting garbage into the
     prompt field.
     """
-    import os as _os
     if audio.content_type and not audio.content_type.startswith(
         ("audio/", "application/octet-stream", "video/")
     ):
@@ -54,7 +87,7 @@ async def transcribe(
 
     text: Optional[str] = None
     provider = None
-    openai_key = _os.getenv("OPENAI_API_KEY") or _os.getenv("OPENAI_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY")
     if openai_key:
         try:
             import httpx
@@ -124,3 +157,14 @@ def get_transcript(transcript_id: str):
 def keyterms():
     """Voice activation keyterms — words that trigger wake/stop."""
     return {"wake": ["crucib", "hey crucib"], "stop": ["stop", "cancel"], "run": ["go", "run", "execute"]}
+
+
+@router.get("/doctor")
+def voice_doctor():
+    provider = _voice_provider_status()
+    return {
+        "status": "ok" if provider["speech_provider_configured"] else "degraded",
+        **provider,
+        "max_upload_bytes": _max_voice_upload_bytes(),
+        "supported_mime_types": SUPPORTED_MIME_TYPES,
+    }
