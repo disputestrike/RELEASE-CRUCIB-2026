@@ -355,6 +355,52 @@ const Settings = () => {
     finally { setDelBusy(false); }
   };
 
+  const capabilityStatus = (name) => {
+    const caps = capPayload?.capability_registry?.capabilities || [];
+    return caps.find((cap) => cap.name === name)?.status || null;
+  };
+
+  const engineStatusFor = (item) => {
+    const href = item.href;
+    const staticMap = {
+      '/app/skills': capabilityStatus('skill_tool_registry') || 'available',
+      '/app/skills/marketplace': capabilityStatus('skill_tool_registry') || 'available',
+      '/app/knowledge': capabilityStatus('knowledge_ingestion') || 'available',
+      '/app/monitoring': 'available',
+      '/app/workspace': 'available',
+      '/app/tokens': 'available',
+      '/app/exports': 'available',
+      '/app/generate': 'available',
+      '/app/patterns': 'available',
+      '/app/templates': 'available',
+      '/app/prompts': 'available',
+      '/app/learn': 'available',
+      '/app/env': 'available',
+      '/app/shortcuts': 'available',
+      '/benchmarks': 'available',
+      '/app/payments-wizard': 'available',
+      '/app/audit-log': 'available',
+      '/app/models': 'available',
+      '/app/ide': 'available',
+      '/app/vibecode': 'foundation',
+      '/app/studio': 'foundation',
+      '/app/channels': 'foundation',
+      '/app/sessions': 'foundation',
+      '/app/commerce': 'foundation',
+      '/app/members': 'foundation',
+      '/app/fine-tuning': 'requires_config',
+      '/app/safety': 'foundation',
+    };
+    return staticMap[href] || (item.beta ? 'foundation' : 'available');
+  };
+
+  const statusColor = (status) => {
+    if (status === 'available') return T.success;
+    if (status === 'requires_config') return '#f59e0b';
+    if (status === 'disabled') return T.danger;
+    return T.muted;
+  };
+
   const credits = user?.credit_balance ?? Math.floor((user?.token_balance ?? 0) / 1000);
 
   return (
@@ -657,24 +703,29 @@ const Settings = () => {
                 Advanced tools, integrations, and internal routes. Same destinations as before; they now live here to keep the home sidebar calm.
               </p>
               <div ref={engineListRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {ENGINE_ROOM_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    data-engine-href={item.href}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', borderRadius: 8, textDecoration: 'none',
-                      color: T.text, fontSize: 13, background: T.input,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <item.icon size={16} style={{ color: T.muted, flexShrink: 0 }} />
-                    <span style={{ flex: 1 }}>{item.label}</span>
-                    {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.muted, border: `1px solid ${T.border}`, padding: '2px 6px', borderRadius: 4 }}>Beta</span>}
-                    <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
-                  </Link>
-                ))}
+                {ENGINE_ROOM_ITEMS.map((item) => {
+                  const status = engineStatusFor(item);
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      data-engine-href={item.href}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 8, textDecoration: 'none',
+                        color: T.text, fontSize: 13, background: T.input,
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <item.icon size={16} style={{ color: T.muted, flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: statusColor(status), border: `1px solid ${T.border}`, padding: '2px 6px', borderRadius: 4, textTransform: 'capitalize' }}>
+                        {String(status).replace('_', ' ')}
+                      </span>
+                      <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
+                    </Link>
+                  );
+                })}
               </div>
             </Card>
 

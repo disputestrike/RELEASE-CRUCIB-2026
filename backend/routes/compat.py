@@ -106,6 +106,80 @@ def _agent_by_name(agent_name: str) -> Dict[str, Any] | None:
     return None
 
 
+def _dynamic_skill_agent_result(prompt: str, uid: str) -> Dict[str, Any]:
+    words = [w.lower() for w in __import__("re").split(r"\W+", prompt or "") if len(w) > 2][:8]
+    slug = "-".join(words[:5]) or "dynamic-skill"
+    display = " ".join(w.capitalize() for w in slug.split("-")) or "Dynamic Skill"
+    needs_knowledge = any(w in {"pdf", "document", "docs", "rag", "knowledge", "ingest"} for w in words)
+    return {
+        "ok": True,
+        "agent": {
+            "id": "skill_agent",
+            "name": "Skill Agent",
+            "category": "capability",
+            "status": "available",
+        },
+        "execution_status": "foundation_live",
+        "model": "deterministic_skill_contract",
+        "result": {
+            "summary": (
+                "Skill Agent mapped the request to existing capabilities and prepared a reusable skill contract. "
+                "Use /api/skills/generate with auto_create=true to persist it to the user's skill library."
+            ),
+            "matched_capabilities": [
+                "/api/skills/md/list",
+                "/api/skills/generate",
+                "/api/capabilities/registry",
+            ] + (["/api/knowledge/ingest", "/api/knowledge/search"] if needs_knowledge else []),
+            "missing_skill_draft": {
+                "name": slug,
+                "display_name": display,
+                "trigger_phrases": words,
+                "instructions_summary": "Reuse existing routes, persist documents when needed, report blockers instead of faking integrations.",
+            },
+            "created_files": False,
+            "durable_job_required_for_code": True,
+            "next_best_endpoint": "/api/skills/generate",
+        },
+        "audit": {"user_id": uid, "ran_at": _now_iso(), "live_claim": True},
+    }
+
+
+async def _export_pdf_agent_result(body: AgentRunBody, uid: str) -> Dict[str, Any]:
+    content = (body.code or body.prompt or body.task or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="prompt, task, or code content required for PDF export")
+    try:
+        from ..services.pdf_renderer import pdf_renderer
+
+        path = await pdf_renderer.render(content=content, title="CrucibAI Export")
+        status = "rendered"
+        artifact = {"path": path, "type": "application/pdf" if path.endswith(".pdf") else "text/plain"}
+    except Exception as exc:
+        status = "failed"
+        artifact = None
+        content = f"PDF renderer failed: {str(exc)[:220]}"
+    return {
+        "ok": status == "rendered",
+        "agent": {
+            "id": "export_pdf",
+            "name": "Export PDF Agent",
+            "category": "artifact",
+            "status": "available",
+        },
+        "execution_status": status,
+        "model": "pdf_renderer",
+        "result": {
+            "summary": "PDF export completed." if artifact else content,
+            "artifact": artifact,
+            "created_files": bool(artifact),
+            "durable_job_required_for_code": False,
+            "next_best_endpoint": "/api/exports",
+        },
+        "audit": {"user_id": uid, "ran_at": _now_iso(), "live_claim": bool(artifact)},
+    }
+
+
 def _coerce_model_text(value: Any) -> str:
     if isinstance(value, str):
         return value
@@ -165,6 +239,16 @@ async def list_agent_templates_compat():
 async def run_agent_compat(
     agent_name: str, body: AgentRunBody, _user: dict = Depends(_get_auth())
 ):
+    uid = _safe_user_id(_user)
+    normalized_agent = str(agent_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if normalized_agent in {"skill_agent", "skill_discovery_agent", "dynamic_skill_agent"}:
+        prompt = (body.prompt or body.task or body.code or body.url or "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="prompt, task, code, or url required")
+        return _dynamic_skill_agent_result(prompt, uid)
+    if normalized_agent in {"export_pdf", "pdf_export", "exporter_pdf"}:
+        return await _export_pdf_agent_result(body, uid)
+
     agent = _agent_by_name(agent_name)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -172,7 +256,6 @@ async def run_agent_compat(
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt, task, code, or url required")
 
-    uid = _safe_user_id(_user)
     agent_label = agent["name"]
     system = (
         f"You are the CrucibAI {agent_label}. "

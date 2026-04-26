@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
-import { X, Plus, Pencil, Trash2, Sparkles, Check } from 'lucide-react';
+import { X, Plus, Pencil, Trash2, Sparkles, Check, Wand2 } from 'lucide-react';
 
 // ── System skills metadata (mirrors backend SYSTEM_SKILLS) ───────────────────
 const SYSTEM_SKILLS = [
@@ -400,6 +400,9 @@ const SkillsPage = () => {
   const [editingSkill, setEditingSkill] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [skillAgentPrompt, setSkillAgentPrompt] = useState('');
+  const [skillAgentBusy, setSkillAgentBusy] = useState(false);
+  const [skillAgentMsg, setSkillAgentMsg] = useState(null);
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -432,6 +435,33 @@ const SkillsPage = () => {
   const handleCreateSkill = async (formData) => {
     const res = await axios.post(`${API}/skills`, formData, { headers: authHeaders });
     setUserSkills(prev => [...prev, res.data.skill]);
+  };
+
+  const handleGenerateSkill = async () => {
+    const description = skillAgentPrompt.trim();
+    if (!description) return;
+    setSkillAgentBusy(true);
+    setSkillAgentMsg(null);
+    try {
+      const res = await axios.post(
+        `${API}/skills/generate`,
+        { description, auto_create: true, activate: true },
+        { headers: authHeaders }
+      );
+      const skill = res.data?.skill;
+      if (skill) setUserSkills(prev => prev.some(s => s.id === skill.id) ? prev : [...prev, skill]);
+      if (Array.isArray(res.data?.active_skill_ids) && res.data.active_skill_ids.length > 0) {
+        setActiveIds(res.data.active_skill_ids);
+      } else if (skill?.id && res.data?.activated) {
+        setActiveIds(prev => prev.includes(skill.id) ? prev : [...prev, skill.id]);
+      }
+      setSkillAgentPrompt('');
+      setSkillAgentMsg({ type: 'success', text: res.data?.persisted ? 'Skill Agent created and activated a new skill.' : 'Skill Agent drafted a skill; persistence was not available.' });
+    } catch (err) {
+      setSkillAgentMsg({ type: 'error', text: err?.response?.data?.detail || 'Skill Agent could not generate this skill.' });
+    } finally {
+      setSkillAgentBusy(false);
+    }
   };
 
   const handleEditSkill = async (formData) => {
@@ -506,6 +536,46 @@ const SkillsPage = () => {
 
       {/* Main content */}
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '28px 36px' }}>
+        <div style={{
+          background: 'var(--theme-surface, #f9fafb)',
+          border: '1px solid var(--theme-border, #e5e7eb)',
+          borderRadius: '14px',
+          padding: '18px',
+          marginBottom: '22px',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto',
+          gap: '12px',
+          alignItems: 'end',
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+              <Wand2 size={15} style={{ color: '#7c3aed' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--theme-text, #111827)' }}>Skill Agent</span>
+              <span style={{ fontSize: 11, color: 'var(--theme-text-muted, #6b7280)' }}>
+                creates missing capabilities as reusable Skill MD-style instructions
+              </span>
+            </div>
+            <input
+              value={skillAgentPrompt}
+              onChange={e => setSkillAgentPrompt(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleGenerateSkill(); }}
+              placeholder="Example: Create a skill for ingesting PDFs and turning them into app requirements"
+              style={{ ...inputStyle, width: '100%' }}
+            />
+            {skillAgentMsg && (
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: skillAgentMsg.type === 'success' ? '#10b981' : '#ef4444' }}>
+                {skillAgentMsg.text}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleGenerateSkill}
+            disabled={skillAgentBusy || !skillAgentPrompt.trim()}
+            style={{ ...primaryBtnStyle, display: 'flex', alignItems: 'center', gap: 7, opacity: (skillAgentBusy || !skillAgentPrompt.trim()) ? 0.65 : 1 }}
+          >
+            <Wand2 size={14} /> {skillAgentBusy ? 'Creating...' : 'Generate skill'}
+          </button>
+        </div>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--theme-text-muted, #9ca3af)' }}>Loading skills…</div>
         ) : (

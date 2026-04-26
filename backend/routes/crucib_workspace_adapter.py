@@ -95,6 +95,8 @@ class SpawnRunBody(BaseModel):
 
 class SkillGenerateBody(BaseModel):
     description: str = Field(..., min_length=3, max_length=8000)
+    auto_create: bool = False
+    activate: bool = False
 
 
 class SpawnSimulateBody(BaseModel):
@@ -253,24 +255,96 @@ def _slugify(text: str) -> str:
 @router.post("/skills/generate")
 async def skills_generate(body: SkillGenerateBody, user: dict = Depends(_get_auth())):
     """
-    Deterministic structured skill from natural language (no external LLM required).
-    Stored client-side; optional server persistence can be added later.
+    Dynamic Skill Agent: turn a missing capability request into a structured
+    skill contract and optional persisted user skill. This intentionally creates
+    prompt/runtime instructions, not executable code or fake integrations.
     """
     desc = body.description.strip()
     tokens = [t.lower() for t in re.split(r"\W+", desc) if len(t) > 2][:8]
-    skill_id = _slugify(desc[:60])
-    return {
-        "id": skill_id,
-        "name": desc[:80],
-        "description": desc,
-        "trigger": tokens[:5],
-        "context": ["prompt"],
+    slug = _slugify(desc[:60])
+    uid = str((user or {}).get("id") or "guest")
+    display = " ".join(word.capitalize() for word in slug.split("-")[:6]) or "Generated Skill"
+    skill_md = f"""---
+name: {slug}
+description: Dynamically generated skill for: {desc[:220]}
+triggers: {json.dumps(tokens[:8])}
+model: auto
+---
+
+You are the {display} specialist skill for CrucibAI.
+
+MISSION:
+- Understand the user's requested capability.
+- Reuse existing CrucibAI systems before proposing new architecture.
+- If documents are involved, persist source documents, extracted text, summaries, requirements, design notes, and technical constraints.
+- If external integrations are required, state the connector and credentials needed before claiming execution.
+- Produce senior-engineer quality outputs with clear acceptance criteria and verification steps.
+
+EXECUTION RULES:
+- Do not fake tool access, credentials, file creation, previews, deployment, or third-party integrations.
+- Prefer durable job/workspace execution for code generation and artifact creation.
+- Return a clear plan, concrete files/artifacts expected, validation steps, and blockers.
+- Ask for the minimum missing information only when the request cannot be safely inferred.
+"""
+    generated = {
+        "id": slug,
+        "name": slug,
+        "display_name": display,
+        "icon": "✨",
+        "color": "#7c3aed",
+        "category": "custom",
+        "short_desc": desc[:200],
+        "instructions": skill_md,
+        "trigger_phrases": tokens[:8],
+        "trigger_prompt": desc,
+        "skill_md": skill_md,
+        "source": "dynamic_skill_agent",
+        "status": "draft",
+        "context": ["prompt", "active_skills", "knowledge"],
         "steps": [
-            {"id": "1", "action": "analyze", "agent": "architect", "timeout": 30000, "retry": 2},
-            {"id": "2", "action": "execute", "agent": "orchestrator", "timeout": 600000, "retry": 0},
+            {"id": "1", "action": "classify_capability_gap", "agent": "skill-discovery-agent", "timeout": 30000, "retry": 1},
+            {"id": "2", "action": "bind_existing_tools", "agent": "orchestrator", "timeout": 60000, "retry": 1},
+            {"id": "3", "action": "execute_or_report_blockers", "agent": "specialist", "timeout": 600000, "retry": 0},
         ],
-        "successCriteria": ["build_complete"],
-        "artifacts": [],
-        "followUp": [],
-        "owner": str(user.get("id")),
+        "successCriteria": ["capability_mapped", "honesty_gate_passed", "verification_plan_present"],
+        "artifacts": ["skill_md", "execution_contract"],
+        "followUp": ["/api/skills", "/api/skills/md/list", "/api/knowledge/ingest"],
+        "owner": uid,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    persisted = False
+    active_skill_ids: list[str] = []
+    if body.auto_create:
+        try:
+            from ..db_pg import get_db
+
+            db = await get_db()
+            skill_id = f"user-{uid[:8]}-{slug}-{uuid.uuid4().hex[:6]}"
+            doc = {
+                **generated,
+                "id": skill_id,
+                "name": slug,
+                "user_id": uid,
+                "status": "created",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            doc.pop("skill_md", None)
+            await db.user_skills.insert_one(doc)
+            persisted = True
+            generated = {**generated, "id": skill_id, "status": "created"}
+            if body.activate:
+                user_doc = await db.users.find_one({"id": uid}) or {"id": uid}
+                active_skill_ids = list(user_doc.get("active_skill_ids") or [])
+                if skill_id not in active_skill_ids:
+                    active_skill_ids.append(skill_id)
+                await db.users.update_one({"id": uid}, {"$set": {"active_skill_ids": active_skill_ids}})
+        except Exception as exc:
+            logger.info("dynamic skill persistence skipped: %s", exc)
+    return {
+        "status": "created" if persisted else "draft",
+        "persisted": persisted,
+        "activated": bool(body.activate and persisted),
+        "active_skill_ids": active_skill_ids,
+        "skill": generated,
+        "truth_statement": "This creates a reusable instruction skill. Real code/artifact generation still runs through durable jobs and verified tool routes.",
     }
