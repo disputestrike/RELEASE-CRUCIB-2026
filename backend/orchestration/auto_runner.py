@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from proof import proof_service
@@ -109,6 +110,81 @@ def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
         s.get("step_key") == "verification.preview" and s.get("status") == "completed"
         for s in steps
     )
+
+
+def _html_has_app_root(html: str) -> bool:
+    lowered = (html or "").lower()
+    return (
+        'id="root"' in lowered
+        or "id='root'" in lowered
+        or 'id="app"' in lowered
+        or "id='app'" in lowered
+    )
+
+
+def _verify_final_preview_servability(
+    job_id: str,
+    workspace_path: str,
+    job: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Hard completion gate: preview must be statically servable.
+
+    The browser/verifier gate proves the app can build. This gate proves the
+    exact static-preview route contract has an HTML entry that can mount a
+    client app before the job is marked completed.
+    """
+    issues: List[str] = []
+    try:
+        from backend.routes.preview_serve import _resolve_serve_root
+        from backend.services.workspace_resolver import workspace_resolver
+    except Exception as exc:
+        return {
+            "passed": False,
+            "failure_reason": "preview_resolver_unavailable",
+            "issues": [f"Preview resolver unavailable: {exc}"],
+        }
+
+    project_id = str((job or {}).get("project_id") or "").strip() or None
+    resolved = workspace_resolver.workspace_for_job(job_id, project_id)
+    raw_ws = Path(workspace_path).resolve() if workspace_path else resolved.workspace
+    candidates = [raw_ws, resolved.workspace, *resolved.candidates]
+    seen = set()
+    serve_root: Optional[Path] = None
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        root = _resolve_serve_root(candidate)
+        if root is not None:
+            serve_root = root
+            break
+
+    if serve_root is None:
+        return {
+            "passed": False,
+            "failure_reason": "preview_not_servable",
+            "issues": ["Final preview gate could not find a servable index.html in dist/build/out/public/root."],
+            "checked_roots": [str(p) for p in candidates[:8]],
+        }
+
+    index_path = serve_root / "index.html"
+    if not index_path.exists() or not index_path.is_file():
+        issues.append("Final preview index.html is missing.")
+    else:
+        html = index_path.read_text(encoding="utf-8", errors="replace")
+        if not _html_has_app_root(html):
+            issues.append("Final preview index.html does not contain a root/app mount element.")
+
+    return {
+        "passed": len(issues) == 0,
+        "failure_reason": None if not issues else "preview_not_servable",
+        "issues": issues,
+        "serve_root": str(serve_root),
+        "index_path": str(index_path),
+        "dev_server_url": resolved.preview_url,
+        "content_type": "text/html; charset=utf-8",
+    }
 
 
 def _step_failure_context(
@@ -963,6 +1039,59 @@ async def _execute_job_loop(
         }
 
     job_latest = await get_job(job_id)
+    final_preview = _verify_final_preview_servability(job_id, ws, job_latest)
+    if not final_preview.get("passed"):
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "preview_not_servable",
+                "quality_score": quality_score,
+                "failure_reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "failure_details": json.dumps(final_preview.get("issues") or [])[:1000],
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_preview_failed",
+            {
+                "failure_reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "issues": final_preview.get("issues") or [],
+                "checked_roots": final_preview.get("checked_roots") or [],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "issues": final_preview.get("issues") or [],
+                "quality_score": quality_score,
+            },
+        )
+        await _write_blueprint(
+            ws,
+            job_id,
+            final_preview.get("failure_reason") or "preview_not_servable",
+            open_gates=["final_preview_serve", "preview_bundle"],
+            notes="; ".join(str(x) for x in (final_preview.get("issues") or [])[:12]),
+        )
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": final_preview.get("failure_reason") or "preview_not_servable",
+        }
+    await append_job_event(
+        job_id,
+        "final_preview_ready",
+        {
+            "dev_server_url": final_preview.get("dev_server_url"),
+            "serve_root": final_preview.get("serve_root"),
+            "content_type": final_preview.get("content_type"),
+        },
+    )
+
     goal_text = (job_latest or {}).get("goal") or ""
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
