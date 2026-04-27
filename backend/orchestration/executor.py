@@ -702,6 +702,278 @@ def _merge_package_dependencies(
     return json.dumps(existing_pkg, indent=2)
 
 
+
+# ── Universal build-type contract helpers ────────────────────────────────────
+
+def _infer_build_kind(job: Dict[str, Any]) -> str:
+    """
+    Resolve build kind from job fields or goal text.
+    Returns: saas | fullstack | frontend | website | mobile | automation | api | backend
+    """
+    explicit = (
+        job.get("build_kind") or
+        job.get("build_type") or
+        job.get("stack_kind") or ""
+    ).strip().lower()
+    if explicit:
+        return explicit
+
+    goal = " ".join(
+        str(job.get(k) or "")
+        for k in ("goal", "prompt", "description", "title")
+    ).lower()
+
+    if any(k in goal for k in ("mobile", "ios", "android", "expo", "react native")):
+        return "mobile"
+    if any(k in goal for k in ("automate", "cron", "scheduler", "workflow", "pipeline")):
+        return "automation"
+    if any(k in goal for k in ("api only", "rest api", "fastapi", "flask api", "graphql api")):
+        return "api"
+    if any(k in goal for k in ("landing page", "portfolio", "marketing site", "static site")):
+        return "website"
+    # saas heuristic mirrors is_saas_ui_goal threshold
+    try:
+        from .manus_parity_template import _SAAS_INTENT_MARKERS  # type: ignore
+        if sum(1 for m in _SAAS_INTENT_MARKERS if m in goal) >= 2:
+            return "saas"
+    except Exception:
+        pass
+    return "fullstack"
+
+
+def _ensure_mobile_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Expo / React-Native minimum contract: App.tsx + app.json + babel.config.js."""
+    # App.tsx — fill-if-missing only (agents own real UI code)
+    if not _read_text(workspace_path, "App.tsx") and not _read_text(workspace_path, "App.js"):
+        app_tsx = (
+            "import React from 'react';\n"
+            "import { View, Text, StyleSheet } from 'react-native';\n\n"
+            "export default function App() {\n"
+            "  return (\n"
+            "    <View style={styles.container}>\n"
+            "      <Text style={styles.title}>CrucibAI App</Text>\n"
+            "      <Text style={styles.sub}>Your mobile app is ready.</Text>\n"
+            "    </View>\n"
+            "  );\n"
+            "}\n\n"
+            "const styles = StyleSheet.create({\n"
+            "  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f0f0f' },\n"
+            "  title:     { fontSize: 28, fontWeight: '700', color: '#fff', marginBottom: 8 },\n"
+            "  sub:       { fontSize: 16, color: '#888' },\n"
+            "});\n"
+        )
+        if _safe_write(workspace_path, "App.tsx", app_tsx):
+            written.append("App.tsx")
+
+    # app.json — required by Expo CLI
+    if not _read_text(workspace_path, "app.json"):
+        import json as _json
+        goal_name = re.sub(r"[^a-z0-9]+", "-",
+            (job.get("goal") or "crucibai-app")[:40].lower()).strip("-") or "crucibai-app"
+        app_json = {
+            "expo": {
+                "name": goal_name,
+                "slug": goal_name,
+                "version": "1.0.0",
+                "orientation": "portrait",
+                "platforms": ["ios", "android"],
+                "sdkVersion": "51.0.0",
+            }
+        }
+        if _safe_write(workspace_path, "app.json", _json.dumps(app_json, indent=2)):
+            written.append("app.json")
+
+    # babel.config.js — required by Expo transformer
+    if not _read_text(workspace_path, "babel.config.js"):
+        babel = "module.exports = { presets: ['babel-preset-expo'] };\n"
+        if _safe_write(workspace_path, "babel.config.js", babel):
+            written.append("babel.config.js")
+
+    # package.json — ensure Expo deps present
+    pkg_path = "package.json"
+    existing_pkg = _read_text(workspace_path, pkg_path) or ""
+    try:
+        import json as _json
+        pkg_obj = _json.loads(existing_pkg) if existing_pkg.strip() else {}
+    except Exception:
+        pkg_obj = {}
+    deps = pkg_obj.setdefault("dependencies", {})
+    dev_deps = pkg_obj.setdefault("devDependencies", {})
+    need_write = False
+    for k, v in {"expo": "~51.0.0", "react": "18.2.0", "react-native": "0.74.0"}.items():
+        if k not in deps:
+            deps[k] = v
+            need_write = True
+    if "babel-preset-expo" not in dev_deps:
+        dev_deps["babel-preset-expo"] = "^10.0.0"
+        need_write = True
+    if not pkg_obj.get("main"):
+        pkg_obj["main"] = "expo-router/entry"
+        need_write = True
+    if need_write:
+        import json as _json
+        if _safe_write(workspace_path, pkg_path, _json.dumps(pkg_obj, indent=2)):
+            written.append(pkg_path)
+
+
+def _ensure_automation_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Automation/workflow build: workflow.json + executor.py + requirements.txt."""
+    if not _read_text(workspace_path, "workflow.json"):
+        import json as _json
+        goal_str = (job.get("goal") or "automation workflow")[:120]
+        wf = {
+            "name": goal_str,
+            "version": "1.0.0",
+            "trigger": {"type": "manual"},
+            "steps": [
+                {"id": "start",   "action": "log",     "params": {"message": "Workflow started"}},
+                {"id": "process", "action": "execute", "params": {"script": "executor.py"}, "depends_on": ["start"]},
+                {"id": "done",    "action": "log",     "params": {"message": "Workflow complete"}, "depends_on": ["process"]},
+            ],
+        }
+        if _safe_write(workspace_path, "workflow.json", _json.dumps(wf, indent=2)):
+            written.append("workflow.json")
+
+    if not _read_text(workspace_path, "executor.py") and not _read_text(workspace_path, "main.py"):
+        executor_py = (
+            '#!/usr/bin/env python3\n'
+            '"""Automation executor — entry point for CrucibAI workflow."""\n'
+            'import json\n'
+            'import sys\n'
+            'import logging\n\n'
+            'logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")\n'
+            'logger = logging.getLogger(__name__)\n\n\n'
+            'def run(step_id: str = "process") -> dict:\n'
+            '    logger.info("Executing step: %s", step_id)\n'
+            '    # TODO: implement step logic\n'
+            '    return {"step": step_id, "status": "ok"}\n\n\n'
+            'if __name__ == "__main__":\n'
+            '    step = sys.argv[1] if len(sys.argv) > 1 else "process"\n'
+            '    result = run(step)\n'
+            '    print(json.dumps(result))\n'
+        )
+        if _safe_write(workspace_path, "executor.py", executor_py):
+            written.append("executor.py")
+
+    if not _read_text(workspace_path, "requirements.txt"):
+        if _safe_write(workspace_path, "requirements.txt", "# CrucibAI automation dependencies\n"):
+            written.append("requirements.txt")
+
+
+def _ensure_api_backend_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Pure API/backend build: main.py with /health + requirements.txt + Procfile."""
+    main_text = _read_text(workspace_path, "main.py") or _read_text(workspace_path, "server.py")
+    if not main_text:
+        main_py = (
+            '"""CrucibAI API — generated entry point."""\n'
+            'from fastapi import FastAPI\n'
+            'from fastapi.middleware.cors import CORSMiddleware\n'
+            'from datetime import datetime, timezone\n\n'
+            'app = FastAPI(title="CrucibAI API", version="0.1.0")\n\n'
+            'app.add_middleware(\n'
+            '    CORSMiddleware,\n'
+            '    allow_origins=["*"],\n'
+            '    allow_credentials=True,\n'
+            '    allow_methods=["*"],\n'
+            '    allow_headers=["*"],\n'
+            ')\n\n\n'
+            '@app.get("/health")\n'
+            'def health():\n'
+            '    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}\n\n\n'
+            '@app.get("/api/v1/status")\n'
+            'def status():\n'
+            '    return {"ready": True}\n'
+        )
+        if _safe_write(workspace_path, "main.py", main_py):
+            written.append("main.py")
+    elif main_text and '@app.get("/health")' not in main_text and "@app.get('/health')" not in main_text:
+        health_snippet = (
+            '\n\n@app.get("/health")\n'
+            'def health():\n'
+            '    from datetime import datetime, timezone\n'
+            '    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}\n'
+        )
+        target = "main.py" if _read_text(workspace_path, "main.py") else "server.py"
+        if _safe_write(workspace_path, target, main_text + health_snippet):
+            written.append(target)
+
+    if not _read_text(workspace_path, "requirements.txt"):
+        reqs = "fastapi>=0.110.0\nuvicorn[standard]>=0.29.0\npython-dotenv>=1.0.0\n"
+        if _safe_write(workspace_path, "requirements.txt", reqs):
+            written.append("requirements.txt")
+
+    if not _read_text(workspace_path, "Procfile"):
+        if _safe_write(workspace_path, "Procfile", "web: uvicorn main:app --host 0.0.0.0 --port $PORT\n"):
+            written.append("Procfile")
+
+
+def _ensure_website_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Static website / landing page contract: index.html + styles.css + main.js."""
+    if not _read_text(workspace_path, "index.html"):
+        goal_text = (job.get("goal") or "Website")[:80]
+        html = (
+            "<!DOCTYPE html>\n"
+            "<html lang=\"en\">\n"
+            "<head>\n"
+            "  <meta charset=\"UTF-8\" />\n"
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+            f"  <title>{goal_text}</title>\n"
+            "  <link rel=\"stylesheet\" href=\"styles.css\" />\n"
+            "</head>\n"
+            "<body>\n"
+            "  <main id=\"app\">\n"
+            f"    <h1>{goal_text}</h1>\n"
+            "    <p>Loading&hellip;</p>\n"
+            "  </main>\n"
+            "  <script type=\"module\" src=\"main.js\"></script>\n"
+            "</body>\n"
+            "</html>\n"
+        )
+        if _safe_write(workspace_path, "index.html", html):
+            written.append("index.html")
+
+    if not _read_text(workspace_path, "styles.css"):
+        css = (
+            "*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n"
+            "body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #f0f0f0; }\n"
+            "#app { max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }\n"
+            "h1   { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }\n"
+            "p    { font-size: 1.2rem; color: #aaa; }\n"
+        )
+        if _safe_write(workspace_path, "styles.css", css):
+            written.append("styles.css")
+
+    if not _read_text(workspace_path, "main.js"):
+        if _safe_write(workspace_path, "main.js", "// CrucibAI website entry\nconsole.log('CrucibAI website ready');\n"):
+            written.append("main.js")
+
+
+def _ensure_fullstack_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """
+    Full-stack: repair missing/garbage App.jsx, fill backend/main.py if absent.
+    Does NOT force-overwrite valid agent code.
+    """
+    existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
+    if not existing_app or _is_manifest_content(existing_app):
+        tmpl = _template_file_map(job)
+        app_tmpl = tmpl.get("src/App.jsx")
+        if app_tmpl and _safe_write(workspace_path, "src/App.jsx", app_tmpl):
+            written.append("src/App.jsx")
+    if not _read_text(workspace_path, "src/main.jsx"):
+        tmpl = _template_file_map(job)
+        t = tmpl.get("src/main.jsx")
+        if t and _safe_write(workspace_path, "src/main.jsx", t):
+            written.append("src/main.jsx")
+    if not _read_text(workspace_path, "backend/main.py"):
+        bridge = _backend_main_bridge_py(multitenant=multitenant_intent(job))
+        if _safe_write(workspace_path, "backend/main.py", bridge):
+            written.append("backend/main.py")
+    if not _read_text(workspace_path, "requirements.txt"):
+        reqs = "fastapi>=0.110.0\nuvicorn[standard]>=0.29.0\npython-dotenv>=1.0.0\n"
+        if _safe_write(workspace_path, "requirements.txt", reqs):
+            written.append("requirements.txt")
+
+
 def _ensure_preview_contract_files(
     workspace_path: str, job: Dict[str, Any]
 ) -> list[str]:
@@ -793,6 +1065,27 @@ def _ensure_preview_contract_files(
             continue
         if _safe_write(workspace_path, rel, content):
             written.append(rel)
+
+    # ── Universal build-type contracts ────────────────────────────────────────
+    # Every build type ships with its minimum runnable contract regardless of
+    # which agents ran. saas is already handled above via _force_entrypoints.
+    _build_kind = _infer_build_kind(job)
+    if _build_kind == "mobile":
+        _ensure_mobile_contract(workspace_path, job, written)
+    elif _build_kind == "automation":
+        _ensure_automation_contract(workspace_path, job, written)
+    elif _build_kind in ("api", "backend"):
+        _ensure_api_backend_contract(workspace_path, job, written)
+    elif _build_kind in ("website", "frontend"):
+        _ensure_website_contract(workspace_path, job, written)
+    elif _build_kind == "fullstack":
+        _ensure_fullstack_contract(workspace_path, job, written)
+
+    if written:
+        logger.info(
+            "_ensure_preview_contract_files: build_kind=%s wrote %d contract file(s): %s",
+            _build_kind, len(written), written,
+        )
 
     return written
 
