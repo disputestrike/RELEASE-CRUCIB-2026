@@ -187,7 +187,7 @@ The best platform depends on your specific needs. But for power, flexibility, an
 
 **Ready to get started with CrucibAI?** [Start Building Now](/signup)
       `,
-      relatedPosts: ['ai-agents-future', 'production-ready-code']
+      relatedPosts: ['ai-agents-future', 'proof-gated-code']
     },
     'ai-agents-future': {
       title: 'The Future of AI Agents: From Automation to Intelligence',
@@ -349,9 +349,9 @@ The question isn't whether to use AI agents—it's which platform will give you 
 
 **Explore CrucibAI's evidence-backed agent orchestration.** [Get Started](/signup)
       `,
-      relatedPosts: ['crucibai-vs-manus-lovable', 'production-ready-code']
+      relatedPosts: ['crucibai-vs-manus-lovable', 'proof-gated-code']
     },
-    'production-ready-code': {
+    'proof-gated-code': {
       title: 'How to Generate Proof-Gated Code with AI',
       author: 'CrucibAI Team',
       date: 'February 17, 2026',

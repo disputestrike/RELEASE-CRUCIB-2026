@@ -1112,6 +1112,7 @@ async def _execute_job_loop(
             "phase": biv.get("phase"),
             "recommendation": biv.get("recommendation"),
             "retry_targets": biv.get("retry_targets") or [],
+            "retry_route": biv.get("retry_route") or {},
             "issues": (biv.get("issues") or [])[:20],
         },
     )
@@ -1129,6 +1130,7 @@ async def _execute_job_loop(
                     {
                         "issues": (biv.get("issues") or [])[:30],
                         "retry_targets": biv.get("retry_targets") or [],
+                        "retry_route": biv.get("retry_route") or {},
                         "profile": biv.get("profile"),
                     }
                 )[:2000],
@@ -1141,6 +1143,7 @@ async def _execute_job_loop(
                 {
                     "attempt": attempt,
                     "retry_targets": biv.get("retry_targets") or [],
+                    "retry_route": biv.get("retry_route") or {},
                     "strategy": repair.get("strategy", "unknown"),
                     "workspace_fixed": bool(repair.get("workspace_fixed")),
                     "files_repaired": repair.get("files_repaired") or [],
@@ -1165,6 +1168,7 @@ async def _execute_job_loop(
                     "phase": biv.get("phase"),
                     "recommendation": biv.get("recommendation"),
                     "retry_targets": biv.get("retry_targets") or [],
+                    "retry_route": biv.get("retry_route") or {},
                     "issues": (biv.get("issues") or [])[:20],
                 },
             )
@@ -1189,6 +1193,7 @@ async def _execute_job_loop(
                 "score": biv.get("score"),
                 "profile": biv.get("profile"),
                 "retry_targets": biv.get("retry_targets") or [],
+                "retry_route": biv.get("retry_route") or {},
                 "issues": (biv.get("issues") or [])[:50],
             },
         )
@@ -1199,6 +1204,7 @@ async def _execute_job_loop(
                 "reason": "build_integrity_validator",
                 "quality_score": quality_score,
                 "integrity_score": biv.get("score"),
+                "retry_route": biv.get("retry_route") or {},
                 "issues": (biv.get("issues") or [])[:20],
             },
         )
@@ -1215,6 +1221,7 @@ async def _execute_job_loop(
             "quality_score": quality_score,
             "integrity_score": biv.get("score"),
             "reason": "build_integrity_validator",
+            "retry_route": biv.get("retry_route") or {},
         }
 
     from .enforcement.enforcement_engine import run_completion_enforcement_gate

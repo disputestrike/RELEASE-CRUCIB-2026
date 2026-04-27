@@ -42,7 +42,11 @@ jobs:
             backend/orchestration/build_integrity_validator.py \
             backend/orchestration/import_doctor.py \
             backend/automation/executor.py \
-            backend/orchestration/auto_runner.py
+            backend/orchestration/auto_runner.py \
+            scripts/verify_claim_evidence_parity.py
+
+      - name: Public claim/evidence parity
+        run: python scripts/verify_claim_evidence_parity.py
 
       - name: Focused validator/import/run_agent proof tests
         run: |
@@ -55,6 +59,27 @@ jobs:
       - name: Full configured backend smoke suite
         run: |
           python -m pytest -q --basetemp=/tmp/crucibai-pytest-proof
+
+      - name: Write backend proof summary
+        if: always()
+        run: |
+          mkdir -p proof-ci
+          cat > proof-ci/backend-proof-summary.md <<'EOF'
+          # Backend Proof Summary
+
+          Commands:
+          - python -m py_compile backend/orchestration/build_integrity_validator.py backend/orchestration/import_doctor.py backend/automation/executor.py backend/orchestration/auto_runner.py scripts/verify_claim_evidence_parity.py
+          - python scripts/verify_claim_evidence_parity.py
+          - python -m pytest backend/tests/test_build_integrity_validator.py backend/tests/test_import_doctor.py backend/tests/test_automation_run_agent_safety.py -q
+          - python -m pytest -q --basetemp=/tmp/crucibai-pytest-proof
+          EOF
+
+      - name: Upload backend proof summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-proof-summary
+          path: proof-ci/backend-proof-summary.md
 
   frontend-proof:
     name: Frontend proof commands
@@ -86,9 +111,35 @@ jobs:
           CI: "true"
         run: npm run build
 
-      - name: Frontend dependency audit
+      - name: Frontend production dependency audit
         working-directory: frontend
-        run: npm audit --audit-level=high
+        run: |
+          mkdir -p ../proof-ci
+          npm audit --omit=dev --audit-level=high --json > ../proof-ci/frontend-production-audit.json
+          npm audit --omit=dev --audit-level=high
+
+      - name: Write frontend proof summary
+        if: always()
+        run: |
+          mkdir -p proof-ci
+          cat > proof-ci/frontend-proof-summary.md <<'EOF'
+          # Frontend Proof Summary
+
+          Commands:
+          - npm ci --legacy-peer-deps
+          - npm test -- --watchAll=false --runInBand
+          - npm run build
+          - npm audit --omit=dev --audit-level=high
+          EOF
+
+      - name: Upload frontend proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-proof-artifacts
+          path: |
+            proof-ci/frontend-proof-summary.md
+            proof-ci/frontend-production-audit.json
 
   proof-gates-passed:
     name: Proof gates passed

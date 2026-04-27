@@ -3009,7 +3009,7 @@ BUILD IT NOW â€” output every file completely:`;
     try {
       const res = await axios.post(`${API}/ai/accessibility-check`, { code }, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setToolsReport({ type: 'a11y', data: res.data });
-      addLog('Accessibility check completed', 'info', 'system');
+      addLog('A11y scan completed for the selected file', 'info', 'system');
     } catch (e) {
       addLog(`A11y check failed: ${e.response?.data?.detail || e.message}`, 'error', 'system');
       setToolsReport({ type: 'a11y', data: { error: e.response?.data?.detail || e.message } });

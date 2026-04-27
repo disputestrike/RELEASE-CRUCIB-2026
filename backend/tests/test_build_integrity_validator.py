@@ -4,6 +4,7 @@ from pathlib import Path
 
 from backend.orchestration.build_integrity_validator import (
     detect_build_profile,
+    route_retry_targets,
     validate_plan_integrity,
     validate_workspace_integrity,
 )
@@ -123,6 +124,49 @@ def make_saas_workspace(root):
 
 def issue_codes(result):
     return {item["code"] for item in result.get("structured_issues", [])}
+
+
+def test_biv_retry_route_maps_categories_to_agent_groups():
+    route = route_retry_targets(["frontend", "integration", "security"])
+
+    assert route["strategy"] == "targeted_dag_retry"
+    assert route["targets"] == ["frontend", "integration", "security"]
+    assert "Frontend Generation" in route["agent_groups"]
+    assert "Integration Agent" in route["agent_groups"]
+    assert "Security Checker" in route["agent_groups"]
+
+
+def test_biv_final_gate_blocks_completion_and_routes_missing_entrypoint_retry():
+    root = case_root("final_gate_missing_entrypoint")
+    write(
+        root / "package.json",
+        json.dumps(
+            {
+                "scripts": {"build": "vite build", "preview": "vite preview"},
+                "dependencies": {"react": "latest", "react-dom": "latest"},
+            }
+        ),
+    )
+    write(root / "index.html", '<div id="root"></div>')
+    write(
+        root / "src" / "App.jsx",
+        "export default function App(){return <div>dashboard analytics pricing settings team chart</div>}",
+    )
+    write(root / "dist" / "index.html", '<div id="root"></div>')
+
+    result = validate_workspace_integrity(
+        str(root),
+        goal="Build a modern SaaS product UI with dashboard analytics pricing settings and team",
+        phase="final",
+    )
+
+    assert not result["passed"]
+    assert result["recommendation"] == "hard_fail"
+    assert "missing_entry_point" in issue_codes(result)
+    assert "frontend" in result["retry_targets"]
+    assert result["retry_route"]["strategy"] == "targeted_dag_retry"
+    assert "Frontend Generation" in result["retry_route"]["agent_groups"]
+    assert "Integration Agent" in result["retry_route"]["agent_groups"]
 
 
 def test_detects_saas_profile_from_goal():

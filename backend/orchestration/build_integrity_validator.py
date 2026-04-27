@@ -61,6 +61,22 @@ SCORE_WEIGHTS = {
 RETRY_THRESHOLD = 85
 HARD_FAIL_THRESHOLD = 70
 
+RETRY_AGENT_ROUTES: Dict[str, Tuple[str, ...]] = {
+    "planning": ("Planner", "Requirements Clarifier"),
+    "requirements": ("Requirements Clarifier",),
+    "design": ("Design Agent", "Frontend Generation"),
+    "frontend": ("Frontend Generation", "Integration Agent"),
+    "backend": ("Backend Generation", "Integration Agent"),
+    "stack": ("Stack Selector", "Integration Agent"),
+    "mobile": ("Mobile Generation", "Integration Agent"),
+    "automation": ("Automation Agent", "Integration Agent"),
+    "security": ("Security Checker", "Frontend Generation"),
+    "verification": ("Verifier", "Frontend Generation"),
+    "deploy": ("Deployment Agent", "Integration Agent"),
+    "executor": ("Execution Agent", "Integration Agent"),
+    "integration": ("Integration Agent",),
+}
+
 
 @dataclass
 class IntegrityIssue:
@@ -94,6 +110,22 @@ def _issue(
         severity=severity,
         retry_targets=tuple(retry_targets),
     )
+
+
+def route_retry_targets(targets: Iterable[str]) -> Dict[str, Any]:
+    """Map validator retry target categories to concrete DAG agent groups."""
+
+    normalized = sorted({str(target).strip().lower() for target in targets if str(target).strip()})
+    agent_groups: List[str] = []
+    for target in normalized:
+        for agent in RETRY_AGENT_ROUTES.get(target, ("Integration Agent",)):
+            if agent not in agent_groups:
+                agent_groups.append(agent)
+    return {
+        "targets": normalized,
+        "agent_groups": agent_groups,
+        "strategy": "targeted_dag_retry" if normalized else "none",
+    }
 
 
 def _walk_text_files(workspace_path: str, *, max_files: int = 500) -> Dict[str, str]:
@@ -703,6 +735,7 @@ def _format_result(
 ) -> Dict[str, Any]:
     score = int(override_score if override_score is not None else sum(category_scores.values()))
     retry_targets = sorted({target for issue in issues for target in issue.retry_targets})
+    retry_route = route_retry_targets(retry_targets)
     hard_block = score < HARD_FAIL_THRESHOLD or any(i.severity == "blocker" for i in issues)
     passed = score >= RETRY_THRESHOLD and not issues
     return {
@@ -715,6 +748,7 @@ def _format_result(
         "issues": [i.message for i in issues],
         "structured_issues": [i.as_dict() for i in issues],
         "retry_targets": retry_targets,
+        "retry_route": retry_route,
         "hard_block": hard_block,
         "recommendation": "approved" if passed else ("hard_fail" if hard_block else "retry"),
         "proof": proof,
