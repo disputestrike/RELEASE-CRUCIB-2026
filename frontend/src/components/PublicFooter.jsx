@@ -24,7 +24,7 @@ export default function PublicFooter() {
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           <div>
             <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI — Inevitable AI</div>
-            <p className="text-sm text-kimi-muted mb-3">Turn ideas into proof-gated build artifacts. No code required to start.</p>
+            <p className="text-sm text-kimi-muted mb-3">Proof-gated web software with import checks, guarded automation, and evidence-tied claims.</p>
             <ul className="space-y-2 text-sm">
               <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
             </ul>

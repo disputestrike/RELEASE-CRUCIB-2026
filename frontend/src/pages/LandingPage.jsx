@@ -322,7 +322,7 @@ const LandingPage = () => {
       <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
-          <p className="text-sm text-gray-500">Plan, build, and export proof-gated web, Expo mobile, and automation artifacts in one workspace.</p>
+          <p className="text-sm text-gray-500">CrucibAI builds proof-gated web software with import checks, guarded automation calls, build/test/audit enforcement, and public claims tied to evidence.</p>
         </div>
       </section>
       </div>
@@ -335,7 +335,7 @@ const LandingPage = () => {
               <div className="mb-4">
                 <Logo variant="full" height={28} href="/" />
               </div>
-              <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
+              <p className="text-sm text-kimi-muted mb-3">Proof-gated web builds, import checks, guarded automation, and evidence-aligned claims.</p>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
               </ul>
