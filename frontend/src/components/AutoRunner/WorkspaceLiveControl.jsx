@@ -197,7 +197,7 @@ export default function WorkspaceLiveControl({
         <LiveRow
           icon={<Download size={15} />}
           label="Export"
-          value={hasFiles ? 'Workspace ZIP ready when authenticated' : 'Waiting for files'}
+          value={hasFiles ? 'Download Code ZIP ready when authenticated' : 'Waiting for files'}
           status={hasFiles ? 'ok' : hasJob ? 'waiting' : 'idle'}
           detail="Handoff export should include source, context, and proof artifacts."
         />

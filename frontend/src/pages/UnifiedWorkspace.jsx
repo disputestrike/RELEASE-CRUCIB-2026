@@ -1031,7 +1031,7 @@ export default function App() {
     setZipBusy(true);
     try {
       const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip?profile=handoff`,
+        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/download`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) {
@@ -1042,7 +1042,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${effectiveJobId}-handoff.zip`;
+      a.download = `crucibai-job-${effectiveJobId}-code.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -2153,11 +2153,11 @@ export default function App() {
                           className="arp-topbar-btn"
                           style={{ fontSize: 11 }}
                           disabled={zipBusy}
-                          title="Handoff ZIP (omits outputs/). Append ?profile=full to the export URL for the complete tree."
+                          title="Download all generated code and workspace files as a ZIP."
                           onClick={handleDownloadWorkspaceZip}
                         >
                           <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                          {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
+                          {zipBusy ? 'Downloading...' : 'Download Code'}
                         </button>
                       ) : null}
                       <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>

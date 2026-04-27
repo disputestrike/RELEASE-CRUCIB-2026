@@ -643,6 +643,8 @@ async def get_project_deploy_files(
 
 
 @router.get("/jobs/{job_id}/workspace/download")
+@router.get("/jobs/{job_id}/workspace-zip")
+@router.get("/jobs/{job_id}/export/full.zip")
 async def download_job_workspace_zip(
     job_id: str,
     user: dict = Depends(_get_auth()),
@@ -668,7 +670,7 @@ async def download_job_workspace_zip(
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(workspace):
             dirs[:] = [d for d in dirs if d not in skip_dirs]
-            for fname in files:
+            for fname in sorted(files):
                 if any(fname.endswith(ext) for ext in skip_exts):
                     continue
                 full = Path(root) / fname
