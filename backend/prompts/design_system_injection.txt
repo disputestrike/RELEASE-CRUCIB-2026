@@ -1,15 +1,42 @@
-Apply the CrucibAI design system to all generated UI.
+Apply the CrucibAI design system to all generated UI. These rules are MANDATORY and enforced by the Build Integrity Validator.
 
-Rules:
-- Use Tailwind utility classes for layout, spacing, color, and typography.
-- Do not use inline styles unless there is no viable Tailwind equivalent.
-- Preserve WCAG AA accessibility for text contrast, focus states, and form labels.
-- Prefer the primary color family rooted in #007BFF and the success color #28A745.
-- Use reusable components and shared spacing tokens instead of one-off styling.
-- Keep typography consistent across headings, body text, and captions.
-- Respect responsive breakpoints and mobile-first layout decisions.
+## Color & Tokens (REQUIRED)
+- Define ALL colors as CSS custom properties (--primary, --background, --foreground, --muted, --border, --chart-1 through --chart-5, --sidebar, --radius)
+- Use OKLCH color space for primary and accent tokens: e.g. --primary: oklch(0.511 0.262 276.966); /* indigo-600 */
+- Do NOT use hardcoded hex values in component JSX — reference CSS variables via Tailwind (bg-primary, text-foreground, etc.)
+- Primary color family: indigo-600 oklch(0.511 0.262 276.966)
+- Success: emerald oklch(0.696 0.17 162)
+- Background (light): oklch(0.988 0.002 286)  /* near-white #F8FAFC */
+- Foreground (light): oklch(0.175 0.012 265)  /* slate-900 */
 
-Deliverables:
-- Tailwind-friendly component structure
-- Accessible navigation and form controls
-- Reusable color, spacing, and typography decisions reflected in code
+## Typography (REQUIRED)
+- Headings: "Plus Jakarta Sans" (weights 600, 700, 800)
+- Body: "Inter" (weights 400, 500)
+- Monospace: "JetBrains Mono" (weights 400, 500)
+- Import from Google Fonts or @fontsource in the root CSS file
+
+## Component Library (REQUIRED — use these, do not reinvent)
+- Use shadcn/Radix UI components for ALL interactive primitives
+- Import from '@/components/ui/' — never write raw button/input/dialog from scratch
+- Required components: Button (with CVA variants), Card, Badge, Avatar, DropdownMenu, Tabs, Table, Input, Select, Dialog, Sheet, Tooltip, Separator, Skeleton
+- Use class-variance-authority (CVA) for all variant systems: buttonVariants, badgeVariants, etc.
+- Use tailwind-merge (cn()) to merge conditional classes — never string concatenation
+
+## Tailwind (REQUIRED)
+- Install Tailwind CSS (v3 or v4)
+- Import: @import "tailwindcss"; (v4) OR @tailwind base; @tailwind components; @tailwind utilities; (v3)
+- darkMode: ["class"] in tailwind.config
+- No inline styles — every style must be a Tailwind utility class or CSS variable
+
+## Layout Patterns (REQUIRED for SaaS/product UI)
+- Authenticated pages: left sidebar (240px) + top header + main content area
+- Left sidebar: navigation links with active state, upgrade CTA in footer, avatar dropdown at top
+- Top header: breadcrumbs + theme toggle + notification bell + avatar
+- Mobile: sidebar collapses to overlay with hamburger toggle
+
+## Quality Gates (will be checked by BIV)
+- index.css must exist and contain at least 5 CSS custom properties (--primary, --background, --foreground, --muted, --border)
+- package.json must include @radix-ui/* packages and class-variance-authority
+- No Markdown text inside .jsx/.tsx files
+- No hardcoded hex colors outside of the CSS variables definition block
+- Every page file must be imported in App.jsx/tsx route tree (no orphans)

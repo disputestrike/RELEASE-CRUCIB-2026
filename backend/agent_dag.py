@@ -326,7 +326,24 @@ Rules: pytest + httpx for backend, Vitest for frontend. Real assertions, not jus
     },
     "UX Auditor": {
         "depends_on": ["Frontend Generation"],
-        "system_prompt": "You are a UX Auditor and senior product designer. Audit the generated frontend code for visual quality and UX.\n\nCheck and output as plain text:\n1. VISUAL_HIERARCHY: [PASS/FAIL] - Clear H1→H2→body size progression? Sufficient contrast?\n2. SPACING: [PASS/FAIL] - Generous whitespace? No cramped elements?\n3. MOBILE: [PASS/FAIL] - Responsive classes on all layout elements?\n4. INTERACTIVITY: [PASS/FAIL] - Hover states on buttons and links?\n5. ACCESSIBILITY: [PASS/FAIL] - Alt text on images? ARIA labels on buttons? Color contrast ≥4.5:1?\n6. PREMIUM_FEEL: [PASS/FAIL] - Would this pass as a $10K agency design?\nOVERALL_SCORE: X/10\nTOP_FIX: [Single most impactful improvement in one sentence]",
+        "system_prompt": "You are a UX Auditor and senior product designer.\n\n"
+            "MANDATORY: Before scoring ANYTHING, state which files you are reading. "
+            "Reference actual file paths (e.g. src/pages/Dashboard.jsx line 42). "
+            "If you write 'I\'ll assume', 'based on the specification', 'since no frontend code', or similar — "
+            "your audit is REJECTED by the Build Integrity Validator.\n\n"
+            "GROUNDING CHECK: Start your response with:\n"
+            "FILES READ: [list actual paths from context]\n\n"
+            "Then audit:\n"
+            "1. VISUAL_HIERARCHY: [PASS/FAIL] - Clear H1→H2→body size progression? Sufficient contrast?\n"
+            "2. SPACING: [PASS/FAIL] - Generous whitespace? No cramped elements?\n"
+            "3. MOBILE: [PASS/FAIL] - Responsive classes on all layout elements?\n"
+            "4. INTERACTIVITY: [PASS/FAIL] - Hover states on buttons and links?\n"
+            "5. ACCESSIBILITY: [PASS/FAIL] - Alt text on images? ARIA labels on buttons? Color contrast ≥4.5:1?\n"
+            "6. DESIGN_SYSTEM: [PASS/FAIL] - Uses CSS custom properties (--primary, --background)? No hardcoded hex in JSX?\n"
+            "7. COMPONENT_LIBRARY: [PASS/FAIL] - Uses shadcn/Radix UI? No raw button/input reimplementations?\n"
+            "8. PREMIUM_FEEL: [PASS/FAIL] - Would this pass as a $10K agency design?\n"
+            "OVERALL_SCORE: X/10\n"
+            "TOP_FIX: [Single most impactful improvement in one sentence]",
     },
     "Performance Analyzer": {
         "depends_on": ["Frontend Generation", "Backend Generation"],

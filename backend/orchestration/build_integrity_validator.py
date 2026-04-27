@@ -394,6 +394,44 @@ def validate_workspace_integrity(
     _score_runtime(files, text, pkg, profile, phase, issues, proof, scores)
     _score_integration(files, text, profile, phase, issues, proof, scores)
     _score_security(files, profile, phase, issues, proof)
+
+    # ── Hard gates: content purity, manifest, stripe-first ──
+    purity_violations = _check_content_type_purity(files)
+    if purity_violations:
+        for v in purity_violations[:8]:
+            issues.append(
+                _issue(
+                    "content_type_violation",
+                    f"Executable file contains Markdown/prose instead of code: {v}",
+                    phase,
+                    severity="blocker",
+                    retry_targets=("frontend", "integration"),
+                )
+            )
+
+    manifest_issues = _check_manifest_vs_disk(workspace_path, files)
+    for mi in manifest_issues[:8]:
+        issues.append(
+            _issue(
+                "manifest_reconciliation_failure",
+                mi,
+                phase,
+                severity="blocker",
+                retry_targets=("integration", "frontend"),
+            )
+        )
+
+    stripe_issues = _check_stripe_first(files)
+    for si in stripe_issues[:4]:
+        issues.append(
+            _issue(
+                "stripe_first_violation",
+                si,
+                phase,
+                severity="blocker",
+                retry_targets=("backend", "integration"),
+            )
+        )
     _score_deployability(files, text, pkg, profile, phase, issues, proof, scores)
 
     return _format_result(
@@ -866,6 +904,122 @@ def _score_deployability(
     scores["deployability"] = min(SCORE_WEIGHTS["deployability"], score)
     proof.append({"proof_type": "deploy", "title": "Deployability inspected", "payload": {"score": scores["deployability"]}})
 
+
+
+
+# ── Content-Type Purity Gate ─────────────────────────────────────────────────
+_MARKDOWN_STARTS = (
+    re.compile(r"^#{1,6}\s", re.MULTILINE),   # ## heading at start of file
+    re.compile(r"^\*\*[A-Za-z]", re.MULTILINE),  # **bold text at line start
+    re.compile(r"^```"),                          # fenced code block
+    re.compile(r"^>\s"),                          # blockquote
+    re.compile(r"^I am the ", re.IGNORECASE),     # agent self-identification
+    re.compile(r"^Generating production", re.IGNORECASE),  # agent activity prose
+    re.compile(r"^This file (is|contains|implements)", re.IGNORECASE),
+)
+_EXECUTABLE_EXTENSIONS = {".jsx", ".tsx", ".ts", ".js", ".mjs"}
+
+
+def _check_content_type_purity(files: Mapping[str, str]) -> List[str]:
+    """Return list of paths where an executable file starts with Markdown/prose."""
+    violations: List[str] = []
+    for rel, source in files.items():
+        ext = Path(rel).suffix.lower()
+        if ext not in _EXECUTABLE_EXTENSIONS:
+            continue
+        # Strip leading whitespace/BOM then check first non-blank line
+        stripped = source.lstrip("\ufeff\n\r ")
+        if not stripped:
+            continue
+        first_line = stripped.splitlines()[0] if stripped.splitlines() else ""
+        for pattern in _MARKDOWN_STARTS:
+            if pattern.match(first_line):
+                violations.append(rel)
+                break
+    return violations
+
+
+# ── Manifest-vs-Disk Reconciliation Gate ─────────────────────────────────────
+
+def _check_manifest_vs_disk(workspace_path: str, files: Mapping[str, str]) -> List[str]:
+    """Compare META/merge_map.json claimed paths/sizes against actual disk state."""
+    issues: List[str] = []
+    root = Path(workspace_path)
+    manifest_path = root / "META" / "merge_map.json"
+    if not manifest_path.exists():
+        return []  # no manifest = skip (not all builds use one)
+    try:
+        raw = manifest_path.read_text(encoding="utf-8", errors="replace")
+        manifest = json.loads(raw)
+    except Exception:
+        return ["MANIFEST_INVALID_JSON: META/merge_map.json could not be parsed"]
+
+    claimed = manifest.get("files", [])
+    if not claimed:
+        return []
+
+    for entry in claimed:
+        if not isinstance(entry, dict):
+            continue
+        rel_path = entry.get("path", "")
+        if not rel_path:
+            continue
+        claimed_bytes = entry.get("approx_bytes") or entry.get("size") or 0
+        abs_path = root / rel_path.lstrip("/")
+        if not abs_path.exists():
+            issues.append(f"MANIFEST_MISSING: {rel_path} claimed in manifest but absent on disk")
+            continue
+        if abs_path.stat().st_size == 0:
+            issues.append(f"MANIFEST_EMPTY: {rel_path} exists but is 0 bytes (manifest claimed {claimed_bytes}B)")
+            continue
+        if claimed_bytes and claimed_bytes > 200:
+            actual = abs_path.stat().st_size
+            ratio = actual / claimed_bytes
+            if ratio < 0.20:
+                issues.append(
+                    f"MANIFEST_OVERWRITE_SUSPECTED: {rel_path} claimed={claimed_bytes}B "
+                    f"actual={actual}B ratio={ratio:.2f} — possible agent overwrite"
+                )
+    return issues
+
+
+# ── Stripe-First Payment Enforcement Gate ────────────────────────────────────
+_BRAINTREE_PATTERNS = (
+    re.compile(r"braintree", re.IGNORECASE),
+    re.compile(r"BraintreeGateway", re.IGNORECASE),
+    re.compile(r"sandbox\.braintreegateway", re.IGNORECASE),
+)
+_PAYMENT_EXTENSIONS = {".py", ".ts", ".js", ".jsx", ".tsx"}
+
+
+def _check_stripe_first(
+    files: Mapping[str, str],
+    user_requested_braintree: bool = False,
+) -> List[str]:
+    """Fail if Braintree appears in generated customer app code without explicit user request."""
+    if user_requested_braintree:
+        return []
+    violations: List[str] = []
+    for rel, source in files.items():
+        ext = Path(rel).suffix.lower()
+        if ext not in _PAYMENT_EXTENSIONS:
+            continue
+        # Only check generated customer app code, not CrucibAI platform billing
+        low = rel.lower()
+        is_platform_billing = any(
+            seg in low for seg in ("routes/braintree", "services/braintree", "migrations/018", "migrations/019")
+        )
+        if is_platform_billing:
+            continue
+        for pattern in _BRAINTREE_PATTERNS:
+            if pattern.search(source):
+                violations.append(
+                    f"STRIPE_FIRST_VIOLATION: {rel} contains Braintree integration. "
+                    f"Use Stripe Checkout/Billing/Customer Portal for generated apps. "
+                    f"Only use Braintree when user explicitly requests it."
+                )
+                break
+    return violations
 
 def _format_result(
     *,
