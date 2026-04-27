@@ -11,27 +11,44 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ..services.events import event_bus
-from ..services.runtime.task_manager import task_manager
+try:
+    from ..services.events import event_bus
+    from ..services.runtime.task_manager import task_manager
+except ImportError:  # compatibility for legacy tests importing `routes.runtime`
+    try:
+        from services.events import event_bus
+        from services.runtime.task_manager import task_manager
+    except ImportError:
+        from backend.services.events import event_bus
+        from backend.services.runtime.task_manager import task_manager
 
 router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
 
 def _get_auth():
-    from ..deps import get_current_user
+    try:
+        from ..deps import get_current_user
+    except ImportError:  # compatibility for legacy tests importing `routes.runtime`
+        from backend.deps import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from ..deps import get_optional_user
+    try:
+        from ..deps import get_optional_user
+    except ImportError:  # compatibility for legacy tests importing `routes.runtime`
+        from backend.deps import get_optional_user
 
     return get_optional_user
 
 
 def _agent_catalog_count() -> Optional[int]:
     try:
-        from ..agent_dag import AGENT_DAG
+        try:
+            from ..agent_dag import AGENT_DAG
+        except ImportError:  # compatibility for legacy tests importing `routes.runtime`
+            from backend.agent_dag import AGENT_DAG
 
         return len(AGENT_DAG)
     except Exception:

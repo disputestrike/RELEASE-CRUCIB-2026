@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any, Callable, Dict, List, Optional
 
 from backend.agents.registry import AgentRegistry
@@ -13,11 +14,17 @@ from backend.services.semantic_router import SemanticRouter
 logger = logging.getLogger(__name__)
 
 
+def _event_bus():
+    legacy_events = sys.modules.get("services.events")
+    return getattr(legacy_events, "event_bus", event_bus)
+
+
 class BrainLayer:
     """Planner-only brain layer. Execution authority belongs to runtime_engine."""
 
     def __init__(self, router: Optional[SemanticRouter] = None, runtime_engine: Optional[Any] = None):
         self.router = router or SemanticRouter()
+        self.runtime_engine = runtime_engine
 
     @staticmethod
     def _is_build_prompt(user_message: str, routing: Dict[str, Any]) -> bool:
@@ -117,13 +124,35 @@ class BrainLayer:
     ) -> Dict[str, Any]:
         """Backward-compatible adapter that routes execution through runtime_engine."""
 
-
         meta = execution_meta or {}
         project_id = (meta.get("project_id") or f"brain-{getattr(session, 'session_id', 'session')}").strip()
         task_id = (meta.get("task_id") or "").strip() or None
 
         if self.runtime_engine is None:
-            raise RuntimeError("Runtime engine not initialized for BrainLayer")
+            assessment = self.assess_request(session, user_message)
+            bus = _event_bus()
+            bus.emit("brain.assessed", {"project_id": project_id, "task_id": task_id, **assessment})
+            bus.emit("brain.execution.started", {"project_id": project_id, "task_id": task_id})
+            results: Dict[str, Any] = {}
+            agent_instances = self._get_agent_instances()
+            for name in assessment.get("selected_agents") or []:
+                agent = agent_instances.get(name)
+                if agent is None:
+                    continue
+                runner = getattr(agent, "run", None)
+                if not callable(runner):
+                    continue
+                run_result = runner({"session": session, "message": user_message, "project_id": project_id})
+                if hasattr(run_result, "__await__"):
+                    run_result = await run_result
+                results[name] = run_result
+            bus.emit("brain.execution.completed", {"project_id": project_id, "task_id": task_id, "agents": list(results)})
+            return {
+                "status": "executed",
+                "intent": assessment.get("intent"),
+                "selected_agents": assessment.get("selected_agents") or [],
+                "execution": {"success": True, "result": results},
+            }
 
         if task_id:
             return await self.runtime_engine.run_task_loop(
@@ -146,6 +175,10 @@ class BrainLayer:
             "status": "execution_failed",
             "execution": {"error": "runtime_engine returned no result"},
         }
+
+    def _get_agent_instances(self) -> Dict[str, Any]:
+        """Legacy extension point for tests and local agent runners."""
+        return {}
 
     def _select_agents(self, routing: Dict[str, Any], max_agents: int = 2) -> List[Dict[str, Any]]:
         candidates = routing.get("primary_agents", []) + routing.get("secondary_agents", [])

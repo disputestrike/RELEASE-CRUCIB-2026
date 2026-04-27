@@ -16,6 +16,8 @@ and before completion. A build cannot be marked complete if BIV fails.
 Public marketing copy was also corrected so mobile/App Store/test-count claims
 do not outrun proof.
 
+The claim-by-claim evidence matrix is in `docs/BUILD_EVIDENCE_MATRIX.md`.
+
 ## 1. Claim-To-Capability Validation
 
 | Claim | System | Proof artifact | Pipeline step | Failure behavior | Example output |
@@ -205,9 +207,9 @@ Outputs:
 - action result object from the agent
 - log lines including `[RUN_AGENT]`
 
-Recursion-loop prevention is not fully proven. BIV can validate that automation
-artifacts exist, but explicit recursion depth/loop guards should be added before
-claiming this as complete for arbitrary nested automation builds.
+Safety guards now enforce recursion depth, lineage/cycle detection, remaining
+job budget, prompt size limits, and `CRUCIBAI_INTERNAL_TOKEN` for the HTTP
+bridge. These are covered by `backend/tests/test_automation_run_agent_safety.py`.
 
 ## 9. Import System
 
@@ -217,11 +219,13 @@ ZIP/Git/paste import must prove:
 - framework detection
 - entry point detection
 - dependency detection
-- validation/repair path
+- validation path through BIV
 
-Relevant code exists in workspace/file and git integration modules, but the
-universal import validator is incomplete. BIV can validate a reconstructed
-workspace after import; a dedicated import doctor remains a gap.
+`backend/orchestration/import_doctor.py` now validates ZIP safety, package
+manager, framework, entrypoints, and the reconstructed workspace through BIV.
+Git clone orchestration, dependency installation repair, preview-after-import
+repair, and UI surfacing still need end-to-end tests before "import anything"
+can be marketed without qualification.
 
 ## 10. Quality Score System
 
@@ -255,8 +259,11 @@ Existing repair systems:
 
 Failure is detected by verifier/BIV/preview/security gates. Retry routing now
 appears in BIV results as `retry_targets`, e.g. `["frontend", "integration"]`.
-Auto-runner currently fails with those targets recorded; automatic targeted
-retry from BIV result is the next integration gap.
+Auto-runner now performs one bounded final BIV repair attempt by default
+(`CRUCIBAI_BIV_REPAIR_ATTEMPTS`, capped at 2), emits
+`build_integrity_validator_repair_attempt`, reruns BIV, and only completes if
+the rerun passes. Full DAG node-level retry routing by issue category is still
+a deeper gap.
 
 ## 12. Transparency
 
@@ -350,10 +357,16 @@ full one-click mobile store deployment:
 
 Tests exist across backend and frontend. Verified during this implementation:
 
-- `npm test -- --watchAll=false --runInBand NavAndPagesClickThrough.test.jsx`
-  passed 10/10.
+- `pytest backend/tests/test_build_integrity_validator.py backend/tests/test_import_doctor.py backend/tests/test_automation_run_agent_safety.py -q` passed 13/13 in the validator/import/run_agent proof pass.
+- `pytest -q --basetemp=C:\Users\benxp\AppData\Local\Temp\crucibai-pytest-full-verified` passed the configured backend smoke suite: 19/19.
+- `npm test -- --watchAll=false --runInBand` passed the full frontend suite: 27/27 suites and 143/143 tests.
 - `npm run build` passed for frontend.
-- `pytest backend/tests/test_build_integrity_validator.py -q` passed 6/6.
+- `npm audit --audit-level=high` reported 0 vulnerabilities.
+
+Operational notes: `npm install --legacy-peer-deps` printed an engine warning
+because the local Node runtime is v24.14.0 while frontend `package.json` declares
+support for Node `>=18 <=22`; install also printed an audit summary that did not
+match the later explicit `npm audit --audit-level=high` result.
 
 The public "188 tests passing" claim was removed because the exact number must
 come from a current CI run, not old marketing copy.

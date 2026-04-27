@@ -6,7 +6,10 @@ import logging
 
 from fastapi import FastAPI
 
-from ..modular_env import modular_safe_import_env
+try:
+    from ..modular_env import modular_safe_import_env
+except ImportError:  # compatibility for legacy tests importing `routes.*`
+    from backend.modular_env import modular_safe_import_env
 
 logger = logging.getLogger(__name__)
 

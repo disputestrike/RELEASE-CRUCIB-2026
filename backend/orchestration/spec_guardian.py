@@ -1,4 +1,4 @@
-﻿"""
+"""
 Spec Guardian â€” compares user goals to what the current CrucibAI pipeline can prove.
 
 Modes (CRUCIBAI_SPEC_GUARD_MODE):

@@ -121,6 +121,10 @@ def make_saas_workspace(root):
         write(root / "src" / "pages" / f"{page}.jsx", page_body.replace("PAGE", page))
 
 
+def issue_codes(result):
+    return {item["code"] for item in result.get("structured_issues", [])}
+
+
 def test_detects_saas_profile_from_goal():
     assert detect_build_profile("Build a modern SaaS product UI with dashboard, analytics and pricing") == "saas_ui"
 
@@ -230,3 +234,97 @@ def test_mobile_expo_target_generates_validator_visible_artifacts():
     )
     assert result["passed"], result
     assert result["profile"] == "mobile"
+
+
+def test_biv_negative_cases_block_common_broken_web_outputs():
+    cases = [
+        (
+            "missing_main",
+            {
+                "package.json": json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/App.jsx": "export default function App(){return <div>Dashboard chart pricing settings team</div>}",
+            },
+            "missing_entry_point",
+        ),
+        (
+            "missing_app_router",
+            {
+                "package.json": json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/main.jsx": "import React from 'react';",
+            },
+            "missing_root_app",
+        ),
+        (
+            "broken_import",
+            {
+                "package.json": json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/main.jsx": "import App from './App.jsx';",
+                "src/App.jsx": "import Missing from './pages/Missing.jsx'; export default function App(){return <Missing />}",
+            },
+            "broken_local_imports",
+        ),
+        (
+            "missing_build_script",
+            {
+                "package.json": json.dumps({"scripts": {"dev": "vite --host"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/main.jsx": "import App from './App.jsx';",
+                "src/App.jsx": "import './index.css'; export default function App(){return <div>dashboard analytics pricing settings team chart</div>}",
+                "src/index.css": ":root{--primary:#000;--background:#fff;--foreground:#111;--chart-1:#333;--sidebar:#fff;--radius:8px}.buttonVariants{}",
+            },
+            "missing_build_script",
+        ),
+        (
+            "missing_preview_artifact",
+            {
+                "package.json": json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/main.jsx": "import App from './App.jsx';",
+                "src/App.jsx": "export default function App(){return <div>dashboard analytics pricing settings team chart</div>}",
+            },
+            "missing_static_preview_artifact",
+        ),
+        (
+            "client_secret",
+            {
+                "package.json": json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}),
+                "index.html": '<div id="root"></div>',
+                "src/main.jsx": "import App from './App.jsx';",
+                "src/App.jsx": "export default function App(){const apiKey='sk-1234567890abcdefghijklmnop'; return <div>dashboard analytics pricing settings team chart</div>}",
+                "dist/index.html": '<div id="root"></div>',
+            },
+            "client_secret_exposed",
+        ),
+    ]
+
+    for name, files, expected_code in cases:
+        root = case_root(f"negative_{name}")
+        for rel, text in files.items():
+            write(root / rel, text)
+        result = validate_workspace_integrity(
+            str(root),
+            goal="Build a modern SaaS product UI with dashboard analytics pricing settings and team",
+            phase="final",
+        )
+        assert not result["passed"], (name, result)
+        assert expected_code in issue_codes(result), (name, expected_code, result)
+
+
+def test_biv_blocks_orphan_page_and_weak_design_tokens():
+    root = case_root("negative_orphan_design")
+    make_saas_workspace(root)
+    write(root / "src" / "pages" / "Billing.jsx", "export default function Billing(){return <div>Billing</div>}")
+    write(root / "src" / "index.css", "body{color:#111}")
+
+    result = validate_workspace_integrity(
+        str(root),
+        goal="Build a beautiful modern SaaS product UI with dashboard analytics pricing settings and team pages",
+        phase="final",
+    )
+    codes = issue_codes(result)
+    assert not result["passed"]
+    assert "orphan_product_files" in codes
+    assert "weak_design_tokens" in codes

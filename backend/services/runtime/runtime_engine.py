@@ -151,6 +151,32 @@ class RuntimeEngine:
         self.tasks: Dict[str, Dict[str, Any]] = {}
         self.lock = asyncio.Lock()
 
+    def execute_tool_for_task(
+        self,
+        *,
+        project_id: str,
+        task_id: str,
+        tool_name: str,
+        params: Optional[Dict[str, Any]] = None,
+        skill_hint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Synchronous compatibility wrapper for runtime-owned tool execution.
+
+        Tests and legacy policy paths call this directly to prove tools cannot
+        run outside runtime authority. The actual execution still goes through
+        `backend.tool_executor.execute_tool` inside `runtime_execution_scope`.
+        """
+        safe_params = dict(params or {})
+        if skill_hint and not safe_params.get("skill"):
+            safe_params["skill"] = f"/{skill_hint.strip('/')}"
+        safe_params.setdefault("task_id", task_id)
+        with runtime_execution_scope(
+            project_id=project_id,
+            task_id=task_id,
+            skill_hint=skill_hint,
+        ):
+            return execute_tool(project_id=project_id, tool_name=tool_name, params=safe_params)
+
     async def execute_with_control(
         self,
         task_id: str,

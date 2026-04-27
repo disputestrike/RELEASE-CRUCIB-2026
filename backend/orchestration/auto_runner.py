@@ -1106,6 +1106,7 @@ async def _execute_job_loop(
         job_id,
         "build_integrity_validator_result",
         {
+            "attempt": 0,
             "score": biv.get("score"),
             "profile": biv.get("profile"),
             "phase": biv.get("phase"),
@@ -1114,6 +1115,61 @@ async def _execute_job_loop(
             "issues": (biv.get("issues") or [])[:20],
         },
     )
+    if not biv.get("passed"):
+        try:
+            requested_biv_repairs = int(os.environ.get("CRUCIBAI_BIV_REPAIR_ATTEMPTS", "1") or "1")
+        except Exception:
+            requested_biv_repairs = 1
+        max_biv_repairs = max(0, min(2, requested_biv_repairs))
+        for attempt in range(1, max_biv_repairs + 1):
+            repair = await run_full_brain_repair(
+                workspace_path=ws or "",
+                step_key="build_integrity_validator",
+                error_message=json.dumps(
+                    {
+                        "issues": (biv.get("issues") or [])[:30],
+                        "retry_targets": biv.get("retry_targets") or [],
+                        "profile": biv.get("profile"),
+                    }
+                )[:2000],
+                retry_count=attempt - 1,
+                job=job_latest or job,
+            )
+            await append_job_event(
+                job_id,
+                "build_integrity_validator_repair_attempt",
+                {
+                    "attempt": attempt,
+                    "retry_targets": biv.get("retry_targets") or [],
+                    "strategy": repair.get("strategy", "unknown"),
+                    "workspace_fixed": bool(repair.get("workspace_fixed")),
+                    "files_repaired": repair.get("files_repaired") or [],
+                },
+            )
+            if not repair.get("workspace_fixed") and not repair.get("files_repaired"):
+                break
+            biv = validate_workspace_integrity(
+                ws,
+                goal=goal_text,
+                phase="final",
+                build_target=(job_latest or {}).get("build_target")
+                or (job_latest or {}).get("crucib_build_target"),
+            )
+            await append_job_event(
+                job_id,
+                "build_integrity_validator_result",
+                {
+                    "attempt": attempt,
+                    "score": biv.get("score"),
+                    "profile": biv.get("profile"),
+                    "phase": biv.get("phase"),
+                    "recommendation": biv.get("recommendation"),
+                    "retry_targets": biv.get("retry_targets") or [],
+                    "issues": (biv.get("issues") or [])[:20],
+                },
+            )
+            if biv.get("passed"):
+                break
     if not biv.get("passed"):
         await update_job_state(
             job_id,

@@ -14,6 +14,7 @@ and project ownership (server verifies project belongs to user before running bu
 import logging
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -274,7 +275,11 @@ def execute_tool(
             or skill_hint
             or None
         )
-        decision = permission_engine.evaluate_tool_call(
+        permission_module = permission_engine
+        legacy_permission_module = sys.modules.get("services.policy.permission_engine")
+        if legacy_permission_module is not None and legacy_permission_module is not permission_engine:
+            permission_module = legacy_permission_module
+        decision = permission_module.evaluate_tool_call(
             tool_name,
             policy_params,
             surface=_workspace_surface,

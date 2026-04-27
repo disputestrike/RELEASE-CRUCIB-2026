@@ -20,6 +20,14 @@ logger = logging.getLogger(__name__)
 STEPS_PATTERN = re.compile(r"\{\{steps\.(\d+)\.output\}\}")
 
 
+def _int_env(name: str, default: int, *, minimum: int = 0, maximum: int = 1000) -> int:
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
 def _substitute_steps(text: str, steps_context: List[Dict[str, Any]]) -> str:
     """Replace {{steps.N.output}} with actual step output (stringified)."""
     if not text:
@@ -180,8 +188,10 @@ async def _run_slack_action(
 async def _run_run_agent_action(
     config: Dict[str, Any],
     steps_context: List[Dict],
-    log_lines: List[Dict],
+    log_lines: List[str],
     user_id: str,
+    run_id: str,
+    run_agent_context: Optional[Dict[str, Any]] = None,
     run_agent_callback: Optional[Callable[[str, str, str], Any]] = None,
 ) -> Dict[str, Any]:
     """Run one of our agents by name. callback(user_id, agent_name, prompt) or HTTP to run-internal."""
@@ -190,11 +200,36 @@ async def _run_run_agent_action(
     prompt = _substitute_steps(prompt, steps_context)
     if not agent_name:
         raise ValueError("run_agent action requires 'agent_name'")
-    log_lines.append(f"[RUN_AGENT] {agent_name}")
+
+    ctx = run_agent_context or {}
+    lineage = [str(x) for x in (ctx.get("lineage") or config.get("lineage") or [])]
+    depth_raw = ctx.get("depth") if ctx.get("depth") is not None else config.get("depth")
+    budget_raw = ctx.get("remaining_budget") if ctx.get("remaining_budget") is not None else config.get("remaining_budget")
+    try:
+        depth = int(depth_raw) if depth_raw is not None else 0
+    except (TypeError, ValueError):
+        depth = 0
+    try:
+        remaining_budget = int(budget_raw) if budget_raw is not None else 1
+    except (TypeError, ValueError):
+        remaining_budget = 1
+    max_depth = _int_env("CRUCIBAI_RUN_AGENT_MAX_DEPTH", 3, minimum=0, maximum=25)
+    max_prompt_chars = _int_env("CRUCIBAI_RUN_AGENT_MAX_PROMPT_CHARS", 12000, minimum=100, maximum=200000)
+    if depth >= max_depth:
+        raise ValueError(f"run_agent recursion depth limit exceeded ({depth} >= {max_depth})")
+    if str(agent_name) in lineage:
+        raise ValueError(f"run_agent cycle detected for agent '{agent_name}'")
+    if remaining_budget <= 0:
+        raise ValueError("run_agent budget exhausted")
+    if len(prompt) > max_prompt_chars:
+        raise ValueError(f"run_agent prompt too large ({len(prompt)} > {max_prompt_chars})")
+
+    child_lineage = [*lineage, str(agent_name)]
+    log_lines.append(f"[RUN_AGENT] {agent_name} depth={depth} remaining_budget={remaining_budget} parent_run={run_id}")
 
     if run_agent_callback:
         try:
-            result = await run_agent_callback(user_id, agent_name, prompt)
+            result = run_agent_callback(user_id, agent_name, prompt)
             if asyncio.iscoroutine(result):
                 result = await result
             log_lines.append(f"[RUN_AGENT] completed")
@@ -205,14 +240,28 @@ async def _run_run_agent_action(
 
     api_url = os.environ.get("CRUCIBAI_API_URL", "http://localhost:8000").rstrip("/")
     internal_token = os.environ.get("CRUCIBAI_INTERNAL_TOKEN")
-    async with httpx.AsyncClient(timeout=AGENT_ACTION_TIMEOUT_SECONDS) as client:
+    if not internal_token:
+        raise RuntimeError("CRUCIBAI_INTERNAL_TOKEN is required for run_agent internal bridge")
+    timeout = min(
+        float(config.get("timeout") or AGENT_ACTION_TIMEOUT_SECONDS),
+        float(AGENT_ACTION_TIMEOUT_SECONDS),
+    )
+    async with httpx.AsyncClient(timeout=timeout) as client:
         r = await client.post(
             f"{api_url}/api/agents/run-internal",
             headers={
                 "Content-Type": "application/json",
                 "X-Internal-Token": internal_token or "",
             },
-            json={"agent_name": agent_name, "prompt": prompt, "user_id": user_id},
+            json={
+                "agent_name": agent_name,
+                "prompt": prompt,
+                "user_id": user_id,
+                "parent_run_id": run_id,
+                "run_agent_depth": depth + 1,
+                "run_agent_lineage": child_lineage,
+                "run_agent_remaining_budget": remaining_budget - 1,
+            },
         )
     if r.status_code != 200:
         raise RuntimeError(f"run-internal returned {r.status_code}: {r.text[:500]}")
@@ -242,6 +291,21 @@ async def run_actions(
     log_lines: List[str] = []
     steps_output: List[Dict[str, Any]] = list(steps_context)
     start_step = resume_from_step if resume_from_step is not None else 0
+    try:
+        run_agent_depth = int(agent_doc.get("run_agent_depth") or 0)
+    except (TypeError, ValueError):
+        run_agent_depth = 0
+    run_agent_lineage = [
+        str(x) for x in (agent_doc.get("run_agent_lineage") or agent_doc.get("lineage") or [])
+    ]
+    max_run_agent_calls = _int_env("CRUCIBAI_RUN_AGENT_MAX_CALLS", 5, minimum=0, maximum=100)
+    raw_budget = agent_doc.get("run_agent_budget")
+    try:
+        requested_budget = int(raw_budget) if raw_budget is not None else max_run_agent_calls
+    except (TypeError, ValueError):
+        requested_budget = max_run_agent_calls
+    run_agent_budget = min(max_run_agent_calls, requested_budget)
+    run_agent_calls = 0
 
     for i in range(start_step, len(actions)):
         action = actions[i] if isinstance(actions[i], dict) else {}
@@ -268,8 +332,19 @@ async def run_actions(
             elif act_type == "slack":
                 out = await _run_slack_action(config, steps_output, log_lines)
             elif act_type == "run_agent":
+                run_agent_calls += 1
                 out = await _run_run_agent_action(
-                    config, steps_output, log_lines, user_id, run_agent_callback
+                    config,
+                    steps_output,
+                    log_lines,
+                    user_id,
+                    run_id,
+                    {
+                        "depth": run_agent_depth,
+                        "lineage": run_agent_lineage,
+                        "remaining_budget": run_agent_budget - run_agent_calls + 1,
+                    },
+                    run_agent_callback,
                 )
             else:
                 log_lines.append(f"[SKIP] unknown action type {act_type}")

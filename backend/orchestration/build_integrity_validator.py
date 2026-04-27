@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -152,6 +153,70 @@ def _read_package(files: Mapping[str, str]) -> Dict[str, Any]:
         return {"__invalid_json__": True}
 
 
+_LOCAL_IMPORT_RE = re.compile(
+    r"(?:import\s+(?:[^'\"\n]+?\s+from\s+)?|export\s+[^'\"\n]+?\s+from\s+|import\s*\()\s*['\"](?P<path>\.{1,2}/[^'\"]+)['\"]",
+    re.MULTILINE,
+)
+
+
+def _resolve_local_import(files: Mapping[str, str], importer: str, raw_specifier: str) -> bool:
+    specifier = raw_specifier.split("?", 1)[0].split("#", 1)[0]
+    base = Path(importer).parent
+    normalized = posixpath.normpath((base / specifier).as_posix())
+    candidates = [normalized]
+    suffixes = ("", ".js", ".jsx", ".ts", ".tsx", ".json", ".css")
+    index_suffixes = ("index.js", "index.jsx", "index.ts", "index.tsx", "index.json", "index.css")
+    for suffix in suffixes:
+        if suffix:
+            candidates.append(normalized + suffix)
+    for index_name in index_suffixes:
+        candidates.append((Path(normalized) / index_name).as_posix())
+    existing = {p.replace("\\", "/") for p in files}
+    return any(candidate in existing for candidate in candidates)
+
+
+def _find_broken_local_imports(files: Mapping[str, str], *, max_items: int = 12) -> List[str]:
+    broken: List[str] = []
+    for rel, source in files.items():
+        if not rel.endswith((".js", ".jsx", ".ts", ".tsx")):
+            continue
+        for match in _LOCAL_IMPORT_RE.finditer(source):
+            specifier = match.group("path")
+            if not _resolve_local_import(files, rel, specifier):
+                broken.append(f"{rel} imports missing {specifier}")
+                if len(broken) >= max_items:
+                    return broken
+    return broken
+
+
+_CLIENT_SECRET_PATTERNS = (
+    re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{20,}\b"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b"),
+    re.compile(
+        r"(?i)\b(?:api[_-]?key|secret|token|private[_-]?key)\b\s*[:=]\s*['\"][^'\"]{12,}['\"]"
+    ),
+)
+
+
+def _find_client_exposed_secrets(files: Mapping[str, str], *, max_items: int = 8) -> List[str]:
+    exposed: List[str] = []
+    for rel, source in files.items():
+        low = rel.lower()
+        if not (
+            low.startswith(("src/", "client/src/", "frontend/src/", "expo-mobile/"))
+            and rel.endswith((".js", ".jsx", ".ts", ".tsx", ".json", ".env"))
+        ):
+            continue
+        for pattern in _CLIENT_SECRET_PATTERNS:
+            if pattern.search(source):
+                exposed.append(rel)
+                break
+        if len(exposed) >= max_items:
+            return exposed
+    return exposed
+
+
 def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -> str:
     text = (goal or "").lower()
     if files:
@@ -285,6 +350,7 @@ def validate_workspace_integrity(
     _score_completeness(files, text, profile, phase, issues, proof, scores)
     _score_runtime(files, text, pkg, profile, phase, issues, proof, scores)
     _score_integration(files, text, profile, phase, issues, proof, scores)
+    _score_security(files, profile, phase, issues, proof)
     _score_deployability(files, text, pkg, profile, phase, issues, proof, scores)
 
     return _format_result(
@@ -531,6 +597,18 @@ def _score_integration(
     scores: Dict[str, int],
 ) -> None:
     score = 10
+    broken_imports = _find_broken_local_imports(files)
+    if broken_imports:
+        score = max(0, score - min(10, len(broken_imports) * 3))
+        issues.append(
+            _issue(
+                "broken_local_imports",
+                "Local imports do not resolve: " + "; ".join(broken_imports[:8]),
+                phase,
+                retry_targets=("integration", "frontend"),
+            )
+        )
+
     app_text = "\n".join(v for k, v in files.items() if k.lower().endswith(("app.jsx", "app.tsx", "app.js", "app.ts"))).lower()
     orphans: List[str] = []
     for rel in files:
@@ -552,7 +630,39 @@ def _score_integration(
         issues.append(_issue("orphan_product_files", "Generated product files are not referenced from the runnable app: " + ", ".join(orphans[:8]), phase, retry_targets=("integration",)))
 
     scores["integration"] = score
-    proof.append({"proof_type": "integration", "title": "Convergence/orphan check inspected", "payload": {"orphans": orphans[:20], "score": score}})
+    proof.append(
+        {
+            "proof_type": "integration",
+            "title": "Convergence/import/orphan check inspected",
+            "payload": {"orphans": orphans[:20], "broken_imports": broken_imports[:20], "score": score},
+        }
+    )
+
+
+def _score_security(
+    files: Mapping[str, str],
+    profile: str,
+    phase: str,
+    issues: List[IntegrityIssue],
+    proof: List[Dict[str, Any]],
+) -> None:
+    exposed = _find_client_exposed_secrets(files)
+    if exposed:
+        issues.append(
+            _issue(
+                "client_secret_exposed",
+                "Potential secret material is present in client-delivered code: " + ", ".join(exposed[:8]),
+                phase,
+                retry_targets=("security", "frontend"),
+            )
+        )
+    proof.append(
+        {
+            "proof_type": "security",
+            "title": "Client secret exposure scan inspected",
+            "payload": {"profile": profile, "exposed_files": exposed[:20]},
+        }
+    )
 
 
 def _score_deployability(
