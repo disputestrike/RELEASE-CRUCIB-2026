@@ -148,6 +148,22 @@ def _extract_artifact_from_llm_output(
             # Make sure it doesn't look like Python
             first_line = cleaned.split('\n')[0].lower()
             if not first_line.startswith(('import ', 'from ')):
+                # LANGUAGE SANITY GATE: reject markdown headings, file manifests,
+                # and agent persona text — these must never land in a source file.
+                _GARBAGE_STARTS = (
+                    "####", "###", "##", "# ",
+                    "**`", "**[", "**\\`",
+                    "server/", "src/", "backend/", "client/", "frontend/",
+                    "[new", "[patch", "[update",
+                    "---", "===",
+                )
+                first_raw = cleaned.split("\n")[0].strip()
+                if any(first_raw.lower().startswith(g) for g in _GARBAGE_STARTS):
+                    logger.warning(
+                        "Language sanity gate REJECTED prose-as-code: "
+                        "agent output starts with %r", first_raw[:60]
+                    )
+                    return "// Auto-generated placeholder\n"
                 logger.info("Code extracted from prose: %d chars", len(cleaned))
                 return cleaned
         
@@ -301,7 +317,8 @@ AGENT_MODEL_TIER: Dict[str, str] = {
     "Session Agent": "cerebras",
     "OAuth Provider Agent": "cerebras",
     "2FA Agent": "cerebras",
-    "Braintree Subscription Agent": "cerebras",
+    "Stripe Subscription Agent": "cerebras",
+    "Braintree Subscription Agent": "cerebras",  # legacy alias
     "Invoice Agent": "cerebras",
     "CDN Agent": "cerebras",
     "SSR Agent": "cerebras",
@@ -762,20 +779,28 @@ async def run_swarm_agent_step(
                 )
                 
                 if extracted:
-                    artifact_full = os.path.join(workspace_path, artifact_rel_path)
-                    os.makedirs(os.path.dirname(artifact_full), exist_ok=True)
+                    # Route through _safe_write() so garbage/markdown/manifest
+                    # detection applies — never bypass with bare open().
                     try:
-                        with open(artifact_full, "w", encoding="utf-8") as f:
-                            f.write(extracted)
-                        if artifact_rel_path not in changed_files:
-                            changed_files.append(artifact_rel_path)
-                        logger.info(
-                            "materialize_agent_artifact_SUCCESS: %s -> %s (%d bytes)",
-                            agent_name,
-                            artifact_rel_path,
-                            len(extracted),
-                        )
-                    except OSError as e:
+                        from backend.orchestration.executor import _safe_write as _sw
+                        w = _sw(workspace_path, artifact_rel_path, extracted)
+                        if w:
+                            if artifact_rel_path not in changed_files:
+                                changed_files.append(artifact_rel_path)
+                            logger.info(
+                                "materialize_agent_artifact_SUCCESS: %s -> %s (%d bytes)",
+                                agent_name,
+                                artifact_rel_path,
+                                len(extracted),
+                            )
+                        else:
+                            logger.warning(
+                                "materialize_agent_artifact_REJECTED (garbage guard): "
+                                "agent=%s path=%s",
+                                agent_name,
+                                artifact_rel_path,
+                            )
+                    except Exception as e:
                         logger.warning(
                             "failed to write artifact %s: %s", artifact_rel_path, e
                         )

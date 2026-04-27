@@ -255,29 +255,35 @@ def list_items():
 '''
 
 
-def _braintree_routes_sketch() -> str:
-    return '''"""Braintree webhook — idempotency + signature sketch (CrucibAI).
-1) Apply db/migrations/003_braintree_idempotency_sketch.sql
-2) pip install braintree && set BRAINTREE_MERCHANT_ID/PUBLIC_KEY/PRIVATE_KEY
-3) gateway.webhook_notification.parse(bt_signature, bt_payload) then INSERT ... ON CONFLICT DO NOTHING
+def _stripe_webhook_routes_sketch() -> str:
+    return '''"""Stripe webhook — idempotency + signature sketch (CrucibAI).
+1) pip install stripe && set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET
+2) Register your webhook endpoint in the Stripe Dashboard.
 """
 import os
-from fastapi import APIRouter, Form, HTTPException
+import stripe
+from fastapi import APIRouter, Form, Header, HTTPException, Request
 
-router = APIRouter(prefix="/api/braintree", tags=["braintree"])
-
+router = APIRouter(prefix="/api/stripe", tags=["stripe"])
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 
 @router.post("/webhook")
-async def braintree_webhook(bt_signature: str = Form(...), bt_payload: str = Form(...)):
-    if not all(os.environ.get(k) for k in ("BRAINTREE_MERCHANT_ID", "BRAINTREE_PUBLIC_KEY", "BRAINTREE_PRIVATE_KEY")):
-        raise HTTPException(status_code=503, detail="Braintree is not configured")
-    # import braintree
-    # gateway = braintree.BraintreeGateway(...)
-    # notification = gateway.webhook_notification.parse(bt_signature, bt_payload)
-    # await db.execute("INSERT INTO braintree_events_processed (id) VALUES ($1) ON CONFLICT DO NOTHING", notification.id)
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    if not stripe.api_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured")
+    payload = await request.body()
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    event_type = event.get("type", "")
+    if event_type == "payment_intent.succeeded":
+        pass  # Handle successful payment
+    elif event_type.startswith("customer.subscription."):
+        pass  # Handle subscription lifecycle
     return {"received": True}
 '''
-
 
 def _ensure_braintree_router_mounted(workspace_path: str) -> None:
     """Append Braintree router mount to backend/main.py once (after braintree_routes.py exists)."""
@@ -523,8 +529,9 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
         logger.warning("executor: rejected path escape %s", rel)
         return None
     content = _strip_prose_preamble(content, rel)
-    # Hard reject: if a JSX/TSX/JS file still looks like markdown or a file manifest
-    # after preamble stripping, refuse to write it — keep the template version on disk.
+    # Language sanity gate: reject markdown/manifest/prose written into source files.
+    # No agent output starting with markdown headings, file manifests, or JS in .py
+    # should ever reach disk — those are LLM confusion artifacts, not code.
     _JSX_EXTS = {".jsx", ".tsx", ".js", ".ts"}
     _ext = os.path.splitext(rel)[1].lower()
     if _ext in _JSX_EXTS and _is_manifest_content(content):
@@ -533,7 +540,14 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
             rel, len(content),
         )
         return None
-    # Also reject JS content written into Python files
+    # Also apply the manifest/markdown check to Python files (catches markdown prose in .py)
+    if _ext == ".py" and content.strip() and _is_manifest_content(content):
+        logger.warning(
+            "executor: REJECTED manifest/markdown write to Python file %s (%d bytes)",
+            rel, len(content),
+        )
+        return None
+    # Reject JS content written into Python files
     if _ext == ".py" and content.strip():
         _py_first = content.strip().splitlines()[0].strip()
         if _py_first.startswith("//") or _py_first in ("javascript", "typescript") or \
@@ -744,16 +758,26 @@ def _ensure_preview_contract_files(
                     written.append(rel)
 
     existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
-    if not existing_app or _is_manifest_content(existing_app):
-        # Missing or garbage (file-path manifest written by agent) — replace with template
+    # ARCHITECTURAL RULE: Final Assembly owns the entrypoints.
+    # For SaaS UI builds the manus template IS the correct App.jsx — force-write it
+    # so no agent output can override the final product shape.
+    # For non-SaaS builds replace only when missing or garbage, preserving valid agent code.
+    _force_entrypoints = is_saas_ui_goal(job)
+    _needs_app_repair = not existing_app or _is_manifest_content(existing_app)
+    if _force_entrypoints or _needs_app_repair:
         app_tmpl = template_map.get("src/App.jsx")
         if app_tmpl and _safe_write(workspace_path, "src/App.jsx", app_tmpl):
             written.append("src/App.jsx")
-        # Also ensure main.jsx when App.jsx is being repaired
-        if not _read_text(workspace_path, "src/main.jsx"):
+        # main.jsx: force for SaaS; fill-if-missing otherwise
+        if _force_entrypoints or not _read_text(workspace_path, "src/main.jsx"):
             main_tmpl = template_map.get("src/main.jsx")
             if main_tmpl and _safe_write(workspace_path, "src/main.jsx", main_tmpl):
                 written.append("src/main.jsx")
+        # ShellLayout.jsx: force for SaaS; fill-if-missing otherwise
+        if _force_entrypoints or not _read_text(workspace_path, "src/components/ShellLayout.jsx"):
+            shell_tmpl = template_map.get("src/components/ShellLayout.jsx")
+            if shell_tmpl and _safe_write(workspace_path, "src/components/ShellLayout.jsx", shell_tmpl):
+                written.append("src/components/ShellLayout.jsx")
 
     # Next.js App Router track (parallel to root Vite) — P2 open item: Next-specific preview templates.
     next_prefix = "next-app-stub/"
@@ -1451,24 +1475,17 @@ PROTECTED_PREFIX = "/api/private"
                 },
             ]
 
-        elif key == "backend.braintree":
-            braintree_py = _braintree_routes_sketch()
-            w = _safe_write(workspace_path, "backend/braintree_routes.py", braintree_py)
+        elif key in ("backend.braintree", "backend.stripe"):
+            # Always write Stripe — Braintree is retired from the platform
+            stripe_py = _stripe_webhook_routes_sketch()
+            w = _safe_write(workspace_path, "backend/stripe_routes.py", stripe_py)
             if w:
                 out_files.append(w)
-            _ensure_braintree_router_mounted(workspace_path)
-            m = _read_text(workspace_path, "backend/main.py")
-            if (
-                m
-                and "CRUCIBAI_BRAINTREE_ROUTER_MOUNT" in m
-                and "backend/main.py" not in out_files
-            ):
-                out_files.append("backend/main.py")
             routes_added = [
                 {
                     "method": "POST",
-                    "path": "/api/braintree/webhook",
-                    "description": "Braintree webhook (idempotency sketch)",
+                    "path": "/api/stripe/webhook",
+                    "description": "Stripe webhook (idempotency sketch)",
                 },
             ]
 
@@ -1818,7 +1835,7 @@ Auto-generated manifest — refine in continuation runs as the product hardens.
 
 ## Mocked
 
-- Third-party APIs (Braintree, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
+- Third-party APIs (Stripe, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
 
 ## Stubbed
 
