@@ -526,12 +526,23 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
     # Hard reject: if a JSX/TSX/JS file still looks like markdown or a file manifest
     # after preamble stripping, refuse to write it — keep the template version on disk.
     _JSX_EXTS = {".jsx", ".tsx", ".js", ".ts"}
-    if os.path.splitext(rel)[1].lower() in _JSX_EXTS and _is_manifest_content(content):
+    _ext = os.path.splitext(rel)[1].lower()
+    if _ext in _JSX_EXTS and _is_manifest_content(content):
         logger.warning(
             "executor: REJECTED manifest/markdown write to %s (%d bytes) — template preserved",
             rel, len(content),
         )
         return None
+    # Also reject JS content written into Python files
+    if _ext == ".py" and content.strip():
+        _py_first = content.strip().splitlines()[0].strip()
+        if _py_first.startswith("//") or _py_first in ("javascript", "typescript") or \
+           ("import " in _py_first and " from '" in _py_first):
+            logger.warning(
+                "executor: REJECTED JS-in-Python write to %s — first line: %r",
+                rel, _py_first[:80],
+            )
+            return None
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)
@@ -570,7 +581,7 @@ _MANIFEST_LINE_RE = re.compile(
     re.MULTILINE,
 )
 _MARKDOWN_LINE_RE = re.compile(
-    r"^\s*(#{1,6}\s|\*\*File\s|\*\*[A-Z]|```|>\s|---\s*$|===\s*$)",
+    r"^\s*(#{1,6}\s|\*\*|```|>\s|---\s*$|===\s*$|\|\s*\w)",
     re.MULTILINE,
 )
 
@@ -705,6 +716,10 @@ def _ensure_preview_contract_files(
         "src/pages/LoginPage.jsx",
         "src/pages/DashboardPage.jsx",
         "src/pages/TeamPage.jsx",
+        "src/pages/AnalyticsPage.jsx",
+        "src/pages/PricingPage.jsx",
+        "src/pages/SettingsPage.jsx",
+        "src/pages/NotFoundPage.jsx",
         "src/preview/PreviewContract.jsx",
         "src/styles/global.css",
         "src/main.jsx",
