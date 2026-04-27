@@ -18,8 +18,8 @@ jobs:
     name: Agent DAG audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps (audit imports agent_dag)
@@ -32,8 +32,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -48,17 +48,17 @@ jobs:
     name: Security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps and pip-audit
@@ -77,8 +77,8 @@ jobs:
     name: Frontend unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -86,7 +86,7 @@ jobs:
       - name: Install and test
         run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: frontend-coverage
@@ -129,8 +129,8 @@ jobs:
       GOOGLE_CLIENT_SECRET: test-google-client-secret
       CRUCIBAI_TEST: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps
@@ -162,7 +162,7 @@ jobs:
           REACT_APP_BACKEND_URL: http://localhost:8000
           CRUCIBAI_API_URL: http://localhost:8000
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: hashFiles('backend/coverage.xml') != ''
         with:
           name: backend-coverage
@@ -175,8 +175,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, frontend-unit]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -194,13 +194,13 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           CI: true
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 1
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: hashFiles('backend/coverage.xml') != ''
         with:
           name: backend-coverage
