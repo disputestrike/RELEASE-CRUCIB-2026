@@ -556,6 +556,21 @@ def _write_file_set(workspace_path: str, file_set: List[tuple[str, str]]) -> Lis
     return written
 
 
+_MANIFEST_LINE_RE = re.compile(
+    r"^\s*(server/|src/|backend/|client/|frontend/|\[NEW\b|\[PATCH\b)",
+    re.MULTILINE,
+)
+
+
+def _is_manifest_content(text: str) -> bool:
+    """Return True if text looks like a file-path manifest, not source code."""
+    if not text or not text.strip():
+        return True
+    lines = [ln for ln in text.strip().splitlines() if ln.strip()][:15]
+    hits = sum(1 for ln in lines if _MANIFEST_LINE_RE.match(ln))
+    return hits >= min(3, len(lines))
+
+
 def _full_system_manifest_path(workspace_path: str) -> str:
     return os.path.join(workspace_path, ".crucibai", "full_system_build.json")
 
@@ -634,6 +649,8 @@ def _merge_package_dependencies(
                 **(fallback_pkg.get(section) or {}),
             }
             merged.pop("@types/react-router-dom", None)
+            # Evict the old vite-plugin-react (requires vite@^0.16); use @vitejs/plugin-react
+            merged.pop("vite-plugin-react", None)
         existing_pkg[section] = merged
 
     if not existing_pkg.get("type"):
@@ -680,15 +697,23 @@ def _ensure_preview_contract_files(
         "src/index.js",
     ]
     for rel in required_paths:
-        if not _read_text(workspace_path, rel):
-            if _safe_write(workspace_path, rel, template_map[rel]):
+        existing_content = _read_text(workspace_path, rel)
+        if not existing_content:
+            content = template_map.get(rel)
+            if content and _safe_write(workspace_path, rel, content):
                 written.append(rel)
 
-    if not _read_text(workspace_path, "src/App.jsx") and not _read_text(
-        workspace_path, "src/App.js"
-    ):
-        if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
+    existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
+    if not existing_app or _is_manifest_content(existing_app):
+        # Missing or garbage (file-path manifest written by agent) — replace with template
+        app_tmpl = template_map.get("src/App.jsx")
+        if app_tmpl and _safe_write(workspace_path, "src/App.jsx", app_tmpl):
             written.append("src/App.jsx")
+        # Also ensure main.jsx when App.jsx is being repaired
+        if not _read_text(workspace_path, "src/main.jsx"):
+            main_tmpl = template_map.get("src/main.jsx")
+            if main_tmpl and _safe_write(workspace_path, "src/main.jsx", main_tmpl):
+                written.append("src/main.jsx")
 
     # Next.js App Router track (parallel to root Vite) — P2 open item: Next-specific preview templates.
     next_prefix = "next-app-stub/"
@@ -740,6 +765,27 @@ def _ensure_swarm_runtime_contract_files(
     if not backend_main_text:
         bridge = _backend_main_bridge_py(multitenant=multitenant_intent(job))
         if _safe_write(workspace_path, backend_main_rel, bridge):
+            written.append(backend_main_rel)
+    elif backend_main_text and '@app.get("/health")' not in backend_main_text and "@app.get('/health')" not in backend_main_text:
+        # Agent wrote a backend but forgot /health — inject it before first route or at end
+        health_snippet = '''
+
+@app.get("/health")
+def health():
+    from datetime import datetime, timezone
+    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}
+'''
+        # Insert after app middleware block if present, else append
+        if "add_middleware" in backend_main_text:
+            insert_after = re.search(r"app\.add_middleware\([^)]+\)\n", backend_main_text)
+            if insert_after:
+                pos = insert_after.end()
+                backend_main_text = backend_main_text[:pos] + health_snippet + backend_main_text[pos:]
+            else:
+                backend_main_text += health_snippet
+        else:
+            backend_main_text += health_snippet
+        if _safe_write(workspace_path, backend_main_rel, backend_main_text):
             written.append(backend_main_rel)
 
     auth_rel = "backend/auth.py"

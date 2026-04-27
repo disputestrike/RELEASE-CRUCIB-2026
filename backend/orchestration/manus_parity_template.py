@@ -1344,6 +1344,8 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 """
 
+    shell_layout = "import React from 'react';\nimport { NavLink, Outlet } from 'react-router-dom';\n\nexport default function ShellLayout() {\n  const link = (to, label) => (\n    <NavLink\n      to={to}\n      style={({ isActive }) => ({\n        padding: '6px 14px',\n        borderRadius: 8,\n        textDecoration: 'none',\n        color: isActive ? '#fff' : '#94a3b8',\n        background: isActive ? 'oklch(0.511 0.262 276.966 / 0.35)' : 'transparent',\n        border: '1px solid rgba(148,163,184,0.2)',\n        fontSize: 14,\n        fontWeight: 500,\n      })}\n    >\n      {label}\n    </NavLink>\n  );\n\n  return (\n    <div style={{ minHeight: '100vh', background: 'var(--background, #0f172a)', color: 'var(--foreground, #e2e8f0)', fontFamily: 'Inter, system-ui, sans-serif' }}>\n      <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid rgba(148,163,184,0.15)' }}>\n        <strong style={{ marginRight: 12, fontSize: 16 }}>CrucibAI App</strong>\n        <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>\n          {link('/', 'Home')}\n          {link('/dashboard', 'Dashboard')}\n          {link('/analytics', 'Analytics')}\n          {link('/team', 'Team')}\n          {link('/pricing', 'Pricing')}\n          {link('/settings', 'Settings')}\n        </nav>\n      </header>\n      <main style={{ padding: '28px 20px', maxWidth: 1100, margin: '0 auto' }}>\n        <Outlet />\n      </main>\n    </div>\n  );\n}\n"
+
     files: List[Tuple[str, str]] = [
         ("package.json", json.dumps(pkg, indent=2)),
         ("index.html", index_html),
@@ -1358,6 +1360,7 @@ async def stripe_webhook(request: Request):
         ("src/store/useAppStore.js", app_store),
         ("src/components/ErrorBoundary.jsx", error_boundary),
         ("src/components/MarketingNav.jsx", marketing_nav),
+        ("src/components/ShellLayout.jsx", shell_layout),
         ("src/components/DashboardLayout.jsx", dashboard_layout),
         ("src/components/ui/Toast.jsx", toast),
         ("src/data/mockData.js", data_file),
