@@ -1,0 +1,22 @@
+PAYMENT INTEGRATION RULE — MANDATORY
+
+For all generated customer applications, Stripe is the ONLY permitted default payment provider.
+
+REQUIRED Stripe integration pattern:
+  - Stripe Checkout for one-time payments
+  - Stripe Billing / Subscriptions for recurring plans
+  - Stripe Customer Portal for self-service plan management
+  - Stripe Webhooks for lifecycle events (subscription.created, invoice.payment_succeeded, customer.subscription.deleted)
+  - stripe.com SDK: `import Stripe from 'stripe'` (Node/TypeScript) or `import stripe` (Python)
+  - All Stripe keys from environment variables ONLY:
+      STRIPE_SECRET_KEY (server-side, never expose)
+      STRIPE_PUBLISHABLE_KEY (client-safe)
+      STRIPE_WEBHOOK_SECRET (webhook validation)
+
+FORBIDDEN unless user explicitly names Braintree in their original prompt:
+  - Any Braintree import, require, or service call
+  - Any PayPal direct integration (use Stripe instead)
+  - Hardcoded payment keys of any kind
+
+This rule is enforced by the Build Integrity Validator (STRIPE_FIRST_VIOLATION error).
+Any Braintree code in a generated customer app will cause job failure and require repair.

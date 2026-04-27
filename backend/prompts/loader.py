@@ -57,3 +57,43 @@ def list_available() -> list[dict]:
             "bytes": len(body),
         })
     return out
+
+
+@functools.lru_cache(maxsize=32)
+def load_design_system_injection() -> str:
+    """Return the design system injection prompt for frontend code generation agents."""
+    p = PROMPTS_DIR / "design_system_injection.txt"
+    if not p.exists():
+        return ""
+    return p.read_text(encoding="utf-8")
+
+
+@functools.lru_cache(maxsize=32)
+def load_payment_default_injection() -> str:
+    """Return the payment default injection prompt for any agent that may generate billing code.
+    
+    This enforces the Stripe-first rule: all generated customer apps use Stripe unless the
+    user explicitly named Braintree in their original prompt.
+    """
+    p = PROMPTS_DIR / "payment_default_injection.txt"
+    if not p.exists():
+        return ""
+    return p.read_text(encoding="utf-8")
+
+
+def wrap_with_design_and_payment(system_prompt: str) -> str:
+    """Wrap a frontend/fullstack agent system prompt with design system + payment rules.
+    
+    Use this for any agent that generates UI components, pages, or backend billing code.
+    """
+    design = load_design_system_injection()
+    payment = load_payment_default_injection()
+    parts = []
+    if design:
+        parts.append(f"## DESIGN SYSTEM REQUIREMENTS\n\n{design.strip()}")
+    if payment:
+        parts.append(f"## PAYMENT INTEGRATION REQUIREMENTS\n\n{payment.strip()}")
+    if parts:
+        injection = "\n\n---\n\n".join(parts)
+        return f"{injection}\n\n---\n\n{system_prompt.strip()}"
+    return system_prompt

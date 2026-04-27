@@ -25,11 +25,12 @@ _ENV_GATE = "CRUCIBAI_ENFORCEMENT_GATE"
 
 
 def _gate_mode() -> str:
-    # Default advisory so existing DAG runs complete; set strict for elite hard-fail.
-    v = (os.environ.get(_ENV_GATE) or "advisory").strip().lower()
+    # Default strict — enforcement is a hard gate, not advisory.
+    # Override with CRUCIBAI_ENFORCEMENT_GATE=advisory (dev only) or =off (never in prod).
+    v = (os.environ.get(_ENV_GATE) or "strict").strip().lower()
     if v in ("strict", "advisory", "off"):
         return v
-    return "advisory"
+    return "strict"
 
 
 def _read_text(path: str) -> str:
@@ -255,11 +256,16 @@ def evaluate_enforcement(
     claim_issues = _claim_blocks(claims, flat, scoped_ids)
     all_issues = skip_issues + class_issues + claim_issues + feat_issues
 
+    # Merge UX audit issues — always block regardless of mode
+    if ux_audit_issues:
+        all_issues = ux_audit_issues + all_issues
+        advisory_would_block = True
+
     advisory_would_block = len(all_issues) > 0
     if mode == "off":
         blocked = False
     elif mode == "advisory":
-        blocked = False
+        blocked = bool(ux_audit_issues)  # UX hallucination always blocks even in advisory
     else:
         blocked = advisory_would_block
 
@@ -330,6 +336,60 @@ def write_enforcement_artifacts(workspace_path: str, result: Dict[str, Any]) -> 
         logger.warning("enforcement: write failed: %s", e)
 
 
+
+
+def _check_ux_audit_grounding(workspace_path: str) -> List[str]:
+    """Detect hallucinated UX audits — audits written without reading generated code.
+    
+    A grounded audit MUST reference actual source file paths. An audit that says
+    "I'll assume" or "since the specification doesn't contain any frontend code"
+    is fictional and should block delivery.
+    """
+    issues: List[str] = []
+    if not workspace_path:
+        return issues
+    
+    audit_path = os.path.join(workspace_path, "proof", "UX_AUDIT.md")
+    if not os.path.exists(audit_path):
+        return issues
+    
+    try:
+        with open(audit_path, encoding="utf-8", errors="replace") as fh:
+            audit_text = fh.read().lower()
+    except OSError:
+        return issues
+    
+    HALLUCINATION_PHRASES = [
+        "i'll assume",
+        "i will assume",
+        "since the specification",
+        "since no frontend code",
+        "code is not available",
+        "assuming the",
+        "based on the specification",
+        "i cannot see the actual",
+        "without access to the code",
+        "the specification doesn't contain",
+    ]
+    
+    for phrase in HALLUCINATION_PHRASES:
+        if phrase in audit_text:
+            issues.append(
+                f"UX_AUDIT_HALLUCINATION: UX audit contains '{phrase}' — "
+                f"auditor did not read actual generated files. Audit score is invalid."
+            )
+    
+    # Audit must reference at least one source file path
+    import re as _re
+    has_file_ref = bool(_re.search(r"(src/|client/src/|frontend/src/).+\.(jsx|tsx|js|ts)", audit_text))
+    if not has_file_ref and len(audit_text) > 200:
+        issues.append(
+            "UX_AUDIT_UNGROUNDED: UX audit contains no source file path references. "
+            "The auditor must read actual generated code before scoring."
+        )
+    
+    return issues
+
 async def run_completion_enforcement_gate(
     *,
     job_id: str,
@@ -338,6 +398,9 @@ async def run_completion_enforcement_gate(
     db_pool=None,
     job_dict: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    # UX audit grounding check — must run before any other evaluation
+    ux_audit_issues = _check_ux_audit_grounding(workspace_path)
+
     flat: List[Dict[str, Any]] = []
     bundle: Dict[str, List] = {
         k: []

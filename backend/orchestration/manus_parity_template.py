@@ -92,6 +92,11 @@ def build_manus_parity_frontend_file_set(job: Dict, target: str) -> List[Tuple[s
             "zustand": "4.5.0",
             "lucide-react": "0.468.0",
             "recharts": "2.15.2",
+            "stripe": "^16.0.0",
+            "@stripe/stripe-js": "^4.0.0",
+            "class-variance-authority": "^0.7.1",
+            "clsx": "^2.1.1",
+            "tailwind-merge": "^3.2.0",
         },
         "devDependencies": {},
     }
@@ -1094,7 +1099,18 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
   --text-strong: #0f172a;
   --muted: #64748b;
   --border: rgba(15, 23, 42, .10);
-  --primary: #4f46e5;
+  --primary: oklch(0.511 0.262 276.966); /* indigo-600 */
+  --background: oklch(0.988 0.002 286);  /* #F8FAFC off-white */
+  --foreground: oklch(0.175 0.012 265);  /* slate-900 */
+  --muted: oklch(0.97 0.003 264);
+  --border: oklch(0.928 0.006 264);
+  --chart-1: oklch(0.511 0.262 276.966);
+  --chart-2: oklch(0.696 0.17 162);
+  --chart-3: oklch(0.769 0.188 70);
+  --chart-4: oklch(0.627 0.265 303);
+  --chart-5: oklch(0.717 0.217 25);
+  --sidebar: oklch(0.97 0.003 264);
+  --radius: 0.5rem;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -1115,7 +1131,7 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
   --text-strong: #f8fafc;
   --muted: #94a3b8;
   --border: rgba(148, 163, 184, .18);
-  --primary: #818cf8;
+  --primary: oklch(0.673 0.182 276.935); /* indigo-400 dark mode */
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #fb7185;
