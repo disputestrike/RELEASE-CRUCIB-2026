@@ -34,6 +34,12 @@ TEXT_SUFFIXES = {
     ".yaml",
     ".yml",
     ".toml",
+    ".txt",
+}
+
+TEXT_FILENAMES = {
+    "Dockerfile",
+    "Procfile",
 }
 
 SKIP_DIRS = {
@@ -147,7 +153,7 @@ def _walk_text_files(workspace_path: str, *, max_files: int = 500) -> Dict[str, 
             if len(out) >= max_files:
                 return out
             path = Path(dirpath) / filename
-            if path.suffix.lower() not in TEXT_SUFFIXES:
+            if path.suffix.lower() not in TEXT_SUFFIXES and filename not in TEXT_FILENAMES:
                 continue
             rel = path.relative_to(root).as_posix()
             try:
@@ -260,6 +266,11 @@ def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -
         return "mobile"
     if _has_any_text(text, ("automation", "workflow", "trigger", "run_agent", "scheduled", "agent workflow")):
         return "automation"
+    if _has_any_text(text, ("website", "marketing site", "portfolio", "e-commerce", "ecommerce", "storefront", "landing page")) and not _has_any_text(
+        text,
+        ("saas", "dashboard", "analytics", "settings", "team page", "product ui", "subscription"),
+    ):
+        return "web_site"
     if _has_any_text(text, ("saas", "product ui", "dashboard", "analytics", "pricing", "settings", "team page", "landing page")):
         return "saas_ui"
     if _has_any_text(text, ("api", "backend", "fastapi", "openapi", "rest", "graphql")) and not _has_any_text(
@@ -414,17 +425,17 @@ def _score_architecture(
 
     if _has_file(files, "index.html") or _has_file(files, "client/index.html"):
         score += 3
-    elif profile in {"web", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
         issues.append(_issue("missing_html_shell", "Missing browser HTML shell/root.", phase, retry_targets=("frontend", "integration")))
 
     if _has_file(files, "src/main", "client/src/main", "src/index"):
         score += 4
-    elif profile in {"web", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
         issues.append(_issue("missing_entry_point", "Missing app entry point.", phase, retry_targets=("frontend", "integration")))
 
     if _has_file(files, "src/App", "client/src/App", "app/page", "app/layout"):
         score += 4
-    elif profile in {"web", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
         issues.append(_issue("missing_root_app", "Missing root app component.", phase, retry_targets=("frontend", "integration")))
 
     if _has_any_text(text, ("<route", "routes", "browserrouter", "memoryrouter", "wouter", "createbrowserrouter")):
@@ -459,7 +470,7 @@ def _score_design(
     proof: List[Dict[str, Any]],
     scores: Dict[str, int],
 ) -> None:
-    if profile not in {"saas_ui", "mobile"}:
+    if profile not in {"saas_ui", "web_site", "mobile"}:
         scores["design_system"] = SCORE_WEIGHTS["design_system"]
         return
 
@@ -480,7 +491,7 @@ def _score_design(
     score = 0
     if _has_file(files, "ideas.md", "design", "tokens"):
         score += 4
-    elif profile == "saas_ui":
+    elif profile in {"saas_ui", "web_site"}:
         issues.append(_issue("missing_design_artifact", "UI build lacks a concrete design artifact such as ideas.md.", phase, retry_targets=("design",)))
 
     css_text = "\n".join(v for k, v in files.items() if k.endswith((".css", ".md", ".tsx", ".jsx"))).lower()
@@ -493,7 +504,7 @@ def _score_design(
 
     if _has_any_text(text, ("tailwind", "class-variance-authority", "radix", "shadcn", "buttonvariants", "component variants")):
         score += 3
-    elif profile == "saas_ui":
+    elif profile in {"saas_ui", "web_site"}:
         issues.append(_issue("missing_component_variants", "SaaS/product UI lacks component variant system evidence.", phase, retry_targets=("design", "frontend")))
 
     if _has_any_text(text, ("font-family", "typography", "inter", "jakarta", "font-sans")):
@@ -501,6 +512,114 @@ def _score_design(
 
     scores["design_system"] = min(SCORE_WEIGHTS["design_system"], score)
     proof.append({"proof_type": "design", "title": "Design system inspected", "payload": {"token_hits": token_hits, "score": scores["design_system"]}})
+
+
+def _page_source(files: Mapping[str, str], page_name: str) -> str:
+    needle = page_name.lower()
+    candidates: List[str] = []
+    for rel, source in files.items():
+        low = rel.lower().replace("\\", "/")
+        stem = Path(rel).stem.lower()
+        if low.startswith(("src/pages/", "client/src/pages/", "frontend/src/pages/")) and stem == needle:
+            candidates.append(source)
+    if candidates:
+        return "\n".join(candidates).lower()
+    return ""
+
+
+def _validate_visual_contracts(
+    files: Mapping[str, str],
+    text: str,
+    profile: str,
+    phase: str,
+    issues: List[IntegrityIssue],
+    proof: List[Dict[str, Any]],
+) -> int:
+    """Prompt-specific visual/product QA.
+
+    The old failure mode was a runnable shell with scattered keywords. This
+    makes the validator inspect each route-level page for the sections users
+    naturally expect from that product type.
+    """
+
+    if profile == "saas_ui":
+        contracts = {
+            "home": ("hero", "feature", "cta"),
+            "dashboard": ("kpi", "chart", "table"),
+            "analytics": ("chart", "funnel", "cohort", "top pages"),
+            "team": ("invite", "role", "member", "search"),
+            "pricing": ("plans", "pricing", "faq"),
+            "settings": ("profile", "security", "billing", "integrations"),
+        }
+        missing: List[str] = []
+        for page, needles in contracts.items():
+            source = _page_source(files, page)
+            if not source:
+                continue
+            hit_count = sum(1 for needle in needles if needle in source)
+            if hit_count < min(3, len(needles)):
+                missing.append(f"{page}({hit_count}/{len(needles)})")
+        visual_needles = ("<img", "background-image", "url(", ".png", ".jpg", ".jpeg", ".webp", "recharts", "area chart", "barchart", "linechart", "piechart", "svg")
+        has_visual_asset = any(needle in text for needle in visual_needles)
+        if missing:
+            issues.append(
+                _issue(
+                    "weak_saas_page_contract",
+                    "SaaS pages do not meet route-level visual/product contracts: " + ", ".join(missing),
+                    phase,
+                    retry_targets=("frontend", "design", "integration"),
+                )
+            )
+        if not has_visual_asset:
+            issues.append(
+                _issue(
+                    "missing_visual_assets",
+                    "SaaS/product UI lacks charts, imagery, SVG/canvas, or comparable visual assets.",
+                    phase,
+                    retry_targets=("design", "frontend"),
+                )
+            )
+        proof.append(
+            {
+                "proof_type": "visual_qa",
+                "title": "Route-level SaaS visual contracts inspected",
+                "payload": {"weak_pages": missing, "has_visual_asset": has_visual_asset},
+            }
+        )
+        return max(0, 4 - len(missing) - (0 if has_visual_asset else 2))
+
+    if profile == "web_site":
+        site_terms = ("hero", "nav", "feature", "cta", "testimonial", "pricing", "contact", "footer")
+        hits = [term for term in site_terms if term in text]
+        has_visual_asset = any(needle in text for needle in ("<img", "background-image", "url(", ".png", ".jpg", ".jpeg", ".webp", "svg", "canvas"))
+        if len(hits) < 5:
+            issues.append(
+                _issue(
+                    "thin_website_sections",
+                    "Website build lacks enough public-site sections: " + ", ".join(sorted(set(site_terms) - set(hits))),
+                    phase,
+                    retry_targets=("frontend", "design"),
+                )
+            )
+        if not has_visual_asset:
+            issues.append(
+                _issue(
+                    "missing_website_visual_assets",
+                    "Website build lacks imagery, SVG/canvas, or comparable visual assets.",
+                    phase,
+                    retry_targets=("design", "frontend"),
+                )
+            )
+        proof.append(
+            {
+                "proof_type": "visual_qa",
+                "title": "Website visual contracts inspected",
+                "payload": {"section_hits": hits, "has_visual_asset": has_visual_asset},
+            }
+        )
+        return min(4, len(hits) // 2) + (1 if has_visual_asset else 0)
+
+    return 4
 
 
 def _score_completeness(
@@ -532,6 +651,16 @@ def _score_completeness(
         score += min(8, len(hits))
         if len(hits) < 8:
             issues.append(_issue("thin_product_sections", "SaaS build lacks rich product sections/data density.", phase, retry_targets=("frontend", "design")))
+        score += _validate_visual_contracts(files, text, profile, phase, issues, proof)
+    elif profile == "web_site":
+        if _has_file(files, "src/pages/home", "client/src/pages/home", "src/App", "client/src/App"):
+            score += 8
+        else:
+            issues.append(_issue("missing_website_surface", "Website build lacks a mounted home/landing surface.", phase, retry_targets=("frontend", "integration")))
+        section_needles = ("hero", "nav", "feature", "cta", "testimonial", "pricing", "contact", "footer")
+        hits = [n for n in section_needles if n in text]
+        score += min(8, len(hits))
+        score += _validate_visual_contracts(files, text, profile, phase, issues, proof)
     elif profile == "mobile":
         if _has_any_text(text, ("expo", "react-native", "react native")):
             score += 8
@@ -562,7 +691,7 @@ def _score_completeness(
     else:
         score = 16 if _has_file(files, "src", "backend", "server") else 8
 
-    if profile in {"web", "saas_ui", "api_backend"}:
+    if profile in {"web", "web_site", "saas_ui", "api_backend"}:
         placeholder_hits = [
             p
             for p in (
@@ -594,9 +723,21 @@ def _score_runtime(
 ) -> None:
     score = 0
     scripts = pkg.get("scripts") if isinstance(pkg, Mapping) else {}
+    if profile == "api_backend":
+        if _has_file(files, "requirements.txt", "pyproject.toml", "Pipfile"):
+            score += 7
+        if _has_any_text(text, ("uvicorn", "gunicorn", "fastapi", "pytest")):
+            score += 7
+        if _has_any_text(text, ("try:", "except ", "httpexception", "pydantic")):
+            score += 4
+        score += 7
+        scores["runtime_validity"] = min(SCORE_WEIGHTS["runtime_validity"], score)
+        proof.append({"proof_type": "runtime", "title": "Runtime validity inspected", "payload": {"phase": phase, "score": scores["runtime_validity"]}})
+        return
+
     if isinstance(scripts, Mapping) and scripts.get("build"):
         score += 7
-    elif profile in {"web", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
         issues.append(_issue("missing_build_script", "package.json lacks build script.", phase, retry_targets=("stack", "integration")))
 
     if isinstance(scripts, Mapping) and (scripts.get("dev") or scripts.get("start")):
@@ -604,7 +745,7 @@ def _score_runtime(
     if isinstance(scripts, Mapping) and (scripts.get("test") or scripts.get("check")):
         score += 4
 
-    if phase in {"runtime", "final"} and profile in {"web", "saas_ui"}:
+    if phase in {"runtime", "final"} and profile in {"web", "web_site", "saas_ui"}:
         if _has_file(files, "dist/index.html", "build/index.html"):
             score += 7
         else:
@@ -714,6 +855,8 @@ def _score_deployability(
         score += 3
     scripts = pkg.get("scripts") if isinstance(pkg, Mapping) else {}
     if isinstance(scripts, Mapping) and (scripts.get("start") or scripts.get("preview")):
+        score += 3
+    elif profile == "api_backend" and _has_any_text(text, ("uvicorn", "gunicorn", "fastapi")):
         score += 3
 
     if "configure cmd for your app" in text:

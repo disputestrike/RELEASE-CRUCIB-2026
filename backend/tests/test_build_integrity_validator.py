@@ -12,6 +12,7 @@ from backend.orchestration.build_target_inference import infer_build_target
 from backend.orchestration.build_targets import normalize_build_target
 from backend.orchestration.generation_contract import parse_generation_contract
 from backend.orchestration.generated_app_template import build_frontend_file_set
+from backend.orchestration.targeted_dag_retry import build_targeted_retry_plan
 
 
 def write(path, text):
@@ -122,6 +123,56 @@ def make_saas_workspace(root):
         write(root / "src" / "pages" / f"{page}.jsx", page_body.replace("PAGE", page))
 
 
+def make_marketing_site_workspace(root):
+    write(
+        root / "package.json",
+        json.dumps(
+            {
+                "scripts": {"dev": "vite --host", "build": "vite build", "preview": "vite preview"},
+                "dependencies": {"react": "^19.0.0", "react-dom": "^19.0.0", "lucide-react": "^0.400.0"},
+                "devDependencies": {"vite": "^7.0.0"},
+            }
+        ),
+    )
+    write(root / "index.html", '<div id="root"></div>')
+    write(root / "dist" / "index.html", '<div id="root"></div><script type="module" src="/assets/app.js"></script>')
+    write(root / "Dockerfile", "FROM node:22-alpine\nCMD [\"npm\", \"run\", \"preview\"]\n")
+    write(root / "README.md", "How to run: npm install, npm run build, npm run preview. Deployment: static host.")
+    write(
+        root / "ideas.md",
+        """
+        Design option A: Editorial launch.
+        Design option B: Clear conversion.
+        Design option C: Product theater.
+        Chosen direction: Clear conversion for a focused public website.
+        """,
+    )
+    write(
+        root / "src" / "index.css",
+        """
+        :root { --primary:#2563eb; --background:#ffffff; --foreground:#0f172a; --chart-1:#2563eb; --sidebar:#f8fafc; --radius:8px; }
+        .buttonVariants { font-family: Inter, sans-serif; }
+        """,
+    )
+    write(
+        root / "src" / "main.jsx",
+        "import React from 'react'; import { createRoot } from 'react-dom/client'; import App from './App.jsx'; import './index.css'; createRoot(document.getElementById('root')).render(<App />);",
+    )
+    write(
+        root / "src" / "App.jsx",
+        """
+        export default function App(){
+          return <main>
+            <nav>Navigation</nav>
+            <section className="hero"><img src="/product.png" alt="Product" /><h1>Website Hero</h1><button>CTA</button></section>
+            <section>feature feature feature</section>
+            <section>testimonial pricing contact footer</section>
+          </main>
+        }
+        """,
+    )
+
+
 def issue_codes(result):
     return {item["code"] for item in result.get("structured_issues", [])}
 
@@ -134,6 +185,26 @@ def test_biv_retry_route_maps_categories_to_agent_groups():
     assert "Frontend Generation" in route["agent_groups"]
     assert "Integration Agent" in route["agent_groups"]
     assert "Security Checker" in route["agent_groups"]
+
+
+def test_targeted_dag_retry_plan_turns_biv_targets_into_executable_steps():
+    plan = build_targeted_retry_plan(
+        {
+            "score": 61,
+            "profile": "saas_ui",
+            "issues": ["Missing entry point", "Weak design tokens"],
+            "retry_targets": ["frontend", "design", "integration"],
+            "retry_route": {"agent_groups": ["Frontend Generation", "Design Agent", "Integration Agent"]},
+        }
+    )
+
+    assert plan["strategy"] == "targeted_dag_retry"
+    assert [step["target"] for step in plan["steps"]] == ["design", "frontend", "integration"]
+    assert [step["step_key"] for step in plan["steps"]] == [
+        "frontend.styling",
+        "frontend.scaffold",
+        "implementation.integration",
+    ]
 
 
 def test_biv_final_gate_blocks_completion_and_routes_missing_entrypoint_retry():
@@ -372,3 +443,61 @@ def test_biv_blocks_orphan_page_and_weak_design_tokens():
     assert not result["passed"]
     assert "orphan_product_files" in codes
     assert "weak_design_tokens" in codes
+
+
+def test_website_profile_requires_public_site_sections_and_visual_assets():
+    good = case_root("website_pass")
+    make_marketing_site_workspace(good)
+    result = validate_workspace_integrity(
+        str(good),
+        goal="Build a polished marketing website for a product launch",
+        phase="final",
+    )
+    assert result["passed"], result
+    assert result["profile"] == "web_site"
+
+    broken = case_root("website_thin")
+    write(broken / "package.json", json.dumps({"scripts": {"build": "vite build"}, "dependencies": {"react": "latest"}}))
+    write(broken / "index.html", '<div id="root"></div>')
+    write(broken / "src" / "main.jsx", "import App from './App.jsx'")
+    write(broken / "src" / "App.jsx", "export default function App(){return <main><h1>Coming soon</h1></main>}")
+    write(broken / "dist" / "index.html", '<div id="root"></div>')
+    broken_result = validate_workspace_integrity(
+        str(broken),
+        goal="Build a polished marketing website for a product launch",
+        phase="final",
+    )
+    assert not broken_result["passed"]
+    assert "thin_website_sections" in issue_codes(broken_result)
+
+
+def test_backend_api_profile_requires_real_api_surface():
+    good = case_root("api_pass")
+    write(good / "requirements.txt", "fastapi\nuvicorn\n")
+    write(
+        good / "backend" / "main.py",
+        """
+        from fastapi import FastAPI, APIRouter
+        app = FastAPI(openapi_url='/openapi.json')
+        router = APIRouter()
+        @app.get('/health')
+        def health():
+            return {'status':'ok'}
+        @router.get('/items')
+        def items():
+            return []
+        app.include_router(router, prefix='/api')
+        """,
+    )
+    write(good / "Dockerfile", "FROM python:3.11-slim\nCMD [\"uvicorn\", \"backend.main:app\"]\n")
+    write(good / "README.md", "How to run: uvicorn backend.main:app. Deployment: Railway.")
+    result = validate_workspace_integrity(str(good), goal="Build a FastAPI backend API", phase="final")
+    assert result["passed"], result
+    assert result["profile"] == "api_backend"
+
+    broken = case_root("api_broken")
+    write(broken / "requirements.txt", "fastapi\n")
+    write(broken / "backend" / "main.py", "# no routes yet\n")
+    broken_result = validate_workspace_integrity(str(broken), goal="Build a FastAPI backend API", phase="final")
+    assert not broken_result["passed"]
+    assert "thin_api_contract" in issue_codes(broken_result) or "missing_api_surface" in issue_codes(broken_result)

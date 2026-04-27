@@ -1123,17 +1123,11 @@ async def _execute_job_loop(
             requested_biv_repairs = 1
         max_biv_repairs = max(0, min(2, requested_biv_repairs))
         for attempt in range(1, max_biv_repairs + 1):
-            repair = await run_full_brain_repair(
+            from .targeted_dag_retry import run_targeted_biv_retry
+
+            repair = await run_targeted_biv_retry(
                 workspace_path=ws or "",
-                step_key="build_integrity_validator",
-                error_message=json.dumps(
-                    {
-                        "issues": (biv.get("issues") or [])[:30],
-                        "retry_targets": biv.get("retry_targets") or [],
-                        "retry_route": biv.get("retry_route") or {},
-                        "profile": biv.get("profile"),
-                    }
-                )[:2000],
+                biv_result=biv,
                 retry_count=attempt - 1,
                 job=job_latest or job,
             )
@@ -1145,6 +1139,8 @@ async def _execute_job_loop(
                     "retry_targets": biv.get("retry_targets") or [],
                     "retry_route": biv.get("retry_route") or {},
                     "strategy": repair.get("strategy", "unknown"),
+                    "targeted_retry_plan": repair.get("plan") or {},
+                    "targeted_attempts": repair.get("attempts") or [],
                     "workspace_fixed": bool(repair.get("workspace_fixed")),
                     "files_repaired": repair.get("files_repaired") or [],
                 },
