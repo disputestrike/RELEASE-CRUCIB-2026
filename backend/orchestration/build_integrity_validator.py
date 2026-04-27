@@ -256,14 +256,41 @@ def _find_client_exposed_secrets(files: Mapping[str, str], *, max_items: int = 8
 
 
 def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -> str:
-    text = (goal or "").lower()
+    goal_lower = (goal or "").lower()
+
+    # ── Web escape hatch (checked before everything else) ──────────────────────
+    # vite.config.js / index.html as actual workspace files = unambiguous web
+    # build.  Don't let stray "app.json" references in docs fool the detector.
+    # Sub-classification uses ONLY goal text — file content is unreliable
+    # (a marketing site legitimately mentions "pricing" in its copy, which would
+    # otherwise trigger "saas_ui").
+    _WEB_ANCHORS = ("vite.config.js", "vite.config.ts", "index.html", "webpack.config.js")
+    if files and any(k in files for k in _WEB_ANCHORS):
+        if _has_any_text(goal_lower, ("saas", "product ui", "dashboard", "analytics",
+                                      "settings", "team page", "subscription")):
+            return "saas_ui"
+        if _has_any_text(goal_lower, ("website", "marketing site", "portfolio",
+                                      "e-commerce", "ecommerce", "storefront",
+                                      "landing page", "product launch", "launch page")):
+            return "web_site"
+        return "web"
+
+    # ── Mobile: only trigger on goal text + explicit mobile file keys ──────────
+    # Never trigger from file *content* alone — docs/READMEs routinely mention
+    # "app.json" without the workspace being a React Native project.
+    _MOBILE_FILE_KEYS = {"app.json", "eas.json", "app.config.js", "app.config.ts"}
+    _mobile_goal = bool(re.search(
+        r"\b(?:expo|react native|react-native|mobile app|app store|ios|android)\b",
+        goal_lower,
+    ))
+    _mobile_files = files is not None and bool(_MOBILE_FILE_KEYS & set(files.keys()))
+    if _mobile_goal or _mobile_files:
+        return "mobile"
+
+    text = goal_lower
     if files:
         text += "\n" + _combined(files)
-    if re.search(
-        r"\b(?:expo|react native|react-native|mobile app|app store|eas\.json|app\.json|ios|android)\b",
-        text,
-    ):
-        return "mobile"
+
     if _has_any_text(text, ("automation", "workflow", "trigger", "run_agent", "scheduled", "agent workflow")):
         return "automation"
     if _has_any_text(text, ("website", "marketing site", "portfolio", "e-commerce", "ecommerce", "storefront", "landing page")) and not _has_any_text(
