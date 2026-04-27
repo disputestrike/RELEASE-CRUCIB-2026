@@ -133,11 +133,18 @@ def _extract_artifact_from_llm_output(
             if match:
                 code = match.group(1).strip()
                 if code:
-                    # Reject if it looks like Python
-                    first_line = code.split('\n')[0].lower()
-                    if first_line.startswith(('import ', 'from ')):
-                        # Python import detected
-                        logger.debug("Python syntax detected in JS file, skipping this block")
+                    # Reject ONLY if it looks like Python (no quotes after 'from').
+                    # JS: `import React from 'react'` has quotes — keep it.
+                    # Python: `from flask import Flask` / `import os` — reject.
+                    first_line = code.split('\n')[0].strip()
+                    first_lower = first_line.lower()
+                    is_python_import = (
+                        first_lower.startswith(('import ', 'from '))
+                        and "'" not in first_line
+                        and '"' not in first_line
+                    )
+                    if is_python_import:
+                        logger.debug("Python import detected in JS fence, skipping: %r", first_line[:60])
                         continue
                     logger.info("Code extracted from fence: %d chars", len(code))
                     return code
