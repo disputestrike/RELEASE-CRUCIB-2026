@@ -810,6 +810,44 @@ async def _run_single_agent_with_context(
         _dag_system_prompt = (_dag_entry.get("system_prompt") or "").strip()
     except Exception:
         _dag_system_prompt = ""
+    # Inject design system + payment default rules for code-generating agents
+    _DESIGN_PAYMENT_AGENTS = {
+        "Frontend Generation", "Design Agent", "Backend Generation",
+        "Integration Agent", "API Integration", "Deployment Agent",
+    }
+    _UX_AUDIT_AGENTS = {"UX Auditor"}
+    try:
+        from backend.prompts.loader import (
+            load_design_system_injection,
+            load_payment_default_injection,
+        )
+        _design_inject = load_design_system_injection()
+        _payment_inject = load_payment_default_injection()
+    except Exception:
+        _design_inject = ""
+        _payment_inject = ""
+
+    if agent_name in _DESIGN_PAYMENT_AGENTS and (_design_inject or _payment_inject):
+        _injection_parts = []
+        if _design_inject:
+            _injection_parts.append(f"## DESIGN SYSTEM REQUIREMENTS (MANDATORY)\n\n{_design_inject.strip()}")
+        if _payment_inject:
+            _injection_parts.append(f"## PAYMENT INTEGRATION REQUIREMENTS (MANDATORY)\n\n{_payment_inject.strip()}")
+        _injection_block = "\n\n---\n\n".join(_injection_parts)
+        _dag_system_prompt = f"{_injection_block}\n\n---\n\n{_dag_system_prompt}" if _dag_system_prompt else _injection_block
+
+    if agent_name in _UX_AUDIT_AGENTS:
+        _ux_grounding = (
+            "\n\nCRITICAL AUDIT RULE: Before scoring ANYTHING, you MUST:\n"
+            "1. Read the generated source files explicitly listed in your context.\n"
+            "2. Reference actual file paths (e.g. src/pages/Dashboard.jsx) in your audit.\n"
+            "3. NEVER write 'I\'ll assume', 'based on the specification', or 'since no frontend code'. "
+            "These phrases mean your audit is fictional and it WILL be rejected by the Build Integrity Validator.\n"
+            "4. If you cannot see actual code, write: AUDIT BLOCKED: Required files not available. Score: INVALID.\n"
+            "Your score must reference specific line numbers in specific files."
+        )
+        _dag_system_prompt = (_dag_system_prompt or "") + _ux_grounding
+
     system_message = _dag_system_prompt or (
         f"You are {agent_name}. Output ONLY production-ready code. "
         "No prose, no markdown explanation. Start your response with the first line of code."
