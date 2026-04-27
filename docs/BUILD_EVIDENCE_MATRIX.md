@@ -28,6 +28,30 @@ No capability is considered complete unless it has:
 | Frontend production build | `frontend/` | CRA build | `npm run build` | Production build completed successfully; emitted only bundle-size and Node deprecation warnings. |
 | Frontend dependency audit | `frontend/package-lock.json` | npm audit | `npm audit --audit-level=high` | Audit command reported 0 vulnerabilities. `npm install` separately printed an engine warning for Node v24 vs supported <=22. |
 
+## Public Marketing Claim Map
+
+Website copy must use this table as the source of truth. If a claim is not in
+the first two categories, public copy must state the condition or avoid the
+claim entirely.
+
+| Public claim | Status | Evidence / limitation | Copy rule |
+|---|---|---|---|
+| Build Integrity Validator final gate | Implemented and tested | BIV source, auto-runner wiring, BIV tests | May say builds are validator-gated. |
+| BIV blocks bad web outputs | Implemented and tested | Negative tests for missing entry, missing app/router, broken import, missing script, missing preview, placeholder UI, orphan page, weak tokens, exposed client secret | May say bad artifacts are blocked by BIV. |
+| Web app build/export flow | Implemented and tested at frontend/build-smoke level | Frontend tests/build and backend smoke suite | May say web artifacts are generated/exported after proof gates pass. |
+| Expo/React Native mobile output | Implemented and tested for generated artifacts | `mobile_expo` artifacts and BIV mobile test | May say Expo mobile artifacts/source are generated. Must not say store submission is automatic. |
+| Import existing code | Partially implemented | Import Doctor validates ZIP/workspace/package/framework/entrypoints/BIV | Say ZIP/workspace import doctor baseline. Git/paste/dependency repair/preview-after-import are conditional. |
+| run_agent automation bridge | Implemented and tested for safety guard | run_agent safety tests | May say guarded run_agent bridge. Schedules/webhooks/templates are configuration-dependent. |
+| Automatic repair/self-healing | Partially implemented | Bounded final BIV repair attempt and rerun | Say bounded repair; do not claim full DAG node-level retry. |
+| Security scan | Partially implemented | BIV client-secret scan plus existing security gates | Say baseline security checks; do not claim comprehensive CORS/auth/tenancy security doctor. |
+| Quality score | Partially implemented | Deterministic BIV score tested | Say Build Integrity score. Do not claim complete per-agent historical cost/token accounting. |
+| Agent transparency | Partially implemented | Job events, proof bundles, AgentMonitor surfaces | Say available phase/agent events and logs. Do not say every agent/decision is visible unless runtime proof shows it. |
+| One-click deploy | Not claimable as universal | Provider integration must be configured and verified | Say provider deploys are configuration-dependent. |
+| Accessibility on every project | Not claimable | WCAG/axe/keyboard/contrast proof not implemented | Say accessibility is roadmap/not yet claimable. |
+| App Store / Google Play submission | Not claimable as automatic | Requires credentials, signing, EAS/store metadata, and live proof | Say Expo source plus store submission guidance only. |
+| Exact agent count such as 100+ or 241 | Not claimable | Runtime enumeration required | Do not publish exact count unless generated from runtime inventory. |
+| Always runnable/deployable guarantee | Not claimable | No system can guarantee every prompt/provider/import | Say completion requires proof gates; failed proof returns issues/retry targets. |
+
 ## Partially Implemented
 
 | Capability | What exists | What remains |

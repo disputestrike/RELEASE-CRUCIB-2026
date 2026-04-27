@@ -48,8 +48,8 @@ const TOUR_STEPS = [
   },
   {
     id: 'deploy',
-    title: 'One-Click Deploy',
-    description: 'When your build is ready, deploy to Vercel, Netlify, or Railway with one click. Or download a deploy-ready ZIP.',
+    title: 'Export Or Deploy',
+    description: 'When proof gates pass, download a ZIP or deploy through a configured Vercel, Netlify, or Railway target.',
     icon: Rocket,
     target: null,
     position: 'center',

@@ -460,15 +460,15 @@ const AuthPage = () => {
           <p className="text-gray-500 text-lg mb-10 leading-relaxed">
             {isLogin
               ? 'Your projects, agents, and builds are waiting.'
-              : 'A swarm of agents and sub-agents plans, builds, tests, and deploys your app — while you watch every step.'}
+              : 'A plan-first build system creates proof-gated web, Expo mobile, and automation artifacts while showing the runtime telemetry it can verify.'}
           </p>
 
           {/* Benefits */}
           <div className="space-y-5 mb-12">
             {[
-              { text: 'Plan-first architecture — no black boxes', check: true },
-              { text: 'Full transparency into every agent decision', check: true },
-              { text: 'Web, mobile, and automation — one platform', check: true },
+              { text: 'Plan-first architecture with Build Integrity gates', check: true },
+              { text: 'AgentMonitor events, logs, and proof artifacts', check: true },
+              { text: 'Web, Expo mobile artifacts, and guarded automation bridge', check: true },
               { text: '100 free credits, no credit card required', check: true },
             ].map((item, i) => (
               <motion.div

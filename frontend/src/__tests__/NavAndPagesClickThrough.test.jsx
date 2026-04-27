@@ -115,7 +115,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(src).toMatch(/id="solution-founders"/);
     expect(src).toMatch(/id="use-case-poc"/);
     expect(src).toMatch(/One AI\. Two superpowers/);
-    expect(src).toMatch(/No black boxes/);
+    expect(src).toMatch(/Claims map to artifacts/);
     expect(src).toMatch(/Monday to Friday\. One platform/);
   });
 

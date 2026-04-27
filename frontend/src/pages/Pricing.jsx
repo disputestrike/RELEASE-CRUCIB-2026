@@ -21,34 +21,34 @@ const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
 const PLAN_FEATURES = {
   free: [
-    '2 full apps — frontend + backend + database + auth',
-    'OR 4 landing pages — fully designed, SEO-ready',
+    '2 proof-gated app build runs',
+    'OR 4 landing-page build runs',
     'Live preview · export ZIP · push to GitHub',
     'Agent swarm & sub-agents · voice input · templates',
     'No credit card required',
   ],
   builder: [
-    '5 complete production apps per month',
-    'OR 10 landing pages · OR 3 mobile apps',
-    'Every app: frontend · backend · DB · auth · Braintree payments',
-    'Mobile: Expo project + App Store & Play Store guide',
+    '5 proof-gated app build runs per month',
+    'OR 10 landing pages · OR 3 Expo mobile artifact runs',
+    'Supported targets: frontend, backend/API, DB/auth/payment scaffolds when requested',
+    'Mobile: Expo project + store submission guide; submission not included',
     'Voice input · image-to-code · agent swarm',
   ],
   pro: [
-    '10 complete production apps per month',
-    'OR 20 landing pages · OR 6 mobile apps',
+    '10 proof-gated app build runs per month',
+    'OR 20 landing pages · OR 6 Expo mobile artifact runs',
     'Everything in Builder',
     'Max speed (priority queue) · priority support',
   ],
   scale: [
-    '20 complete production apps per month',
-    'OR 40 landing pages · OR 13 mobile apps',
+    '20 proof-gated app build runs per month',
+    'OR 40 landing pages · OR 13 Expo mobile artifact runs',
     'Everything in Pro',
     'High-volume builds for agencies & studios',
   ],
   teams: [
-    '50 complete production apps per month',
-    'OR 100 landing pages · OR 33 mobile apps',
+    '50 proof-gated app build runs per month',
+    'OR 100 landing pages · OR 33 Expo mobile artifact runs',
     'Everything in Scale',
     'Teams, agencies, white-label studios',
     'Priority support · team billing',
@@ -215,16 +215,16 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">The only builder that gives you the complete stack — frontend, backend, database, auth, and payments — in every build. Plus mobile apps with App Store &amp; Play Store submission guide. Free tier: 200 credits. No surprises.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">Credits fund proof-gated build runs for web apps, backend/API projects, automations, and Expo mobile artifacts. Backend, database, auth, and payment scaffolds are generated when requested and validator-supported. Free tier: 200 credits.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
-            <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI beats the others at every price point</p>
+            <p className="text-sm font-medium text-[#1A1A1A] mb-2">What each credit funds</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
-              <li>• Every build includes frontend + backend + database + auth + Braintree payments — not just a frontend.</li>
-              <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
-              <li>• A swarm of agents and sub-agents, fully linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
+              <li>• Build profiles are checked by the Build Integrity Validator before completion.</li>
+              <li>• Expo mobile outputs include source, app metadata, EAS config, and store submission guidance; store submission is not automatic.</li>
+              <li>• Linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
             </ul>
           </div>
-          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app.</p>
+          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing-page run · 100 credits ≈ 1 app build run · 150 credits ≈ 1 Expo mobile artifact run.</p>
         </div>
 
         {/* Free tier */}
@@ -236,12 +236,12 @@ export default function Pricing() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
-              <p className="text-stone-500 mb-4">200 credits. Build 2 complete apps or 4 landing pages. No credit card.</p>
+              <p className="text-stone-500 mb-4">200 credits. Run 2 app builds or 4 landing-page builds. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 full apps — frontend + backend + database + auth</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing pages — designed, SEO-ready, exportable</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 proof-gated app build runs</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing-page build runs</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Live preview · export to ZIP · push to GitHub</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Agent swarm &amp; sub-agents · voice input · templates &amp; prompts</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Plan-first flow · voice input · templates &amp; prompts</li>
               </ul>
             </div>
             <div className="shrink-0">
@@ -360,7 +360,7 @@ export default function Pricing() {
         {/* Outcome calculator */}
         <div className="mt-16 max-w-2xl mx-auto p-6 rounded-2xl border border-stone-200 bg-white shadow-sm">
           <h3 className="text-lg font-semibold mb-2">How many credits do I need?</h3>
-          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app (frontend + backend + DB + auth + payments) · 150 credits ≈ 1 mobile app with App Store guide. Enter your goals below.</p>
+          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing-page run · 100 credits ≈ 1 app build run · 150 credits ≈ 1 Expo mobile artifact run with store submission guidance. Enter your goals below.</p>
           <OutcomeCalculator bundles={bundles} onSelectPlan={(key) => {
             if (user) navigate('/app/tokens', { state: { addon: key } });
             else navigate('/app/tokens?addon=' + encodeURIComponent(key));
@@ -370,7 +370,7 @@ export default function Pricing() {
         <div className="mt-20 max-w-2xl mx-auto border-t border-stone-200 pt-16">
           <h3 className="text-lg font-semibold mb-4">Clarity & how credits work</h3>
           <p className="text-stone-500 text-sm leading-relaxed">
-            Know exactly what you're building. No surprises, no hidden limitations. Plans are monthly (or annual for 17% off). Buy more credits anytime—no limit.
+            Know what evidence supports each build. Plans are monthly (or annual for 17% off). Buy more credits anytime—no limit.
           </p>
         </div>
       </div>

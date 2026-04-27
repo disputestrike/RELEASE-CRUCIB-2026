@@ -13,15 +13,15 @@ import axios from 'axios';
 
 const USE_CASES = [
   { icon: Building2, title: 'Digital Agencies', desc: 'Generate client projects 10x faster with white-label builds and team workspaces.' },
-  { icon: Server, title: 'Enterprises', desc: 'Auto-generate internal tools, SDKs, and microservices at scale with SOC2 compliance.' },
-  { icon: Zap, title: 'Startups', desc: 'Ship your MVP in days. Full-stack apps with auth, payments, and database — done.' },
+  { icon: Server, title: 'Enterprises', desc: 'Generate internal tools, SDKs, and microservice artifacts with security and proof gates; formal compliance is handled by agreement.' },
+  { icon: Zap, title: 'Startups', desc: 'Create proof-gated MVP artifacts quickly. Auth, payments, and database scaffolds are generated when requested and validator-supported.' },
 ];
 
 const SOC2_CHECKLIST = [
-  { category: 'Security', items: ['AES-256 data encryption at rest', 'TLS 1.3 in transit', 'JWT authentication + TOTP 2FA', 'Role-based access control (RBAC)', 'IP allowlisting available on request', 'Penetration testing (annual)'] },
-  { category: 'Availability', items: ['99.9% uptime SLA (Enterprise)', 'Railway cloud infrastructure (multi-region)', 'Automated health checks every 30s', 'Incident response < 1 hour', 'Redundant PostgreSQL with automated backups', 'Zero-downtime deployments'] },
-  { category: 'Confidentiality', items: ['Data isolation per tenant', 'Build files never shared between users', 'LLM prompts not used for model training', 'GDPR & CCPA compliant', 'Data deletion on account close', 'Audit log for all data access'] },
-  { category: 'Processing Integrity', items: ['All builds validated before output', 'Code quality scoring on every build', 'Agent outputs logged and traceable', 'Rollback available for every build version', 'Error recovery in all 8 build phases', 'DAG integrity verified on startup'] },
+  { category: 'Security', items: ['Authentication and session controls', 'Role-based access controls where configured', 'Client-secret scan in BIV', 'Provider-token handling by environment', 'Security headers in production routes', 'Responsible disclosure channel'] },
+  { category: 'Availability', items: ['Provider-backed hosting options', 'Health check endpoints', 'Deploy readiness proof', 'Preview readiness proof', 'Incident response terms by agreement', 'Rollback plan by deployment target'] },
+  { category: 'Confidentiality', items: ['Project-scoped workspaces', 'Secrets should remain in environment variables', 'No secret echo in validator issues', 'Privacy controls documented', 'Data deletion by account workflow', 'Audit trails where configured'] },
+  { category: 'Processing Integrity', items: ['Build Integrity Validator before completion', 'Preview and runtime proof gates', 'Import Doctor baseline for ZIP/workspace imports', 'Bounded BIV repair attempt', 'DAG integrity checks', 'Evidence matrix for public claims'] },
 ];
 
 const SLA_TIERS = [
@@ -32,20 +32,20 @@ const SLA_TIERS = [
 ];
 
 const SSO_FEATURES = [
-  { icon: Key, title: 'SAML 2.0 SSO', desc: 'Connect Okta, Azure AD, Google Workspace, or any SAML 2.0 IdP.' },
-  { icon: Users, title: 'User Provisioning', desc: 'SCIM 2.0 auto-provision and deprovision users from your IdP.' },
-  { icon: Lock, title: 'Org-level Controls', desc: 'Enforce SSO, disable password login, manage team seats from admin panel.' },
-  { icon: Activity, title: 'Audit Logs', desc: 'Full audit trail: logins, builds, deploys, data access — exportable as CSV.' },
+  { icon: Key, title: 'SAML 2.0 SSO', desc: 'Available through enterprise setup when the identity provider integration is configured.' },
+  { icon: Users, title: 'User Provisioning', desc: 'Provisioning requirements are scoped during enterprise onboarding.' },
+  { icon: Lock, title: 'Org-level Controls', desc: 'Org policy controls are configured by plan and deployment target.' },
+  { icon: Activity, title: 'Audit Logs', desc: 'Job events, proof artifacts, and relevant workspace actions are recorded where the runtime emits them.' },
 ];
 
 const ENTERPRISE_FEATURES = [
-  { icon: Shield, label: 'SOC 2 Type II in progress' },
+  { icon: Shield, label: 'SOC 2 roadmap in progress' },
   { icon: Lock, label: 'SAML / WorkOS SSO' },
-  { icon: Globe, label: '99.9% uptime SLA' },
+  { icon: Globe, label: 'SLA options by agreement' },
   { icon: Key, label: 'Custom API keys & volume' },
-  { icon: FileText, label: 'GDPR / CCPA compliant' },
+  { icon: FileText, label: 'Privacy controls documented' },
   { icon: Users, label: 'Dedicated success manager' },
-  { icon: Server, label: 'Private cloud deployment' },
+  { icon: Server, label: 'Private deployment planning' },
   { icon: Clock, label: '< 1-hour incident response' },
 ];
 
@@ -102,7 +102,7 @@ export default function Enterprise() {
             CrucibAI for Enterprise
           </h1>
           <p className="text-kimi-muted max-w-2xl mx-auto text-lg mb-8">
-            SOC 2 security, SAML SSO, 99.9% SLA, and dedicated support — everything your team needs to build at scale.
+            Enterprise security roadmap, SAML SSO options, deployment planning, and dedicated support — scoped to the proof and provider integrations your team enables.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {ENTERPRISE_FEATURES.map(f => (
@@ -151,7 +151,7 @@ export default function Enterprise() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-20">
           <div className="flex justify-center mb-8">
             <div className="flex gap-1 p-1 rounded-xl border border-white/10 bg-kimi-bg-card">
-              {[{ id: 'soc2', label: 'SOC 2 Controls' }, { id: 'sla', label: 'SLA' }].map(t => (
+              {[{ id: 'soc2', label: 'Security Controls' }, { id: 'sla', label: 'SLA' }].map(t => (
                 <button
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
@@ -171,7 +171,7 @@ export default function Enterprise() {
             <div>
               <h2 className="text-2xl font-bold text-kimi-text text-center mb-3">Security Controls</h2>
               <p className="text-kimi-muted text-center mb-10 max-w-xl mx-auto">
-                CrucibAI is built to enterprise security standards. SOC 2 Type II audit in progress.
+                CrucibAI documents the controls currently implemented and the controls that remain conditional. Formal SOC 2 evidence is still in progress.
               </p>
               <div className="grid sm:grid-cols-2 gap-6">
                 {SOC2_CHECKLIST.map(sec => (
@@ -198,13 +198,13 @@ export default function Enterprise() {
             <div>
               <h2 className="text-2xl font-bold text-kimi-text text-center mb-3">Service Level Agreement</h2>
               <p className="text-kimi-muted text-center mb-10 max-w-xl mx-auto">
-                Guaranteed uptime, response times, and support SLAs across every plan.
+                Availability targets, response times, and support terms are defined by plan and by signed enterprise agreement.
               </p>
               <div className="overflow-x-auto rounded-2xl border border-white/10">
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
-                      {['Plan', 'Uptime SLA', 'Support', 'Response Time', 'Compute'].map(h => (
+                      {['Plan', 'Availability target', 'Support', 'Response Time', 'Compute'].map(h => (
                         <th key={h} className="text-left px-6 py-4 text-kimi-muted font-medium">{h}</th>
                       ))}
                     </tr>
@@ -232,7 +232,7 @@ export default function Enterprise() {
                 </table>
               </div>
               <p className="text-xs text-kimi-muted text-center mt-4">
-                SLA credits apply when uptime falls below guaranteed level. Enterprise agreements are binding with 30-day notice.
+                SLA credits and uptime commitments apply only when included in a signed enterprise agreement.
               </p>
             </div>
           )}

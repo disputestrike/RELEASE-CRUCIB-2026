@@ -322,7 +322,7 @@ const LandingPage = () => {
       <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
-          <p className="text-sm text-gray-500">Plan, build, and ship — web, mobile, and automation in one workspace.</p>
+          <p className="text-sm text-gray-500">Plan, build, and export proof-gated web, Expo mobile, and automation artifacts in one workspace.</p>
         </div>
       </section>
       </div>

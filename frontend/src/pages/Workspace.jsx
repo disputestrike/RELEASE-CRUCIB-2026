@@ -4507,7 +4507,7 @@ BUILD IT NOW â€” output every file completely:`;
               <div>
                 <div style={{ padding: '16px', background: 'rgba(224,90,37,0.08)', borderRadius: 12, border: '1px solid rgba(224,90,37,0.25)', marginBottom: 16 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>Connect Vercel to deploy</p>
-                  <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 12 }}>Add your Vercel API token in Settings to enable one-click deployment.</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 12 }}>Add your Vercel API token in Settings to enable configured provider deployment.</p>
                   <button
                     onClick={() => { setShowDeployModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
@@ -4533,7 +4533,7 @@ BUILD IT NOW â€” output every file completely:`;
             {/* Token exists â€” show one-click deploy button */}
             {deployHasToken === true && deployState === 'idle' && (
               <div>
-                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy your app with one click.</p>
+                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy through the configured provider target.</p>
                 <button
                   onClick={async () => {
                     setDeployState('deploying');

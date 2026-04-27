@@ -23,8 +23,8 @@ const faqsExtra = [
 ];
 
 const sections = [
-  { id: 'describe', icon: Code, title: 'Describe what you want', body: 'In the Workspace chat, describe your app in plain English. Use "Build a todo app" or "Create a dashboard with charts". Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL.' },
-  { id: 'plan', icon: Palette, title: 'Plan & approve', body: 'For every build we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
+  { id: 'describe', icon: Code, title: 'Describe what you want', body: 'In the Workspace chat, describe your app in plain English. Attach a screenshot for design-to-code. ZIP/workspace imports are validated by Import Doctor; Git and paste continuation stay conditional until full proof is added.' },
+  { id: 'plan', icon: Palette, title: 'Plan & approve', body: 'For every build we generate a structured plan first — features, components, design decisions, risks, and proof gates. You approve it before code is produced.' },
   { id: 'at', icon: Zap, title: 'Use @ and / in chat', body: 'Type @ to add context (e.g. @App.js). Type / for commands like /fix or /explain. The command palette (Ctrl+K) lists all actions.' },
   { id: 'templates', icon: Palette, title: 'Templates and prompts', body: 'Use the Prompt Library and Templates to start from proven patterns. Save your own prompts for reuse. Patterns save tokens for auth, payments, APIs.' },
   { id: 'agents', icon: Zap, title: 'Create automations', body: 'The same AI that builds your app runs inside your automations. Describe what you want — daily digest, lead finder, inbox summarizer — we create the agent. Use run_agent to call our swarm from your automation.' },

@@ -11,7 +11,7 @@ export default function Security() {
 
         <div className="p-6 rounded-xl border border-indigo-200 bg-indigo-50 mb-10">
           <p className="text-indigo-900 font-medium">We prove builds before we call them ready.</p>
-          <p className="text-[#666666] text-sm mt-2">The current full systems release gate includes tenant-isolation checks, late-stage pipeline crash tests, provider readiness tests, automation bridge tests, Railway smoke, a live golden path, public trust preflight, and a 50-prompt repeatability benchmark.</p>
+          <p className="text-[#666666] text-sm mt-2">The current evidence matrix lists exactly what is implemented, tested, partially implemented, and not claimable. Completion is tied to proof commands, validator results, build output, and generated artifacts.</p>
         </div>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
@@ -34,8 +34,8 @@ export default function Security() {
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Your code and projects</h2>
           <p>When you build with us or bring existing code:</p>
           <ul className="list-disc pl-6 space-y-2 text-[#333]">
-            <li><strong className="text-[#1A1A1A]">Security scan:</strong> In the Workspace you can run a <strong className="text-[#1A1A1A]">Security scan</strong> on your code. We return a short checklist (e.g. no secrets in client code, auth on API) so you can fix issues before deploy.</li>
-            <li><strong className="text-[#1A1A1A]">Accessibility check:</strong> Run an <strong className="text-[#1A1A1A]">Accessibility check</strong> for labels, contrast, keyboard, and ARIA. Use it for code you build here or code you import.</li>
+            <li><strong className="text-[#1A1A1A]">Security checks:</strong> BIV blocks likely client-exposed secrets, and other production/security gates run in the backend. A comprehensive CORS/auth/tenancy security doctor is still marked partial until proof is added.</li>
+            <li><strong className="text-[#1A1A1A]">Accessibility:</strong> Accessibility checks are on the validator roadmap. WCAG/axe/keyboard/contrast proof is not yet claimable as complete for every project.</li>
             <li><strong className="text-[#1A1A1A]">Validate-and-fix:</strong> Use <strong className="text-[#1A1A1A]">Validate-and-fix</strong> to catch syntax and common errors and get suggested fixes.</li>
           </ul>
           <p className="text-[#333] text-sm">We do not scan or modify your code without you triggering these actions. You own your code and data.</p>

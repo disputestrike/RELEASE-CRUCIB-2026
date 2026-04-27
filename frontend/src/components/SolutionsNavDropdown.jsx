@@ -6,18 +6,18 @@ import { ChevronDown } from 'lucide-react';
 const SOLUTION_LINKS = [
   { to: '/our-projects#solution-everyone', label: 'Everyone & non-builders', sub: 'Describe it in plain language — we build and automate.' },
   { to: '/our-projects#solution-founders', label: 'Founders', sub: 'Idea to MVP without a dev bench.' },
-  { to: '/our-projects#solution-enterprise', label: 'Enterprise', sub: 'Security, audit trails, and scale.' },
+  { to: '/our-projects#solution-enterprise', label: 'Enterprise', sub: 'Security roadmap, audit artifacts, and scale.' },
   { to: '/our-projects#solution-pm', label: 'Project managers', sub: 'Plan-first builds your stakeholders can see.' },
-  { to: '/our-projects#solution-designers', label: 'Designers', sub: 'Screenshots to production UI.' },
+  { to: '/our-projects#solution-designers', label: 'Designers', sub: 'Screenshots to validator-gated UI.' },
   { to: '/our-projects#solution-sales', label: 'Sales teams', sub: 'Decks, microsites, and follow-up flows.' },
   { to: '/our-projects#solution-marketers', label: 'Marketers', sub: 'Landing pages, funnels, and growth automations.' },
   { to: '/our-projects#solution-ops', label: 'Ops & RevOps', sub: 'Internal tools, digests, and webhooks.' },
-  { to: '/our-projects#solution-developers', label: 'Developers', sub: 'IDE extensions, import Git/ZIP, full stack.' },
+  { to: '/our-projects#solution-developers', label: 'Developers', sub: 'ZIP import doctor, Git roadmap, full-stack targets.' },
 ];
 
 const USE_CASE_LINKS = [
   { to: '/our-projects#use-case-poc', label: 'Proof of concept', sub: 'Spike ideas and demos in days.' },
-  { to: '/our-projects#use-case-full-app', label: 'Full apps & SaaS', sub: 'Auth, DB, payments, mobile-ready.' },
+  { to: '/our-projects#use-case-full-app', label: 'Full apps & SaaS', sub: 'Auth, DB, payments, Expo artifacts when requested.' },
   { to: '/our-projects#use-case-automation', label: 'Automation & agents', sub: 'Schedules, webhooks, run_agent.' },
   { to: '/our-projects#use-cases', label: 'All use cases', sub: 'Dashboards, stores, tools, and more.' },
 ];

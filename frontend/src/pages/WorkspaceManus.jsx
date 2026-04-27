@@ -1341,7 +1341,7 @@ export default function WorkspaceManus() {
           {tab === "deploy" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ color: "var(--theme-text)" }}>
               <p className="text-sm" style={{ color: "var(--theme-muted)" }}>
-                Export from the editor or use your linked project for one-click deploy (Vercel / Netlify / Railway).
+                Export from the editor or use your linked project for configured provider deploys (Vercel / Netlify / Railway).
               </p>
               <button
                 type="button"
@@ -1391,7 +1391,7 @@ export default function WorkspaceManus() {
           >
             <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
             <p className="text-sm mb-4" style={{ color: "var(--theme-muted, #71717a)" }}>
-              Use your saved project for server packages and one-click deploy, or export from the editor.
+              Use your saved project for server packages and configured provider deploys, or export from the editor.
             </p>
             {projectLiveUrl && (
               <a
@@ -1513,7 +1513,7 @@ export default function WorkspaceManus() {
                 </div>
                 {(!deployTokensHint.has_vercel || !deployTokensHint.has_netlify) && (
                   <p className="text-[11px] leading-snug" style={{ color: "var(--theme-muted)" }}>
-                    One-click needs tokens in{" "}
+                    Provider deploy needs tokens in{" "}
                     <Link to="/app/settings" className="underline font-medium" style={{ color: "var(--theme-accent)" }}>
                       Settings → Deploy integrations
                     </Link>

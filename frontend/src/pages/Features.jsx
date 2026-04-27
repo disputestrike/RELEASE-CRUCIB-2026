@@ -9,17 +9,17 @@ const outcomeSections = [
   {
     icon: Code2,
     title: 'Build',
-    desc: 'Describe what you want in plain language. Web apps, dashboards, SaaS, landing pages, backend/API projects, and Expo mobile starters are built through a plan-first flow that shows the structure before code. Attach a screenshot for design-to-code. Import existing code via paste, ZIP, or Git URL. Voice input supported. Mobile outputs are validator-gated Expo/React Native artifacts; app store submission still requires your developer credentials and EAS/store proof.',
+    desc: 'Describe what you want in plain language. Web apps, dashboards, SaaS, landing pages, backend/API projects, and Expo mobile starters are built through a plan-first flow that shows the structure before code. Attach a screenshot for design-to-code. ZIP/workspace imports are checked by Import Doctor; Git/paste continuation still needs end-to-end proof before it is marketed as universal. Mobile outputs are validator-gated Expo/React Native artifacts; app store submission still requires your developer credentials and EAS/store proof.',
   },
   {
     icon: Bot,
     title: 'Agents & Automation',
-    desc: 'The same AI that builds your app runs inside your automations. Describe an automation in plain language — we create the agent (schedule or webhook, with steps). Use run_agent to call our build swarm from your automation. Pre-built templates: daily digest, lead finder, inbox summarizer, status checker. Prompt-to-automation: describe it, we build it.',
+    desc: 'Automations can call the build system through the guarded run_agent bridge. The bridge is tested for recursion depth, cycle detection, job budget, prompt size, and internal-token enforcement. Schedules, webhooks, and templates remain configuration-dependent.',
   },
   {
     icon: Zap,
     title: 'Agent swarm & sub-agents',
-    desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents and sub-agents. They run in parallel for speed. AgentMonitor shows per-phase, per-agent status, token usage, and logs. Quality score per build. Phase retry when needed. Full transparency: every step, every artifact.',
+    desc: 'Planning, frontend, backend, database, styling, testing, security, and deployment phases produce artifacts that are inspected by the validator. AgentMonitor surfaces available phase and agent events, token fields, logs, and Build Integrity score; complete per-agent cost accounting is still not claimable.',
   },
   {
     icon: Download,
@@ -29,7 +29,7 @@ const outcomeSections = [
   {
     icon: Shield,
     title: 'Security & Quality',
-    desc: 'Security checks, preview gates, build integrity validation, and quality score (0–100) are enforced per build. Claims must map to artifacts: tests, proof files, screenshots, build output, and validator results. Accessibility is part of the validator roadmap and must be shown as proof before it is treated as complete.',
+    desc: 'Security checks, preview gates, build integrity validation, and Build Integrity score (0-100) are enforced per build profile. Claims must map to artifacts: tests, proof files, screenshots, build output, and validator results. Accessibility is part of the validator roadmap and must be shown as proof before it is treated as complete.',
   },
   {
     icon: Keyboard,
@@ -49,7 +49,7 @@ export default function Features() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Why your outcome is inevitable</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">The same AI path that builds apps can be called from automations through gated workflows. Web, mobile, and agent builds are measured by plans, artifacts, validator gates, and proof — not vague promises.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">The same AI path that builds apps can be called from automations through gated workflows. Web, Expo mobile, and agent builds are measured by plans, artifacts, validator gates, and proof — not vague promises.</p>
         </motion.div>
         {/* Proof strip */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 px-4 rounded-xl border border-white/10 bg-kimi-bg-card mb-16">

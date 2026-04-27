@@ -10,7 +10,7 @@ const ENTRIES = [
     tagColor: '#10b981',
     items: [
       'Live Railway golden path completed 18/18 steps with LLM, preview, proof, deploy build, deploy publish readiness, and no background crash',
-      '50-prompt repeatability benchmark added to the backend release gate',
+      'Backend release gate now records repeatability evidence where configured',
       'Generated apps can now publish to an in-platform public URL at /published/{job_id}/',
       'Benchmark, status, and security trust pages updated to reflect proof-backed release discipline',
     ],
@@ -21,11 +21,11 @@ const ENTRIES = [
     tag: 'Major',
     tagColor: '#10b981',
     items: [
-      'Live build progress on dashboard — see every running build, percent complete, current agent, and quality score in real time',
+      'Live build progress on dashboard — see available build events, phase progress, current agent fields, and Build Integrity score',
       'Pricing doubled across all tiers — same price, 2x credits. Free: 200, Builder: 500, Pro: 1000, Scale: 2000, Teams: 5000',
-      'New user signup now includes 200 free credits — build 2 full apps before ever paying',
+      'New user signup now includes 200 free credits for proof-gated build runs',
       'Share button in workspace — one click copies your project link',
-      'Premium agent prompts — Frontend Generation now produces Tailwind + design-system-grade code, not generic divs',
+      'Premium agent prompts — Frontend Generation now targets Tailwind + design-system-aware output and is checked by proof gates',
       'Engine Room complete — Model Manager, Fine-Tuning, Safety Dashboard, VibeCode, IDE all in sidebar',
       'Sign up / Log in in all navigation bars (desktop + mobile)',
     ],
@@ -38,9 +38,9 @@ const ENTRIES = [
     items: [
       'AI company layer — Model Manager (routing modes, model registry), Fine-Tuning (jobs, datasets), Safety Dashboard (red-team testing)',
       'System prompt guardrails — competitor mentions redirect to building, not code generation',
-      'Build history panel in Workspace — see all prior builds with timestamps, quality scores, and token usage',
+      'Build history panel in Workspace — see prior builds with timestamps, Build Integrity scores, and available token fields',
       'Quick build mode — runs only first 2 phases for a 2-minute preview',
-      'ZIP upload (bring your code) — JSZip parser loads existing code directly into the workspace',
+      'ZIP upload (bring your code) — Import Doctor validates ZIP/workspace structure before continuation claims are made',
     ],
   },
   {
@@ -53,7 +53,7 @@ const ENTRIES = [
       'Image-to-code — attach any screenshot or mockup and build from it',
       '12+ file types in the attach button — ZIP, audio, images, PDFs, code files',
       'Mobile app builds — Expo project generation with App Store and Play Store submission guide',
-      'Export center — ZIP, GitHub push, Vercel deploy, Netlify deploy all in one place',
+      'Export center — ZIP handoff plus GitHub/provider actions where configuration and proof gates allow',
     ],
   },
   {

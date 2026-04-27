@@ -68,7 +68,7 @@ export default function PromptsPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Proven copy</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Prompt Library</h1>
-          <p className="text-zinc-500">Proven prompts for every use case — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and build. Sign up to try them one-click in the workspace.</p>
+          <p className="text-zinc-500">Prompt patterns for common use cases — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and run them through the workspace proof gates.</p>
         </motion.div>
 
         <div className="space-y-6">
