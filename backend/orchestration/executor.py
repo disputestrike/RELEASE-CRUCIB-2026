@@ -523,6 +523,15 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
         logger.warning("executor: rejected path escape %s", rel)
         return None
     content = _strip_prose_preamble(content, rel)
+    # Hard reject: if a JSX/TSX/JS file still looks like markdown or a file manifest
+    # after preamble stripping, refuse to write it — keep the template version on disk.
+    _JSX_EXTS = {".jsx", ".tsx", ".js", ".ts"}
+    if os.path.splitext(rel)[1].lower() in _JSX_EXTS and _is_manifest_content(content):
+        logger.warning(
+            "executor: REJECTED manifest/markdown write to %s (%d bytes) — template preserved",
+            rel, len(content),
+        )
+        return None
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)
@@ -560,15 +569,20 @@ _MANIFEST_LINE_RE = re.compile(
     r"^\s*(server/|src/|backend/|client/|frontend/|\[NEW\b|\[PATCH\b)",
     re.MULTILINE,
 )
+_MARKDOWN_LINE_RE = re.compile(
+    r"^\s*(#{1,6}\s|\*\*File\s|\*\*[A-Z]|```|>\s|---\s*$|===\s*$)",
+    re.MULTILINE,
+)
 
 
 def _is_manifest_content(text: str) -> bool:
-    """Return True if text looks like a file-path manifest, not source code."""
+    """Return True if text looks like a file-path manifest or markdown doc, not source code."""
     if not text or not text.strip():
         return True
     lines = [ln for ln in text.strip().splitlines() if ln.strip()][:15]
-    hits = sum(1 for ln in lines if _MANIFEST_LINE_RE.match(ln))
-    return hits >= min(3, len(lines))
+    manifest_hits = sum(1 for ln in lines if _MANIFEST_LINE_RE.match(ln))
+    markdown_hits = sum(1 for ln in lines if _MARKDOWN_LINE_RE.match(ln))
+    return manifest_hits >= min(3, len(lines)) or markdown_hits >= min(2, len(lines))
 
 
 def _full_system_manifest_path(workspace_path: str) -> str:
