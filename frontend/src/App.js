@@ -65,6 +65,7 @@ import Dmca from "./pages/Dmca";
 import Cookies from "./pages/Cookies";
 import About from "./pages/About";
 import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 import Enterprise from "./pages/Enterprise";
 import Contact from "./pages/Contact";
 import GetHelp from "./pages/GetHelp";
@@ -432,6 +433,8 @@ function App() {
           <Route path="/cookies" element={<Cookies />} />
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/billing" element={<Navigate to="/app/billing" replace />} />
+          <Route path="/account/billing" element={<Navigate to="/app/account/billing" replace />} />
           <Route path="/enterprise" element={<Enterprise />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/get-help" element={<GetHelp />} />
@@ -458,6 +461,8 @@ function App() {
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
+            <Route path="billing" element={<Billing />} />
+            <Route path="account/billing" element={<Billing />} />
             <Route path="exports" element={<ExportCenter />} />
             <Route path="patterns" element={<PatternLibrary />} />
             <Route path="templates" element={<TemplatesGallery />} />

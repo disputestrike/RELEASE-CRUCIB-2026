@@ -11,7 +11,7 @@ Supported connectors:
   • Railway – deployments via Railway API
   • Vercel  – deployments via Vercel API
   • Slack   – messages via webhooks
-  • Stripe  – billing events (read-only)
+  • Braintree – billing readiness and payment configuration
 
 Design:
   • Each connector is stateless; credentials pulled from env at call time.

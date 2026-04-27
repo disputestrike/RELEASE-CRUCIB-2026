@@ -28,7 +28,10 @@ class SecurityAudit:
             "JWT_SECRET",
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "STRIPE_API_KEY",
+            "BRAINTREE_MERCHANT_ID",
+            "BRAINTREE_PUBLIC_KEY",
+            "BRAINTREE_PRIVATE_KEY",
+            "BRAINTREE_MERCHANT_ACCOUNT_ID",
         ]
 
         results = {}

@@ -840,8 +840,8 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}>
               <LayoutGrid size={16} /> Engine room
             </Link>
-            <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
-              <Coins size={16} /> Credits & Billing
+            <Link to="/app/billing" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Coins size={16} /> Manage billing
             </Link>
             <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
               <Zap size={16} /> Upgrade plan
@@ -899,11 +899,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               <LayoutGrid size={16} /> Engine room
             </Link>
             <Link
-              to="/app/tokens"
+              to="/app/billing"
               role="menuitem"
               onClick={() => setAccountMenuOpen(false)}
             >
-              <Coins size={16} /> Credits & Billing
+              <Coins size={16} /> Manage billing
             </Link>
             <Link
               to="/pricing"

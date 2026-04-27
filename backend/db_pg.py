@@ -752,8 +752,15 @@ REQUIRED_TABLES = [
     "workspace_invitations",
     "analytics_events",
     "session_metrics",
+    "businesses",
     "products",
+    "prices",
+    "customers",
+    "payment_methods",
+    "subscriptions",
     "orders",
+    "billing_events",
+    "entitlements",
     "app_db_schemas",
     "agent_cache",
     # Auto-Runner / orchestration (relational, not JSONB doc store)
@@ -836,8 +843,15 @@ CREATE TABLE IF NOT EXISTS tenant_members (id TEXT PRIMARY KEY, doc JSONB NOT NU
 CREATE TABLE IF NOT EXISTS workspace_invitations (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS analytics_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS session_metrics (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS businesses (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS prices (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS payment_methods (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS subscriptions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS billing_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS entitlements (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS app_db_schemas (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS user_skills (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS agent_cache (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');

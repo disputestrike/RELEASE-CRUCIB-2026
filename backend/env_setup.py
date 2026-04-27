@@ -32,7 +32,8 @@ OPTIONAL_VARS = {
         "BRAINTREE_PUBLIC_KEY": "Braintree public key",
         "BRAINTREE_PRIVATE_KEY": "Braintree private key",
         "BRAINTREE_ENVIRONMENT": "Braintree environment: sandbox or production",
-        "BRAINTREE_MERCHANT_ACCOUNT_ID": "Optional Braintree merchant account ID",
+        "BRAINTREE_MERCHANT_ACCOUNT_ID": "Default Starlight LLC Braintree merchant account ID",
+        "APP_URL": "Public app URL used for Braintree webhook configuration",
     },
     "email": {
         "SMTP_HOST": "SMTP server hostname",

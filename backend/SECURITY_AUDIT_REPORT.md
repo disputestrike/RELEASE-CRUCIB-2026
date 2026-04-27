@@ -38,9 +38,9 @@ This report documents the security audit findings for CrucibAI.
   - Category: Environment
   - Recommendation: Set GROQ_API_KEY in .env file
 
-- **STRIPE_API_KEY not configured**
+- **BRAINTREE_MERCHANT_ID not configured**
   - Category: Environment
-  - Recommendation: Set STRIPE_API_KEY in .env file
+  - Recommendation: Set BRAINTREE_MERCHANT_ID in .env file
 
 ## Passed Security Checks
 
@@ -87,7 +87,7 @@ This report documents the security audit findings for CrucibAI.
 ❌ OPENAI_API_KEY is NOT set
 ❌ ANTHROPIC_API_KEY is NOT set
 ❌ GROQ_API_KEY is NOT set
-❌ STRIPE_API_KEY is NOT set
+❌ BRAINTREE_MERCHANT_ID is NOT set
 ⚠️ HTTPS_ENFORCED needs review
 ⚠️ DDoS_PROTECTION needs review
 ⚠️ HIPAA_COMPLIANT needs review

@@ -623,7 +623,8 @@ async def create_checkout_session_compat(
         status_code=410,
         detail={
             "error": "stripe_checkout_removed",
-            "replacement": "/api/payments/braintree/checkout",
+            "replacement": "/api/checkout/one-time",
+            "billing_page": "/app/billing",
             "status_endpoint": "/api/payments/braintree/status",
         },
     )
