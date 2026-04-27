@@ -386,6 +386,24 @@ def repair_app_jsx_if_broken(workspace_path: str) -> Dict[str, Any]:
             }
         return {"fixed": False, "reason": f"{app_path} appears valid"}
 
+    # Use manus_parity_template to generate a real multi-page app instead of stub
+    try:
+        from .manus_parity_template import build_manus_parity_frontend_file_set
+        job_stub = {"goal": "Build a SaaS product with authentication and user dashboard"}
+        file_set = dict(build_manus_parity_frontend_file_set(job_stub, "vite_react"))
+        files_written = []
+        for rel, content in file_set.items():
+            if _safe_write(workspace_path, rel, content):
+                files_written.append(rel)
+        return {
+            "fixed": True,
+            "file": "src/App.jsx",
+            "action": "replaced_with_manus_template",
+            "files_written": len(files_written),
+        }
+    except Exception as e:
+        logger.warning("self_repair: manus template failed, using scaffold: %s", e)
+    # Fallback to minimal scaffold only if template fails
     _safe_write(
         workspace_path,
         "src/App.jsx",

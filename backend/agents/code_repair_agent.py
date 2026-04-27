@@ -289,6 +289,7 @@ class CodeRepairAgent:
 
     VALIDATED_AGENT_NAMES = frozenset(
         {
+            "Frontend Generation",
             "Backend Generation",
             "Database Agent",
             "ML Framework Selector Agent",
