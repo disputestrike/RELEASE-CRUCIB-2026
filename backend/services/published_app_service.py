@@ -128,6 +128,32 @@ async def serve_published_app_response(
     if not project_id:
         raise HTTPException(status_code=404, detail="Published app has no workspace")
 
+    # ── Delivery gate: BIV + proof + dist/index.html ──────────────────────────
+    _ws_path: Optional[str] = None
+    try:
+        _ws_path = str(project_workspace_path(project_id).resolve())
+    except Exception:
+        pass
+    if _ws_path:
+        try:
+            import logging as _logging
+            _log = _logging.getLogger(__name__)
+            from backend.orchestration.delivery_gate import run_publish_gate
+            _gate = run_publish_gate(_ws_path)
+            if not _gate.passed:
+                _log.warning(
+                    "publish_gate BLOCKED job=%s: %s", job_id, _gate.detail
+                )
+                raise HTTPException(status_code=_gate.status, detail=_gate.detail)
+        except HTTPException:
+            raise
+        except Exception as _gate_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "publish_gate check failed (allowing): %s", _gate_err
+            )
+    # ─────────────────────────────────────────────────────────────────────────
+
     root = job_dist_root(project_id, project_workspace_path, workspace_root)
     if root is None:
         raise HTTPException(status_code=400, detail="Published app path outside workspace")

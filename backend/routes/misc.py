@@ -526,8 +526,27 @@ Generated with CrucibAI.
 
 
 @router.post("/export/zip")
-async def export_zip(data: ExportFilesBody):
-    """Export project files as a ZIP download."""
+async def export_zip(data: ExportFilesBody, draft: bool = False):
+    """Export project files as a ZIP download.
+
+    Runs the BIV delivery gate when a workspace_path is provided in data.
+    Pass ?draft=true to skip the proof score check (explicit draft export).
+    """
+    # Gate check if a workspace path is supplied via data or headers
+    _workspace_path = getattr(data, "workspace_path", None) or ""
+    if _workspace_path:
+        try:
+            from backend.orchestration.delivery_gate import run_download_gate
+            import logging as _logging
+            _gate = run_download_gate(_workspace_path, draft=draft)
+            if not _gate.passed:
+                from fastapi import HTTPException as _HTTPException
+                raise _HTTPException(status_code=_gate.status, detail=_gate.detail)
+        except Exception as _gate_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "export_zip gate check failed (allowing): %s", _gate_err
+            )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, content in data.files.items():

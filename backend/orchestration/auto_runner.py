@@ -1116,6 +1116,12 @@ async def _execute_job_loop(
             "issues": (biv.get("issues") or [])[:20],
         },
     )
+    # Write BIV marker so download/publish gates can check without DB access.
+    try:
+        from .delivery_gate import write_biv_marker
+        write_biv_marker(ws or "", biv)
+    except Exception as _dg_e:
+        logger.warning("delivery_gate: BIV marker write failed: %s", _dg_e)
     if not biv.get("passed"):
         try:
             requested_biv_repairs = int(os.environ.get("CRUCIBAI_BIV_REPAIR_ATTEMPTS", "1") or "1")
@@ -1168,6 +1174,12 @@ async def _execute_job_loop(
                     "issues": (biv.get("issues") or [])[:20],
                 },
             )
+            # Update BIV marker with retry result so gate always reflects latest state.
+            try:
+                from .delivery_gate import write_biv_marker
+                write_biv_marker(ws or "", biv)
+            except Exception as _dg_e:
+                logger.warning("delivery_gate: BIV marker retry write failed: %s", _dg_e)
             if biv.get("passed"):
                 break
     if not biv.get("passed"):
@@ -1219,6 +1231,33 @@ async def _execute_job_loop(
             "reason": "build_integrity_validator",
             "retry_route": biv.get("retry_route") or {},
         }
+
+    # Visual QA: DOM contract + route crawling (Manus-style) after BIV passes.
+    try:
+        from .visual_qa import run_visual_qa
+        vqa = run_visual_qa(ws or "", goal=goal_text)
+        await append_job_event(
+            job_id,
+            "visual_qa_result",
+            {
+                "passed": vqa.passed,
+                "score": vqa.score,
+                "routes": vqa.routes[:20],
+                "reachable_file_count": vqa.reachable_count,
+                "orphan_count": len(vqa.orphans),
+                "orphans": vqa.orphans[:10],
+                "dom_issues": vqa.dom_issues[:10],
+                "html_issues": vqa.html_issues[:10],
+                "issues": vqa.issues[:10],
+            },
+        )
+        if not vqa.passed:
+            logger.warning(
+                "visual_qa: score=%d issues=%d — advisory (does not block completion)",
+                vqa.score, len(vqa.issues),
+            )
+    except Exception as _vqa_e:
+        logger.warning("visual_qa: skipped due to error: %s", _vqa_e)
 
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
@@ -1299,6 +1338,64 @@ async def _execute_job_loop(
         },
     )
     proof = await proof_service.get_proof(job_id)
+    # Write proof summary marker for delivery gate.
+    if ws and proof:
+        try:
+            from .delivery_gate import write_proof_summary
+            write_proof_summary(ws, proof)
+        except Exception as _ps_e:
+            logger.warning("delivery_gate: proof summary write failed: %s", _ps_e)
+    # Proof hard-block: if proof score is critically low and enforcement is strict, block.
+    if proof:
+        _proof_score = None
+        flat = proof.get("flat") or proof.get("items") or []
+        total = len(flat)
+        if total > 0:
+            strong = sum(
+                1 for item in flat
+                if (item.get("payload") or {}).get("verification_class", "presence") != "presence"
+            )
+            _proof_score = strong / total
+        _proof_hard_threshold = 0.15  # below 15% non-trivial proof = hard block
+        import os as _os
+        _gate_mode = (_os.environ.get("CRUCIBAI_ENFORCEMENT_GATE") or "strict").strip().lower()
+        if _gate_mode == "strict" and _proof_score is not None and _proof_score < _proof_hard_threshold:
+            logger.warning(
+                "proof_hard_block: score=%.2f < threshold=%.2f — blocking delivery",
+                _proof_score, _proof_hard_threshold,
+            )
+            await update_job_state(
+                job_id,
+                "failed",
+                {
+                    "current_phase": "proof_hard_block",
+                    "quality_score": quality_score,
+                    "failure_reason": "proof_hard_block",
+                    "proof_score": _proof_score,
+                },
+            )
+            await append_job_event(
+                job_id,
+                "job_failed",
+                {
+                    "reason": "proof_hard_block",
+                    "proof_score": _proof_score,
+                    "required_threshold": _proof_hard_threshold,
+                    "detail": "Proof bundle has insufficient verification evidence to mark delivery complete.",
+                },
+            )
+            await publish(
+                job_id,
+                "job_failed",
+                {"reason": "proof_hard_block", "proof_score": _proof_score},
+            )
+            return {
+                "success": False,
+                "status": "failed",
+                "quality_score": quality_score,
+                "reason": "proof_hard_block",
+                "proof_score": _proof_score,
+            }
     summary = _build_completion_summary(steps, proof)
     await publish(
         job_id,

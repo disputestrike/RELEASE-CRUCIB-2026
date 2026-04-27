@@ -647,11 +647,15 @@ async def get_project_deploy_files(
 @router.get("/jobs/{job_id}/export/full.zip")
 async def download_job_workspace_zip(
     job_id: str,
+    draft: bool = False,
     user: dict = Depends(_get_auth()),
 ):
     """
     Download the complete job workspace as a ZIP file.
     This is the proof/handoff bundle — everything the AI built.
+
+    Gate: BIV must have passed and proof score must meet minimum threshold.
+    Pass ?draft=true to skip the proof score gate (explicit draft export).
     """
     import io
     import zipfile
@@ -660,6 +664,21 @@ async def download_job_workspace_zip(
     workspace = await _assert_job_access(job_id, user)
     if not workspace.exists():
         raise HTTPException(status_code=404, detail="Workspace not found or empty")
+
+    # ── Delivery gate: BIV + proof score ─────────────────────────────────────
+    try:
+        from backend.orchestration.delivery_gate import run_download_gate
+        gate = run_download_gate(str(workspace), draft=draft)
+        if not gate.passed:
+            raise HTTPException(status_code=gate.status, detail=gate.detail)
+    except HTTPException:
+        raise
+    except Exception as _gate_err:
+        import logging
+        logging.getLogger(__name__).warning(
+            "download_gate check failed (allowing): %s", _gate_err
+        )
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Build ZIP in memory
     buf = io.BytesIO()
