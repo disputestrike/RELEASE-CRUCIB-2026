@@ -716,10 +716,6 @@ def _ensure_preview_contract_files(
         "src/pages/LoginPage.jsx",
         "src/pages/DashboardPage.jsx",
         "src/pages/TeamPage.jsx",
-        "src/pages/AnalyticsPage.jsx",
-        "src/pages/PricingPage.jsx",
-        "src/pages/SettingsPage.jsx",
-        "src/pages/NotFoundPage.jsx",
         "src/preview/PreviewContract.jsx",
         "src/styles/global.css",
         "src/main.jsx",
@@ -731,6 +727,21 @@ def _ensure_preview_contract_files(
             content = template_map.get(rel)
             if content and _safe_write(workspace_path, rel, content):
                 written.append(rel)
+
+    # SaaS-specific pages — only guaranteed when this is a SaaS UI build
+    from .manus_parity_template import is_saas_ui_goal
+    if is_saas_ui_goal(job):
+        saas_pages = [
+            "src/pages/AnalyticsPage.jsx",
+            "src/pages/PricingPage.jsx",
+            "src/pages/SettingsPage.jsx",
+            "src/pages/NotFoundPage.jsx",
+        ]
+        for rel in saas_pages:
+            if not _read_text(workspace_path, rel):
+                content = template_map.get(rel)
+                if content and _safe_write(workspace_path, rel, content):
+                    written.append(rel)
 
     existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
     if not existing_app or _is_manifest_content(existing_app):

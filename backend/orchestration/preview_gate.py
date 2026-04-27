@@ -56,24 +56,21 @@ def _has_file(files: Dict[str, str], *needles: str) -> bool:
 
 
 def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
-    rel_joined = " ".join(files.keys()).lower()
-    text = (combined + "\n" + rel_joined).lower()
-    markers = (
-        "saas",
-        "product ui",
-        "dashboard",
-        "analytics",
-        "pricing",
-        "settings",
-        "team",
-        "modern ui",
-        "design system",
-        "multiple pages",
-        "responsive layout",
-        "landing page",
-        "marketing page",
-    )
-    return sum(1 for marker in markers if marker in text) >= 3
+    # Check PLAN.md / REQUIREMENTS.md / STACK.md (the job's original goal text),
+    # NOT the generated file content — because the manus template injects SaaS
+    # words (analytics, pricing, dashboard) into every build's file content.
+    goal_sources = {
+        k: v for k, v in files.items()
+        if k.lower() in ("plan.md", "requirements.md", "stack.md", "readme.md")
+    }
+    goal_text = " ".join(goal_sources.values()).lower() if goal_sources else ""
+    # Strong SaaS signals that must appear in the *goal* documents, not generated code
+    strong_markers = ("saas", "product ui", "modern ui", "design system", "landing page", "marketing page")
+    supporting_markers = ("dashboard", "analytics", "pricing", "settings", "multiple pages", "responsive layout")
+    strong_hits = sum(1 for m in strong_markers if m in goal_text)
+    supporting_hits = sum(1 for m in supporting_markers if m in goal_text)
+    # Need at least 1 strong signal OR 3 supporting signals from the goal docs
+    return strong_hits >= 1 or supporting_hits >= 3
 
 
 def _verify_saas_product_contract(
