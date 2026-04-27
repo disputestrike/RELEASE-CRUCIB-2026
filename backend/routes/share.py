@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 try:
-    from db_pg import get_pg_pool
+    from backend.db_pg import get_pg_pool
 except Exception:  # pragma: no cover
     get_pg_pool = None  # type: ignore
 

@@ -66,7 +66,7 @@ async def load_project_brain(
     """Load the project brain for a user/project. Returns None if not found."""
     if not pool:
         try:
-            from db_pg import get_pg_pool
+            from backend.db_pg import get_pg_pool
             pool = await get_pg_pool()
         except Exception:
             return None
@@ -116,7 +116,7 @@ async def update_project_brain(
 
     if not pool:
         try:
-            from db_pg import get_pg_pool
+            from backend.db_pg import get_pg_pool
             pool = await get_pg_pool()
         except Exception:
             return False
@@ -169,7 +169,7 @@ async def add_known_fix(
     """Add a known bug fix to the project brain."""
     if not pool:
         try:
-            from db_pg import get_pg_pool
+            from backend.db_pg import get_pg_pool
             pool = await get_pg_pool()
         except Exception:
             return False

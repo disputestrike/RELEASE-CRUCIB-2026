@@ -5,7 +5,7 @@ router = APIRouter()
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request

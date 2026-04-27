@@ -93,7 +93,7 @@ async def get_current_user(
         uid = payload["user_id"]
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
-                from services.dev_guest import get_user as _dev_get_user
+                from backend.services.dev_guest import get_user as _dev_get_user
 
                 user = _dev_get_user(uid)
                 if not user:
@@ -148,7 +148,7 @@ async def get_current_user_sse(
         uid = payload["user_id"]
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
-                from services.dev_guest import get_user as _dev_get_user
+                from backend.services.dev_guest import get_user as _dev_get_user
 
                 user = _dev_get_user(uid)
                 if not user:
@@ -196,7 +196,7 @@ async def get_optional_user(
             uid = payload["user_id"]
             if db is None:
                 if os.environ.get("CRUCIBAI_DEV") == "1":
-                    from services.dev_guest import get_user as _dev_get_user
+                    from backend.services.dev_guest import get_user as _dev_get_user
 
                     user = _dev_get_user(uid)
                     if user:
@@ -252,7 +252,7 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
             uid = payload["user_id"]
             if db is None:
                 if os.environ.get("CRUCIBAI_DEV") == "1":
-                    from services.dev_guest import get_user as _dev_get_user
+                    from backend.services.dev_guest import get_user as _dev_get_user
 
                     user = _dev_get_user(uid)
                 else:

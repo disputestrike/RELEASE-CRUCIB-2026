@@ -25,7 +25,7 @@ try:
     from backend.orchestration.trust.trust_scoring import sha256_file_preview
 except ImportError:
     try:
-        from orchestration.trust.trust_scoring import sha256_file_preview
+        from backend.orchestration.trust.trust_scoring import sha256_file_preview
     except ImportError:
         def sha256_file_preview(*a, **kw): return ""
 
@@ -123,6 +123,37 @@ def _run_npm(args: List[str], cwd: str, timeout: int) -> Tuple[int, str]:
         return -1, str(e)
 
 
+def _run_build_with_autofix(ws: str, build_timeout: int) -> Tuple[int, str, List[Dict[str, Any]]]:
+    attempts: List[Dict[str, Any]] = []
+    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    if code == 0:
+        return code, log, attempts
+
+    try:
+        max_attempts = max(0, min(5, int(os.environ.get("CRUCIBAI_NPM_BUILD_AUTOFIX_ATTEMPTS", "2"))))
+    except ValueError:
+        max_attempts = 2
+    if max_attempts <= 0:
+        return code, log, attempts
+
+    try:
+        from backend.orchestration.npm_build_autofix import repair_npm_build_failure
+    except Exception as exc:
+        attempts.append({"changed_files": [], "reason": "autofix_unavailable", "error": str(exc)[:300]})
+        return code, log, attempts
+
+    for attempt_index in range(1, max_attempts + 1):
+        repair = repair_npm_build_failure(ws, log)
+        repair["attempt"] = attempt_index
+        attempts.append(repair)
+        if not repair.get("changed_files"):
+            break
+        code, log = _run_npm(["run", "build"], ws, build_timeout)
+        if code == 0:
+            break
+    return code, log, attempts
+
+
 def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     """
     Full browser preview on a worker thread only. Uses sync Playwright (allowed here).
@@ -174,7 +205,16 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
         )
     )
 
-    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    code, log, repair_attempts = _run_build_with_autofix(ws, build_timeout)
+    if repair_attempts:
+        proof.append(
+            _proof(
+                "verification",
+                "npm build deterministic autofix attempts",
+                {"attempts": repair_attempts},
+                verification_class="runtime",
+            )
+        )
     if code != 0:
         issues.append(f"npm run build failed (exit {code}): {log[:800]}")
         return {"passed": False, "issues": issues, "proof": proof}
@@ -394,7 +434,16 @@ def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
         )
     )
 
-    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    code, log, repair_attempts = _run_build_with_autofix(ws, build_timeout)
+    if repair_attempts:
+        proof.append(
+            _proof(
+                "verification",
+                "npm build deterministic autofix attempts",
+                {"attempts": repair_attempts},
+                verification_class="runtime",
+            )
+        )
     if code != 0:
         return {
             "passed": False,

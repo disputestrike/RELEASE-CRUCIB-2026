@@ -4,7 +4,7 @@ router = APIRouter()
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request
@@ -14,7 +14,7 @@ def _get_auth():
 
 @router.get("/api/builds/{job_id}/preview")
 async def get_preview(job_id: str, user: dict = Depends(_get_auth())):
-    from adapter.services.preview_manager import get_preview_url
+    from backend.adapter.services.preview_manager import get_preview_url
     url = await get_preview_url(job_id)
     return {
         "url": url or f"/published/{job_id}/",

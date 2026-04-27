@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from proof import proof_service
+from backend.proof import proof_service
 
 from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .dag_engine import (

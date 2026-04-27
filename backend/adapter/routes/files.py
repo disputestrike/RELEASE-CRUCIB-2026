@@ -6,7 +6,7 @@ router = APIRouter()
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request
@@ -19,7 +19,7 @@ def _get_auth():
 async def get_files(job_id: str, user: dict = Depends(_get_auth())):
     """Return file tree for a job workspace."""
     try:
-        from server import WORKSPACE_ROOT
+        from backend.server import WORKSPACE_ROOT
         workspace = Path(WORKSPACE_ROOT) / job_id
     except Exception:
         workspace = Path(f"/tmp/workspaces/{job_id}")
@@ -59,7 +59,7 @@ async def get_file_content(
 ):
     """Return content of a specific file."""
     try:
-        from server import WORKSPACE_ROOT
+        from backend.server import WORKSPACE_ROOT
         workspace = Path(WORKSPACE_ROOT) / job_id
     except Exception:
         workspace = Path(f"/tmp/workspaces/{job_id}")

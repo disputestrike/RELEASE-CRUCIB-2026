@@ -2,7 +2,7 @@
 
 IMPORTANT: `detect_skill` must remain exported from this package. The WS-A
 file-based loader introduced Skill / SkillRegistry but consumers like
-services.llm_service still import `detect_skill` from services.skills.
+services.llm_service still import `detect_skill` from backend.services.skills.
 """
 
 # Legacy executor-level API (used by services.llm_service, routes.skills, etc.)

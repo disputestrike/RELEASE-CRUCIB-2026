@@ -311,6 +311,33 @@ async def _maybe_materialize_preview(workspace: Path) -> Dict[str, Any]:
     return await asyncio.to_thread(_run_preview_build_sync, workspace)
 
 
+def _preview_public_base(request: Request) -> str:
+    """Return the public origin that should serve preview iframe URLs."""
+    try:
+        headers = getattr(request, "headers", {}) or {}
+        proto = (
+            headers.get("x-forwarded-proto")
+            or headers.get("x-forwarded-protocol")
+            or ""
+        ).split(",")[0].strip()
+        host = (headers.get("x-forwarded-host") or headers.get("host") or "").split(",")[0].strip()
+        if proto and host:
+            return f"{proto}://{host}".rstrip("/")
+    except Exception:
+        pass
+    try:
+        bu = str(request.base_url)
+        if bu:
+            return bu.rstrip("/")
+    except Exception:
+        pass
+    return (
+        os.environ.get("CRUCIBAI_PUBLIC_BASE_URL", "").rstrip("/")
+        or os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
+        or ""
+    )
+
+
 def _safe_join(root: Path, rel: str) -> Optional[Path]:
     """Safely join ``rel`` onto ``root`` guarding against path traversal."""
     cleaned = (rel or "").strip().lstrip("/").replace("\\", "/")
@@ -408,21 +435,10 @@ async def dev_preview(job_id: str, request: Request):
             },
         )
 
-    base = (
-        os.environ.get("CRUCIBAI_PUBLIC_BASE_URL", "").rstrip("/")
-        or os.environ.get("BACKEND_PUBLIC_URL", "").rstrip("/")
-        or ""
-    )
-    if not base:
-        # Same-origin and split frontend/API: relative "/api/..." in an iframe src resolves to the
-        # *page* host, not the API. Prefer request base URL (honors X-Forwarded-* on Railway) so
-        # dev-preview returns a URL the iframe can load.
-        try:
-            bu = str(request.base_url)
-            if bu:
-                base = bu.rstrip("/")
-        except Exception:
-            base = ""
+    # The iframe URL must be loadable from the same public host that handled the
+    # dev-preview request. Production can have stale/internal Railway env URLs,
+    # while the public API route is exposed through www.crucibai.com.
+    base = _preview_public_base(request)
     serve_url = f"{base}/api/preview/{job_id}/serve" if base else f"/api/preview/{job_id}/serve"
 
     return {

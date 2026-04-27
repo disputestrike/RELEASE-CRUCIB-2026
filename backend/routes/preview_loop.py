@@ -40,7 +40,7 @@ router = APIRouter(prefix="/api/runs", tags=["preview-loop"])
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         async def _anon():
@@ -89,17 +89,17 @@ async def preview_loop_capabilities():
         "ui_feedback_mapper": False,
     }
     try:
-        from services.preview_session import preview_session_service  # noqa
+        from backend.services.preview_session import preview_session_service  # noqa
         caps["preview_session"] = True
     except Exception as exc:
         caps["preview_session_error"] = str(exc)
     try:
-        from services.operator_runner import operator_runner  # noqa
+        from backend.services.operator_runner import operator_runner  # noqa
         caps["operator_runner"] = True
     except Exception as exc:
         caps["operator_runner_error"] = str(exc)
     try:
-        from services.ui_feedback_mapper import ui_feedback_mapper  # noqa
+        from backend.services.ui_feedback_mapper import ui_feedback_mapper  # noqa
         caps["ui_feedback_mapper"] = True
     except Exception as exc:
         caps["ui_feedback_mapper_error"] = str(exc)
@@ -121,9 +121,9 @@ async def run_preview_loop(
     started = time.time()
 
     try:
-        from services.preview_session import preview_session_service
-        from services.operator_runner import operator_runner
-        from services.ui_feedback_mapper import ui_feedback_mapper
+        from backend.services.preview_session import preview_session_service
+        from backend.services.operator_runner import operator_runner
+        from backend.services.ui_feedback_mapper import ui_feedback_mapper
     except Exception as exc:
         raise HTTPException(status_code=503,
                             detail=f"preview-loop subservice import failed: {exc}")

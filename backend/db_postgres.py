@@ -2,7 +2,7 @@
 Re-export from db_pg. Primary data store is PostgreSQL (JSONB documents).
 """
 
-from db_pg import (
+from backend.db_pg import (
     TABLE_CONFIG,
     close_pg_pool,
     close_pool,

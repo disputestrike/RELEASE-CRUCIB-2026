@@ -7,7 +7,7 @@ adapters are registered directly in-process and called via HTTP.
 
 Usage:
 
-    from services.mcp_client import registry as mcp_registry
+    from backend.services.mcp_client import registry as mcp_registry
     result = await mcp_registry.dispatch("mcp.slack.send",
                                          {"channel": "#eng", "text": "hi"})
 """
@@ -111,9 +111,9 @@ def _env(name: str) -> Optional[str]:
 def bootstrap_registry() -> McpRegistry:
     """Register built-in adapters. Called once at app startup."""
     # Import here so adapter modules don't need to be importable at module load time.
-    from services.mcp_adapters import slack as slack_adapter
-    from services.mcp_adapters import github as github_adapter
-    from services.mcp_adapters import notion as notion_adapter
+    from backend.services.mcp_adapters import slack as slack_adapter
+    from backend.services.mcp_adapters import github as github_adapter
+    from backend.services.mcp_adapters import notion as notion_adapter
 
     registry.register(slack_adapter.build(env_get=_env))
     registry.register(github_adapter.build(env_get=_env))

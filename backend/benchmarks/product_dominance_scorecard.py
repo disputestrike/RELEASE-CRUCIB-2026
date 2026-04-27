@@ -14,10 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from services.events import event_bus
-from services.proof_manifest import build_signed_manifest_for_directory
-from services.runtime.runtime_engine import runtime_engine
-from services.runtime.simulation_engine import SimulationEngine
+from backend.services.events import event_bus
+from backend.services.proof_manifest import build_signed_manifest_for_directory
+from backend.services.runtime.runtime_engine import runtime_engine
+from backend.services.runtime.simulation_engine import SimulationEngine
 
 # Provider pool tracking — graceful fallback if cerebras_roundrobin not available
 try:

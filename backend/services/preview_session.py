@@ -85,7 +85,7 @@ class PreviewSessionService:
         if not session:
             return None
         try:
-            from services.operator_runner import operator_runner
+            from backend.services.operator_runner import operator_runner
             screenshot_url = await operator_runner.screenshot(session.url)
         except Exception as exc:
             logger.warning("[PreviewSession] screenshot failed: %s", exc)

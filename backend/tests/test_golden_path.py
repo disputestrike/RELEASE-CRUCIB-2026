@@ -82,7 +82,8 @@ async def wait_for_job_completion(
             await asyncio.sleep(3)
             continue
 
-        job = r.json()
+        payload = r.json()
+        job = payload.get("job") if isinstance(payload, dict) and isinstance(payload.get("job"), dict) else payload
         status = job.get("status", "unknown")
 
         # Also check steps progress
@@ -100,7 +101,7 @@ async def wait_for_job_completion(
             return job
 
         if status != last_status:
-            print(f"  Job status: {last_status} → {status}")
+            print(f"  Job status: {last_status} -> {status}")
             last_status = status
 
         await asyncio.sleep(5)
@@ -287,13 +288,13 @@ async def test_full_golden_path():
         assert preview_url, f"Missing dev_server_url: {preview}"
         if str(preview_url).startswith("/"):
             preview_url = f"{BASE_URL}{preview_url}"
-        html_resp = await client.get(str(preview_url), headers=headers)
+        html_resp = await client.get(str(preview_url), headers=headers, follow_redirects=True)
         assert html_resp.status_code == 200, f"Preview serve failed: {html_resp.status_code} {html_resp.text[:200]}"
         assert "text/html" in html_resp.headers.get("content-type", ""), html_resp.headers
         html = html_resp.text.lower()
         assert 'id="root"' in html or "id='root'" in html or 'id="app"' in html or "id='app'" in html
 
-        print(f"\n  ✅ Golden path PASSED for job {job_id}")
+        print(f"\n  Golden path PASSED for job {job_id}")
 
 
 @pytest.mark.asyncio

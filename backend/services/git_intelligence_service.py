@@ -207,7 +207,7 @@ async def extract_skills_from_repo(
         try:
             import json
             skill_json = json.dumps({"skills": skills, "build_summary": {"stack": ", ".join(analysis.get("stack_signals", []))}})
-            from services.skill_memory_service import save_skills_from_build
+            from backend.services.skill_memory_service import save_skills_from_build
             await save_skills_from_build(
                 job_id=f"repo_analysis_{workspace_path[-8:]}",
                 user_id=user_id,

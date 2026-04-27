@@ -37,7 +37,7 @@ COLLECTION_LEGACY_TASKS = "automation_tasks"
 
 async def get_db():
     """Connect to PostgreSQL (same as server)."""
-    from db_pg import get_db as get_pg_db
+    from backend.db_pg import get_db as get_pg_db
 
     return await get_pg_db()
 

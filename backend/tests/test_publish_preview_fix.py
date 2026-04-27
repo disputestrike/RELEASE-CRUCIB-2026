@@ -139,6 +139,30 @@ def test_preview_serve_root_requires_index_html(workspace_root):
     assert preview_serve._resolve_serve_root(workspace) == (workspace / "dist").resolve()
 
 
+def test_dev_preview_base_prefers_request_origin(monkeypatch):
+    from backend.routes import preview_serve
+
+    class RequestStub:
+        headers = {}
+        base_url = "https://www.crucibai.com/"
+
+    monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai-production.up.railway.app")
+
+    assert preview_serve._preview_public_base(RequestStub()) == "https://www.crucibai.com"
+
+
+def test_dev_preview_base_uses_forwarded_https_origin(monkeypatch):
+    from backend.routes import preview_serve
+
+    class RequestStub:
+        headers = {"x-forwarded-proto": "https", "x-forwarded-host": "www.crucibai.com"}
+        base_url = "http://www.crucibai.com/"
+
+    monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai-production.up.railway.app")
+
+    assert preview_serve._preview_public_base(RequestStub()) == "https://www.crucibai.com"
+
+
 def test_preview_materialize_build_creates_dist_index(monkeypatch, workspace_root):
     from backend.routes import preview_serve
 

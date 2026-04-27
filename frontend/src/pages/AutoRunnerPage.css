@@ -245,6 +245,7 @@
 .arp-center-pane--composer-bottom {
   overflow: hidden;
   min-height: 0;
+  height: 100%;
   padding: 0 0 16px;
   gap: 0;
 }
@@ -258,15 +259,18 @@
   gap: 12px;
   padding: 12px 16px 16px;
   scrollbar-width: thin;
+  overscroll-behavior: contain;
 }
 .arp-center-pane--composer-bottom .arp-center-pane-composer {
   flex-shrink: 0;
   margin-top: auto;
+  max-height: min(42vh, 420px);
   padding: 12px 16px 0;
   border-top: 1px solid var(--border-1);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: hidden;
 }
 
 .uw-workspace-error-banner {
@@ -497,10 +501,14 @@
 
 .arp-pane-content {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
+  overscroll-behavior: contain;
 }
 .arp-pane-content > * {
+  min-height: 0;
   height: 100%;
 }
 

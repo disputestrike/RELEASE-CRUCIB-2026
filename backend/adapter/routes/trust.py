@@ -4,7 +4,7 @@ router = APIRouter()
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request
@@ -16,7 +16,7 @@ def _get_auth():
 async def get_trust(job_id: str, user: dict = Depends(_get_auth())):
     """Return trust/security report for a build."""
     try:
-        from db_pg import get_pg_pool
+        from backend.db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -44,7 +44,7 @@ async def get_quality(job_id: str, user: dict = Depends(_get_auth())):
     database is unreachable so the trust panel renders gracefully.
     """
     try:
-        from db_pg import get_pg_pool
+        from backend.db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(

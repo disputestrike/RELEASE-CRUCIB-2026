@@ -228,7 +228,7 @@ class RuntimeEngine:
             
             if memory_store is not None and brain_result.get("status") not in ("execution_failed", "execution_cancelled"):
                 try:
-                    from db_pg import get_db as _get_db_for_wb
+                    from backend.db_pg import get_db as _get_db_for_wb
                     _db_wb = await _get_db_for_wb()
                     wb_content = json.dumps(brain_result.get("execution", {}).get("result", {}))
                     if wb_content and len(wb_content) < 100_000:

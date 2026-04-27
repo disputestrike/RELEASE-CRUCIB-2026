@@ -710,7 +710,7 @@ Keeps smoke/security checks deterministic even when agents emit root-level serve
 """
 
 try:
-    from server import app as app  # type: ignore
+    from backend.server import app as app  # type: ignore
 except Exception:
 {textwrap.indent(fallback, "    ")}
 '''

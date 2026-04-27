@@ -718,7 +718,7 @@ async def run_swarm_agent_step(
     )
 
     try:
-        from orchestration.workspace_assembly_pipeline import (
+        from backend.orchestration.workspace_assembly_pipeline import (
             assembly_v2_enabled,
             materialize_swarm_agent_output,
         )

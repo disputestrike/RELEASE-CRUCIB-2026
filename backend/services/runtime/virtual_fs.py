@@ -9,10 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-try:
-    from backend.config import WORKSPACE_ROOT
-except ImportError:
-    from backend.project_state import WORKSPACE_ROOT
+from backend.project_state import WORKSPACE_ROOT
 
 
 class VirtualFS:

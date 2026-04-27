@@ -447,6 +447,10 @@
 
 .uw-root .arp-center-pane-composer .uw-user-chat {
   margin-bottom: 4px;
+  max-height: min(18vh, 180px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 [data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {

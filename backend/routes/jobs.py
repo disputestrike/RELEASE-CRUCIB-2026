@@ -16,7 +16,7 @@ import re
 import time
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from ..services.job_service import (
     create_job_service,
     get_job_checkpoint_service,
@@ -28,6 +28,7 @@ from ..services.job_event_service import (
     get_job_steps_service,
     get_job_events_service,
 )
+from ..services.runtime_contract import require_canonical_db
 from pydantic import BaseModel, Field
 from ..deps import get_current_user
 
@@ -171,10 +172,10 @@ async def _get_pool():
 
     try:
         pool = await get_pg_pool()
-        return pool
+        return require_canonical_db(pool, action="jobs_route")
     except Exception as exc:
-        logger.warning("jobs: DB pool unavailable - continuing in file-only mode")
-        return None
+        logger.warning("jobs: DB pool unavailable", exc_info=True)
+        return require_canonical_db(None, action="jobs_route")
 
 
 async def _resolve_job(job_id: str, user: dict) -> dict:
@@ -231,6 +232,7 @@ class JobStatusUpdate(BaseModel):
 
 async def create_job(
     body: JobCreateRequest,
+    background_tasks: BackgroundTasks,
     user: dict = Depends(_get_auth()),
 ):
     """Create a new job (plan + steps) for a project."""
@@ -242,13 +244,24 @@ async def create_job(
         # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
         # keyword argument, which was the root cause of the NoneType-await surface.
 
-        return await create_job_service(
+        result = await create_job_service(
             body=body,
             user=user,
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
             generate_plan=planner_mod.generate_plan,
         )
+        job = (result or {}).get("job") or {}
+        job_id = job.get("id") or job.get("job_id")
+        if str(body.mode or "").strip().lower() == "auto" and job_id:
+            from .orchestrator import RunAutoRequest, run_auto
+
+            result["auto_run"] = await run_auto(
+                RunAutoRequest(job_id=job_id),
+                background_tasks,
+                user,
+            )
+        return result
     except HTTPException:
         raise
     except Exception as e:

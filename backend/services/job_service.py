@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
 from ..services.runtime.execution_authority import build_runtime_native_step_defs
+from ..services.runtime_contract import require_canonical_db
 
 
 async def create_job_service(
@@ -26,10 +27,9 @@ async def create_job_service(
         rs.set_pool(pool)
     except Exception as exc:
         import logging as _lg
-        _lg.getLogger(__name__).warning(
-            "create_job_service: pool unavailable — continuing in file-only mode",
-        )
+        _lg.getLogger(__name__).warning("create_job_service: pool unavailable", exc_info=True)
         pool = None
+    pool = require_canonical_db(pool, action="create_job")
 
     project_id = body.project_id or user.get("id", "default")
     if resolve_project_id is not None:

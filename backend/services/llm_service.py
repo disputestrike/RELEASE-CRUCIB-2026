@@ -668,7 +668,7 @@ async def _call_llm_with_fallback(
     Returns ``(response_text, model_used)`` tuple.
     """
     if require_runtime_scope:
-        from services.runtime.execution_authority import require_runtime_authority
+        from backend.services.runtime.execution_authority import require_runtime_authority
 
         require_runtime_authority("llm_service", detail="model execution")
 
