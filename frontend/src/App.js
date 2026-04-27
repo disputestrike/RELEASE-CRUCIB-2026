@@ -417,6 +417,8 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/our-projects" element={<OurProjectsPage />} />
+          <Route path="/projects" element={<OurProjectsPage />} />
+          <Route path="/project" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
           <Route path="/builder" element={<Builder />} />

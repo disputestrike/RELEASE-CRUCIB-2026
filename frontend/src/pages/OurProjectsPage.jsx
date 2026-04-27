@@ -24,7 +24,8 @@ const OurProjectsPage = () => {
 
   useEffect(() => {
     const id = (location.hash || '').replace(/^#/, '');
-    if (!id || location.pathname !== '/our-projects') return undefined;
+    const publicProjectPaths = ['/our-projects', '/projects', '/project'];
+    if (!id || !publicProjectPaths.includes(location.pathname)) return undefined;
     const t = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
@@ -432,18 +433,25 @@ const OurProjectsPage = () => {
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">See What CrucibAI Built</h2>
           <p className="text-kimi-muted mb-8">Real apps from our agent swarm. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
-            {liveExamples.length > 0 ? liveExamples.map((ex) => (
-              <div key={ex.name} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
+            {liveExamples.length > 0 ? liveExamples.map((ex, index) => {
+              const exampleName = typeof ex?.name === 'string' && ex.name.trim()
+                ? ex.name.trim()
+                : `Example ${index + 1}`;
+              const examplePrompt = typeof ex?.prompt === 'string' && ex.prompt.trim()
+                ? ex.prompt.trim()
+                : 'Generated app example';
+              return (
+              <div key={ex?.id || ex?.slug || exampleName} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-gray-50">
                     <FileCode className="w-5 h-5 text-kimi-accent" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-kimi-text">{ex.name.replace(/-/g, ' ')}</h3>
-                    <p className="text-xs text-kimi-muted line-clamp-2">{ex.prompt?.slice(0, 70)}…</p>
+                    <h3 className="font-semibold text-kimi-text">{exampleName.replace(/-/g, ' ')}</h3>
+                    <p className="text-xs text-kimi-muted line-clamp-2">{examplePrompt.slice(0, 70)}…</p>
                   </div>
                 </div>
-                {ex.quality_metrics?.overall_score != null && (
+                {ex?.quality_metrics?.overall_score != null && (
                   <p className="text-xs text-kimi-muted mb-3">Quality score: {ex.quality_metrics.overall_score}/100</p>
                 )}
                 <button
@@ -454,7 +462,8 @@ const OurProjectsPage = () => {
                   {user ? 'View all examples & fork' : 'Sign in to fork'}
                 </button>
               </div>
-            )) : (
+              );
+            }) : (
               <>
                 {['Todo app with auth & CRUD', 'Blog platform with comments', 'E-commerce store with cart'].map((label, i) => (
                   <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg">

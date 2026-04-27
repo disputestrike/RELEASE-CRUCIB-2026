@@ -9,7 +9,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
+import OurProjectsPage from '../pages/OurProjectsPage';
 import PublicNav from '../components/PublicNav';
+import axios from 'axios';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -21,11 +23,12 @@ jest.mock('../authContext', () => ({
   useAuth: () => ({ user: null, token: null }),
 }));
 
-jest.mock('axios', () => ({ get: () => Promise.resolve({ data: {} }) }));
+jest.mock('axios', () => ({ get: jest.fn(() => Promise.resolve({ data: {} })) }));
 
 describe('Nav and pages — link and click-through verification', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    axios.get.mockResolvedValue({ data: {} });
   });
 
   const requiredNavLinkPaths = ['/pricing', '/our-projects'];
@@ -114,6 +117,41 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(src).toMatch(/One AI\. Two superpowers/);
     expect(src).toMatch(/No black boxes/);
     expect(src).toMatch(/Monday to Friday\. One platform/);
+  });
+
+  it('OurProjectsPage: malformed live examples cannot crash the public page', async () => {
+    axios.get.mockResolvedValueOnce({
+      data: {
+        examples: [
+          {
+            id: 'example-without-name',
+            quality_metrics: { overall_score: 83 },
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/our-projects']}>
+        <OurProjectsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Example 1')).toBeInTheDocument();
+    expect(screen.getByText(/Generated app example/)).toBeInTheDocument();
+    expect(screen.getByText(/Quality score: 83\/100/)).toBeInTheDocument();
+  });
+
+  it('App source: public project and features routes are mounted, including project aliases', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '../App.js'), 'utf8');
+    expect(src).toMatch(/path="\/our-projects"/);
+    expect(src).toMatch(/path="\/projects"/);
+    expect(src).toMatch(/path="\/project"/);
+    expect(src).toMatch(/path="\/features"/);
+    expect(src).toMatch(/<OurProjectsPage \/>/);
+    expect(src).toMatch(/<Features \/>/);
   });
 
   it('PublicNav: has Our solution, Pricing, Our Project, Log in, Get started, no Sign up (no Blog)', () => {
