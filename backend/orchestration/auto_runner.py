@@ -1233,6 +1233,7 @@ async def _execute_job_loop(
         }
 
     # Visual QA: DOM contract + route crawling (Manus-style) after BIV passes.
+    # BLOCKING: score < 55 or orphans > 10 blocks completion (not advisory).
     try:
         from .visual_qa import run_visual_qa
         vqa = run_visual_qa(ws or "", goal=goal_text)
@@ -1252,12 +1253,125 @@ async def _execute_job_loop(
             },
         )
         if not vqa.passed:
-            logger.warning(
-                "visual_qa: score=%d issues=%d — advisory (does not block completion)",
-                vqa.score, len(vqa.issues),
-            )
+            import os as _os
+            _vqa_min = int(_os.environ.get("CRUCIBAI_MIN_VQA_SCORE", "55"))
+            _max_orphans = int(_os.environ.get("CRUCIBAI_MAX_ORPHANS", "10"))
+            _is_blocking = vqa.score < _vqa_min or len(vqa.orphans) > _max_orphans
+            if _is_blocking:
+                logger.warning(
+                    "visual_qa: BLOCKING — score=%d orphans=%d issues=%d",
+                    vqa.score, len(vqa.orphans), len(vqa.issues),
+                )
+                await update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": "visual_qa_failed",
+                        "quality_score": quality_score,
+                        "failure_reason": "visual_qa",
+                        "visual_qa_score": vqa.score,
+                        "visual_qa_orphans": len(vqa.orphans),
+                    },
+                )
+                await append_job_event(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "visual_qa",
+                        "score": vqa.score,
+                        "orphan_count": len(vqa.orphans),
+                        "issues": vqa.issues[:10],
+                    },
+                )
+                await publish(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "visual_qa",
+                        "visual_qa_score": vqa.score,
+                        "quality_score": quality_score,
+                    },
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "quality_score": quality_score,
+                    "reason": "visual_qa",
+                    "visual_qa_score": vqa.score,
+                }
+            else:
+                logger.info(
+                    "visual_qa: score=%d orphans=%d — below ideal but within limits",
+                    vqa.score, len(vqa.orphans),
+                )
     except Exception as _vqa_e:
         logger.warning("visual_qa: skipped due to error: %s", _vqa_e)
+
+    # Browser QA: headless route validation (Playwright → static HTTP → file analysis).
+    try:
+        from .browser_qa import run_browser_qa
+        bqa = run_browser_qa(ws or "", goal=goal_text)
+        await append_job_event(
+            job_id,
+            "browser_qa_result",
+            {
+                "passed": bqa.passed,
+                "score": bqa.score,
+                "method": bqa.method,
+                "routes_ok": bqa.routes_ok,
+                "routes_total": bqa.routes_total,
+                "issues": bqa.issues[:10],
+            },
+        )
+        if not bqa.passed and bqa.method != "skipped":
+            import os as _os
+            _bqa_min = int(_os.environ.get("CRUCIBAI_MIN_BQA_SCORE", "60"))
+            if bqa.score < _bqa_min:
+                logger.warning(
+                    "browser_qa: BLOCKING — score=%d method=%s routes=%d/%d",
+                    bqa.score, bqa.method, bqa.routes_ok, bqa.routes_total,
+                )
+                await update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": "browser_qa_failed",
+                        "quality_score": quality_score,
+                        "failure_reason": "browser_qa",
+                        "browser_qa_score": bqa.score,
+                        "browser_qa_method": bqa.method,
+                    },
+                )
+                await append_job_event(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "browser_qa",
+                        "score": bqa.score,
+                        "method": bqa.method,
+                        "routes_ok": bqa.routes_ok,
+                        "routes_total": bqa.routes_total,
+                        "issues": bqa.issues[:10],
+                    },
+                )
+                await publish(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "browser_qa",
+                        "browser_qa_score": bqa.score,
+                        "quality_score": quality_score,
+                    },
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "quality_score": quality_score,
+                    "reason": "browser_qa",
+                    "browser_qa_score": bqa.score,
+                }
+    except Exception as _bqa_e:
+        logger.warning("browser_qa: skipped due to error: %s", _bqa_e)
 
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
