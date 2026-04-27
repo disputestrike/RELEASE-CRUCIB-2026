@@ -16,6 +16,10 @@ from .enterprise_command_pack import (
     build_enterprise_frontend_file_set,
     enterprise_command_intent,
 )
+from .manus_parity_template import (
+    build_manus_parity_frontend_file_set,
+    is_saas_ui_goal,
+)
 
 
 def _safe_goal_summary(goal: str) -> str:
@@ -701,6 +705,9 @@ def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
         return build_enterprise_frontend_file_set(job)
 
     target = normalize_build_target(job.get("build_target"))
+    if is_saas_ui_goal(job, target):
+        return build_manus_parity_frontend_file_set(job, target)
+
     goal_raw = (job.get("goal") or "").strip()[:2000] or "(no goal text)"
     goal_literal = json.dumps(_safe_goal_summary(job.get("goal") or ""))
     pkg = {

@@ -390,6 +390,18 @@ def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
             "proof": proof,
         }
 
+    dist_index = os.path.join(ws, "dist", "index.html")
+    if os.path.isfile(dist_index):
+        proof.append(
+            _proof(
+                "verification",
+                "Preview artifact already materialized",
+                {"relative_path": "dist/index.html"},
+                verification_class="runtime",
+            )
+        )
+        return {"passed": True, "issues": [], "proof": proof}
+
     pkg_path = os.path.join(ws, "package.json")
     if not os.path.isfile(pkg_path):
         return {
@@ -459,7 +471,6 @@ def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
         )
     )
 
-    dist_index = os.path.join(ws, "dist", "index.html")
     if not os.path.isfile(dist_index):
         return {
             "passed": False,

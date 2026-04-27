@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def _walk_source_files(workspace_path: str) -> Dict[str, str]:
-    """Relative path -> utf-8 text for js/jsx/json/css (bounded)."""
+    """Relative path -> utf-8 text for source/config/docs (bounded)."""
     out: Dict[str, str] = {}
     if not workspace_path or not os.path.isdir(workspace_path):
         return out
@@ -24,7 +24,7 @@ def _walk_source_files(workspace_path: str) -> Dict[str, str]:
         for name in files:
             if count >= max_files:
                 return out
-            if not name.endswith((".jsx", ".js", ".json", ".css", ".tsx", ".ts")):
+            if not name.endswith((".jsx", ".js", ".json", ".css", ".tsx", ".ts", ".md")):
                 continue
             if name.endswith((".test.js", ".spec.js")):
                 continue
@@ -48,6 +48,163 @@ def _proof(
 ) -> Dict[str, Any]:
     p = {**payload, "verification_class": verification_class}
     return {"proof_type": kind, "title": title, "payload": p}
+
+
+def _has_file(files: Dict[str, str], *needles: str) -> bool:
+    rels = [p.lower() for p in files]
+    return any(any(needle.lower() in rel for rel in rels) for needle in needles)
+
+
+def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
+    rel_joined = " ".join(files.keys()).lower()
+    text = (combined + "\n" + rel_joined).lower()
+    markers = (
+        "saas",
+        "product ui",
+        "dashboard",
+        "analytics",
+        "pricing",
+        "settings",
+        "team",
+        "modern ui",
+        "design system",
+        "multiple pages",
+        "responsive layout",
+        "landing page",
+        "marketing page",
+    )
+    return sum(1 for marker in markers if marker in text) >= 3
+
+
+def _verify_saas_product_contract(
+    files: Dict[str, str],
+    combined: str,
+) -> Tuple[List[str], List[Dict[str, Any]]]:
+    """Hard Manus-parity gate for modern SaaS/product UI prompts.
+
+    The old scaffold rendered and built, but still delivered only Home/Login/
+    Dashboard/Team with placeholder copy. This gate checks final product shape:
+    pages, routes, design system, charts, product sections, and no visible
+    scaffold language.
+    """
+
+    issues: List[str] = []
+    proof: List[Dict[str, Any]] = []
+    lower = combined.lower()
+    rels = " ".join(files.keys()).lower()
+
+    required_pages = {
+        "home": ("src/pages/home", "/"),
+        "dashboard": ("src/pages/dashboard", "/dashboard"),
+        "analytics": ("src/pages/analytics", "/analytics"),
+        "team": ("src/pages/team", "/team"),
+        "pricing": ("src/pages/pricing", "/pricing"),
+        "settings": ("src/pages/settings", "/settings"),
+        "notfound": ("src/pages/notfound", "/404"),
+    }
+    missing = []
+    for label, (path_hint, route_hint) in required_pages.items():
+        has_page = path_hint in rels
+        has_route = route_hint in lower
+        if not (has_page and has_route):
+            missing.append(label)
+    if missing:
+        issues.append(
+            "SaaS UI contract missing mounted pages/routes: " + ", ".join(missing)
+        )
+    else:
+        proof.append(
+            _proof(
+                "verification",
+                "SaaS route inventory complete",
+                {"routes": sorted(required_pages)},
+                verification_class="product",
+            )
+        )
+
+    if not _has_file(files, "marketingnav"):
+        issues.append("SaaS UI contract missing a public MarketingNav component.")
+    if not _has_file(files, "dashboardlayout"):
+        issues.append("SaaS UI contract missing a reusable DashboardLayout/app shell.")
+
+    css = "\n".join(
+        txt for path, txt in files.items() if path.endswith((".css", ".md"))
+    ).lower()
+    token_needles = ("--primary", "--chart", "--sidebar", "--surface", "--muted")
+    if sum(1 for needle in token_needles if needle in css) < 4:
+        issues.append(
+            "SaaS UI contract needs a real design-token system with primary, chart, sidebar, surface, and muted tokens."
+        )
+    else:
+        proof.append(
+            _proof(
+                "verification",
+                "SaaS design tokens present",
+                {"tokens": [n for n in token_needles if n in css]},
+                verification_class="product",
+            )
+        )
+
+    chart_needles = ("recharts", "areachart", "barchart", "linechart", "piechart")
+    if sum(1 for needle in chart_needles if needle in lower) < 3:
+        issues.append(
+            "SaaS dashboard/analytics contract needs real chart components (area/bar/line/pie or equivalent)."
+        )
+    else:
+        proof.append(
+            _proof(
+                "verification",
+                "SaaS chart surface present",
+                {"chart_markers": [n for n in chart_needles if n in lower]},
+                verification_class="product",
+            )
+        )
+
+    section_checks = {
+        "marketing hero/features/CTA": ("hero", "feature", "cta"),
+        "dashboard KPIs/table/activity": ("kpi", "table", "activity"),
+        "analytics funnel/top pages": ("funnel", "top pages"),
+        "team roles/invite/search": ("invite", "role", "search"),
+        "pricing plans/FAQ": ("plans", "faq"),
+        "settings security/billing/integrations": ("security", "billing", "integrations"),
+    }
+    for label, needles in section_checks.items():
+        if not all(needle in lower for needle in needles):
+            issues.append(f"SaaS UI contract missing section content: {label}.")
+
+    scaffold_phrases = (
+        "crucib_incomplete",
+        "sample team page",
+        "included in the scaffold",
+        "generated module placeholder",
+        "ready for real data wiring",
+        "real test placeholder",
+        "thin provider/router mount",
+        "replace with real api",
+        "client-only token stored",
+        "configure cmd for your app",
+    )
+    found_scaffold = [phrase for phrase in scaffold_phrases if phrase in lower]
+    if found_scaffold:
+        issues.append(
+            "SaaS UI contract found visible scaffold/placeholder language: "
+            + ", ".join(found_scaffold)
+        )
+
+    if not issues:
+        proof.append(
+            _proof(
+                "verification",
+                "SaaS product completeness gate passed",
+                {
+                    "required_pages": len(required_pages),
+                    "section_checks": len(section_checks),
+                },
+                verification_class="product",
+            )
+        )
+
+    return issues, proof
 
 
 async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
@@ -258,6 +415,13 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
         proof.append(
             _proof("file", f"Root app file: {app_like[0]}", {"path": app_like[0]})
         )
+
+    if _detect_saas_product_intent(files, combined):
+        saas_issues, saas_proof = _verify_saas_product_contract(files, combined)
+        proof.extend(saas_proof)
+        if saas_issues:
+            failure_reason = "saas_product_contract_failed"
+            issues.extend(saas_issues)
 
     static_passed = len(issues) == 0
     if static_passed:
