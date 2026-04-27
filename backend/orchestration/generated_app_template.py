@@ -129,6 +129,199 @@ export default nextConfig;
     ]
 
 
+def _expo_mobile_stub_files(goal_snippet: str) -> List[Tuple[str, str]]:
+    """Standalone Expo mobile starter that remains compatible with root web preview."""
+    readme = f"""# Expo mobile track
+
+This folder is a **standalone Expo / React Native app** generated for the mobile build target.
+The root Vite app remains in place so CrucibAI can still run browser preview and static gates.
+
+## Your goal (reference)
+{goal_snippet[:1200]}
+
+## Commands
+```bash
+cd expo-mobile
+npm install
+npm run start
+npm run android
+npm run ios
+npm run web
+```
+
+## Store packaging contract
+- Add Apple Developer / Google Play credentials before store submission.
+- Fill `app.json` names, bundle identifiers, icons, splash assets, privacy metadata, screenshots, and EAS profile.
+- Run `npx expo-doctor` and `eas build` before treating the mobile app as release-ready.
+- CrucibAI marks this track complete only when the Build Integrity Validator sees Expo metadata, app entry, screens, scripts, and packaging guidance.
+"""
+    pkg = {
+        "name": "crucibai-expo-mobile",
+        "version": "0.1.0",
+        "private": True,
+        "scripts": {
+            "start": "expo start",
+            "android": "expo start --android",
+            "ios": "expo start --ios",
+            "web": "expo start --web",
+            "build": "npx expo export",
+            "doctor": "npx expo-doctor",
+        },
+        "dependencies": {
+            "@expo/vector-icons": "^14.0.2",
+            "@react-navigation/native": "^6.1.18",
+            "@react-navigation/native-stack": "^6.11.0",
+            "expo": "~51.0.0",
+            "expo-status-bar": "~1.12.1",
+            "react": "18.2.0",
+            "react-native": "0.74.5",
+            "react-native-safe-area-context": "4.10.5",
+            "react-native-screens": "3.31.1",
+        },
+        "devDependencies": {
+            "@babel/core": "^7.24.0",
+            "typescript": "^5.4.5",
+        },
+    }
+    app_json = {
+        "expo": {
+            "name": "CrucibAI Mobile",
+            "slug": "crucibai-mobile",
+            "version": "0.1.0",
+            "orientation": "portrait",
+            "scheme": "crucibai-mobile",
+            "userInterfaceStyle": "automatic",
+            "ios": {
+                "supportsTablet": True,
+                "bundleIdentifier": "com.crucibai.generated.mobile",
+            },
+            "android": {
+                "package": "com.crucibai.generated.mobile",
+                "adaptiveIcon": {
+                    "backgroundColor": "#111827",
+                },
+            },
+            "web": {
+                "bundler": "metro",
+                "output": "static",
+            },
+        }
+    }
+    eas_json = {
+        "cli": {"version": ">= 10.0.0"},
+        "build": {
+            "development": {"developmentClient": True, "distribution": "internal"},
+            "preview": {"distribution": "internal"},
+            "production": {},
+        },
+        "submit": {"production": {}},
+    }
+    app_tsx = """import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
+import HomeScreen from './src/screens/HomeScreen';
+import DetailScreen from './src/screens/DetailScreen';
+
+const Stack = createNativeStackNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <StatusBar style="auto" />
+      <Stack.Navigator>
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'CrucibAI Mobile' }} />
+        <Stack.Screen name="Details" component={DetailScreen} options={{ title: 'Build details' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+"""
+    home_screen = """import React from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+export default function HomeScreen({ navigation }) {
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.eyebrow}>Mobile build target</Text>
+        <Text style={styles.title}>CrucibAI Expo starter</Text>
+        <Text style={styles.body}>
+          This mobile app was generated as a concrete Expo artifact. Expand screens, native APIs, and store metadata from here.
+        </Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Validator contract</Text>
+          <Text style={styles.body}>Expo metadata, App entry, navigation, screens, scripts, and packaging guidance must exist before completion.</Text>
+        </View>
+        <Pressable style={styles.button} onPress={() => navigation.navigate('Details')}>
+          <Text style={styles.buttonText}>Open details</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { padding: 24, gap: 16 },
+  eyebrow: { color: '#4f46e5', fontWeight: '700', textTransform: 'uppercase' },
+  title: { fontSize: 34, fontWeight: '800', color: '#111827' },
+  body: { color: '#475569', fontSize: 16, lineHeight: 24 },
+  card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#e5e7eb' },
+  cardTitle: { color: '#111827', fontSize: 18, fontWeight: '700', marginBottom: 6 },
+  button: { backgroundColor: '#4f46e5', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 14, alignItems: 'center' },
+  buttonText: { color: '#ffffff', fontWeight: '800' },
+});
+"""
+    detail_screen = """import React from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+const checks = [
+  'Expo app.json metadata',
+  'App.tsx root entry',
+  'NavigationContainer and native stack',
+  'Screens under src/screens',
+  'EAS packaging guidance',
+];
+
+export default function DetailScreen() {
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Mobile readiness</Text>
+        {checks.map((item) => (
+          <View key={item} style={styles.row}>
+            <Text style={styles.check}>OK</Text>
+            <Text style={styles.body}>{item}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { padding: 24, gap: 14 },
+  title: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, padding: 14 },
+  check: { color: '#059669', fontWeight: '900', fontSize: 18 },
+  body: { color: '#334155', fontSize: 16 },
+});
+"""
+    return [
+        ("expo-mobile/README.md", readme),
+        ("expo-mobile/package.json", json.dumps(pkg, indent=2)),
+        ("expo-mobile/app.json", json.dumps(app_json, indent=2)),
+        ("expo-mobile/eas.json", json.dumps(eas_json, indent=2)),
+        ("expo-mobile/App.tsx", app_tsx),
+        ("expo-mobile/src/screens/HomeScreen.tsx", home_screen),
+        ("expo-mobile/src/screens/DetailScreen.tsx", detail_screen),
+        ("expo-mobile/tsconfig.json", json.dumps({"extends": "expo/tsconfig.base"}, indent=2)),
+        ("expo-mobile/.gitignore", "node_modules\n.expo\ndist\nweb-build\n"),
+    ]
+
+
 def _senior_structure_files(goal_raw: str) -> List[Tuple[str, str]]:
     """Additional maintainable product-codebase files for the runnable Vite scaffold."""
     app_config = """export const appConfig = {
@@ -705,7 +898,7 @@ def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
         return build_enterprise_frontend_file_set(job)
 
     target = normalize_build_target(job.get("build_target"))
-    if is_saas_ui_goal(job, target):
+    if target != "mobile_expo" and is_saas_ui_goal(job, target):
         return build_manus_parity_frontend_file_set(job, target)
 
     goal_raw = (job.get("goal") or "").strip()[:2000] or "(no goal text)"
@@ -1174,4 +1367,6 @@ export default function PreviewContract() {
     out.extend(_senior_structure_files(goal_raw))
     if target == "next_app_router":
         out.extend(_next_app_stub_files(goal_raw))
+    if target == "mobile_expo":
+        out.extend(_expo_mobile_stub_files(goal_raw))
     return out

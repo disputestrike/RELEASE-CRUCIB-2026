@@ -54,17 +54,17 @@ CrucibAI stands out with its revolutionary multi-agent architecture. Unlike comp
 **Key Advantages:**
 - ✅ Large agent swarm vs. competitors&apos; small fixed rosters
 - ✅ Complete orchestration engine
-- ✅ Production-ready code (9.8/10 quality)
-- ✅ 193 comprehensive tests (100% passing)
-- ✅ Enterprise security (9.7/10 score)
+- ✅ Validator-gated code with per-build quality scoring
+- ✅ Current test/build proof recorded per release
+- ✅ Security checks with proof artifacts
 - ✅ Self-hosted option
 - ✅ Free and open-source
 
 **Performance:**
-- Code quality: 9.8/10
-- Security: 9.7/10
-- Test coverage: 100%
-- Uptime: 99.9%
+- Code quality: measured per build
+- Security: measured by current scan/proof artifacts
+- Test coverage: measured by the current suite
+- Uptime: monitored separately from generated-code quality
 
 ## Manus: The Polished Professional
 
@@ -122,8 +122,8 @@ Lovable is designed for rapid prototyping and quick iterations. It's perfect for
 | Feature | CrucibAI | Manus | Lovable |
 |---------|----------|-------|---------|
 | **AI Agents** | Swarm + sub-agents | Limited | Few |
-| **Code Quality** | 9.8/10 | 8.5/10 | 8.0/10 |
-| **Security** | 9.7/10 | 8.2/10 | 7.5/10 |
+| **Code Quality** | Per-build score | Public claims vary | Public claims vary |
+| **Security** | Proof artifacts | Public claims vary | Public claims vary |
 | **Customization** | Unlimited | Limited | Very Limited |
 | **Self-Hosted** | ✅ Yes | ❌ No | ❌ No |
 | **Cost** | Free | $99-$999/mo | $99-$499/mo |
@@ -378,7 +378,7 @@ Production-ready code must be:
 
 CrucibAI ensures production-ready code through:
 
-### 1. Code Validation (9.8/10 Quality Score)
+### 1. Code Validation (Per-Build Quality Score)
 - Syntax checking
 - Type validation
 - Security scanning

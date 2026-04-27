@@ -27,6 +27,22 @@ _CATEGORY_PATTERNS: Dict[str, Dict[str, Tuple[str, ...]]] = {
         "css": ("css",),
         "tailwind": ("tailwind",),
     },
+    "platforms": {
+        "mobile": (
+            "mobile app",
+            "native app",
+            "react native",
+            "react-native",
+            "expo",
+            "ios app",
+            "android app",
+            "app store",
+            "google play",
+            "testflight",
+            "eas build",
+        ),
+        "web": ("web app", "website", "browser app", "spa"),
+    },
     "backend_frameworks": {
         "express": ("express",),
         "fastify": ("fastify",),
@@ -285,7 +301,9 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
         if contract["requires_full_system_builder"]
         else "vite_react"
     )
-    if (
+    if "mobile" in (contract.get("platforms") or []):
+        recommended_target = "mobile_expo"
+    elif (
         contract["frontend_frameworks"]
         and contract["frontend_frameworks"][0] == "next.js"
     ):
@@ -305,6 +323,8 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
     else:
         contract["directory_profile"] = recommended_target
     summary_lines = []
+    if contract["platforms"]:
+        summary_lines.append(f"Platform: {', '.join(contract['platforms'])}")
     if contract["frontend_frameworks"]:
         summary_lines.append(f"Frontend: {', '.join(contract['frontend_frameworks'])}")
     if contract["backend_frameworks"] or contract["backend_languages"]:

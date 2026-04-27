@@ -17,7 +17,7 @@ const faqsExtra = [
   { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
   { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
   { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
-  { q: 'Can I build mobile apps?', a: 'Yes. We support Expo + App Store submission pack. Describe your mobile app; we build it.' },
+  { q: 'Can I build mobile apps?', a: 'Yes. We support an Expo/React Native track that generates expo-mobile/ source, app metadata, EAS config, screens, scripts, and mobile validator proof. App Store and Google Play submission still require your developer credentials, signing, EAS build, and store metadata validation.' },
   { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
   { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, a swarm of agents and sub-agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
 ];
@@ -29,9 +29,9 @@ const sections = [
   { id: 'templates', icon: Palette, title: 'Templates and prompts', body: 'Use the Prompt Library and Templates to start from proven patterns. Save your own prompts for reuse. Patterns save tokens for auth, payments, APIs.' },
   { id: 'agents', icon: Zap, title: 'Create automations', body: 'The same AI that builds your app runs inside your automations. Describe what you want — daily digest, lead finder, inbox summarizer — we create the agent. Use run_agent to call our swarm from your automation.' },
   { id: 'swarm', icon: Zap, title: 'Agent swarm & sub-agents', body: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents and sub-agents. AgentMonitor shows per-phase status, token usage, and logs.' },
-  { id: 'export', icon: Code, title: 'Export and deploy', body: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. For mobile: Expo plus App Store and Google Play submission pack. You own the code.' },
-  { id: 'security', icon: Shield, title: 'Security and quality', body: 'Use Auto-fix when you see errors. Run Security scan and Accessibility check from the workspace or API. Quality score per build. 188 tests passing.' },
-  { id: 'ide', icon: Code, title: 'IDE extensions', body: 'VS Code, JetBrains, Sublime, and Vim. Code from your editor with the same AI. Command palette and shortcuts for power users.' },
+  { id: 'export', icon: Code, title: 'Export and deploy', body: 'Export to ZIP or push to GitHub. Web deployment guidance is included when the selected target passes validation. For mobile: Expo artifacts and store-submission guidance are generated, with final store submission requiring credentials and EAS proof. You own the code.' },
+  { id: 'security', icon: Shield, title: 'Security and quality', body: 'Use Auto-fix when you see errors. Security, preview, and Build Integrity Validator gates produce proof per build. Accessibility checks are enforced only when the current validator has concrete evidence for that target.' },
+  { id: 'tools', icon: Code, title: 'Workspace power tools', body: 'Use command palette shortcuts, quick actions, templates, patterns, prompt library, attachments, import, and export from the workspace. IDE extensions are not claimed unless a configured extension integration is present.' },
   { id: 'api', icon: Zap, title: 'API for developers', body: 'Prompt-to-plan and prompt-to-code via API. Token usage tracking. Add-ons when you need more. See documentation for availability.' },
 ];
 

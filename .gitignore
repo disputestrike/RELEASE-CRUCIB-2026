@@ -103,6 +103,8 @@ screenshots/
 # Local dev / test artifacts (do not push)
 workspaces/
 .tmp_pytest_manual/
+.pytest_tmp_biv/
+.biv_test_tmp/
 local_evidence_pack/
 TRACKED_FILES_MANIFEST.txt
 frontend/dev.log

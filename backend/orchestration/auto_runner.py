@@ -1093,6 +1093,74 @@ async def _execute_job_loop(
     )
 
     goal_text = (job_latest or {}).get("goal") or ""
+    from .build_integrity_validator import validate_workspace_integrity
+
+    biv = validate_workspace_integrity(
+        ws,
+        goal=goal_text,
+        phase="final",
+        build_target=(job_latest or {}).get("build_target")
+        or (job_latest or {}).get("crucib_build_target"),
+    )
+    await append_job_event(
+        job_id,
+        "build_integrity_validator_result",
+        {
+            "score": biv.get("score"),
+            "profile": biv.get("profile"),
+            "phase": biv.get("phase"),
+            "recommendation": biv.get("recommendation"),
+            "retry_targets": biv.get("retry_targets") or [],
+            "issues": (biv.get("issues") or [])[:20],
+        },
+    )
+    if not biv.get("passed"):
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "build_integrity_validator_failed",
+                "quality_score": quality_score,
+                "failure_reason": "build_integrity_validator",
+                "failure_details": json.dumps(biv.get("issues") or [])[:1000],
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": "build_integrity_validator",
+                "score": biv.get("score"),
+                "profile": biv.get("profile"),
+                "retry_targets": biv.get("retry_targets") or [],
+                "issues": (biv.get("issues") or [])[:50],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "build_integrity_validator",
+                "quality_score": quality_score,
+                "integrity_score": biv.get("score"),
+                "issues": (biv.get("issues") or [])[:20],
+            },
+        )
+        await _write_blueprint(
+            ws,
+            job_id,
+            "build_integrity_validator",
+            open_gates=["build_integrity_validator", *list(biv.get("retry_targets") or [])],
+            notes="; ".join(str(x) for x in (biv.get("issues") or [])[:12]),
+        )
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "integrity_score": biv.get("score"),
+            "reason": "build_integrity_validator",
+        }
+
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
     egr = await run_completion_enforcement_gate(

@@ -42,7 +42,7 @@ const OurProjectsPage = () => {
   };
 
   const faqs = [
-    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a swarm of agents and sub-agents. Full transparency: every phase, every agent, no black boxes.' },
+    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate validator-gated code with plan-first flow and a swarm of agents and sub-agents. Full transparency: every phase, every agent, no black boxes.' },
     { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 200 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (100–10,000 at $0.03/credit, same rate as plans).' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
@@ -68,7 +68,7 @@ const OurProjectsPage = () => {
     { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
-    { q: 'Can I build mobile apps?', a: 'Currently we focus on web apps (React). Mobile and PWA support are on the roadmap.' },
+    { q: 'Can I build mobile apps?', a: 'Yes, through an Expo/React Native track that produces expo-mobile/ source, app.json, eas.json, screens, scripts, and mobile integrity proof. App Store and Google Play submission still require your developer credentials, signing, EAS build, and store metadata validation.' },
     { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
     { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, a swarm of agents and sub-agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
   ];
@@ -81,7 +81,7 @@ const OurProjectsPage = () => {
   ];
 
   const comparisonData = {
-    crucibai: { buildWeb: true, buildMobile: true, runAutomations: true, sameAI: true, importCode: true, ideExtensions: true, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: true, appStorePack: true, pricePer100: '$15' },
+    crucibai: { buildWeb: true, buildMobile: true, runAutomations: true, sameAI: true, importCode: true, ideExtensions: false, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: true, appStorePack: false, pricePer100: '$15' },
     lovable: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '$25' },
     bolt: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '~$20' },
     n8n: { buildWeb: false, buildMobile: false, runAutomations: true, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: false, approvalWorkflows: true, qualityScore: false, appStorePack: false, pricePer100: 'N/A' },
@@ -90,7 +90,7 @@ const OurProjectsPage = () => {
   };
   const comparisonLabels = [
     { key: 'buildWeb', label: 'Build web apps' },
-    { key: 'buildMobile', label: 'Build mobile apps' },
+    { key: 'buildMobile', label: 'Mobile app track' },
     { key: 'runAutomations', label: 'Run automations' },
     { key: 'sameAI', label: 'Same AI for apps + automations' },
     { key: 'importCode', label: 'Import existing code' },
@@ -99,7 +99,7 @@ const OurProjectsPage = () => {
     { key: 'planBeforeBuild', label: 'Plan shown before build' },
     { key: 'approvalWorkflows', label: 'Approval workflows' },
     { key: 'qualityScore', label: 'Quality score per build' },
-    { key: 'appStorePack', label: 'App Store submission pack' },
+    { key: 'appStorePack', label: 'Store submission automation' },
     { key: 'pricePer100', label: 'Price per 100 credits' }
   ];
 
@@ -166,7 +166,7 @@ const OurProjectsPage = () => {
             Describe it now. Ship it today.
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-kimi-muted mb-12 max-w-2xl mx-auto leading-relaxed">
-            The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
+            The same AI path that builds your app can also run inside gated automations. Web apps, Expo mobile starters, and automations — one platform, one AI path, no black-box handoff.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate('/app/workspace')} className="glass-kimi-btn px-6 py-3 text-gray-900 font-medium rounded-xl transition">
@@ -190,7 +190,7 @@ const OurProjectsPage = () => {
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Build</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
-                Describe your app in plain language. Our swarm of agents and sub-agents plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
+                Describe your app in plain language. Our swarm of agents and sub-agents plans, builds, tests, and prepares deployable artifacts. Watch every agent work in real time. Web apps, dashboards, backend/API projects, landing pages, and Expo mobile starters — code you own, with proof attached.
               </p>
             </div>
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
@@ -279,7 +279,7 @@ const OurProjectsPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Our solution</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4 text-center">Who it&apos;s for</h2>
           <p className="text-center text-kimi-muted max-w-2xl mx-auto mb-12 text-sm leading-relaxed">
-            One platform for web, mobile, and automation. Plan-first builds, full transparency, production-ready code you own — no matter your title.
+            One platform for web, Expo mobile, and automation. Plan-first builds, full transparency, validator-gated code you own — no matter your title.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <article id="solution-everyone" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
@@ -324,7 +324,7 @@ const OurProjectsPage = () => {
             </article>
             <article id="solution-developers" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Developers</h3>
-              <p className="text-sm text-kimi-muted mb-4">IDE extensions, import via paste / ZIP / Git, Braintree injection, README and API docs. The swarm handles the heavy lifting; you keep full code ownership.</p>
+              <p className="text-sm text-kimi-muted mb-4">Import via paste / ZIP / Git, Braintree injection, README and API docs. The swarm handles the heavy lifting; you keep full code ownership. IDE extensions are only claimed when a configured extension integration is present.</p>
               <Link to="/learn" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Docs &amp; API</Link>
             </article>
           </div>
@@ -374,7 +374,7 @@ const OurProjectsPage = () => {
             </article>
             <article id="use-case-full-app" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
               <h3 className="text-lg font-semibold text-kimi-text mb-2">Full apps &amp; SaaS</h3>
-              <p className="text-sm text-kimi-muted mb-4">Auth, database, Braintree, dashboards, and mobile-ready Expo paths. Same pipeline from landing to production — quality score and phase retry included.</p>
+              <p className="text-sm text-kimi-muted mb-4">Auth, database, Braintree, dashboards, and an Expo mobile track. Same pipeline from landing to production — quality score and phase retry included.</p>
               <button type="button" onClick={() => startBuild('Full-stack SaaS with auth and Braintree')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build a full product</button>
             </article>
             <article id="use-case-automation" className="scroll-mt-28 p-6 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -387,7 +387,7 @@ const OurProjectsPage = () => {
             {[
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Real-time data, admin controls, export to PDF and Excel.', cta: 'Build a dashboard' },
               { title: 'Landing Pages', desc: 'Hero, features, waitlist, and pricing sections. Design-to-code from a screenshot. Live in 30 minutes.', cta: 'Start a landing page' },
-              { title: 'Mobile Apps', desc: 'iOS and Android with Expo. Production-ready. App Store submission pack with step-by-step guides for App Store and Google Play.', cta: 'Build a mobile app' },
+              { title: 'Mobile Apps (Expo)', desc: 'Generate an Expo/React Native starter with app metadata, EAS config, screens, and scripts. The Build Integrity Validator must prove mobile entry points and packaging artifacts before the build is complete.', cta: 'Plan a mobile build' },
               { title: 'E‑Commerce & Checkout', desc: 'Product catalog, cart, checkout, payments. Inject Braintree in one command. Full automation from product list to order confirmation.', cta: 'Build a store' },
               { title: 'Automations & Agents', desc: 'Daily digest. Lead follow-up. Content pipeline. Webhook handlers. Describe it — we create it. Schedule or trigger by webhook.', cta: 'Create an agent' },
               { title: 'Internal Tools', desc: 'Admin tables, forms, approval workflows, CRUD. Step chaining between actions. Agentic: ship in hours, not months.', cta: 'Build an internal tool' },
@@ -560,7 +560,7 @@ const OurProjectsPage = () => {
           <div className="flex flex-wrap justify-center gap-8 text-sm">
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
-              <span className="text-kimi-text">188 tests passing</span>
+              <span className="text-kimi-text">Validator-tested builds</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
