@@ -600,11 +600,16 @@ _MARKDOWN_LINE_RE = re.compile(
 )
 
 
+_FIRST_LINE_HEADING_RE = re.compile(r"^\s*(#{1,6}\s|\*\*[`\[])")
+
 def _is_manifest_content(text: str) -> bool:
     """Return True if text looks like a file-path manifest or markdown doc, not source code."""
     if not text or not text.strip():
         return True
     lines = [ln for ln in text.strip().splitlines() if ln.strip()][:15]
+    # Fast-path: first non-empty line is a markdown heading or bold-backtick — always garbage
+    if lines and _FIRST_LINE_HEADING_RE.match(lines[0]):
+        return True
     manifest_hits = sum(1 for ln in lines if _MANIFEST_LINE_RE.match(ln))
     markdown_hits = sum(1 for ln in lines if _MARKDOWN_LINE_RE.match(ln))
     return manifest_hits >= min(3, len(lines)) or markdown_hits >= min(2, len(lines))
