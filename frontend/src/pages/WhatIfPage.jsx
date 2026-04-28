@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Telescope,
   Users,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -21,6 +22,16 @@ import { useTaskStore } from '../stores/useTaskStore';
 import VoiceInput from '../components/VoiceInput';
 import { hydrateSimulationDetail } from './whatIfHydrate';
 import './WhatIfPage.css';
+
+const VERDICT_STYLE_LABELS = {
+  probability_interval: 'Calibrated probability interval',
+  risk_reward_interval: 'Risk / reward interval',
+  yes_no_unclear: 'Yes / no / unclear',
+  go_no_go_with_prerequisites: 'Go / no-go with prerequisites',
+  recommendation_with_expected_impact: 'Recommendation with expected impact',
+  reaction_segments: 'Reaction segments',
+  uncertainty_first: 'Uncertainty-first framing',
+};
 
 const PROMPTS = [
   'Will the Lakers win the NBA championship?',
@@ -332,8 +343,12 @@ export default function WhatIfPage() {
   const missingEvidence = Array.isArray(result?.missing_evidence) ? result.missing_evidence : [];
   const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
   const finalVerdict = result?.final_verdict || report?.final_verdict || {};
-  const evidencePolicy = report?.evidence_summary?.evidence_policy || result?.trust_score?.evidence_policy || {};
+  const evidencePolicyNested = report?.evidence_summary?.evidence_policy;
+  const evidencePolicy = evidencePolicyNested || result?.trust_score?.evidence_policy || {};
   const replayEvents = Array.isArray(result?.replay_events) ? result.replay_events : [];
+  const repExploreFor = Array.isArray(report.strongest_evidence_for) ? report.strongest_evidence_for : [];
+  const repExploreAgainst = Array.isArray(report.strongest_evidence_against) ? report.strongest_evidence_against : [];
+  const repWhatChange = Array.isArray(report.what_would_change_the_outcome) ? report.what_would_change_the_outcome : [];
 
   const engineLabel =
     loading || hydrating
@@ -515,11 +530,17 @@ export default function WhatIfPage() {
               </div>
               <div>
                 <h3>Evidence gaps</h3>
-                {evidencePolicy.minimum_coverage && (
-                  <div className="simulation-gap">Policy minimum coverage: {pct(evidencePolicy.minimum_coverage)}</div>
-                )}
                 {missingEvidence.map((item) => <div className="simulation-gap" key={item}>{item}</div>)}
                 {unsupportedClaims.map((item) => <div className="simulation-warning" key={item}>{item}</div>)}
+                {evidencePolicy.minimum_coverage != null && (
+                  <div className="simulation-gap simulation-gap-policy">
+                    Modeled credibility floor for this domain (minimum coverage):{' '}
+                    <strong>{pct(evidencePolicy.minimum_coverage)}</strong>
+                    {evidencePolicy.official_required_for_strong_verdict ? (
+                      <span>. Primary or authorized sources matter for a strong directional verdict when the policy requires them.</span>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </div>
           </Panel>
@@ -637,6 +658,50 @@ export default function WhatIfPage() {
               <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
             ))}
           </Panel>
+
+          {(repExploreFor.length > 0
+            || repExploreAgainst.length > 0
+            || repWhatChange.length > 0
+            || evidencePolicy.verdict_style
+            || evidencePolicy.minimum_coverage != null) && (
+            <Panel title="Credibility & next exploration" icon={Telescope} aside={trust.score != null ? pct(Number(trust.score)) : ''}>
+              <p className="simulation-interpretation">
+                Audited signals from this run—the strongest factual pulls, what would move the needle, and the policy frame used so you can interpret confidence honestly.
+              </p>
+              <div className="simulation-grid two simulation-credibility-row">
+                <div>
+                  <span>Coverage vs floor</span>
+                  <strong>
+                    {finalVerdict.evidence_coverage != null ? pct(finalVerdict.evidence_coverage) : '—'} mapped · floor{' '}
+                    {evidencePolicy.minimum_coverage != null ? pct(evidencePolicy.minimum_coverage) : '—'}
+                  </strong>
+                </div>
+                <div><span>Verdict framing</span><strong>{VERDICT_STYLE_LABELS[evidencePolicy.verdict_style] || evidencePolicy.verdict_style || '—'}</strong></div>
+              </div>
+              {repWhatChange.length > 0 && (
+                <div className="sim-explore-block">
+                  <h4>What would most change this picture</h4>
+                  <ul>{repWhatChange.map((item) => <li key={item}>{item}</li>)}</ul>
+                </div>
+              )}
+              {(repExploreFor.length > 0 || repExploreAgainst.length > 0) && (
+                <div className="sim-explore-columns">
+                  {repExploreFor.length > 0 && (
+                    <div className="sim-explore-block">
+                      <h4>Strongest support in this run</h4>
+                      <ul>{repExploreFor.map((item) => <li key={`f-${item}`}>{item}</li>)}</ul>
+                    </div>
+                  )}
+                  {repExploreAgainst.length > 0 && (
+                    <div className="sim-explore-block">
+                      <h4>Strongest counterweight</h4>
+                      <ul>{repExploreAgainst.map((item) => <li key={`a-${item}`}>{item}</li>)}</ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
 
           <Panel title="Final Report" icon={CheckCircle2}>
             <div className="simulation-report">
