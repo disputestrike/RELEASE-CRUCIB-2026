@@ -12,7 +12,7 @@ async def get_preview_url(job_id: str, pool=None) -> Optional[str]:
     """Get the best available preview URL for a job."""
     if not pool:
         try:
-            from db_pg import get_pg_pool
+            from backend.db_pg import get_pg_pool
             pool = await get_pg_pool()
         except Exception:
             return None

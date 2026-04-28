@@ -2,8 +2,9 @@
  * WorkspaceActivityFeed — Manus-style briefing above the composer: soft surfaces,
  * checklist steps, and short live lines (no heavy timeline chrome).
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Check, Loader2, Circle } from 'lucide-react';
+import { formatWorkspaceActivityEvent } from '../../workspace/workspaceActivityEvents';
 import './WorkspaceActivityFeed.css';
 
 function humanizeAgentLabel(raw) {
@@ -41,8 +42,16 @@ function humanizeJobStatus(status) {
 
 function formatEvent(ev) {
   const t = ev.type || ev.event_type;
-  const p = ev.payload || {};
-  const name = humanizeAgentLabel(p.agent_name || p.step_key || p.step || ev.step || '');
+  const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
+  const fromJson = () => {
+    try {
+      return JSON.parse(ev?.payload_json || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const payload = Object.keys(p).length ? p : fromJson();
+  const name = humanizeAgentLabel(payload.agent_name || payload.step_key || payload.step || ev.step || payload.node_key || '');
   switch (t) {
     case 'step_started':
       return name && name !== 'Step' ? `Working on: ${name}` : 'Working on the next step';
@@ -56,8 +65,80 @@ function formatEvent(ev) {
       return 'Build started';
     case 'job_completed':
       return 'Build completed';
-    case 'job_failed':
-      return 'Build failed';
+    case 'job_failed': {
+      const r = payload.reason || payload.failure_reason || payload.error;
+      const msg = (typeof r === 'string' && r.trim()) ? r.trim().slice(0, 120) : '';
+      return msg ? `Build failed: ${msg}` : 'Build failed';
+    }
+    case 'dag_node_started':
+      return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
+    case 'dag_node_completed': {
+      const files = payload.output_files;
+      if (Array.isArray(files) && files.length) {
+        const short = files.slice(0, 4).map((x) => String(x).split('/').pop() || x);
+        return `Wrote ${files.length} file(s): ${short.join(', ')}${files.length > 4 ? '…' : ''}`;
+      }
+      return name && name !== 'Step' ? `DAG: done — ${name}` : 'DAG node completed';
+    }
+    case 'user_steering':
+      return 'Steering applied';
+    case 'job_reactivated':
+      return 'Run reactivated';
+    case 'brain_guidance':
+      // Center chat also maps brain_guidance; keep a one-line echo here for the live strip only.
+      if (payload.headline) return String(payload.headline).trim().slice(0, 160);
+      if (payload.summary) return String(payload.summary).trim().slice(0, 160);
+      return 'Brain update';
+    case 'workspace_transcript': {
+      const isAsst = payload.role === 'assistant';
+      const line = (payload.text || payload.body || '').trim().slice(0, 120);
+      if (!line) return null;
+      return isAsst ? `Reply: ${line}` : `You: ${line}`;
+    }
+    case 'preflight_report': {
+      const pf = payload.preflight || payload;
+      const n = Array.isArray(pf?.issues) ? pf.issues.length : 0;
+      if (pf?.passed === true && n === 0) return 'Preflight: environment OK';
+      if (pf?.passed === true) return `Preflight: OK (${n} note(s))`;
+      if (pf?.passed === false) return `Preflight: ${n || 'some'} issue(s) (run may still proceed)`;
+      return n ? `Preflight: ${n} note(s)` : 'Preflight: completed';
+    }
+    case 'spec_guardian': {
+      const sg = payload.spec_guard || payload;
+      if (sg?.blocks_run) return 'Spec check: blocked run (goal out of template scope)';
+      return 'Spec check: OK';
+    }
+    case 'file_written': {
+      const path = (payload.path || '').trim();
+      const base = path ? path.split('/').pop() || path : '';
+      return base ? `Saved file: ${base}` : 'File written';
+    }
+    case 'brain_prebuild_briefing': {
+      const sim = payload.similar_builds_found;
+      const pred = Array.isArray(payload.predicted_failures) ? payload.predicted_failures.length : 0;
+      if (typeof sim === 'number' && sim > 0) return `Pre-build: ${sim} similar past build(s); ${pred} risk flag(s)`;
+      if (pred > 0) return `Pre-build: ${pred} predicted risk(s)`;
+      return payload.intelligence_available ? 'Pre-build intelligence loaded' : null;
+    }
+    case 'verification_result': {
+      const ok = payload.passed === true || payload.passed === 'true';
+      const sc = payload.score;
+      if (ok) return typeof sc === 'number' ? `Verify: passed (${sc})` : 'Verify: passed';
+      return typeof sc === 'number' ? `Verify: needs work (${sc})` : 'Verify: needs work';
+    }
+    case 'verification_attempt_failed':
+      return 'Verify: retrying after issue';
+    case 'step_retry_exhausted':
+      return 'Step: retries exhausted, continuing';
+    case 'step_verifying':
+      return name && name !== 'Step' ? `Verifying: ${name}` : 'Verifying step';
+    case 'scheduler_deadlock_detected':
+      return 'Scheduler: deadlock resolved';
+    case 'execution_authority':
+    case 'step_created':
+    case 'job_status_changed':
+    case 'step_status_changed':
+      return null;
     default:
       return null;
   }
@@ -94,11 +175,20 @@ export default function WorkspaceActivityFeed({
   const feedEvents = useMemo(() => {
     const lines = [];
     for (const ev of events) {
-      const text = formatEvent(ev);
+      const text = formatWorkspaceActivityEvent(ev);
       if (text) lines.push({ id: ev.id ?? `${text}-${lines.length}`, text });
     }
-    return lines.slice(-14);
+    return lines.slice(-40);
   }, [events]);
+
+  // Auto-scroll the live stream to the bottom as new events arrive so users see
+  // latest activity without manual scrolling. Respects reduced-motion preferences.
+  const streamRef = useRef(null);
+  useEffect(() => {
+    const el = streamRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [feedEvents.length]);
 
   const latestWritePaths = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -122,6 +212,11 @@ export default function WorkspaceActivityFeed({
   const goalTruncated = goalRaw.length > 240;
 
   const hasOptionalLog = sortedSteps.length > 0 || feedEvents.length > 0 || totalSteps > 0;
+  /** Always-visible lines (not tucked inside the disclosure) until the run is terminal. */
+  const showLiveStrip =
+    feedEvents.length > 0 &&
+    job?.status &&
+    !['completed', 'failed', 'cancelled'].includes(String(job.status).toLowerCase());
 
   return (
     <section className="uw-activity-feed" aria-label="Behind the scenes">
@@ -154,6 +249,14 @@ export default function WorkspaceActivityFeed({
             {goalLine}
             {goalTruncated ? '…' : ''}
           </p>
+        )}
+
+        {showLiveStrip && (
+          <ul className="uw-af-live-strip" aria-live="polite" aria-label="Live activity from your run">
+            {feedEvents.slice(-10).map((row) => (
+              <li key={row.id}>{row.text}</li>
+            ))}
+          </ul>
         )}
 
         {runningStep && (
@@ -215,7 +318,7 @@ export default function WorkspaceActivityFeed({
             ) : null}
 
             {feedEvents.length > 0 ? (
-              <ul className="uw-af-stream">
+              <ul className="uw-af-stream" ref={streamRef}>
                 {feedEvents.map((row) => (
                   <li key={row.id}>{row.text}</li>
                 ))}

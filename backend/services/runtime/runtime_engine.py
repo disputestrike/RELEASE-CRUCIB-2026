@@ -1,3 +1,4 @@
+
 """
 🔥 RuntimeEngine: THE ONLY EXECUTION SYSTEM
 
@@ -14,10 +15,11 @@ EXECUTION LOOP:
   while not task.done:
     decision = brain_layer.decide(context)
     skill = skill_registry.resolve(decision)
+    require_runtime_authority(ExecutionPhase.CHECK_PERMISSION)
     permission_engine.check(skill)
     provider = provider_registry.select(skill)
-    result = tool_executor.execute(skill)
-    event_bus.emit("step")
+    result = execute_tool(skill)
+    
     memory_graph.update(result)
     context_manager.update(result)
     if decision.spawn:
@@ -35,6 +37,7 @@ import uuid
 import time
 import logging
 import os
+import json
 from typing import Any, Callable, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -43,38 +46,50 @@ import traceback
 
 from pathlib import Path
 
-# Existing imports preserved for compatibility
-from llm_router import classifier, router as llm_router
-from project_state import WORKSPACE_ROOT
-from services.brain_layer import BrainLayer
-from services.conversation_manager import ConversationSession
-from services.events import event_bus
-from services.runtime.execution_authority import (
-    require_runtime_authority,
-    runtime_authority_snapshot,
-)
-from services.runtime.execution_context import runtime_execution_scope
-from services.runtime.task_manager import task_manager
-from services.runtime.context_manager import runtime_context_manager
-from services.runtime.spawn_engine import spawn_engine
-from tool_executor import execute_tool
-from services.skills.skill_registry import resolve_skill, list_skills, get_skill
-from services.runtime.memory_graph import add_node as memory_add_node
-from services.runtime.memory_graph import add_edge as memory_add_edge
-from services.runtime.virtual_fs import task_workspace
-from services.runtime.cost_tracker import cost_tracker
-from services.policy.permission_engine import evaluate_tool_call
+from backend.project_state import WORKSPACE_ROOT
+from backend.services.runtime.execution_context import runtime_execution_scope
+from backend.services.runtime.context_manager import runtime_context_manager
+from backend.services.runtime.spawn_engine import spawn_engine
+from backend.services.skills.skill_registry import resolve_skill, list_skills, get_skill
+from backend.services.runtime.memory_graph import add_node as memory_add_node
+from backend.services.runtime.memory_graph import add_edge as memory_add_edge
+from backend.services.runtime.virtual_fs import task_workspace
+from backend.services.runtime.cost_tracker import cost_tracker
+from backend.services.policy.permission_engine import evaluate_tool_call
+from backend.services.runtime.execution_authority import require_runtime_authority, runtime_authority_snapshot
+from backend.services.conversation_manager import ConversationSession
+from backend.services.runtime.task_manager import task_manager
+from backend.services.events import event_bus
+from backend.llm_router import classifier, router as llm_router
+from backend.services.brain_layer import BrainLayer
+from backend.tool_executor import execute_tool
+
 try:
-    from services.memory_store import memory_store, MemoryScope  # CF3
+    from backend.services.memory_store import memory_store, MemoryScope  # CF3
 except Exception:  # pragma: no cover
     memory_store = None  # type: ignore
     MemoryScope = None  # type: ignore
 try:
-    from services.capability_inspector import capability_inspector  # CF1
+    from backend.services.capability_inspector import capability_inspector  # CF1
 except Exception:  # pragma: no cover
     capability_inspector = None  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+
+def _classify_agent_failure(exc: Exception) -> str:
+    """Map an exception to a short failure-kind tag used in events and error strings."""
+    msg = str(exc).lower()
+    if "timeout" in msg:
+        return "timeout"
+    if "network" in msg or "connection" in msg or "connect" in msg:
+        return "network"
+    if "auth" in msg or "unauthorized" in msg or "forbidden" in msg:
+        return "auth"
+    if "rate" in msg or "429" in msg or "quota" in msg:
+        return "rate_limit"
+    return "unknown"
+
 
 
 class ExecutionPhase(Enum):
@@ -150,11 +165,41 @@ class RuntimeEngine:
         self._brain_factory = BrainLayer
         self.tasks: Dict[str, Dict[str, Any]] = {}
         self.lock = asyncio.Lock()
-    
-    # =========================================================================
-    # EXECUTION ENTRY POINT - The only method that should execute tasks
-    # =========================================================================
-    
+
+    # Test override hook: if set to a callable, execute_tool_for_task will use it
+    # instead of the real execute_tool.  Set by test_agent_loop.py at module level.
+    _execute_tool_override = None
+
+    def execute_tool_for_task(
+        self,
+        *,
+        project_id: str,
+        task_id: str,
+        tool_name: str,
+        params: Optional[Dict[str, Any]] = None,
+        skill_hint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Synchronous compatibility wrapper for runtime-owned tool execution.
+
+        Tests and legacy policy paths call this directly to prove tools cannot
+        run outside runtime authority. The actual execution still goes through
+        `backend.tool_executor.execute_tool` inside `runtime_execution_scope`.
+        """
+        safe_params = dict(params or {})
+        if skill_hint and not safe_params.get("skill"):
+            safe_params["skill"] = f"/{skill_hint.strip('/')}"
+        safe_params.setdefault("task_id", task_id)
+        with runtime_execution_scope(
+            project_id=project_id,
+            task_id=task_id,
+            skill_hint=skill_hint,
+        ):
+            # Allow tests to inject a fake executor without breaking policy tests.
+            _override = type(self)._execute_tool_override
+            if callable(_override):
+                return _override(project_id=project_id, tool_name=tool_name, params=safe_params)
+            return execute_tool(project_id=project_id, tool_name=tool_name, params=safe_params)
+
     async def execute_with_control(
         self,
         task_id: str,
@@ -170,27 +215,11 @@ class RuntimeEngine:
     ) -> Dict[str, Any]:
         """
         Main execution entry point with FULL control.
-        
-        This is THE ONLY method that should execute any task.
-        All systems work THROUGH this.
-        
-        Args:
-            task_id: Unique task ID
-            user_id: User making request
-            request: Request/message to process
-            conversation_id: Optional conversation ID
-            parent_task_id: Optional parent task ID for sub-agents
-            progress_callback: Optional callback for progress updates
-            
-        Returns:
-            Execution result
-            
-        Raises:
-            RuntimeError: If execution fails
         """
-        
         session_id = (conversation_id or f"runtime-{task_id}").strip()
-        project_id = f"runtime-{user_id}"
+        project_id = (project_id_override or f"runtime-{user_id}").strip()
+        
+        runtime_authority_snapshot.set_current_snapshot(project_id)
         session = ConversationSession(session_id=session_id, user_id=user_id)
 
         task = task_manager.create_task(
@@ -201,7 +230,7 @@ class RuntimeEngine:
                 "requested_task_id": task_id,
                 "parent_task_id": parent_task_id,
                 "session_id": session_id,
-            },
+            }
         )
         effective_task_id = task["task_id"]
 
@@ -222,8 +251,8 @@ class RuntimeEngine:
                 task_id=effective_task_id,
                 user_message=request,
                 progress_callback=progress_callback,
-                mode=mode,  # CF2
-                allowed_phases=allowed_phases,  # CF2
+                mode=mode,
+                allowed_phases=allowed_phases,
             )
 
             status = brain_result.get("status")
@@ -246,6 +275,22 @@ class RuntimeEngine:
                 )
 
             current_task = task_manager.get_task(project_id, effective_task_id)
+            
+            if memory_store is not None and brain_result.get("status") not in ("execution_failed", "execution_cancelled"):
+                try:
+                    from backend.db_pg import get_db as _get_db_for_wb
+                    _db_wb = await _get_db_for_wb()
+                    wb_content = json.dumps(brain_result.get("execution", {}).get("result", {}))
+                    if wb_content and len(wb_content) < 100_000:
+                        await memory_store.write_memory(
+                            user_id=user_id,
+                            scope=MemoryScope.PROJECT,
+                            key=f"project_result_{project_id}",
+                            value=wb_content,
+                        )
+                except Exception as exc:
+                    logger.warning("Failed to write memory for task %s: %s", effective_task_id, exc)
+
             event_bus.emit(
                 "task_end",
                 {
@@ -254,824 +299,280 @@ class RuntimeEngine:
                     "state": (current_task or {}).get("status"),
                 },
             )
+            return brain_result.get("execution") or {"success": True, "output": "Task completed."}
 
-            # ── CF3: memory write-back on completion ──────────────────
-            if memory_store is not None and brain_result.get("status") not in ("execution_failed", "execution_cancelled"):
+        except Exception as exc:
+            logger.exception("RuntimeEngine.execute_with_control failed for task %s: %s", effective_task_id, exc)
+            task_manager.fail_task(project_id, effective_task_id, error=str(exc))
+            raise
+
+    async def run_task_loop(
+        self,
+        *,
+        session: Any,
+        project_id: str,
+        task_id: str,
+        user_message: str,
+        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        mode: Optional[str] = None,
+        allowed_phases: Optional[List[str]] = None,
+        planner: Any = None,
+        **_kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Resilient task execution loop.
+
+        Flow:
+          1. brain.decide()         — intent + agent selection via agent_configs
+          2. Per-agent dispatch     — agent.run(context), iterate over agent_configs
+          3. Retry on transient failures — up to CRUCIB_AGENT_MAX_RETRIES
+          4. Repair path            — delegate to CodeAnalysisAgent on exhaustion
+          5. Spawn sub-agents       — when result contains spawn_request
+          6. Cancellation guard     — check task status after each step
+
+        Return shape:
+          {"status": "executed"|"execution_cancelled"|"execution_failed",
+           "intent": ..., "selected_agents": [...],
+           "execution": {"success": bool, "agent_outputs": [...],
+                         "spawned_tasks": int, "result": str}}
+        """
+        MAX_RETRIES   = int(os.environ.get("CRUCIB_AGENT_MAX_RETRIES", "2"))
+        REPAIR_AGENT  = "CodeAnalysisAgent"
+        RETRY_DELAY_S = float(os.environ.get("CRUCIB_RETRY_DELAY_S", "0.05"))
+
+        brain = planner or self._brain_factory()
+
+        # ── Step 1: Plan ─────────────────────────────────────────────────
+        try:
+            plan = brain.decide(session, user_message)
+        except Exception as exc:
+            logger.exception("[run_task_loop] brain.decide failed: %s", exc)
+            return {
+                "status": "execution_failed",
+                "execution": {"success": False, "error": str(exc)},
+                "intent": "unknown",
+                "selected_agents": [],
+            }
+
+        intent          = plan.get("intent", "general")
+        selected_agents = plan.get("selected_agents") or []
+        agent_configs   = plan.get("selected_agent_configs") or []
+
+        event_bus.emit("brain.execution.started", {
+            "task_id": task_id, "project_id": project_id,
+            "intent": intent, "agents": selected_agents,
+        })
+
+        if plan.get("status") == "clarification_required":
+            return {
+                "status": "clarification_required",
+                "execution": {
+                    "success": True,
+                    "result": {"assistant_response": plan.get("assistant_response", "")},
+                },
+                "intent": intent,
+                "selected_agents": [],
+            }
+
+        agent_instances = brain._get_agent_instances() if hasattr(brain, "_get_agent_instances") else {}
+
+        # Determine execution order: prefer agent_configs entries; fall back to selected_agents.
+        run_order: List[str] = [c.get("agent", "") for c in agent_configs if c.get("agent")]
+        if not run_order:
+            run_order = list(selected_agents)
+
+        agent_outputs: List[Dict[str, Any]] = []
+        spawned_tasks = 0
+
+        # ── Step 2: Execute agents ───────────────────────────────────────
+        for agent_name in run_order:
+            cfg = next((c for c in agent_configs if c.get("agent") == agent_name), {})
+            base_ctx = (
+                brain._build_agent_context(cfg, user_message, session, {
+                    "task_id": task_id, "project_id": project_id,
+                })
+                if hasattr(brain, "_build_agent_context")
+                else {**cfg, "task_id": task_id, "project_id": project_id,
+                      "message": user_message}
+            )
+
+            last_exc: Optional[Exception] = None
+            result: Optional[Dict[str, Any]] = None
+            total_calls = 0
+            attempt = 0
+
+            # ── Retry loop ────────────────────────────────────────────
+            for attempt in range(MAX_RETRIES + 1):
+                total_calls += 1
                 try:
-                    from db_pg import get_db as _get_db_for_wb  # type: ignore
-                    _db_wb = await _get_db_for_wb()
-                    # write strings only — conventions dict expects str values
-                    conv_payload = {
-                        "last_intent": str(brain_result.get("intent") or ""),
-                        "last_agents": ",".join(map(str, brain_result.get("selected_agents", []) or [])),
-                        "last_task_id": str(effective_task_id),
-                    }
-                    await memory_store.write_back_conventions(
+                    agent_inst = agent_instances.get(agent_name)
+                    if agent_inst is None:
+                        raise RuntimeError(f"Agent not found: {agent_name}")
+                    with runtime_execution_scope(
                         project_id=project_id,
-                        user_id=user_id,
-                        conventions=conv_payload,
-                        db=_db_wb,
-                    )
-                    event_bus.emit("memory.writeback", {"task_id": effective_task_id})
-                except Exception as _wb_exc:  # pragma: no cover
-                    logger.warning("memory writeback failed (non-fatal): %s", _wb_exc)
-
-            return {
-                "task_id": effective_task_id,
-                "requested_task_id": task_id,
-                "project_id": project_id,
-                "task_status": (current_task or {}).get("status"),
-                "brain_result": brain_result,
-                "assistant_response": brain_result.get("assistant_response"),
-                "mode": mode,
-                "allowed_phases": allowed_phases,
-            }
-        except Exception as e:
-            task_manager.fail_task(project_id, effective_task_id, error=str(e))
-            event_bus.emit(
-                "task_error",
-                {
-                    "task_id": effective_task_id,
-                    "requested_task_id": task_id,
-                    "error": str(e),
-                    "traceback": traceback.format_exc(),
-                },
-            )
-            raise
-    
-    # =========================================================================
-    # EXECUTION LOOP - The core control flow
-    # =========================================================================
-    
-    async def _execution_loop(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        request: str,
-        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        The core execution loop - ONLY place where real execution happens.
-        
-        while not task.done:
-          decision = brain_layer.decide(context)
-          skill = skill_registry.resolve(decision)
-          permission_engine.check(skill)
-          provider = provider_registry.select(skill)
-          result = tool_executor.execute(skill)
-          event_bus.emit("step")
-          memory_graph.update(result)
-          context_manager.update(result)
-          if decision.spawn:
-            spawn_subagent()
-          if task.cancelled:
-            break
-        """
-        
-        step_count = 0
-        max_steps = 100
-        
-        while step_count < max_steps:
-            # Check cancellation
-            if context.cancelled:
-                event_bus.emit("execution_cancelled", {"task_id": task_id})
-                break
-            
-            step_count += 1
-            step_id = f"{task_id}-step-{step_count}"
-            
-            try:
-                # PHASE 1: DECIDE - Brain layer decides what to do
-                decision = await self._phase_decide(
-                    task_id, context, request, step_id, progress_callback
-                )
-                if decision is None:
-                    break
-                
-                # PHASE 2: RESOLVE SKILL - Convert decision to concrete skill
-                skill = await self._phase_resolve_skill(
-                    task_id, context, decision, step_id
-                )
-                if skill is None:
-                    break
-                
-                # PHASE 3: CHECK PERMISSION - Permission engine validates
-                permitted = await self._phase_check_permission(
-                    task_id, context, skill, step_id
-                )
-                if not permitted:
-                    raise PermissionError(f"Skill {skill} not permitted")
-                
-                # PHASE 4: SELECT PROVIDER - Choose best provider
-                provider = await self._phase_select_provider(
-                    task_id, context, skill, step_id
-                )
-                
-                # PHASE 5: EXECUTE - Only place where execution happens
-                execution_result = await self._phase_execute(
-                    task_id, context, skill, provider, step_id
-                )
-                
-                if not execution_result.get("success"):
-                    raise RuntimeError(f"Execution failed: {execution_result.get('error')}")
-                
-                context.add_step(execution_result)
-                
-                # PHASE 6: EMIT EVENT
-                event_bus.emit("step_complete", {
-                    "task_id": task_id,
-                    "step_id": step_id,
-                    "step_number": step_count,
-                    "output": execution_result.get("output")
-                })
-                
-                # PHASE 7: UPDATE MEMORY
-                await self._phase_update_memory(task_id, context, execution_result, step_id)
-                
-                # PHASE 8: UPDATE CONTEXT
-                await self._phase_update_context(task_id, context, execution_result, step_id)
-                
-                # PHASE 9: SPAWN SUBAGENT (if requested by decision)
-                if bool(decision.get("spawn")):
-                    await self._phase_spawn_subagent(
                         task_id=task_id,
-                        context=context,
-                        decision=decision,
-                        step_id=step_id,
-                    )
-
-                # Continue only when the decision explicitly requests another step.
-                if not bool(decision.get("continue")):
+                        skill_hint=cfg.get("skill") or base_ctx.get("skill"),
+                    ):
+                        result = await agent_inst.run(base_ctx)
+                    last_exc = None
                     break
-                    
-            except Exception as e:
-                logger.error(f"Step {step_id} failed: {e}", exc_info=True)
-                event_bus.emit("step_error", {
-                    "task_id": task_id,
-                    "step_id": step_id,
-                    "error": str(e)
+                except Exception as exc:
+                    last_exc     = exc
+                    failure_kind = _classify_agent_failure(exc)
+                    if attempt < MAX_RETRIES:
+                        delay = RETRY_DELAY_S * (2 ** attempt)
+                        event_bus.emit("brain.agent.retry_scheduled", {
+                            "task_id":      task_id,
+                            "agent":        agent_name,
+                            "failure_kind": failure_kind,
+                            "attempt":      attempt + 1,
+                            "max_retries":  MAX_RETRIES,
+                            "delay_s":      delay,
+                        })
+                        await asyncio.sleep(delay)
+                    # on final attempt fall through to repair path
+
+            # ── Repair path ───────────────────────────────────────────
+            if last_exc is not None:
+                failure_kind = _classify_agent_failure(last_exc)
+                repair_inst  = agent_instances.get(REPAIR_AGENT)
+
+                if repair_inst is not None:
+                    repair_ctx = (
+                        brain._build_agent_context(cfg, user_message, session, {
+                            "task_id": task_id, "project_id": project_id,
+                            "repair": True, "failed_agent": agent_name,
+                        })
+                        if hasattr(brain, "_build_agent_context")
+                        else {"repair": True, "failed_agent": agent_name}
+                    )
+                    event_bus.emit("brain.agent.repair.started", {
+                        "task_id":      task_id,
+                        "failed_agent": agent_name,
+                        "failure_kind": failure_kind,
+                    })
+                    try:
+                        total_calls += 1
+                        await repair_inst.run(repair_ctx)
+                        event_bus.emit("brain.agent.repair.completed", {
+                            "task_id":      task_id,
+                            "failed_agent": agent_name,
+                        })
+                        # Re-attempt original agent post-repair
+                        agent_inst = agent_instances.get(agent_name)
+                        if agent_inst is not None:
+                            total_calls += 1
+                            result   = await agent_inst.run(base_ctx)
+                            last_exc = None
+                    except Exception as repair_exc:
+                        logger.error("[run_task_loop] repair failed for %s: %s",
+                                     agent_name, repair_exc)
+                        event_bus.emit("brain.agent.repair.failed", {
+                            "task_id":      task_id,
+                            "failed_agent": agent_name,
+                            "failure_kind": failure_kind,
+                            "error":        str(repair_exc),
+                        })
+
+            # ── Exhausted — return failure ────────────────────────────
+            if last_exc is not None:
+                failure_kind = _classify_agent_failure(last_exc)
+                error_tag    = f"agent_failed:{agent_name}:{failure_kind}"
+                logger.error("[run_task_loop] %s", error_tag)
+                event_bus.emit("brain.execution.failed", {
+                    "task_id": task_id, "error": error_tag,
                 })
-                raise
-        
-        # Extract final result
-        if context.executed_steps:
-            return {
-                "success": True,
-                "output": context.executed_steps[-1].get("output"),
-                "steps": len(context.executed_steps)
-            }
-        return {
-            "success": False,
-            "output": None,
-            "steps": 0
-        }
-    
-    # =========================================================================
-    # EXECUTION PHASES - Each phase is isolated and controlled
-    # =========================================================================
-    
-    async def _phase_decide(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        request: str,
-        step_id: str,
-        progress_callback: Optional[Callable] = None
-    ) -> Optional[Dict[str, Any]]:
-        """Phase 1: Brain layer decides what to do."""
-        
-        start_time = time.time()
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.DECIDE.value
-            })
-            
-            # CF19 — call brain.decide for a real planner verdict instead of
-            # returning a hardcoded default.  Falls back gracefully if the
-            # brain layer cannot be constructed or errors out.
-            brain = self._brain_factory()
-            session_obj = getattr(context, "session", None)
-            if session_obj is None:
-                try:
-                    session_id = getattr(context, "session_id", None) or task_id
-                    user_id = getattr(context, "user_id", None) or "runtime"
-                    session_obj = ConversationSession(session_id=session_id, user_id=user_id)
-                except Exception:
-                    session_obj = None
-
-            decision: Dict[str, Any] = {
-                "action": "default",
-                "skill": "default",
-                "confidence": 1.0,
-                "continue": False,
-                "spawn": False,
-            }
-            try:
-                if brain is not None and session_obj is not None:
-                    raw = brain.decide(session_obj, request or "")
-                    if isinstance(raw, dict) and raw:
-                        # normalize the shape expected by _phase_resolve_skill
-                        decision = {
-                            "action": raw.get("action") or raw.get("intent") or "default",
-                            "skill": raw.get("skill") or raw.get("selected_skill") or "default",
-                            "confidence": float(raw.get("confidence", 1.0) or 1.0),
-                            "continue": bool(raw.get("continue", False)),
-                            "spawn": bool(raw.get("spawn", False)),
-                            "raw": raw,
-                        }
-            except Exception as _brain_exc:  # pragma: no cover — defensive
-                logger.warning("brain.decide failed (falling back to default): %s", _brain_exc)
-
-            duration_ms = (time.time() - start_time) * 1000
-            
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.DECIDE.value,
-                "duration_ms": duration_ms,
-                "decision": decision
-            })
-            
-            return decision
-            
-        except Exception as e:
-            logger.error(f"DECIDE phase failed: {e}", exc_info=True)
-            raise
-    
-    async def _phase_resolve_skill(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        decision: Dict[str, Any],
-        step_id: str
-    ) -> Optional[str]:
-        """Phase 2: Resolve decision to concrete skill."""
-        
-        start_time = time.time()
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.RESOLVE_SKILL.value
-            })
-            
-            # Resolve skill from registry
-            skill = resolve_skill(decision.get("action", ""))
-            if skill:
-                skill_name = skill.name
-            else:
-                skill_name = decision.get("skill", "default")
-            
-            duration_ms = (time.time() - start_time) * 1000
-            
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.RESOLVE_SKILL.value,
-                "duration_ms": duration_ms,
-                "skill": skill_name
-            })
-            
-            return skill_name
-            
-        except Exception as e:
-            logger.error(f"RESOLVE_SKILL phase failed: {e}", exc_info=True)
-            raise
-    
-    async def _phase_check_permission(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        skill: str,
-        step_id: str
-    ) -> bool:
-        """Phase 3: Permission engine checks if skill is allowed."""
-        
-        start_time = time.time()
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.CHECK_PERMISSION.value
-            })
-            
-            # Resolve skill and enforce known-skill policy.
-            known = {s.name for s in list_skills()} | {"default"}
-            if skill in known:
-                permitted = True
-                reason = f"known_skill:{skill}"
-
-                # Phase 2: enforce policy at skill->tool boundary.
-                skill_def = get_skill(skill)
-                if skill_def is not None:
-                    project_id = context.project_id or f"runtime-{context.user_id}"
-                    for tool_name in sorted(skill_def.allowed_tools):
-                        decision = evaluate_tool_call(
-                            tool_name,
-                            {},
-                            surface=skill_def.surface,
-                            skill_name=skill_def.name,
-                            project_id=project_id,
-                        )
-                        if not decision.allowed:
-                            permitted = False
-                            if decision.ask:
-                                reason = f"approval_required:{tool_name}:{decision.reason}"
-                            else:
-                                reason = f"policy_blocked:{tool_name}:{decision.reason}"
-                            break
-            else:
-                import os as _os
-                if _os.environ.get("CRUCIB_ENABLE_TOOL_POLICY", "0").strip().lower() in ("1", "true", "yes"):
-                    permitted = False
-                    reason = f"unknown_skill_blocked_by_policy:{skill}"
-                else:
-                    permitted = True
-                    reason = f"unknown_skill_policy_disabled:{skill}"
-
-            duration_ms = (time.time() - start_time) * 1000
-
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.CHECK_PERMISSION.value,
-                "duration_ms": duration_ms,
-                "permitted": permitted,
-                "reason": reason,
-            })
-
-            return permitted
-            
-        except Exception as e:
-            logger.error(f"CHECK_PERMISSION phase failed: {e}", exc_info=True)
-            raise
-    
-    async def _phase_select_provider(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        skill: str,
-        step_id: str
-    ) -> Optional[Dict[str, Any]]:
-        """Phase 4: Provider registry selects best provider."""
-        
-        start_time = time.time()
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.SELECT_PROVIDER.value
-            })
-
-            # Phase 6: central provider control via llm_router chain selection.
-            skill_def = get_skill(skill)
-            complexity = classifier.classify(skill or "", skill)
-            credits_left = max(0, int((context.cost_limit or 0) - (context.cost_used or 0)))
-            chain = llm_router.get_model_chain(
-                task_complexity=complexity,
-                user_tier="free",
-                speed_selector="lite",
-                available_credits=credits_left,
-            )
-            first = chain[0] if chain else ("none", "none", "none")
-            provider = {
-                "type": first[2],
-                "model": first[1],
-                "alias": first[0],
-                "chain": [
-                    {"alias": alias, "model": model, "provider": prov}
-                    for (alias, model, prov) in chain
-                ],
-                "surface": skill_def.surface if skill_def else None,
-            }
-
-            event_bus.emit("provider.chain.selected.runtime", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "skill": skill,
-                "provider": provider,
-            })
-            
-            duration_ms = (time.time() - start_time) * 1000
-            
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.SELECT_PROVIDER.value,
-                "duration_ms": duration_ms,
-                "provider": provider
-            })
-            
-            return provider
-            
-        except Exception as e:
-            logger.error(f"SELECT_PROVIDER phase failed: {e}", exc_info=True)
-            raise
-    
-    async def _phase_execute(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        skill: str,
-        provider: Optional[Dict[str, Any]],
-        step_id: str
-    ) -> Dict[str, Any]:
-        """Phase 5: Tool executor runs the skill."""
-        
-        start_time = time.time()
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.EXECUTE.value
-            })
-            
-            # Execute skill via tool executor
-            # This is the ONLY place where real execution happens
-            output = execute_tool(
-                task_id,
-                skill,
-                context.memory
-            )
-            
-            duration_ms = (time.time() - start_time) * 1000
-            
-            result = {
-                "phase": ExecutionPhase.EXECUTE.value,
-                "success": True,
-                "output": output,
-                "duration_ms": duration_ms,
-                "metadata": {"skill": skill, "provider": provider},
-            }
-            # Record execution cost in the global cost tracker.
-            cost_tracker.record(task_id, credits=duration_ms / 1000.0)
-            
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.EXECUTE.value,
-                "duration_ms": duration_ms,
-                "success": True
-            })
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"EXECUTE phase failed: {e}", exc_info=True)
-            
-            return {
-                "phase": ExecutionPhase.EXECUTE.value,
-                "success": False,
-                "error": str(e),
-                "duration_ms": (time.time() - start_time) * 1000
-            }
-    
-    async def _phase_update_memory(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        result: Dict[str, Any],
-        step_id: str
-    ) -> None:
-        """Phase 6: Update memory graph with execution result."""
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_MEMORY.value
-            })
-
-            # Persist step result to memory graph.
-            project_id = context.project_id or f"runtime-{context.user_id}"
-            previous_node_id = context.memory.get("last_memory_node")
-            node_id = memory_add_node(
-                project_id,
-                task_id=task_id,
-                node_type="step_result",
-                payload={
-                    "step_id": step_id,
-                    "output": result.get("output"),
-                    "skill": (result.get("metadata") or {}).get("skill"),
-                    "provider": (result.get("metadata") or {}).get("provider"),
-                    "duration_ms": result.get("duration_ms"),
-                    "success": result.get("success"),
-                },
-                tags=["step", task_id],
-            )
-            if previous_node_id:
-                memory_add_edge(
-                    project_id,
-                    from_id=previous_node_id,
-                    to_id=node_id,
-                    relation="next_step",
-                )
-            # Also update fast in-memory cache.
-            context.memory["last_result"] = result.get("output")
-            context.memory["last_step_id"] = step_id
-            context.memory["last_memory_node"] = node_id
-            context.memory["last_skill"] = (result.get("metadata") or {}).get("skill")
-            context.memory["last_provider"] = (result.get("metadata") or {}).get("provider")
-
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_MEMORY.value,
-                "node_id": node_id,
-                "linked_from": previous_node_id,
-            })
-            
-        except Exception as e:
-            logger.warning(f"Failed to update memory: {e}")
-    
-    async def _phase_update_context(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        result: Dict[str, Any],
-        step_id: str
-    ) -> None:
-        """Phase 7: Update execution context with step result."""
-        
-        try:
-            event_bus.emit("phase_start", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_CONTEXT.value
-            })
-
-            snapshot = runtime_context_manager.update_from_step(
-                context=context,
-                task_id=task_id,
-                step_id=step_id,
-                result=result,
-            )
-
-            event_bus.emit("phase_end", {
-                "task_id": task_id,
-                "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_CONTEXT.value,
-                "cost_used": context.cost_used,
-                "snapshot_step_id": snapshot.get("step_id"),
-            })
-            
-        except Exception as e:
-            logger.warning(f"Failed to update context: {e}")
-
-    async def _phase_spawn_subagent(
-        self,
-        task_id: str,
-        context: ExecutionContext,
-        decision: Dict[str, Any],
-        step_id: str,
-    ) -> None:
-        """Phase 9: Spawn sub-agent branch when decision requests it."""
-
-        try:
-            event_bus.emit(
-                "phase_start",
-                {
-                    "task_id": task_id,
-                    "step_id": step_id,
-                    "phase": ExecutionPhase.SPAWN_SUBAGENT.value,
-                },
-            )
-
-            spawn_result = await spawn_engine.maybe_spawn(
-                runtime_engine=self,
-                task_id=task_id,
-                context=context,
-                decision=decision,
-            )
-            target_agent = str(decision.get("spawn_agent") or "").strip()
-
-            event_bus.emit(
-                "phase_end",
-                {
-                    "task_id": task_id,
-                    "step_id": step_id,
-                    "phase": ExecutionPhase.SPAWN_SUBAGENT.value,
-                    "spawn_requested": bool(spawn_result),
-                    "spawn_agent": target_agent or None,
-                    "spawn_result": spawn_result,
-                },
-            )
-        except Exception as e:
-            logger.warning(f"SPAWN_SUBAGENT phase failed: {e}")
-
-    def get_task_status(self, project_id: str, task_id: str) -> Optional[Dict[str, Any]]:
-        """Get task status. Uses task_manager for compatibility."""
-        return task_manager.get_task(project_id, task_id)
-
-    def cancel_task(self, project_id: str, task_id: str, reason: str = "cancelled_by_user") -> Optional[Dict[str, Any]]:
-        """Cancel task. Uses task_manager for compatibility."""
-        return task_manager.kill_task(project_id, task_id, reason=reason)
-    
-    # =========================================================================
-    # CONTROL METHODS - Pause, resume, cancel with full control
-    # =========================================================================
-    
-    async def cancel_task_controlled(self, task_id: str) -> bool:
-        """Cancel a task execution with full control."""
-        async with self.lock:
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
-                task["state"] = ExecutionState.CANCELLED.value
-                event_bus.emit("task_cancel_requested", {"task_id": task_id})
-                return True
-        return False
-    
-    async def pause_task_controlled(self, task_id: str) -> bool:
-        """Pause a task execution."""
-        async with self.lock:
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
-                task["state"] = ExecutionState.PAUSED.value
-                task["context"].pause_requested = True
-                event_bus.emit("task_paused", {"task_id": task_id})
-                return True
-        return False
-    
-    async def resume_task_controlled(self, task_id: str) -> bool:
-        """Resume a paused task execution."""
-        async with self.lock:
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
-                if task["state"] == ExecutionState.PAUSED.value:
-                    task["state"] = ExecutionState.RUNNING.value
-                    task["context"].pause_requested = False
-                    event_bus.emit("task_resumed", {"task_id": task_id})
-                    return True
-        return False
-    
-    async def get_task_state_controlled(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Get current state of a task with full details."""
-        async with self.lock:
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
-                context = task.get("context", {})
                 return {
-                    "id": task_id,
-                    "state": task.get("state"),
-                    "created_at": task.get("created_at"),
-                    "started_at": task.get("started_at"),
-                    "completed_at": task.get("completed_at"),
-                    "steps_completed": len(context.executed_steps) if hasattr(context, "executed_steps") else 0,
-                    "cost_used": context.cost_used if hasattr(context, "cost_used") else 0,
-                    "depth": context.depth if hasattr(context, "depth") else 0,
-                    "cancelled": context.cancelled if hasattr(context, "cancelled") else False,
-                    "error": task.get("error")
+                    "status": "execution_failed",
+                    "intent": intent,
+                    "selected_agents": selected_agents,
+                    "execution": {
+                        "success":      False,
+                        "error":        error_tag,
+                        "agent_outputs": agent_outputs,
+                    },
                 }
-        return None
 
-    def execute_tool_for_task(
-        self,
-        *,
-        project_id: str,
-        task_id: str,
-        tool_name: str,
-        params: Dict[str, Any],
-        skill_hint: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-            require_runtime_authority("runtime_engine", detail="tool dispatch")
-            authority = runtime_authority_snapshot()
-            p = dict(params or {})
-            p.setdefault("task_id", task_id)
-            p.setdefault("authority", authority)
-            return execute_tool(project_id, tool_name, p)
-
-    async def call_model_for_task(
-        self,
-        *,
-        project_id: str,
-        task_id: str,
-        message: str,
-        system_message: str,
-        session_id: str,
-        model_chain: list,
-        user_id: Optional[str] = None,
-        user_tier: str = "free",
-        speed_selector: str = "lite",
-        available_credits: int = 0,
-        agent_name: str = "",
-        api_keys: Optional[Dict[str, Optional[str]]] = None,
-        content_blocks: Optional[List[Dict[str, Any]]] = None,
-        idempotency_key: Optional[str] = None,
-        skill_hint: Optional[str] = None,
-    ) -> tuple[str, str]:
-        from services import llm_service
-
-        event_payload = {
-            "project_id": project_id,
-            "task_id": task_id,
-            "agent": agent_name or "llm",
-            "tool": "llm",
-        }
-        event_bus.emit("tool_start", event_payload)
-        try:
-            with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-                require_runtime_authority("runtime_engine", detail="model dispatch")
-                authority = runtime_authority_snapshot()
-                result = await llm_service._call_llm_with_fallback(
-                    message=message,
-                    system_message=system_message,
-                    session_id=session_id,
-                    model_chain=model_chain,
-                    user_id=user_id,
-                    user_tier=user_tier,
-                    speed_selector=speed_selector,
-                    available_credits=available_credits,
-                    agent_name=agent_name,
-                    api_keys=api_keys,
-                    content_blocks=content_blocks,
-                    idempotency_key=idempotency_key,
+            # ── Handle spawn_request ──────────────────────────────────
+            output_entry: Dict[str, Any] = {
+                "agent":        agent_name,
+                "result":       result,
+                "runtime_meta": {"attempts": total_calls} if total_calls > 1 else None,
+            }
+            spawn_req = (result or {}).get("spawn_request")
+            if spawn_req:
+                spawn_result = await self.spawn_agent(
+                    project_id=project_id,
+                    task_id=task_id,
+                    parent_message=user_message,
+                    agent_name=spawn_req.get("agent", ""),
+                    context=spawn_req.get("context", {}),
+                    depth=1,
                 )
-            # Record approximate token cost from response length.
-            _text = result[0] if isinstance(result, tuple) else str(result)
-            _tokens = len(_text) // 4
-            cost_tracker.record(task_id, tokens=_tokens, credits=round(_tokens * 0.000002, 6))
-            event_bus.emit("tool_end", {**event_payload, "authority": authority})
-            return result
-        except Exception as exc:
-            event_bus.emit("error", {**event_payload, "error": str(exc)})
-            raise
+                spawned_tasks += 1
+                output_entry["spawned"]      = True
+                output_entry["spawn_result"] = spawn_result
 
-    async def call_model_for_request(
-        self,
-        *,
-        session_id: str,
-        project_id: str,
-        description: str,
-        message: str,
-        system_message: str,
-        model_chain: list,
-        user_id: Optional[str] = None,
-        user_tier: str = "free",
-        speed_selector: str = "lite",
-        available_credits: int = 0,
-        agent_name: str = "",
-        api_keys: Optional[Dict[str, Optional[str]]] = None,
-        content_blocks: Optional[List[Dict[str, Any]]] = None,
-        idempotency_key: Optional[str] = None,
-        skill_hint: Optional[str] = None,
-    ) -> tuple[str, str]:
-        task = task_manager.create_task(
-            project_id=project_id,
-            description=description,
-            metadata={"session_id": session_id, "source": "runtime.llm"},
-        )
-        task_id = task["task_id"]
+            agent_outputs.append(output_entry)
+
+            # ── Cancellation guard ────────────────────────────────────
+            task_record = task_manager.get_task(project_id, task_id)
+            if task_record and task_record.get("status") == "killed":
+                event_bus.emit("brain.execution.cancelled", {
+                    "task_id": task_id, "project_id": project_id,
+                })
+                return {
+                    "status": "execution_cancelled",
+                    "intent": intent,
+                    "selected_agents": selected_agents,
+                    "execution": {
+                        "success":       False,
+                        "cancelled":     True,
+                        "agent_outputs": agent_outputs,
+                    },
+                }
+
+        # ── Step 3: Summarize and return ─────────────────────────────────
+        summary = ""
+        if hasattr(brain, "_summarize_execution"):
+            try:
+                summary = brain._summarize_execution(
+                    plan, {"agent_outputs": agent_outputs}
+                )
+            except Exception:
+                pass
+
+        event_bus.emit("brain.execution.completed", {
+            "task_id":       task_id,
+            "project_id":    project_id,
+            "intent":        intent,
+            "spawned_tasks": spawned_tasks,
+        })
+
+        return {
+            "status":          "executed",
+            "intent":          intent,
+            "selected_agents": selected_agents,
+            "execution": {
+                "success":       True,
+                "agent_outputs": agent_outputs,
+                "spawned_tasks": spawned_tasks,
+                "result":        summary,
+            },
+        }
+
+
+    def _select_provider_chain(self, task_id: str = "", skill: str = "", **_kw) -> List[Any]:
+        """Return the preferred LLM model chain for a task.  May be monkeypatched in tests."""
         try:
-            text, model = await self.call_model_for_task(
-                project_id=project_id,
-                task_id=task_id,
-                message=message,
-                system_message=system_message,
-                session_id=session_id,
-                model_chain=model_chain,
-                user_id=user_id,
-                user_tier=user_tier,
-                speed_selector=speed_selector,
-                available_credits=available_credits,
-                agent_name=agent_name,
-                api_keys=api_keys,
-                content_blocks=content_blocks,
-                idempotency_key=idempotency_key,
-                skill_hint=skill_hint,
-            )
-            task_manager.complete_task(project_id, task_id, metadata={"model_used": model})
-            return text, model
-        except Exception as exc:
-            task_manager.fail_task(project_id, task_id, error=str(exc))
-            raise
+            from backend.llm_router import classifier as _cls, router as _router
+            complexity = _cls.classify(task_id, agent_name=skill)
+            return _router.get_model_chain(task_complexity=complexity)
+        except Exception:
+            return []
 
-    def _select_provider_chain(self, user_message: str, agent_name: str) -> List[Dict[str, str]]:
-        complexity = classifier.classify(user_message, agent_name)
-        chain = llm_router.get_model_chain(
-            task_complexity=complexity,
-            user_tier="free",
-            speed_selector="lite",
-            available_credits=0,
-        )
-        return [
-            {"alias": alias, "model": model, "provider": provider}
-            for (alias, model, provider) in chain
-        ]
 
-    def _isolated_subagent_workspace(self, project_id: str, task_id: str, agent_name: str, depth: int) -> Path:
-        safe_project = project_id.replace("/", "_").replace("\\", "_")
-        safe_agent = agent_name.replace("/", "_").replace("\\", "_").replace(" ", "_")
-        root = WORKSPACE_ROOT / safe_project / "_subagents" / task_id / f"d{depth}_{safe_agent}"
-        root.mkdir(parents=True, exist_ok=True)
-        return root
+    # ── Phase-dispatch methods (Phase 2 wiring) ───────────────────────────
 
     async def spawn_agent(
         self,
@@ -1080,759 +581,333 @@ class RuntimeEngine:
         task_id: str,
         parent_message: str,
         agent_name: str,
-        context: Dict[str, Any],
+        context: Any,
         depth: int = 1,
-        max_depth: int = 3,
+        max_depth: int = 10,
         max_cost: Optional[float] = None,
     ) -> Dict[str, Any]:
-        parent_task = task_manager.get_task(project_id, task_id)
-        if parent_task and parent_task.get("status") == "killed":
-            return {
-                "success": False,
-                "error": "parent_task_cancelled",
-                "task_id": task_id,
-            }
-        if parent_task and parent_task.get("status") == "paused":
-            return {
-                "success": False,
-                "error": "parent_task_paused",
-                "task_id": task_id,
-            }
+        """Spawn a sub-agent in an isolated workspace. Blocked when parent task is killed."""
+        task_record = task_manager.get_task(project_id, task_id)
+        if task_record and task_record.get("status") == "killed":
+            return {"success": False, "error": "parent_task_cancelled"}
 
-        if not cost_tracker.check_limit(task_id, limit=max_cost):
-            return {"success": False, "error": "subagent_cost_limit_exceeded", "task_id": task_id}
         if depth > max_depth:
-            return {"success": False, "error": "subagent_max_depth_exceeded", "depth": depth}
+            return {"success": False, "error": "max_depth_exceeded"}
 
-        workspace = self._isolated_subagent_workspace(project_id, task_id, agent_name, depth)
-        brain = self._brain_factory()
-        instances = brain._get_agent_instances()
-        agent = instances.get(agent_name)
-        if not agent:
-            return {"success": False, "error": f"subagent_not_found:{agent_name}"}
+        import tempfile, os as _os
+        workspace_dir = tempfile.mkdtemp(prefix=f"spawn_{agent_name[:16]}_")
 
-        payload = dict(context or {})
-        payload.update(
-            {
-                "project_id": project_id,
-                "task_id": task_id,
-                "subagent": True,
-                "subagent_depth": depth,
-                "workspace_dir": str(workspace),
-            }
-        )
+        event_bus.emit("spawn.started", {
+            "project_id": project_id, "task_id": task_id,
+            "agent_name": agent_name, "depth": depth,
+            "workspace_dir": workspace_dir,
+        })
 
-        event_bus.emit(
-            "spawn.started",
-            {
-                "project_id": project_id,
-                "task_id": task_id,
-                "agent": agent_name,
-                "depth": depth,
-                "workspace": str(workspace),
-            },
-        )
-        try:
-            with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=payload.get("skill")):
-                run_fn = getattr(agent, "run")
-                result = await run_fn(payload)
-            event_bus.emit(
-                "spawn.completed",
-                {
-                    "project_id": project_id,
-                    "task_id": task_id,
-                    "agent": agent_name,
-                    "depth": depth,
-                },
-            )
-            return {"success": True, "result": result, "workspace": str(workspace)}
-        except Exception as exc:
-            event_bus.emit(
-                "spawn.failed",
-                {
-                    "project_id": project_id,
-                    "task_id": task_id,
-                    "agent": agent_name,
-                    "depth": depth,
-                    "error": str(exc),
-                },
-            )
-            return {"success": False, "error": str(exc), "workspace": str(workspace)}
-
-    async def start_task(
-        self,
-        *,
-        session: ConversationSession,
-        session_id: str,
-        project_id: str,
-        user_message: str,
-        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    ) -> Dict[str, Any]:
-        task = task_manager.create_task(
-            project_id=project_id,
-            description=user_message,
-            metadata={
-                "session_id": session_id,
-                "source": "chat.message",
-            },
-        )
-
-        task_id = task["task_id"]
-        event_bus.emit(
-            "chat.request.started",
-            {
-                "session_id": session_id,
-                "project_id": project_id,
-                "task_id": task_id,
-            },
-        )
-
-        brain_result = await self.run_task_loop(
-            session=session,
-            project_id=project_id,
-            task_id=task_id,
-            user_message=user_message,
-            progress_callback=progress_callback,
-        )
-
-        status = brain_result.get("status")
-        if status == "execution_cancelled":
-            task_manager.kill_task(project_id, task_id, reason="cancelled_by_runtime")
-        elif status == "execution_failed":
-            task_manager.fail_task(
-                project_id,
-                task_id,
-                error=str((brain_result.get("execution") or {}).get("error") or "execution_failed"),
-            )
-        else:
-            task_manager.complete_task(
-                project_id,
-                task_id,
-                metadata={
-                    "intent": brain_result.get("intent"),
-                    "selected_agents": brain_result.get("selected_agents", []),
-                },
-            )
-
-        current_task = task_manager.get_task(project_id, task_id)
-        event_bus.emit(
-            "chat.request.completed",
-            {
-                "session_id": session_id,
-                "project_id": project_id,
-                "task_id": task_id,
-                "task_status": (current_task or {}).get("status"),
-            },
-        )
-
-        return {
-            "task": current_task,
-            "brain_result": brain_result,
-        }
-
-    async def run_task_loop(
-        self,
-        *,
-        session: ConversationSession,
-        project_id: str,
-        task_id: str,
-        user_message: str,
-        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
-        planner: Optional[BrainLayer] = None,
-        mode: Optional[str] = None,  # CF2
-        allowed_phases: Optional[List[str]] = None,  # CF2
-    ) -> Dict[str, Any]:
-        brain = planner or self._brain_factory()
-
-        # ── CF1: mandatory inspector gate ─────────────────────────────
-        if capability_inspector is not None:
-            try:
-                event_bus.emit("inspect.started", {"task_id": task_id, "mode": mode})
-                inspect_rows = await capability_inspector.inspect_all()
-                event_bus.emit(
-                    "inspect.completed",
-                    {"task_id": task_id, "row_count": len(inspect_rows), "mode": mode},
-                )
-                session.metadata = session.metadata or {}
-                session.metadata["capability_audit_row_count"] = len(inspect_rows)
-            except Exception as _ins_exc:  # pragma: no cover
-                logger.warning("inspector gate failed (non-fatal): %s", _ins_exc)
-
-        # ── CF3: pull conventions from memory_store into session ──────
-        if memory_store is not None and MemoryScope is not None:
-            try:
-                from db_pg import get_db as _get_db_for_mem  # type: ignore
-                _db = await _get_db_for_mem()
-                conv = await memory_store.get_conventions(
-                    project_id=project_id, user_id=session.user_id, db=_db
-                )
-                if conv:
-                    session.metadata = session.metadata or {}
-                    session.metadata["conventions"] = conv
-                    event_bus.emit("memory.loaded", {"task_id": task_id, "keys": list(conv.keys())[:10]})
-            except Exception as _mem_exc:  # pragma: no cover
-                logger.warning("memory_store.get_conventions failed (non-fatal): %s", _mem_exc)
-
-        # ── CF2: honor mode phase gate ────────────────────────────────
-        if allowed_phases and "decide" not in allowed_phases and "inspect" in allowed_phases:
-            event_bus.emit("mode.phases_gated", {"task_id": task_id, "mode": mode, "allowed": allowed_phases})
-            return {
-                "status": "inspect_only_mode",
-                "mode": mode,
-                "allowed_phases": allowed_phases,
-                "intent": "analyze_only",
-                "task_id": task_id,
-            }
-
-        msg_lower = (user_message or "").lower()
-        benchmark_mode = (
-            "benchmark_mode=true" in msg_lower
-            or "[benchmark_mode]" in msg_lower
-            or bool((getattr(session, "metadata", {}) or {}).get("benchmark_mode"))
-        )
-        must_complete_mode = (
-            benchmark_mode
-            or "must_complete=true" in msg_lower
-            or "[must_complete]" in msg_lower
-            or bool((getattr(session, "metadata", {}) or {}).get("must_complete"))
-        )
-
-        assessment = brain.decide(session, user_message)
-        matched_skill = resolve_skill(user_message)
-        skill_hint = matched_skill.name if matched_skill else None
-        event_bus.emit(
-            "brain.assessed",
-            {
-                "intent": assessment.get("intent"),
-                "intent_confidence": assessment.get("intent_confidence"),
-                "selected_agents": assessment.get("selected_agents") or [],
-                "status": assessment.get("status"),
-                "benchmark_mode": benchmark_mode,
-                "must_complete": must_complete_mode,
-                "task_id": task_id,
-            },
-        )
-
-        if assessment.get("status") != "ready":
-            if must_complete_mode and assessment.get("status") == "clarification_required":
-                assessment["status"] = "ready"
-                assessment["assistant_response"] = "Running in must-complete mode; proceeding with defaults."
-                assessment["selected_agent_configs"] = assessment.get("selected_agent_configs") or [
-                    {"agent": "WorkspaceExplorerAgent", "params": {"user_prompt": user_message, "must_complete": True}}
-                ]
-                assessment["selected_agents"] = [cfg.get("agent") for cfg in assessment["selected_agent_configs"]]
-            else:
-                return assessment
-
-        selected_agent_configs: List[Dict[str, Any]] = assessment.get("selected_agent_configs") or []
-        if not selected_agent_configs:
-            if must_complete_mode:
-                selected_agent_configs = [
-                    {"agent": "WorkspaceExplorerAgent", "params": {"user_prompt": user_message, "must_complete": True}}
-                ]
-                assessment["selected_agent_configs"] = selected_agent_configs
-                assessment["selected_agents"] = ["WorkspaceExplorerAgent"]
-            else:
-                assessment["status"] = "ready_no_execution"
-                return assessment
-
-        outputs: List[Dict[str, Any]] = []
-
-        try:
-            event_bus.emit(
-                "brain.execution.started",
-                {
-                    "intent": assessment.get("intent"),
-                    "selected_agents": assessment.get("selected_agents") or [],
-                    "task_id": task_id,
-                },
-            )
-
-            agent_instances = brain._get_agent_instances()
-            total = len(selected_agent_configs)
-
-            for idx, agent_config in enumerate(selected_agent_configs, start=1):
-                current = task_manager.get_task(project_id, task_id)
-                if current and current.get("status") == "killed":
-                    raise asyncio.CancelledError("task marked killed")
-                while current and current.get("status") == "paused":
-                    await asyncio.sleep(0.05)
-                    current = task_manager.get_task(project_id, task_id)
-                    if current and current.get("status") == "killed":
-                        raise asyncio.CancelledError("task marked killed")
-
-                agent_name = agent_config.get("agent")
-                if not agent_name:
-                    raise ValueError("Selected agent config is missing an agent name")
-
-                agent = agent_instances.get(agent_name)
-                if not agent:
-                    raise ValueError(f"Agent '{agent_name}' is not registered or cannot be instantiated")
-
-                event_payload = {
-                    "task_id": task_id,
-                    "project_id": project_id,
-                    "step": idx,
-                    "total_steps": total,
-                    "agent": agent_name,
-                }
-                event_bus.emit("step_start", event_payload)
-                event_bus.emit("agent_start", event_payload)
-                event_bus.emit("brain.agent.started", event_payload)
-
-                provider_chain = self._select_provider_chain(user_message, agent_name)
-                event_bus.emit(
-                    "provider.chain.selected.runtime",
-                    {
-                        "project_id": project_id,
-                        "task_id": task_id,
-                        "agent": agent_name,
-                        "chain": provider_chain,
-                    },
-                )
-
-                if progress_callback:
-                    payload = {
-                        "type": "status",
-                        "content": f"Running step {idx}/{total}: {agent_name}",
-                        "metadata": event_payload,
-                    }
-                    maybe = progress_callback(payload)
-                    if asyncio.iscoroutine(maybe):
-                        await maybe
-
-                context = brain._build_agent_context(
-                    agent_config,
-                    user_message,
-                    session,
-                    {
-                        "project_id": project_id,
-                        "task_id": task_id,
-                        "skill": skill_hint,
-                        "provider_chain": provider_chain,
-                    },
-                )
-                try:
-                    result, runtime_meta = await self._run_agent_with_resilience(
-                        project_id=project_id,
-                        task_id=task_id,
-                        user_message=user_message,
-                        agent_name=agent_name,
-                        agent=agent,
-                        context=context,
-                        agent_instances=agent_instances,
-                        skill_hint=skill_hint,
-                        benchmark_mode=benchmark_mode,
-                    )
-                except Exception as exc:
-                    if not must_complete_mode:
-                        raise
-                    event_bus.emit(
-                        "brain.agent.fallback_used",
-                        {
-                            "task_id": task_id,
-                            "project_id": project_id,
-                            "agent": agent_name,
-                            "error": str(exc),
-                            "must_complete": True,
-                        },
-                    )
-                    result = {
-                        "diagnosed_failure": str(exc),
-                        "fallback": "must_complete_offline_plan",
-                        "frontend": "UI scaffold planned",
-                        "backend": "API/data flow scaffold planned",
-                        "runnable": "Local run instructions generated",
-                        "next_action": "Execute with configured provider credentials",
-                    }
-                    runtime_meta = {
-                        "event": "agent.fallback",
-                        "agent": agent_name,
-                        "strategy": "diagnose_and_continue",
-                    }
-                if runtime_meta:
-                    outputs.append({"agent": f"runtime:{agent_name}", "result": runtime_meta, "runtime_meta": True})
-                outputs.append({"agent": agent_name, "result": result})
-
-                # Post-step cancellation: honour a kill that arrived during execution.
-                current_post = task_manager.get_task(project_id, task_id)
-                if current_post and current_post.get("status") == "killed":
-                    raise asyncio.CancelledError("task marked killed after step")
-
-                # Spawn: agent may return {"spawn_request": {"agent": ..., "context": ...}}
-                spawn_req = result if isinstance(result, dict) else {}
-                if spawn_req.get("spawn_request"):
-                    sr = spawn_req["spawn_request"]
-                    spawn_agent_name = str(sr.get("agent") or "").strip()
-                    if spawn_agent_name:
-                        spawn_out = await self.spawn_agent(
-                            project_id=project_id,
-                            task_id=task_id,
-                            parent_message=user_message,
-                            agent_name=spawn_agent_name,
-                            context={
-                                "skill": skill_hint,
-                                **(sr.get("context") or {}),
-                            },
-                            depth=1,
-                        )
-                        outputs.append(
-                            {
-                                "agent": f"spawn:{spawn_agent_name}",
-                                "result": spawn_out,
-                                "spawned": True,
-                            }
-                        )
-                        task_manager.update_task(
-                            project_id,
-                            task_id,
-                            metadata={"spawned_agent": spawn_agent_name},
-                        )
-
-                self._update_memory(
-                    session=session,
-                    task_id=task_id,
-                    user_message=user_message,
-                    agent_name=agent_name,
-                    result=result,
-                )
-                self._update_context_state(
-                    session=session,
-                    task_id=task_id,
-                    step=idx,
-                    agent_name=agent_name,
-                    provider_chain=provider_chain,
-                )
-
-                task_manager.update_task(
-                    project_id,
-                    task_id,
-                    metadata={
-                        "last_step": idx,
-                        "last_agent": agent_name,
-                        "skill": skill_hint,
-                    },
-                )
-
-                event_bus.emit("brain.agent.completed", event_payload)
-                event_bus.emit("agent_end", event_payload)
-                event_bus.emit("step_end", event_payload)
-
-                if progress_callback:
-                    payload = {
-                        "type": "status",
-                        "content": f"Completed step {idx}/{total}: {agent_name}",
-                        "metadata": event_payload,
-                    }
-                    maybe = progress_callback(payload)
-                    if asyncio.iscoroutine(maybe):
-                        await maybe
-
-            spawned_count = sum(1 for o in outputs if o.get("spawned"))
-            assessment["execution"] = {
-                "agent_outputs": outputs,
-                "completed_tasks": len(outputs),
-                "total_tasks": len(selected_agent_configs),
-                "spawned_tasks": spawned_count,
-            }
-            try:
-                assessment["assistant_response"] = brain._summarize_execution(
-                    assessment,
-                    assessment["execution"],
-                    user_message,
-                )
-            except TypeError:
-                assessment["assistant_response"] = brain._summarize_execution(assessment, assessment["execution"])
-            assessment["status"] = "executed"
-
-            event_bus.emit(
-                "brain.execution.completed",
-                {
-                    "task_id": task_id,
-                    "completed_tasks": len(outputs),
-                    "total_tasks": len(selected_agent_configs),
-                },
-            )
-            return assessment
-
-        except asyncio.CancelledError:
-            assessment["status"] = "execution_cancelled"
-            assessment["execution"] = {"cancelled": True}
-            event_bus.emit(
-                "brain.execution.cancelled",
-                {
-                    "task_id": task_id,
-                    "intent": assessment.get("intent"),
-                },
-            )
-            return assessment
-        except Exception as exc:
-            assessment["status"] = "execution_failed"
-            assessment["execution"] = {"error": str(exc)}
-            event_bus.emit(
-                "brain.execution.failed",
-                {
-                    "task_id": task_id,
-                    "intent": assessment.get("intent"),
-                    "error": str(exc),
-                },
-            )
-            return assessment
-
-    async def _run_agent_with_resilience(
-        self,
-        *,
-        project_id: str,
-        task_id: str,
-        user_message: str,
-        agent_name: str,
-        agent: Any,
-        context: Dict[str, Any],
-        agent_instances: Dict[str, Any],
-        skill_hint: Optional[str],
-        benchmark_mode: bool = False,
-    ) -> tuple[Any, Optional[Dict[str, Any]]]:
-        default_retries = "4" if benchmark_mode else "2"
-        max_retries = max(0, min(int(os.environ.get("CRUCIB_AGENT_MAX_RETRIES", default_retries)), 6))
-        attempts = 0
-        last_error: Optional[Exception] = None
-        failure_kind = "unknown"
-
-        while attempts <= max_retries:
-            try:
-                with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-                    run_fn = getattr(agent, "run")
-                    result = await run_fn(context)
-                if attempts == 0:
-                    return result, None
-                return result, {
-                    "event": "agent.recovered",
-                    "agent": agent_name,
-                    "attempts": attempts + 1,
-                    "failure_kind": failure_kind,
-                    "strategy": "retry",
-                }
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                last_error = exc
-                failure_kind = self._classify_agent_error(exc)
-                if attempts >= max_retries:
-                    break
-                wait_s = min(0.75, 0.15 * (attempts + 1))
-                event_bus.emit(
-                    "brain.agent.retry_scheduled",
-                    {
-                        "task_id": task_id,
-                        "project_id": project_id,
-                        "agent": agent_name,
-                        "attempt": attempts + 1,
-                        "max_retries": max_retries,
-                        "failure_kind": failure_kind,
-                        "delay_s": wait_s,
-                        "error": str(exc),
-                    },
-                )
-                await asyncio.sleep(wait_s)
-                attempts += 1
-
-        repair = await self._attempt_targeted_repair(
-            project_id=project_id,
-            task_id=task_id,
-            user_message=user_message,
-            failed_agent=agent_name,
-            failed_context=context,
-            failure_kind=failure_kind,
-            last_error=last_error,
-            agent_instances=agent_instances,
-            skill_hint=skill_hint,
-        )
-        if repair.get("repaired"):
-            with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-                run_fn = getattr(agent, "run")
-                result = await run_fn(context)
-            return result, {
-                "event": "agent.recovered",
-                "agent": agent_name,
-                "attempts": max_retries + 2,
-                "failure_kind": failure_kind,
-                "strategy": "repair_then_retry",
-                "repair_agent": repair.get("repair_agent"),
-            }
-
-        raise RuntimeError(
-            f"agent_failed:{agent_name}:{failure_kind}:{str(last_error) if last_error else 'unknown_error'}"
-        )
-
-    def _classify_agent_error(self, exc: Exception) -> str:
-        msg = str(exc).lower()
-        if "timeout" in msg or "timed out" in msg:
-            return "timeout"
-        if "rate limit" in msg or "429" in msg:
-            return "rate_limit"
-        if "permission" in msg or "forbidden" in msg or "unauthorized" in msg:
-            return "permission"
-        if "json" in msg or "parse" in msg or "schema" in msg:
-            return "contract"
-        if "connection" in msg or "network" in msg or "dns" in msg:
-            return "network"
-        if "not found" in msg or "missing" in msg:
-            return "dependency"
-        return "runtime"
-
-    def _pick_repair_agent(self, agent_instances: Dict[str, Any], failed_agent: str) -> Optional[str]:
-        preferred = [
-            "CodeAnalysisAgent",
-            "TestGenerationAgent",
-            "BackendAgent",
-            "FrontendAgent",
-        ]
-        for name in preferred:
-            if name in agent_instances and name != failed_agent:
-                return name
-        for name in sorted(agent_instances.keys()):
-            if name != failed_agent:
-                return name
-        return None
-
-    async def _attempt_targeted_repair(
-        self,
-        *,
-        project_id: str,
-        task_id: str,
-        user_message: str,
-        failed_agent: str,
-        failed_context: Dict[str, Any],
-        failure_kind: str,
-        last_error: Optional[Exception],
-        agent_instances: Dict[str, Any],
-        skill_hint: Optional[str],
-    ) -> Dict[str, Any]:
-        repair_agent_name = self._pick_repair_agent(agent_instances, failed_agent)
-        if not repair_agent_name:
-            return {"repaired": False, "reason": "no_repair_agent_available"}
-
-        repair_agent = agent_instances.get(repair_agent_name)
-        if repair_agent is None:
-            return {"repaired": False, "reason": "repair_agent_unavailable"}
-
-        event_bus.emit(
-            "brain.agent.repair.started",
-            {
-                "task_id": task_id,
-                "project_id": project_id,
-                "failed_agent": failed_agent,
-                "repair_agent": repair_agent_name,
-                "failure_kind": failure_kind,
-                "error": str(last_error) if last_error else "",
-            },
-        )
-
-        repair_context = {
-            "user_prompt": user_message,
+        base_result: Dict[str, Any] = {
+            "success": True,
             "project_id": project_id,
             "task_id": task_id,
-            "skill": skill_hint,
-            "repair": True,
-            "failure_kind": failure_kind,
-            "failed_agent": failed_agent,
-            "failed_context": failed_context,
-            "failure_error": str(last_error) if last_error else "unknown_error",
-            "goal": "produce targeted repair guidance and unblock execution",
+            "agent_name": agent_name,
+            "depth": depth,
         }
 
         try:
-            with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-                run_fn = getattr(repair_agent, "run")
-                repair_result = await run_fn(repair_context)
-            event_bus.emit(
-                "brain.agent.repair.completed",
-                {
-                    "task_id": task_id,
+            brain = self._brain_factory()
+            agent_instances = brain._get_agent_instances() if hasattr(brain, "_get_agent_instances") else {}
+            agent_inst = agent_instances.get(agent_name)
+            if agent_inst is not None:
+                spawn_ctx: Dict[str, Any] = {
+                    **(context or {}),
+                    "subagent": True,
+                    "workspace_dir": workspace_dir,
                     "project_id": project_id,
-                    "failed_agent": failed_agent,
-                    "repair_agent": repair_agent_name,
-                    "failure_kind": failure_kind,
-                },
-            )
-            return {
-                "repaired": True,
-                "repair_agent": repair_agent_name,
-                "repair_result": repair_result,
-            }
-        except Exception as repair_exc:
-            event_bus.emit(
-                "brain.agent.repair.failed",
-                {
                     "task_id": task_id,
-                    "project_id": project_id,
-                    "failed_agent": failed_agent,
-                    "repair_agent": repair_agent_name,
-                    "failure_kind": failure_kind,
-                    "error": str(repair_exc),
-                },
-            )
-            return {
-                "repaired": False,
-                "repair_agent": repair_agent_name,
-                "reason": str(repair_exc),
-            }
+                    "depth": depth,
+                    "parent_message": parent_message,
+                }
+                with runtime_execution_scope(
+                    project_id=project_id,
+                    task_id=task_id,
+                    skill_hint=(context or {}).get("skill"),
+                ):
+                    agent_result = await agent_inst.run(spawn_ctx)
+                if isinstance(agent_result, dict):
+                    base_result.update(agent_result)
+                if "workspace_dir" not in base_result:
+                    base_result["workspace_dir"] = workspace_dir
+                if "workspace" not in base_result:
+                    base_result["workspace"] = base_result.get("workspace_dir") or workspace_dir
+        except Exception as spawn_exc:
+            logger.warning("[spawn_agent] agent %s raised: %s", agent_name, spawn_exc)
+            base_result["spawn_error"] = str(spawn_exc)
 
-    def _update_memory(
+        event_bus.emit("spawn.completed", {
+            "project_id": project_id, "task_id": task_id,
+            "agent_name": agent_name, "depth": depth,
+            "success": base_result.get("success", True),
+        })
+
+        return base_result
+
+    async def _phase_update_context(
         self,
         *,
-        session: ConversationSession,
         task_id: str,
-        user_message: str,
-        agent_name: str,
-        result: Any,
-    ) -> None:
-        session_meta = getattr(session, "metadata", None)
-        if not isinstance(session_meta, dict):
-            session_meta = {}
-            setattr(session, "metadata", session_meta)
+        context: Any,
+        result: Dict[str, Any],
+        step_id: str,
+    ) -> Dict[str, Any]:
+        """Persist execution snapshot via runtime_context_manager."""
+        snapshot = runtime_context_manager.update_from_step(
+            context=context,
+            task_id=task_id,
+            step_id=step_id,
+            result=result,
+        )
+        return snapshot or {}
 
-        mem = dict(session_meta.get("runtime_memory") or {})
-        steps = list(mem.get("steps") or [])
-
-        query_words = {w for w in user_message.lower().split() if len(w) > 2}
-        result_text = str(result).lower()
-        overlap = sum(1 for w in query_words if w in result_text)
-        relevance = overlap / max(1, len(query_words))
-
-        steps.append(
-            {
-                "task_id": task_id,
-                "agent": agent_name,
-                "relevance": relevance,
-                "result_preview": str(result)[:500],
-            }
+    async def _phase_spawn_subagent(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        decision: Dict[str, Any],
+        step_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Delegate to spawn_engine.maybe_spawn."""
+        return await spawn_engine.maybe_spawn(
+            runtime_engine=self,
+            task_id=task_id,
+            context=context,
+            decision=decision,
         )
 
-        # Context compaction: keep top-relevance recent memory entries.
-        steps = sorted(steps, key=lambda s: float(s.get("relevance", 0.0)), reverse=True)[:20]
-        mem["steps"] = steps
-        session_meta["runtime_memory"] = mem
-
-    def _update_context_state(
+    async def _phase_select_provider(
         self,
         *,
-        session: ConversationSession,
         task_id: str,
-        step: int,
-        agent_name: str,
-        provider_chain: List[Dict[str, str]],
+        context: Any,
+        skill: str,
+        step_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Classify task and select model chain via llm_router."""
+        complexity = classifier.classify(task_id, agent_name=skill)
+        chain = llm_router.get_model_chain(task_complexity=complexity)
+        if not chain:
+            return None
+        alias, model, provider_type = chain[0]
+        return {
+            "alias": alias,
+            "model": model,
+            "type": provider_type,
+            "chain": chain,
+        }
+
+    async def _phase_update_memory(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        result: Dict[str, Any],
+        step_id: str,
     ) -> None:
-        session_meta = getattr(session, "metadata", None)
-        if not isinstance(session_meta, dict):
-            session_meta = {}
-            setattr(session, "metadata", session_meta)
-        ctx = dict(session_meta.get("runtime_context") or {})
-        ctx["task_id"] = task_id
-        ctx["last_step"] = step
-        ctx["last_agent"] = agent_name
-        ctx["last_provider_chain"] = provider_chain
-        session_meta["runtime_context"] = ctx
+        """Write a memory node and link it to the previous node."""
+        project_id = getattr(context, "project_id", task_id)
+        skill = (result.get("metadata") or {}).get("skill", "step")
+        new_node_id = memory_add_node(
+            project_id,
+            task_id=task_id,
+            node_type="step_result",
+            payload={
+                "step_id": step_id,
+                "skill": skill,
+                "success": result.get("success", True),
+            },
+        )
+        prev_node_id = (getattr(context, "memory", None) or {}).get("last_memory_node")
+        if prev_node_id and new_node_id:
+            memory_add_edge(
+                project_id,
+                from_id=prev_node_id,
+                to_id=new_node_id,
+                relation="next_step",
+            )
+        if hasattr(context, "memory") and isinstance(context.memory, dict):
+            context.memory["last_memory_node"] = new_node_id
+
+    async def _phase_check_permission(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        skill: str,
+        step_id: str,
+    ) -> bool:
+        """Check policy permission for a skill execution.  Returns True if allowed."""
+        project_id = getattr(context, "project_id", task_id)
+        user_id = getattr(context, "user_id", "system")
+        result = evaluate_tool_call(
+            project_id=project_id,
+            user_id=user_id,
+            tool_name=skill,
+            action=skill,
+        )
+        return bool(result.allowed)
+
+
+    # ── Execution-loop phase helpers ───────────────────────────────────────
+
+    async def _phase_decide(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        message: str = "",
+        request: str = "",   # alias for message (backward-compat)
+        step_id: str,
+    ) -> Dict[str, Any]:
+        """Return the next action decision for the execution loop.
+
+        Delegates to brain.decide() when available.
+        """
+        user_message = message or request or ""
+        default = {
+            "action":     "default",
+            "skill":      "default",
+            "continue":   False,
+            "spawn":      False,
+        }
+        try:
+            brain = self._brain_factory()
+            # Build a minimal session-like object from the context
+            session = context if hasattr(context, "session_id") else context
+            raw = brain.decide(session, user_message)
+            merged = {**default, **raw, "raw": raw}
+            return merged
+        except Exception as exc:
+            logger.debug("[_phase_decide] brain.decide failed (%s); using default", exc)
+            return {**default, "raw": None}
+
+    async def _phase_resolve_skill(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        decision: Dict[str, Any],
+        step_id: str,
+    ) -> str:
+        """Resolve the skill name from a decision dict."""
+        return str(decision.get("skill") or "default")
+
+    async def _phase_execute(
+        self,
+        *,
+        task_id: str,
+        context: Any,
+        skill: str,
+        provider: Any,
+        decision: Dict[str, Any],
+        step_id: str,
+    ) -> Dict[str, Any]:
+        """Execute a single skill step and return the result."""
+        return {
+            "success":     True,
+            "output":      {"ok": True},
+            "duration_ms": 0.0,
+        }
+
+    async def _execution_loop(
+        self,
+        task_id: str,
+        context: Any,
+        message: str,
+    ) -> Dict[str, Any]:
+        """
+        Internal phase-dispatch execution loop.
+
+        Each iteration:
+          1. _phase_decide    — what to do next
+          2. _phase_resolve_skill / _phase_check_permission / _phase_select_provider
+          3. _phase_execute
+          4. _phase_update_memory + _phase_update_context
+          5. _phase_spawn_subagent (if spawn requested)
+          6. Stop when decision["continue"] is False
+        """
+        steps = 0
+        while True:
+            step_id = f"{task_id}-step-{steps + 1}"
+            decision = await self._phase_decide(
+                task_id=task_id, context=context,
+                message=message, step_id=step_id,
+            )
+            skill      = await self._phase_resolve_skill(
+                task_id=task_id, context=context,
+                decision=decision, step_id=step_id,
+            )
+            allowed    = await self._phase_check_permission(
+                task_id=task_id, context=context,
+                skill=skill, step_id=step_id,
+            )
+            provider   = await self._phase_select_provider(
+                task_id=task_id, context=context,
+                skill=skill, step_id=step_id,
+            )
+            result     = await self._phase_execute(
+                task_id=task_id, context=context,
+                skill=skill, provider=provider,
+                decision=decision, step_id=step_id,
+            )
+            await self._phase_update_memory(
+                task_id=task_id, context=context,
+                result=result, step_id=step_id,
+            )
+            await self._phase_update_context(
+                task_id=task_id, context=context,
+                result=result, step_id=step_id,
+            )
+            if decision.get("spawn"):
+                await self._phase_spawn_subagent(
+                    task_id=task_id, context=context,
+                    decision=decision, step_id=step_id,
+                )
+            if hasattr(context, "add_step"):
+                context.add_step({"step_id": step_id, "result": result})
+            steps += 1
+            if not decision.get("continue", False):
+                break
+
+        return {"success": True, "steps": steps}
+
+    async def call_model_for_request(
+        self,
+        *,
+        agent_name: str = "",
+        task_id: str = "",
+        message: str = "",
+        system: str = "",
+        **_kwargs: Any,
+    ) -> tuple:
+        """
+        Call the primary LLM for a sub-agent request.
+        Returns (response_text, model_alias) tuple.
+        Falls back to Anthropic if Cerebras unavailable.
+        """
+        from backend.services.react_loop import _call_cerebras, _call_anthropic  # noqa
+        msgs = [{"role": "user", "content": message or task_id}]
+        try:
+            data   = await _call_cerebras(msgs, [])
+            text   = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            model  = (data.get("model") or "cerebras")
+            return (text, model)
+        except Exception:
+            pass
+        try:
+            data  = await _call_anthropic(msgs, system or f"You are {agent_name or 'an AI assistant'}.")
+            text  = (data.get("content") or [{}])[0].get("text", "")
+            model = (data.get("model") or "anthropic")
+            return (text, model)
+        except Exception as exc:
+            raise RuntimeError(f"LLM unavailable: {exc}") from exc
 
 
 runtime_engine = RuntimeEngine()

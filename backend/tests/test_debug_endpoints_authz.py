@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import server
+from backend import server
 from services.runtime.task_manager import task_manager
 from services.runtime.memory_graph import add_node
 from services.runtime.cost_tracker import cost_tracker

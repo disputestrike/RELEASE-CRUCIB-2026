@@ -28,6 +28,13 @@ _ALIASES = {
     "backend": "api_backend",
     "agents": "agent_workflow",
     "automation": "agent_workflow",
+    "mobile": "mobile_expo",
+    "mobile_app": "mobile_expo",
+    "expo": "mobile_expo",
+    "react_native": "mobile_expo",
+    "react-native": "mobile_expo",
+    "ios": "mobile_expo",
+    "android": "mobile_expo",
     "marketing": "static_site",
     "landing": "static_site",
 }
@@ -59,6 +66,7 @@ DISPLAY_ORDER = [
     "vite_react",
     "next_app_router",
     "static_site",
+    "mobile_expo",
     "api_backend",
     "agent_workflow",
 ]
@@ -127,6 +135,24 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
         ],
         "roadmap": [
             "Dedicated Astro/11ty track, CMS hooks, and edge deploy packs.",
+        ],
+    },
+    "mobile_expo": {
+        "id": "mobile_expo",
+        "label": "Mobile app (Expo track)",
+        "tagline": "Generates a gated Expo/React Native starter alongside the verified web preview so mobile work has concrete artifacts.",
+        "guarantees": [
+            "Adds a standalone expo-mobile/ project with Expo metadata, app entry, screens, navigation-ready structure, and run/build scripts.",
+            "Documents App Store / Google Play packaging requirements instead of pretending submission is automatic.",
+            "Runs through the Build Integrity Validator mobile profile before completion.",
+        ],
+        "on_this_run": [
+            "Root workspace still includes a Vite preview bundle so existing browser preview gates remain compatible.",
+            "Mobile source lives under expo-mobile/ and is validated as the requested target.",
+            "Native store submission remains a guided artifact until signing credentials and EAS/App Store integrations are configured.",
+        ],
+        "roadmap": [
+            "First-class EAS cloud build execution, signing credential management, TestFlight/Internal testing handoff, and store metadata validation.",
         ],
     },
     "api_backend": {

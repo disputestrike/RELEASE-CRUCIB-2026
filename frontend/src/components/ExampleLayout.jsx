@@ -83,7 +83,7 @@ export const ExampleLayout = () => {
             <li>115 AI agents</li>
             <li>Real-time preview</li>
             <li>Code generation</li>
-            <li>One-click deployment</li>
+            <li>Configured provider deployment</li>
           </ul>
         </div>
       </div>

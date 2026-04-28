@@ -28,6 +28,7 @@
   line-height: 1.5;
 }
 
+/* Default (light): white surface */
 .goal-composer--workspace .gc-composer-shell {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.08);
@@ -40,6 +41,7 @@
   font-size: 14px;
 }
 
+/* Dark theme override */
 [data-theme='dark'] .goal-composer--workspace .gc-composer-shell {
   background: #1c2128;
   border-color: rgba(255, 255, 255, 0.08);

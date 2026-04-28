@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter
 
-from routes.benchmarks_api import _COMPETITOR_BASELINE
+from .benchmarks_api import _COMPETITOR_BASELINE
 
 logger = logging.getLogger(__name__)
 

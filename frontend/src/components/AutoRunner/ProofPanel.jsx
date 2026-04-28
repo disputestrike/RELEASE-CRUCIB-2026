@@ -106,9 +106,9 @@ export default function ProofPanel({
   const handleDownloadWorkspaceZip = useCallback(async () => {
     if (!jobId || !token || !API) return;
     setZipBusy(true);
-    try {
+      try {
       const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(jobId)}/export/full.zip?profile=handoff`,
+        `${API}/jobs/${encodeURIComponent(jobId)}/workspace/download`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) {
@@ -119,7 +119,7 @@ export default function ProofPanel({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${jobId}-handoff.zip`;
+      a.download = `crucibai-job-${jobId}-code.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -216,9 +216,9 @@ export default function ProofPanel({
               className="pp-export-btn"
               onClick={handleDownloadWorkspaceZip}
               disabled={zipBusy}
-              title="Download handoff ZIP (app-focused; omits outputs/). Use API ?profile=full for complete tree including outputs/."
+              title="Download all generated code and workspace files as a ZIP."
             >
-              <FileArchive size={12} /> {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
+              <FileArchive size={12} /> {zipBusy ? 'Downloading...' : 'Download Code'}
             </button>
           ) : null}
           <button type="button" className="pp-export-btn" onClick={handleExport}>

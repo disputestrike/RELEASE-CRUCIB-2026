@@ -10,6 +10,11 @@ metadata:
 
 # E-Commerce Builder
 
+> **PAYMENT RULE**: Default payment integration is **Stripe** (Checkout, Billing, Customer Portal).
+> Never implement Braintree unless the user explicitly names Braintree. BIV enforces this.
+
+
+
 ## When to Use This Skill
 
 Apply this skill when the user wants to sell products online:

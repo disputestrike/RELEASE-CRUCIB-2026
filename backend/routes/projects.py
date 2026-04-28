@@ -20,7 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from deps import (
+from ..services.runtime.runtime_engine import runtime_engine
+
+from ..deps import (
     JWT_ALGORITHM,
     JWT_SECRET,
     get_audit_logger,
@@ -31,11 +33,11 @@ from deps import (
 )
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
-from project_state import WORKSPACE_ROOT, load_state
+from ..project_state import WORKSPACE_ROOT, load_state
 from pydantic import BaseModel, Field, model_validator
 
 try:
-    from utils.rbac import Permission, has_permission
+    from ..utils.rbac import Permission, has_permission
 except ImportError:
     has_permission = lambda u, p: True  # noqa: E731
 
@@ -47,17 +49,17 @@ except ImportError:
 
 
 try:
-    from pricing_plans import CREDITS_PER_TOKEN
+    from ..pricing_plans import CREDITS_PER_TOKEN
 except ImportError:
     CREDITS_PER_TOKEN = 1000
 
 try:
-    from content_policy import screen_user_content
+    from ..content_policy import screen_user_content
 except ImportError:
     screen_user_content = None  # type: ignore[assignment]
 
 try:
-    from agents.legal_compliance import check_request as legal_check_request
+    from ..agents.legal_compliance import check_request as legal_check_request
 except ImportError:
     legal_check_request = None  # type: ignore[assignment]
 
@@ -203,6 +205,7 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
 
 
 class ProjectCreate(BaseModel):
+    id: Optional[str] = None
     name: str = Field(..., min_length=1, max_length=500)
     description: str = Field("", max_length=MAX_PROJECT_DESCRIPTION_LENGTH)
     project_type: str = Field(..., max_length=100)
@@ -303,7 +306,7 @@ async def create_project(
                 detail=compliance.get("reason") or "Request violates Acceptable Use Policy.",
             )
 
-    project_id = str(uuid.uuid4())
+    project_id = data.id or str(uuid.uuid4())
     project = {
         "id": project_id,
         "user_id": user["id"],
@@ -345,10 +348,8 @@ async def get_projects(
 ):
     db = await live_db()
     if db is None:
-        if os.environ.get("CRUCIBAI_DEV") == "1":
-            return {"projects": []}
-        raise HTTPException(status_code=503, detail="Database not ready")
-    cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+        return {"projects": []}
+    cursor = db.projects.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1)
     projects = await cursor.to_list(limit)
     return {"projects": projects}
 
@@ -559,7 +560,6 @@ async def build_plan(
             "phases": ["plan", "scaffold", "build", "test"],
             "estimated_tokens": 675000,
         }
-    }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INTENT EXTRACTION & VALIDATION INTEGRATION

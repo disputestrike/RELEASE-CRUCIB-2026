@@ -16,7 +16,7 @@ import sys
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
 
 
 def _resolve_under_workspace(workspace: Path, path: str) -> Path:

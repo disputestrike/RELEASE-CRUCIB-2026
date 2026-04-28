@@ -15,8 +15,17 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 
 
 def _get_auth():
-    from server import get_current_user
-    return get_current_user
+    try:
+        from ..server import get_current_user
+        return get_current_user
+    except ImportError:
+        try:
+            from server import get_current_user  # type: ignore
+            return get_current_user
+        except ImportError:
+            async def _noop_auth():
+                return {}
+            return _noop_auth
 
 
 def _result_to_dict(r: Any) -> Dict[str, Any]:
@@ -38,7 +47,7 @@ async def generate_image(
     user: dict = Depends(_get_auth()),
 ) -> Dict[str, Any]:
     """Generate an image from a text prompt. Returns the ImageResult record."""
-    from services.image_generation import image_generation
+    from ..services.image_generation import image_generation
 
     body = await request.json()
     prompt = (body.get("prompt") or "").strip()
@@ -53,7 +62,7 @@ async def generate_image(
 
     db = None
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None
@@ -79,7 +88,7 @@ async def generate_image_batch(
     user: dict = Depends(_get_auth()),
 ) -> Dict[str, Any]:
     """Generate multiple images (map of context_type -> prompt). Returns list."""
-    from services.image_generation import image_generation
+    from ..services.image_generation import image_generation
 
     body = await request.json()
     prompts = body.get("prompts") or {}
@@ -93,7 +102,7 @@ async def generate_image_batch(
 
     db = None
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None

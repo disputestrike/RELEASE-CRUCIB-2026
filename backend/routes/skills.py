@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -17,21 +18,31 @@ router = APIRouter(prefix="/api", tags=["skills"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_db():
-    import server
+    """Return a MongoDB-compatible DB handle, or None if unavailable.
+    In production (no MongoDB), returns None — callers handle this gracefully."""
+    try:
+        from ..deps import get_db as _deps_get_db
+        return _deps_get_db()
+    except Exception:
+        return None
 
-    return server.db
+
+def _user_id(user) -> str:
+    if isinstance(user, dict):
+        return str(user.get("id") or user.get("user_id") or "guest")
+    return str(getattr(user, "id", None) or getattr(user, "user_id", None) or "guest")
 
 
 SYSTEM_SKILLS = [
@@ -69,12 +80,12 @@ SYSTEM_SKILLS = [
         "color": "#f59e0b",
         "category": "build",
         "display_name": "SaaS MVP",
-        "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant — launch-ready in hours",
-        "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard",
+        "short_desc": "Auth, Braintree billing, user dashboard, multi-tenant — launch-ready in hours",
+        "trigger_prompt": "Build a SaaS MVP with Braintree billing, user auth, and admin dashboard",
         "is_featured": True,
         "install_count": 2100,
         "rating_avg": 4.9,
-        "tags": ["saas", "stripe", "auth", "billing"],
+        "tags": ["saas", "braintree", "auth", "billing"],
         "preview_url": None,
     },
     {
@@ -83,12 +94,12 @@ SYSTEM_SKILLS = [
         "color": "#10b981",
         "category": "build",
         "display_name": "E-Commerce Store",
-        "short_desc": "Product catalog, cart, Stripe checkout, inventory, order management",
-        "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout",
+        "short_desc": "Product catalog, cart, Braintree checkout, inventory, order management",
+        "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Braintree checkout",
         "is_featured": False,
         "install_count": 633,
         "rating_avg": 4.6,
-        "tags": ["ecommerce", "stripe", "inventory"],
+        "tags": ["ecommerce", "braintree", "inventory"],
         "preview_url": None,
     },
     {
@@ -181,7 +192,7 @@ SYSTEM_SKILLS = [
         "color": "#84cc16",
         "category": "build",
         "display_name": "Booking System",
-        "short_desc": "Calendar scheduling, availability, reminders, Stripe deposits",
+        "short_desc": "Calendar scheduling, availability, reminders, Braintree deposits",
         "trigger_prompt": "Build a booking system with calendar, availability management, and payments",
         "is_featured": False,
         "install_count": 298,
@@ -396,27 +407,195 @@ class UpdateUserSkillBody(BaseModel):
     trigger_phrases: Optional[list] = None
 
 
+class GenerateSkillBody(BaseModel):
+    description: str = Field(..., min_length=3, max_length=2000)
+    auto_create: bool = True
+    activate: bool = True
+    public: bool = False
+
+
+def _slugify_skill_name(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return slug[:54].strip("-") or "generated-skill"
+
+
+def _skill_keywords(description: str) -> list[str]:
+    words = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{2,}", description.lower())
+    stop = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "into",
+        "from",
+        "skill",
+        "create",
+        "build",
+        "make",
+        "turning",
+    }
+    out = []
+    for word in words:
+        if word in stop or word in out:
+            continue
+        out.append(word)
+        if len(out) >= 10:
+            break
+    return out
+
+
+def _infer_skill_category(description: str) -> str:
+    d = description.lower()
+    if any(k in d for k in ["pdf", "document", "docx", "ingest", "extract", "knowledge"]):
+        return "knowledge"
+    if any(k in d for k in ["cron", "schedule", "workflow", "automation", "webhook"]):
+        return "automate"
+    if any(k in d for k in ["image", "asset", "design", "brand", "logo"]):
+        return "asset"
+    if any(k in d for k in ["test", "qa", "verify", "security", "compliance"]):
+        return "quality"
+    return "build"
+
+
+def _draft_skill_contract(description: str, user_id: str) -> dict:
+    clean = " ".join((description or "").split())
+    keywords = _skill_keywords(clean)
+    category = _infer_skill_category(clean)
+    base_name = _slugify_skill_name(" ".join(keywords[:5]) or clean)
+    display = " ".join(w.capitalize() for w in base_name.split("-")[:5]) or "Generated Skill"
+    now = datetime.now(timezone.utc).isoformat()
+    instructions = f"""# {display}
+
+Purpose:
+{clean}
+
+Operating contract:
+- Treat this as a reusable CrucibAI skill, not a fake external integration.
+- First classify the user's request and identify required inputs, files, credentials, and expected artifacts.
+- Use existing CrucibAI capabilities before inventing new architecture.
+- If a required connector, credential, parser, or provider is missing, return an honest requires_config or unsupported state.
+- Persist source documents, extracted text, summaries, requirements, design notes, and technical constraints when document ingestion is involved.
+- Produce production-grade code structure when code is generated: modular files, typed contracts, services, tests, docs, and a code manifest.
+- Return clear artifacts, acceptance checks, and next actions.
+
+Inputs to request when missing:
+- Source files, URLs, or user assumptions.
+- Target platform or stack.
+- Data privacy requirements.
+- Deployment target and credentials, when relevant.
+
+Expected outputs:
+- skill_execution_plan
+- generated_or_updated_files
+- evidence_or_source_map
+- validation_results
+- next_steps
+"""
+    return {
+        "id": f"skill_{uuid.uuid4().hex}",
+        "user_id": user_id,
+        "name": f"generated-{base_name}",
+        "display_name": display,
+        "icon": "✨",
+        "color": "#7c3aed",
+        "category": category,
+        "short_desc": clean[:180],
+        "instructions": instructions[:8000],
+        "skill_md": instructions[:8000],
+        "trigger_phrases": keywords,
+        "trigger_prompt": clean,
+        "public": False,
+        "generated_by": "dynamic_skill_agent",
+        "execution_contract": {
+            "status": "available",
+            "kind": "instruction_skill",
+            "truth_policy": "do_not_claim_live_external_actions_without_config",
+            "artifact_outputs": [
+                "skill_execution_plan",
+                "generated_or_updated_files",
+                "source_map",
+                "validation_results",
+            ],
+        },
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+@router.post("/skills/generate")
+async def generate_skill(body: GenerateSkillBody, user: dict = Depends(_get_auth())):
+    """Dynamic Skill Agent: draft, persist, and optionally activate a reusable skill contract."""
+    user_id = _user_id(user)
+    draft = _draft_skill_contract(body.description, user_id)
+    draft["public"] = bool(body.public)
+    if not body.auto_create:
+        return {
+            "status": "drafted",
+            "persisted": False,
+            "activated": False,
+            "skill": draft,
+            "note": "auto_create=false, so the skill was drafted but not saved.",
+        }
+
+    db = _get_db()
+    if db is None:
+        return {
+            "status": "drafted_without_persistence",
+            "persisted": False,
+            "activated": False,
+            "skill": draft,
+            "note": "Database is not ready; returning a complete skill contract for the client.",
+        }
+
+    await db.user_skills.insert_one(draft)
+    activated = False
+    if body.activate:
+        await db.users.update_one(
+            {"id": user_id},
+            {"$addToSet": {"active_skill_ids": draft["id"]}},
+            upsert=True,
+        )
+        activated = True
+    saved = dict(draft)
+    saved.pop("_id", None)
+    return {
+        "status": "created",
+        "persisted": True,
+        "activated": activated,
+        "skill": saved,
+    }
+
+
 @router.get("/skills/active")
 async def get_active_skills(user: dict = Depends(_get_auth())):
     """Get all active skills for the current user."""
     db = _get_db()
     if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    user_doc = await db.users.find_one({"id": user["id"]})
+        return {"active_skill_ids": [], "status": "ready_without_persistence"}
+    user_doc = await db.users.find_one({"id": _user_id(user)})
     active_ids = (user_doc or {}).get("active_skill_ids", [])
     return {"active_skill_ids": active_ids}
 
 
 @router.get("/skills")
-async def list_skills(user: dict = Depends(_get_auth())):
+async def list_skills(user: dict = Depends(_get_optional_user())):
     """List all skills: system skills + user's custom skills + active state."""
     db = _get_db()
     if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    user_doc = await db.users.find_one({"id": user["id"]})
+        return {
+            "system_skills": SYSTEM_SKILLS,
+            "user_skills": [],
+            "active_skill_ids": [],
+            "status": "ready_without_persistence",
+        }
+    if not user:
+        return {"system_skills": SYSTEM_SKILLS, "user_skills": [], "active_skill_ids": []}
+    user_doc = await db.users.find_one({"id": _user_id(user)})
     active_ids = (user_doc or {}).get("active_skill_ids", [])
     # Fetch user's custom skills
-    user_skills_cursor = db.user_skills.find({"user_id": user["id"]})
+    user_skills_cursor = db.user_skills.find({"user_id": _user_id(user)})
     user_skills = await user_skills_cursor.to_list(200)
     return {
         "system_skills": SYSTEM_SKILLS,
@@ -537,3 +716,41 @@ async def toggle_skill_active(skill_id: str, user: dict = Depends(_get_auth())):
         {"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}}
     )
     return {"status": action, "skill_id": skill_id, "active_skill_ids": active_ids}
+
+
+# ───────────────────────── File-based MD skill loader ─────────────────────────
+# WS-A: Drop *.md into backend/skills/ and they're live after /skills/reload.
+# Orthogonal to the DB-backed skills above — these are registry objects for
+# prompt-level skill selection (not stored per-user in the DB).
+
+from ..services.skills.md_loader import get_registry as _get_md_registry  # noqa: E402
+
+
+@router.get("/skills/md/list")
+async def md_skills_list():
+    """List file-backed skills (MD + YAML frontmatter) known to the runtime."""
+    reg = _get_md_registry()
+    return {
+        "directory": reg.directory,
+        "count": len(reg.list_all()),
+        "last_loaded_at": reg.last_loaded_at,
+        "skills": [s.to_public() for s in reg.list_all()],
+    }
+
+
+@router.post("/skills/md/reload")
+async def md_skills_reload():
+    """Rescan the skills directory and reload every *.md — no redeploy needed."""
+    reg = _get_md_registry()
+    count = reg.reload()
+    return {"status": "ok", "count": count, "directory": reg.directory}
+
+
+@router.get("/skills/md/{name}")
+async def md_skills_get(name: str):
+    """Return a single MD skill including its full body."""
+    reg = _get_md_registry()
+    s = reg.get(name)
+    if s is None:
+        raise HTTPException(status_code=404, detail=f"skill '{name}' not found")
+    return s.to_full()

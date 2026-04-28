@@ -10,6 +10,44 @@ import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
+const BRAINTREE_DROPIN_SCRIPT = 'https://js.braintreegateway.com/web/dropin/1.44.1/js/dropin.min.js';
+
+const loadBraintreeDropin = () => new Promise((resolve, reject) => {
+  if (window.braintree?.dropin) {
+    resolve(window.braintree.dropin);
+    return;
+  }
+  const existing = document.querySelector(`script[src="${BRAINTREE_DROPIN_SCRIPT}"]`);
+  if (existing) {
+    existing.addEventListener('load', () => resolve(window.braintree.dropin), { once: true });
+    existing.addEventListener('error', reject, { once: true });
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = BRAINTREE_DROPIN_SCRIPT;
+  script.async = true;
+  script.onload = () => resolve(window.braintree.dropin);
+  script.onerror = reject;
+  document.body.appendChild(script);
+});
+
+const formatBraintreeError = (detail) => {
+  if (!detail) return 'Braintree checkout could not complete. Please try again.';
+  if (typeof detail === 'string') return detail;
+  if (detail.error === 'braintree_requires_config') {
+    const required = Array.isArray(detail.required_config) ? detail.required_config.join(', ') : 'Braintree credentials';
+    return `Braintree is not configured yet. Add ${required} in Railway variables, then redeploy.`;
+  }
+  if (detail.error === 'braintree_sdk_missing') {
+    return 'Braintree SDK is not installed in this deployment yet. Redeploy after the latest backend dependency update.';
+  }
+  if (detail.error === 'braintree_transaction_failed') {
+    return 'Braintree rejected the transaction. Please check the card details or try another payment method.';
+  }
+  if (detail.message) return String(detail.message);
+  return 'Braintree checkout could not complete. Please try again.';
+};
+
 const TokenCenter = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -24,22 +62,30 @@ const TokenCenter = () => {
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState(null);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [braintreeTarget, setBraintreeTarget] = useState(null);
+  const [braintreeReady, setBraintreeReady] = useState(false);
+  const [braintreeError, setBraintreeError] = useState('');
+  const [braintreeStatus, setBraintreeStatus] = useState(null);
+  const braintreeInstanceRef = useRef(null);
   const bundleRefs = useRef({});
+  const creditsFromPricing = Number(location.state?.customCredits || searchParams.get('credits') || 0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [bundlesRes, historyRes, usageRes, codeRes, statsRes] = await Promise.all([
+        const [bundlesRes, historyRes, usageRes, codeRes, statsRes, paymentStatusRes] = await Promise.all([
           axios.get(`${API}/tokens/bundles`),
           axios.get(`${API}/tokens/history`, { headers }),
           axios.get(`${API}/tokens/usage`, { headers }),
           token ? axios.get(`${API}/referrals/code`, { headers }).catch((e) => { logApiError('TokenCenter referrals/code', e); return { data: {} }; }) : Promise.resolve({ data: {} }),
-          token ? axios.get(`${API}/referrals/stats`, { headers }).catch((e) => { logApiError('TokenCenter referrals/stats', e); return { data: {} }; }) : Promise.resolve({ data: {} })
+          token ? axios.get(`${API}/referrals/stats`, { headers }).catch((e) => { logApiError('TokenCenter referrals/stats', e); return { data: {} }; }) : Promise.resolve({ data: {} }),
+          axios.get(`${API}/payments/braintree/status`).catch((e) => { logApiError('TokenCenter braintree/status', e); return { data: { provider: 'braintree', configured: false } }; })
         ]);
         setBundles(bundlesRes.data.bundles);
         setHistory(historyRes.data.history);
         setUsage(usageRes.data);
+        setBraintreeStatus(paymentStatusRes.data);
         setReferralCode(codeRes.data?.code ?? null);
         setReferralStats(statsRes.data ? { this_month: statsRes.data.this_month, total: statsRes.data.total, cap: statsRes.data.cap } : null);
       } catch (e) {
@@ -62,37 +108,19 @@ const TokenCenter = () => {
     }
   }, [addonFromPricing, loading, bundles]);
 
-  const handlePurchase = async (bundleKey) => {
-    setPurchasing(bundleKey);
-    try {
-      await axios.post(`${API}/tokens/purchase`, { bundle: bundleKey }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await refreshUser();
-      const historyRes = await axios.get(`${API}/tokens/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setHistory(historyRes.data.history);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPurchasing(null);
+  const openBraintreeCheckout = (target) => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
     }
-  };
-
-  const handleStripeCheckout = async (bundleKey) => {
-    setPurchasing(`stripe-${bundleKey}`);
-    try {
-      const { data } = await axios.post(
-        `${API}/stripe/create-checkout-session`,
-        { bundle: bundleKey },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (data?.url) window.location.href = data.url;
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setPurchasing(null);
+    setBraintreeError('');
+    setBraintreeReady(false);
+    setBraintreeTarget(target);
+    if (braintreeStatus?.configured === false) {
+      setBraintreeError(formatBraintreeError({
+        error: 'braintree_requires_config',
+        required_config: braintreeStatus.required_config,
+      }));
     }
   };
 
@@ -107,51 +135,87 @@ const TokenCenter = () => {
   const pricePerCredit = 0.06;
   const customTotal = Math.round(customCredits * pricePerCredit * 100) / 100;
 
-  const handlePurchaseCustom = async () => {
-    setPurchasing('custom');
+  useEffect(() => {
+    if (!creditsFromPricing) return;
+    const boundedCredits = Math.max(customMin, Math.min(customMax, Math.round(creditsFromPricing / customStep) * customStep));
+    setActiveTab('purchase');
+    setCustomCredits(boundedCredits);
+    openBraintreeCheckout({ credits: boundedCredits, label: `${boundedCredits} credits`, amount: Math.round(boundedCredits * pricePerCredit * 100) / 100 });
+  }, [creditsFromPricing]);
+
+  const completeBraintreeCheckout = async () => {
+    if (!braintreeTarget || !braintreeInstanceRef.current) return;
+    setPurchasing('braintree');
     try {
-      await axios.post(`${API}/tokens/purchase-custom`, { credits: customCredits }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const payload = await braintreeInstanceRef.current.requestPaymentMethod();
+      await axios.post(
+        `${API}/payments/braintree/checkout`,
+        {
+          bundle: braintreeTarget.bundle || null,
+          credits: braintreeTarget.credits || null,
+          payment_method_nonce: payload.nonce,
+          device_data: payload.deviceData || null,
+          idempotency_key: `web-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       await refreshUser();
       const historyRes = await axios.get(`${API}/tokens/history`, { headers: { Authorization: `Bearer ${token}` } });
       setHistory(historyRes.data.history);
+      setBraintreeTarget(null);
     } catch (e) {
-      const detail = e.response?.data?.detail ?? '';
-      if (typeof detail === 'string' && detail.includes('Stripe')) {
-        try {
-          const { data } = await axios.post(
-            `${API}/stripe/create-checkout-session-custom`,
-            { credits: customCredits },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-          if (data?.url) window.location.href = data.url;
-        } catch (e2) {
-          logApiError('TokenCenter Stripe custom', e2);
-        }
-      } else {
-        logApiError('TokenCenter purchase-custom', e);
-      }
+      setBraintreeError(formatBraintreeError(e.response?.data?.detail));
+      logApiError('TokenCenter Braintree checkout', e);
     } finally {
       setPurchasing(null);
     }
   };
 
-  const handleStripeCheckoutCustom = async () => {
-    setPurchasing('stripe-custom');
-    try {
-      const { data } = await axios.post(
-        `${API}/stripe/create-checkout-session-custom`,
-        { credits: customCredits },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (data?.url) window.location.href = data.url;
-    } catch (e) {
-      logApiError('TokenCenter Stripe custom', e);
-    } finally {
-      setPurchasing(null);
-    }
-  };
+  useEffect(() => {
+    if (!braintreeTarget) return undefined;
+    let cancelled = false;
+    const setup = async () => {
+      if (braintreeStatus?.configured === false) {
+        setBraintreeError(formatBraintreeError({
+          error: 'braintree_requires_config',
+          required_config: braintreeStatus.required_config,
+        }));
+        return;
+      }
+      try {
+        const [{ data }, dropin] = await Promise.all([
+          axios.get(`${API}/payments/braintree/client-token`, { headers: { Authorization: `Bearer ${token}` } }),
+          loadBraintreeDropin(),
+        ]);
+        if (cancelled) return;
+        if (!data?.client_token) {
+          throw new Error('Missing Braintree client token');
+        }
+        const instance = await dropin.create({
+          authorization: data.client_token,
+          container: '#braintree-dropin-container',
+          card: { cardholderName: { required: false } },
+        });
+        if (cancelled) {
+          instance.teardown?.();
+          return;
+        }
+        braintreeInstanceRef.current = instance;
+        setBraintreeReady(true);
+      } catch (e) {
+        setBraintreeError(formatBraintreeError(e.response?.data?.detail || e.message));
+        logApiError('TokenCenter Braintree setup', e);
+      }
+    };
+    setup();
+    return () => {
+      cancelled = true;
+      setBraintreeReady(false);
+      const instance = braintreeInstanceRef.current;
+      braintreeInstanceRef.current = null;
+      instance?.teardown?.().catch(() => {});
+    };
+  }, [braintreeTarget, braintreeStatus, token]);
 
   const usageChartData = usage?.by_agent ? Object.entries(usage.by_agent).map(([name, value]) => ({
     name,
@@ -310,22 +374,10 @@ const TokenCenter = () => {
                 } disabled:opacity-50`}
                 data-testid={`buy-${bundle.key}-btn`}
               >
-                {purchasing === bundle.key && !purchasing.startsWith('stripe') ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-                ) : (
-                  'Add credits'
-                )}
-              </button>
-              <button
-                onClick={() => handleStripeCheckout(bundle.key)}
-                disabled={purchasing === `stripe-${bundle.key}`}
-                className="w-full mt-2 py-2 rounded-lg font-medium bg-[#1A1A1A] hover:bg-[#333] text-white transition disabled:opacity-50"
-                data-testid={`stripe-${bundle.key}-btn`}
-              >
-                {purchasing === `stripe-${bundle.key}` ? (
+                {purchasing === 'braintree' ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
                 ) : (
-                  'Pay with Stripe'
+                  'Buy credits'
                 )}
               </button>
             </motion.div>
@@ -352,19 +404,19 @@ const TokenCenter = () => {
               <span className="text-lg font-bold text-[#1A1A1A]">Total: ${customTotal.toFixed(2)}</span>
               <button
                 type="button"
-                onClick={handlePurchaseCustom}
-                disabled={purchasing === 'custom' || purchasing === 'stripe-custom'}
+                onClick={() => openBraintreeCheckout({ credits: customCredits, label: `${customCredits} credits`, amount: customTotal })}
+                disabled={purchasing === 'custom' || purchasing === 'braintree'}
                 className="py-2 px-4 rounded-lg bg-[#1A1A1A] hover:bg-[#333] text-white text-sm font-medium disabled:opacity-50"
               >
                 {purchasing === 'custom' ? 'Processing…' : `Buy ${customCredits} credits`}
               </button>
               <button
                 type="button"
-                onClick={handleStripeCheckoutCustom}
-                disabled={purchasing === 'custom' || purchasing === 'stripe-custom'}
+                onClick={() => openBraintreeCheckout({ credits: customCredits, label: `${customCredits} credits`, amount: customTotal })}
+                disabled={purchasing === 'custom' || purchasing === 'braintree'}
                 className="py-2 px-4 rounded-lg border border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white text-sm font-medium disabled:opacity-50"
               >
-                {purchasing === 'stripe-custom' ? 'Redirecting…' : 'Pay with Stripe'}
+                {purchasing === 'braintree' ? 'Processing...' : 'Pay with Braintree'}
               </button>
             </div>
           </div>
@@ -506,6 +558,50 @@ const TokenCenter = () => {
               )}
             </div>
           </div>
+          </div>
+        </div>
+      )}
+      {braintreeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-xl font-semibold text-[#1A1A1A]">Braintree checkout</h3>
+                <p className="text-sm text-gray-600">
+                  {braintreeTarget.label} - ${Number(braintreeTarget.amount || 0).toFixed(2)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBraintreeTarget(null)}
+                className="text-sm text-gray-500 hover:text-gray-900"
+              >
+                Close
+              </button>
+            </div>
+            <div id="braintree-dropin-container" className="min-h-[120px]" />
+            {braintreeError && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {braintreeError}
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setBraintreeTarget(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={completeBraintreeCheckout}
+                disabled={!braintreeReady || purchasing === 'braintree'}
+                className="rounded-lg bg-[#1A1A1A] px-4 py-2 text-sm font-medium text-white hover:bg-[#333] disabled:opacity-50"
+              >
+                {purchasing === 'braintree' ? 'Processing...' : 'Complete payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}

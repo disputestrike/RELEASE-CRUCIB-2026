@@ -5,6 +5,11 @@
  */
 import React, { useState } from 'react';
 import { Eye, ShieldCheck, Code2, Rocket, Loader2, CheckCircle } from 'lucide-react';
+import {
+  compactUrlLabel,
+  realDeployUrlForCompletion,
+  realPreviewUrlForJob,
+} from '../../workspace/buildCompletionTargets';
 import './BuildCompletionCard.css';
 
 export default function BuildCompletionCard({
@@ -36,16 +41,8 @@ export default function BuildCompletionCard({
       ? proof.total_proof_items
       : Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
 
-  const previewUrl =
-    job?.dev_server_url ||
-    job?.preview_url ||
-    job?.published_url ||
-    job?.deploy_url ||
-    (job?.id ? `/published/${encodeURIComponent(job.id)}/` : null);
-  const deployProof = (proof?.bundle?.deploy || []).filter(Boolean);
-  const deployPayload = deployProof.length ? deployProof[deployProof.length - 1]?.payload || {} : {};
-  const publishedPath = job?.id ? `/published/${job.id}/` : null;
-  const deployUrl = deployResult?.deploy_url || deployPayload.url || deployPayload.deploy_url || job?.deploy_url || publishedPath;
+  const previewUrl = realPreviewUrlForJob(job);
+  const deployUrl = realDeployUrlForCompletion({ job, proof, deployResult });
 
   const handleRailwayDeploy = async () => {
     if (!job?.id || deploying) return;
@@ -109,7 +106,7 @@ export default function BuildCompletionCard({
           <span>
             {previewUrl ? (
               <>
-                Preview: <span className="bcc-mono">{previewUrl.replace(/^https?:\/\//, '').slice(0, 48)}</span>
+                Preview: <span className="bcc-mono">{compactUrlLabel(previewUrl)}</span>
               </>
             ) : (
               'No remote preview URL on job record (use Preview tab / Sandpack)'
@@ -121,7 +118,7 @@ export default function BuildCompletionCard({
           <span>
             {deployUrl ? (
               <>
-                Deploy: <span className="bcc-mono">{String(deployUrl).replace(/^https?:\/\//, '').slice(0, 48)}</span>
+                Deploy: <span className="bcc-mono">{compactUrlLabel(deployUrl)}</span>
               </>
             ) : (
               'No deploy URL in proof bundle yet'
@@ -135,7 +132,7 @@ export default function BuildCompletionCard({
         {deployResult?.deploy_url && (
           <div className="bcc-status-row">
             <span className="bcc-status-dot bcc-dot-success" />
-            <span>Live on Railway: <a className="bcc-mono" href={deployResult.deploy_url} target="_blank" rel="noopener noreferrer">{deployResult.deploy_url.replace(/^https?:\/\//, '').slice(0, 52)}</a></span>
+            <span>Live on Railway: <a className="bcc-mono" href={deployResult.deploy_url} target="_blank" rel="noopener noreferrer">{compactUrlLabel(deployResult.deploy_url, 52)}</a></span>
           </div>
         )}
         {deployError && (
@@ -168,7 +165,7 @@ export default function BuildCompletionCard({
           disabled={deploying || Boolean(deployResult)}
         >
           {deploying ? <Loader2 size={13} className="bcc-spin" /> : deployResult ? <CheckCircle size={13} /> : <Rocket size={13} />}
-          {deploying ? 'Deploying…' : deployResult ? 'Deployed!' : '🚄 Deploy to Railway'}
+          {deploying ? 'Deploying...' : deployResult ? 'Deployed!' : 'Deploy to Railway'}
         </button>
         <button className="bcc-btn" onClick={onDeployAgain}>
           <Rocket size={13} /> Rebuild

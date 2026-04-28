@@ -61,8 +61,13 @@ cp .env.production.template .env.production
 # Fill in all required secrets:
 # - JWT_SECRET (generate: openssl rand -hex 16)
 # - API_KEY_ENCRYPTION_KEY (generate: openssl rand -hex 16)
-# - STRIPE_API_KEY (from Stripe dashboard)
-# - STRIPE_WEBHOOK_SECRET (from Stripe dashboard)
+# - BRAINTREE_ENVIRONMENT=sandbox (use production after live approval)
+# - BRAINTREE_MERCHANT_ID (from Braintree dashboard)
+# - BRAINTREE_PUBLIC_KEY (from Braintree dashboard)
+# - BRAINTREE_PRIVATE_KEY (from Braintree dashboard)
+# - BRAINTREE_MERCHANT_ACCOUNT_ID (default Starlight LLC merchant account)
+# - APP_URL=https://your-production-domain.com
+# - Braintree webhook URL: APP_URL/api/webhooks/braintree
 # - OAUTH_GOOGLE_CLIENT_ID (from Google Cloud)
 # - OAUTH_GOOGLE_CLIENT_SECRET (from Google Cloud)
 # - SENTRY_DSN (from Sentry.io)

@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api", tags=["automation"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
@@ -21,7 +21,7 @@ def _get_auth():
 async def get_workflows(user: dict = Depends(_get_auth())):
     """List all automation workflows for this user."""
     try:
-        from automation_engine import get_workflows
+        from ..automation_engine import get_workflows
 
         workflows = get_workflows()
         return {"workflows": workflows}
@@ -35,7 +35,7 @@ async def create_automation_workflow(
 ):
     """Create a new automation workflow."""
     try:
-        from automation_engine import TriggerType, create_workflow
+        from ..automation_engine import TriggerType, create_workflow
 
         body = await request.json()
         wf_id = create_workflow(
@@ -54,7 +54,7 @@ async def fire_automation_trigger(
 ):
     """Manually fire a trigger (for testing)."""
     try:
-        from automation_engine import TriggerType, fire_trigger
+        from ..automation_engine import TriggerType, fire_trigger
 
         data = await request.json()
         data["user"] = {"id": user["id"], "email": user.get("email", "")}
@@ -67,7 +67,7 @@ async def fire_automation_trigger(
 @router.get("/automation/runs/{run_id}")
 async def get_automation_run(run_id: str, user: dict = Depends(_get_auth())):
     """Get status of an automation run."""
-    from automation_engine import get_run
+    from ..automation_engine import get_run
 
     run = get_run(run_id)
     if not run:

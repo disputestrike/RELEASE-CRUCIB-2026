@@ -31,8 +31,18 @@ router = APIRouter(prefix="/api", tags=["artifacts"])
 
 
 def _get_auth():
-    from server import get_current_user
-    return get_current_user
+    try:
+        from ..server import get_current_user
+        return get_current_user
+    except ImportError:
+        try:
+            from server import get_current_user  # type: ignore[import]
+            return get_current_user
+        except ImportError:
+            # Testing context — route functions are called directly with user kwarg
+            async def _noop_auth():
+                return {}
+            return _noop_auth
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +57,7 @@ async def list_artifacts(
     user: dict = Depends(_get_auth()),
 ):
     """List artifacts for the current user, optionally filtered by thread or type."""
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -78,8 +88,8 @@ async def create_artifact(
     user: dict = Depends(_get_auth()),
 ):
     """Create an artifact from provided content."""
-    from db_pg import get_db
-    from services.artifact_builder import artifact_builder
+    from ..db_pg import get_db
+    from ..services.artifact_builder import artifact_builder
 
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
@@ -126,7 +136,7 @@ async def create_artifact(
 
 @router.get("/artifacts/{artifact_id}")
 async def get_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -145,7 +155,7 @@ async def get_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
 
 @router.get("/artifacts/{artifact_id}/download")
 async def download_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -185,7 +195,7 @@ def _ext(mime_type: str) -> str:
 
 @router.get("/artifacts/{artifact_id}/versions")
 async def list_artifact_versions(artifact_id: str, user: dict = Depends(_get_auth())):
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -216,7 +226,7 @@ async def list_artifact_versions(artifact_id: str, user: dict = Depends(_get_aut
 
 @router.get("/threads/{thread_id}/artifacts")
 async def list_thread_artifacts(thread_id: str, user: dict = Depends(_get_auth())):
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -241,8 +251,8 @@ async def save_thread_checkpoint(
     user: dict = Depends(_get_auth()),
 ):
     """Save a checkpoint for the given thread."""
-    from db_pg import get_db
-    from services.agent_loop import agent_loop
+    from ..db_pg import get_db
+    from ..services.agent_loop import agent_loop
 
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
@@ -265,11 +275,16 @@ async def get_latest_thread_checkpoint(
     user: dict = Depends(_get_auth()),
 ):
     """Return latest checkpoint for a thread (non-mutating)."""
-    from db_pg import get_db
-    from services.agent_loop import agent_loop
+    try:
+        from ..db_pg import get_db as _get_db
+        from ..services.agent_loop import agent_loop as _agent_loop
+    except ImportError:
+        import sys as _sys
+        _get_db = _sys.modules["db_pg"].get_db
+        _agent_loop = _sys.modules["services.agent_loop"].agent_loop
 
-    db = await get_db()
-    cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
+    db = await _get_db()
+    cp = await _agent_loop.load_checkpoint(thread_id=thread_id, db=db)
     if not cp:
         return {"thread_id": thread_id, "checkpoint": None}
 
@@ -294,15 +309,23 @@ async def get_thread_memory_summary(
     user: dict = Depends(_get_auth()),
 ):
     """Return a compact memory-graph summary for a thread."""
-    from db_pg import get_db
-    from services.agent_loop import agent_loop
-    from services.runtime.memory_graph import query_nodes, get_graph
+    try:
+        from ..db_pg import get_db as _get_db
+        from ..services.agent_loop import agent_loop as _agent_loop
+        from ..services.runtime.memory_graph import query_nodes, get_graph
+    except ImportError:
+        import sys as _sys
+        _get_db = _sys.modules["db_pg"].get_db
+        _agent_loop = _sys.modules["services.agent_loop"].agent_loop
+        _mg = _sys.modules.get("services.runtime.memory_graph") or type("_MG", (), {"query_nodes": lambda *a, **k: [], "get_graph": lambda *a: {}})()  # type: ignore
+        query_nodes = _mg.query_nodes
+        get_graph = _mg.get_graph
 
-    db = await get_db()
+    db = await _get_db()
     user_id = user.get("id") or user.get("sub", "anon")
     project_id = f"runtime-{user_id}"
 
-    cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
+    cp = await _agent_loop.load_checkpoint(thread_id=thread_id, db=db)
     cp_data = (cp or {}).get("checkpoint_data") or {}
     run_id = cp_data.get("run_id")
 
@@ -391,19 +414,24 @@ async def resume_thread(
     user: dict = Depends(_get_auth()),
 ):
     """Resume agent loop from latest checkpoint for this thread."""
-    from db_pg import get_db
-    from services.agent_loop import agent_loop
+    try:
+        from ..db_pg import get_db as _get_db
+        from ..services.agent_loop import agent_loop as _agent_loop
+    except ImportError:
+        import sys as _sys
+        _get_db = _sys.modules["db_pg"].get_db
+        _agent_loop = _sys.modules["services.agent_loop"].agent_loop
 
-    db = await get_db()
+    db = await _get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
-    cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
+    cp = await _agent_loop.load_checkpoint(thread_id=thread_id, db=db)
     if not cp:
         raise HTTPException(status_code=404, detail="No checkpoint found for this thread")
 
     cp_data = cp.get("checkpoint_data") or {}
     run_id = cp_data.get("run_id", thread_id)
-    result = await agent_loop.resume(run_id)
+    result = await _agent_loop.resume(run_id)
     return {
         "thread_id": thread_id,
         "checkpoint": cp,

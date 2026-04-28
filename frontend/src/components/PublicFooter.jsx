@@ -7,7 +7,7 @@ export default function PublicFooter() {
       {/* Footer CTA — Kimi-style */}
       <div className="max-w-2xl mx-auto text-center mb-16">
         <h2 className="text-2xl md:text-3xl font-bold text-kimi-text mb-3">Your idea is inevitable.</h2>
-        <p className="text-kimi-muted mb-6">Describe what you want to build now. Ship it today.</p>
+        <p className="text-kimi-muted mb-6">Describe what you want to build now. Export after the proof gates pass.</p>
         <div className="flex flex-wrap justify-center gap-4">
           <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition border border-black/10">
             Make It Inevitable
@@ -27,7 +27,7 @@ export default function PublicFooter() {
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           <div>
             <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI — Inevitable AI</div>
-            <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. No code required.</p>
+            <p className="text-sm text-kimi-muted mb-3">Proof-gated web software with import checks, guarded automation, and evidence-tied claims.</p>
             <ul className="space-y-2 text-sm">
               <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
             </ul>

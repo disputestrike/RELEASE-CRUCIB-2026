@@ -66,6 +66,27 @@ export function TaskProvider({ children }) {
     });
   }, []);
 
+  const upsertTask = useCallback((task) => {
+    if (!task?.id) return null;
+    const entry = {
+      name: task.name || task.prompt?.slice(0, 120) || 'Task',
+      prompt: task.prompt || '',
+      status: task.status || 'completed',
+      type: task.type || 'build',
+      createdAt: task.createdAt ?? Date.now(),
+      ...task,
+    };
+    setTasks(prev => {
+      const idx = prev.findIndex(t => t.id === entry.id);
+      const next = idx >= 0 ? [...prev] : [entry, ...prev];
+      if (idx >= 0) next[idx] = { ...prev[idx], ...entry };
+      const clipped = next.slice(0, 200);
+      saveTasks(clipped);
+      return clipped;
+    });
+    return entry.id;
+  }, []);
+
   const removeTask = useCallback((taskId) => {
     if (!taskId) return;
     setTasks(prev => {
@@ -82,7 +103,7 @@ export function TaskProvider({ children }) {
     });
   }, []);
 
-  const value = { tasks, addTask, updateTask, removeTask, setTasks, persist };
+  const value = { tasks, addTask, updateTask, upsertTask, removeTask, setTasks, persist };
 
   return (
     <TaskContext.Provider value={value}>
@@ -98,6 +119,7 @@ export function useTaskStore() {
       tasks: [],
       addTask: () => {},
       updateTask: () => {},
+      upsertTask: () => {},
       removeTask: () => {},
       setTasks: () => {},
       persist: () => {},

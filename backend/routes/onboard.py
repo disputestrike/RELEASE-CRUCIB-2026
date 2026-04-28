@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/onboard", tags=["onboard"])
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request
@@ -49,7 +49,7 @@ async def _get_db():
     demos/CI without Postgres can still exercise the API.
     """
     try:
-        from db_pg import get_db  # type: ignore
+        from backend.db_pg import get_db  # type: ignore
         return await get_db()
     except Exception as exc:
         logger.warning("onboard _get_db fell back to None: %s", exc)

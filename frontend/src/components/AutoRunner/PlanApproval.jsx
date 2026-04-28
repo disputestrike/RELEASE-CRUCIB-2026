@@ -13,7 +13,7 @@ const RISK_FLAG_LABELS = {
   goal_too_vague: 'Goal is very short — a bit more detail usually improves the build',
   goal_too_long_consider_splitting:
     'Unusually long goal — split only if a run fails or times out',
-  stripe_keys_missing: 'Stripe mentioned in goal but Stripe keys are not configured in the server environment',
+  braintree_keys_missing: 'Braintree mentioned in goal but Braintree keys are not configured in the server environment',
   goal_spec_nextjs_autorunner_template_is_vite_react:
     'Your spec mentions Next.js — Auto-Runner still generates Vite + React (not Next.js App Router)',
   goal_spec_ts_node_api_autorunner_backend_is_python_sketch:
@@ -30,7 +30,7 @@ function riskFlagLabel(key) {
 
 /** Human labels for planner `required_integrations` / `dependencies`. */
 const INTEGRATION_LABELS = {
-  stripe: 'Stripe / payments',
+  braintree: 'Braintree / payments',
   auth: 'Authentication',
   database: 'Database',
   email: 'Email / SMTP',

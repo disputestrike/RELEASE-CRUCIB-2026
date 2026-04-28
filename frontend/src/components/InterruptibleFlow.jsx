@@ -162,7 +162,7 @@ export default function InterruptibleFlow({ jobId, steps, isRunning, token, onSi
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleCustom()}
           placeholder={addFeatureMode
             ? "Describe the feature to add… (e.g., 'add dark mode toggle')"
-            : "Redirect agents… (e.g., 'skip Stripe, add auth first')"}
+            : "Redirect agents… (e.g., 'skip Braintree, add auth first')"}
           disabled={loading || !isRunning}
           style={{ flex:1, background:'transparent', border:'none', outline:'none',
             fontSize:13, color:'#e4e4e7', placeholder:'#3f3f46' }} />
@@ -182,7 +182,7 @@ export default function InterruptibleFlow({ jobId, steps, isRunning, token, onSi
         <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
           {[
             'make it dark mode',
-            'add Stripe billing',
+            'add Braintree billing',
             'use Supabase instead',
             'skip tests for now',
             'add admin panel',

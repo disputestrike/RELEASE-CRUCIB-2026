@@ -13,6 +13,7 @@ and project ownership (server verifies project belongs to user before running bu
 import logging
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse

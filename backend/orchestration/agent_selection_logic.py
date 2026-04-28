@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Set
 
-from agent_dag import AGENT_DAG, get_execution_phases
+from backend.agent_dag import AGENT_DAG, get_execution_phases
 
 from .agent_audit_registry import agents_excluded_from_autorunner_selection
 from .brain_policy import agent_selection_hard_cap
@@ -396,9 +396,9 @@ AGENT_KEYWORDS = {
     "rbac": ["RBAC Agent"],
     "permission": ["RBAC Agent"],
     # Payments / comms
-    "payment": ["Payment Setup Agent", "Stripe Subscription Agent"],
-    "stripe": ["Payment Setup Agent", "Stripe Subscription Agent"],
-    "billing": ["Stripe Subscription Agent", "Invoice Agent"],
+    "payment": ["Payment Setup Agent", "Braintree Subscription Agent"],
+    "braintree": ["Payment Setup Agent", "Braintree Subscription Agent"],
+    "billing": ["Braintree Subscription Agent", "Invoice Agent"],
     "invoice": ["Invoice Agent"],
     "email": ["Email Agent", "Notification Agent"],
     "sendgrid": ["Email Agent", "Notification Agent"],
@@ -468,7 +468,7 @@ ROUTING_NOISE_KEYWORDS: frozenset[str] = frozenset(
         "real-time",
         "websocket",
         "websockets",
-        "stripe",
+        "Braintree",
         "payment",
         "billing",
         "oauth",
@@ -676,8 +676,8 @@ def explain_agent_selection(
             "contract:payments",
             (
                 "Payment Setup Agent",
-                "Stripe Subscription Agent",
-                "Stripe Integration Agent",
+                "Braintree Subscription Agent",
+                "Braintree Integration Agent",
                 "Subscription Management Agent",
             ),
         )
@@ -1052,12 +1052,12 @@ def explain_agent_selection(
             ("Accessibility Audit Agent",),
         )
 
-    if any(word in goal_lower for word in ("stripe", "payment", "billing", "checkout")):
+    if any(word in goal_lower for word in ("braintree", "payment", "billing", "checkout")):
         _record_rule_hit(
             selected,
             matched_rules,
             "rule:payments",
-            ("Stripe Integration Agent", "Subscription Management Agent"),
+            ("Braintree Integration Agent", "Subscription Management Agent"),
         )
 
     if any(

@@ -30,7 +30,8 @@ export default function SystemStatusHUD({
   }, [showPanel]);
 
   const isActive = jobStatus === 'running';
-  const agentsLive = Math.max(activeAgentCount, isActive ? 1 : 0);
+  // Show the real agent count — no artificial min of 1. If fanout=0, that's truth.
+  const agentsLive = Math.max(0, Number(activeAgentCount) || 0);
   const opsLabel =
     connectionMode === 'stream'
       ? 'Operational'

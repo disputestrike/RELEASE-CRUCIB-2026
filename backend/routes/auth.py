@@ -123,7 +123,7 @@ auth_router = APIRouter(prefix="/api", tags=["auth"])
 # Credit / tier constants (kept local to avoid circular imports)
 # ---------------------------------------------------------------------------
 try:
-    from pricing_plans import CREDITS_PER_TOKEN
+    from ..pricing_plans import CREDITS_PER_TOKEN
 except ImportError:
     try:
         from backend.pricing_plans import CREDITS_PER_TOKEN

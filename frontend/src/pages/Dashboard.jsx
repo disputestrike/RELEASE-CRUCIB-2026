@@ -112,6 +112,7 @@ const QUICK_START_CHIPS = [
   { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
   { label: 'Design UI', icon: Globe, prompt: 'Design a beautiful modern SaaS product UI with clean design system, multiple pages, components, and responsive layout' },
   { label: 'SaaS MVP', icon: Zap, prompt: 'Build a SaaS MVP with login/register pages, dashboard, subscription pricing table, settings, and admin panel' },
+  { label: 'What-If', icon: GitBranch, prompt: null, action: 'navigate', to: '/app/what-if' },
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
 ];
 
@@ -144,6 +145,8 @@ const Dashboard = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+  /** Tracks the last build spec described by the assistant so 'go build'/'yes' can route to workspace */
+  const pendingBuildSpecRef = useRef(null);
 
   // Live projects — fetched from API, polled every 5s when any are running
   const [liveProjects, setLiveProjects] = useState([]);
@@ -185,14 +188,17 @@ const Dashboard = () => {
 
   // Restore chat when opening a chat task from sidebar (state or URL). Stay on task until user navigates away or New Task.
   const chatTaskIdRef = useRef(null);
-  const prevChatTaskIdRef = useRef(null);
+  const LAST_HOME_CHAT_KEY = 'crucibai_last_home_chat_task_id';
+
   useEffect(() => {
     const chatTaskId = location.state?.chatTaskId || searchParams.get('chatTaskId');
     const newAgent = location.state?.newAgent;
 
     if (newAgent) {
+      try {
+        sessionStorage.removeItem('crucibai_last_home_chat_task_id');
+      } catch (_) { void 0; }
       chatTaskIdRef.current = null;
-      prevChatTaskIdRef.current = null;
       setChatMessages([]);
       setConversationStarted(false);
       setPrompt('');
@@ -202,9 +208,10 @@ const Dashboard = () => {
     }
 
     if (chatTaskId) {
-      if (prevChatTaskIdRef.current === chatTaskId) return; // already on this task, don't overwrite
-      prevChatTaskIdRef.current = chatTaskId;
       chatTaskIdRef.current = chatTaskId;
+      try {
+        sessionStorage.setItem(LAST_HOME_CHAT_KEY, chatTaskId);
+      } catch (_) { void 0; }
       const task = storeTasks?.find(t => t.id === chatTaskId);
       const msgs = task?.messages;
       if (msgs && Array.isArray(msgs) && msgs.length > 0) {
@@ -219,9 +226,24 @@ const Dashboard = () => {
       return;
     }
 
-    prevChatTaskIdRef.current = null;
+    // No ?chatTaskId= — restore last Home chat so leaving to Workspace and back does not wipe the thread
+    try {
+      const last = sessionStorage.getItem(LAST_HOME_CHAT_KEY);
+      if (last) {
+        const task = storeTasks?.find(t => t.id === last && t.type === 'chat');
+        const msgs = task?.messages;
+        if (msgs && Array.isArray(msgs) && msgs.length > 0) {
+          chatTaskIdRef.current = last;
+          setChatMessages(normalizeMessagesForStore(msgs));
+          setConversationStarted(true);
+          navigate(`/app?chatTaskId=${encodeURIComponent(last)}`, { replace: true });
+          return;
+        }
+      }
+    } catch (_) { void 0; }
+
     chatTaskIdRef.current = null;
-  }, [location.state?.chatTaskId, location.state?.newAgent, searchParams.get('chatTaskId'), storeTasks]);
+  }, [location.state?.chatTaskId, location.state?.newAgent, searchParams.get('chatTaskId'), storeTasks, navigate]);
 
   // Autofocus prompt on load
   useEffect(() => {
@@ -298,6 +320,26 @@ const Dashboard = () => {
       setConversationStarted(true);
       setChatLoading(true);
     });
+
+    // Build-confirmation: if user says 'go build'/'yes'/'do it'/'build it' and there's a pending spec, go to workspace
+    const BUILD_CONFIRM_PATTERNS = /^(go\s*build|yes\s*build|build\s*it|do\s*it|go\s*ahead|just\s*build|build\s*now|start\s*building|let'?s\s*(build|go|do\s*it)|ship\s*it|build|yes|yeah|yep|ok|okay|sure|proceed|continue|go)\s*[!.?]*$/i;
+    if (userPrompt && BUILD_CONFIRM_PATTERNS.test(userPrompt.trim()) && pendingBuildSpecRef.current) {
+      setChatLoading(false);
+      const spec = pendingBuildSpecRef.current;
+      pendingBuildSpecRef.current = null;
+      const taskName = spec.slice(0, 60);
+      const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
+      stashWorkspaceAutostartGoal(spec);
+      const ws = new URLSearchParams();
+      if (taskId) ws.set('taskId', taskId);
+      ws.set('autoStart', '1');
+      navigate({
+        pathname: '/app/workspace',
+        search: `?${ws.toString()}`,
+        state: withWorkspaceHandoffNonce({ initialPrompt: spec, autoStart: true })
+      });
+      return;
+    }
 
     // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
@@ -395,6 +437,10 @@ const Dashboard = () => {
   const handleChipClick = (chip) => {
     if (chip.action === 'import') {
       setShowImportModal(true);
+      return;
+    }
+    if (chip.action === 'navigate' && chip.to) {
+      navigate(chip.to);
       return;
     }
     if (chip.prompt) {

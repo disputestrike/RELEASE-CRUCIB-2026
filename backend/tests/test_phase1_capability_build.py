@@ -86,7 +86,7 @@ class TestAgentLoopFacade:
             engine = MagicMock()
             engine.execute_with_control = AsyncMock(side_effect=RuntimeError("boom"))
             mock_engine.return_value = engine
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 agent_loop.run(mode=ExecutionMode.BUILD, goal="test", user_id="tester")
             )
         assert result["status"] == "failed"
@@ -99,14 +99,14 @@ class TestAgentLoopFacade:
             engine = MagicMock()
             engine.execute_with_control = AsyncMock(return_value={"ok": True})
             mock_engine.return_value = engine
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 agent_loop.run(mode="unknown_xyz", goal="test")
             )
         assert result["mode"] == "build"
 
     def test_cancel_returns_bool(self):
         from services.agent_loop import agent_loop
-        result = asyncio.get_event_loop().run_until_complete(agent_loop.cancel("nonexistent-run"))
+        result = asyncio.run(agent_loop.cancel("nonexistent-run"))
         assert isinstance(result, bool)
 
 
@@ -142,7 +142,7 @@ class TestMemoryStore:
     def test_set_calls_db_execute(self):
         from services.memory_store import memory_store, MemoryScope
         db = self._make_mock_db()
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             memory_store.set(user_id="u1", scope=MemoryScope.USER, key="test_key", value="test_val", db=db)
         )
         db.execute.assert_called_once()
@@ -150,7 +150,7 @@ class TestMemoryStore:
     def test_get_returns_value(self):
         from services.memory_store import memory_store, MemoryScope
         db = self._make_mock_db()
-        val = asyncio.get_event_loop().run_until_complete(
+        val = asyncio.run(
             memory_store.get(user_id="u1", scope=MemoryScope.USER, key="test_key", db=db)
         )
         assert val == "stored_value"
@@ -158,7 +158,7 @@ class TestMemoryStore:
     def test_get_conventions_returns_dict(self):
         from services.memory_store import memory_store
         db = self._make_mock_db()
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             memory_store.get_conventions(user_id="u1", db=db)
         )
         assert isinstance(result, dict)
@@ -166,7 +166,7 @@ class TestMemoryStore:
     def test_delete_calls_db_execute(self):
         from services.memory_store import memory_store, MemoryScope
         db = self._make_mock_db()
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             memory_store.delete(user_id="u1", scope=MemoryScope.PROJECT, key="k", db=db)
         )
         db.execute.assert_called_once()
@@ -200,7 +200,7 @@ class TestCapabilityInspector:
 
     def test_inspect_feature_returns_row(self):
         from services.capability_inspector import capability_inspector
-        row = asyncio.get_event_loop().run_until_complete(
+        row = asyncio.run(
             capability_inspector.inspect_feature("agent_loop")
         )
         assert hasattr(row, "status")
@@ -208,14 +208,14 @@ class TestCapabilityInspector:
 
     def test_inspect_unknown_returns_row(self):
         from services.capability_inspector import capability_inspector
-        row = asyncio.get_event_loop().run_until_complete(
+        row = asyncio.run(
             capability_inspector.inspect_feature("xyz_nonexistent_feature_12345")
         )
         assert row.feature == "xyz_nonexistent_feature_12345"
 
     def test_inspect_all_covers_all_registered_features(self):
         from services.capability_inspector import capability_inspector
-        rows = asyncio.get_event_loop().run_until_complete(capability_inspector.inspect_all())
+        rows = asyncio.run(capability_inspector.inspect_all())
         assert len(rows) == len(capability_inspector.FEATURE_REGISTRY)
 
 
@@ -316,7 +316,7 @@ class TestImageGenerationService:
     def test_generate_returns_image_result(self):
         from services.image_generation import image_generation
         with patch("services.image_generation._generate_together", new=AsyncMock(return_value="https://img.example.com/1.png")):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 image_generation.generate(prompt="test prompt")
             )
         assert result.url == "https://img.example.com/1.png"
@@ -327,7 +327,7 @@ class TestImageGenerationService:
         with patch("services.image_generation._generate_together", new=AsyncMock(return_value=None)), \
              patch("services.image_generation._generate_openai",   new=AsyncMock(return_value=None)), \
              patch("services.image_generation._generate_stability",new=AsyncMock(return_value=None)):
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 image_generation.generate(prompt="test prompt")
             )
         assert result.url is None
@@ -336,7 +336,7 @@ class TestImageGenerationService:
     def test_generate_batch_returns_dict(self):
         from services.image_generation import image_generation
         with patch("services.image_generation._generate_together", new=AsyncMock(return_value="https://img.example.com/2.png")):
-            results = asyncio.get_event_loop().run_until_complete(
+            results = asyncio.run(
                 image_generation.generate_batch(prompts={"hero": "hero image", "feature": "feature"})
             )
         assert isinstance(results, dict)
@@ -360,7 +360,7 @@ class TestArtifactBuilder:
 
     def test_build_returns_artifact_record(self):
         from services.artifact_builder import artifact_builder
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             artifact_builder.build(
                 artifact_type="product_spec",
                 title="Test Spec",
@@ -375,7 +375,7 @@ class TestArtifactBuilder:
     def test_build_writes_to_db(self):
         from services.artifact_builder import artifact_builder
         db = self._make_db()
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             artifact_builder.build(
                 artifact_type="migration_report",
                 title="Migration",
@@ -396,7 +396,7 @@ class TestArtifactBuilder:
             "file_actions": [{"source_path": "/src/a.py", "target_path": "/tgt/a.py", "action": "copy"}],
             "behavior_checklist": ["All routes respond correctly"],
         }
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             artifact_builder.build_migration_report(migration_plan=plan, user_id="u1")
         )
         assert "migration_report" in result.artifact_type
@@ -422,7 +422,7 @@ class TestPDFRenderer:
         from services.pdf_renderer import pdf_renderer
         with tempfile.TemporaryDirectory() as d:
             output = os.path.join(d, "test.pdf")
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 pdf_renderer.render(content="# Title\n\nBody text.", title="Test", output_path=output)
             )
             assert os.path.exists(result)
@@ -447,7 +447,7 @@ class TestSlidesRenderer:
         from services.slides_renderer import slides_renderer
         with tempfile.TemporaryDirectory() as d:
             output = os.path.join(d, "test.html")
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 slides_renderer.render(
                     content="# Slide 1\n- Point 1\n## Slide 2\n- Point A",
                     title="Test Presentation",
@@ -485,7 +485,7 @@ class TestPreviewSessionService:
 
     def test_open_creates_session(self):
         from services.preview_session import preview_session_service
-        session = asyncio.get_event_loop().run_until_complete(
+        session = asyncio.run(
             preview_session_service.open(url="https://example.com", thread_id="t1")
         )
         assert session.url == "https://example.com"
@@ -495,7 +495,7 @@ class TestPreviewSessionService:
 
     def test_get_returns_session(self):
         from services.preview_session import preview_session_service
-        session = asyncio.get_event_loop().run_until_complete(
+        session = asyncio.run(
             preview_session_service.open(url="https://test.example.com")
         )
         retrieved = preview_session_service.get(session.session_id)
@@ -503,10 +503,10 @@ class TestPreviewSessionService:
 
     def test_close_updates_status(self):
         from services.preview_session import preview_session_service
-        session = asyncio.get_event_loop().run_until_complete(
+        session = asyncio.run(
             preview_session_service.open(url="https://close.example.com")
         )
-        closed = asyncio.get_event_loop().run_until_complete(
+        closed = asyncio.run(
             preview_session_service.close(session.session_id)
         )
         assert closed is True
@@ -514,10 +514,10 @@ class TestPreviewSessionService:
 
     def test_add_comment_appends_to_session(self):
         from services.preview_session import preview_session_service
-        session = asyncio.get_event_loop().run_until_complete(
+        session = asyncio.run(
             preview_session_service.open(url="https://comment.example.com")
         )
-        comment_id = asyncio.get_event_loop().run_until_complete(
+        comment_id = asyncio.run(
             preview_session_service.add_comment(
                 session_id=session.session_id,
                 comment="Button is misaligned",
@@ -539,7 +539,7 @@ class TestOperatorRunner:
 
     def test_navigate_returns_dict(self):
         from services.operator_runner import operator_runner
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             operator_runner.navigate("https://example.com")
         )
         assert isinstance(result, dict)
@@ -551,7 +551,7 @@ class TestOperatorRunner:
             {"action": "navigate", "url": "https://example.com"},
             {"action": "click", "selector": "#btn"},
         ]
-        results = asyncio.get_event_loop().run_until_complete(
+        results = asyncio.run(
             operator_runner.run_flow(steps=steps, dry_run=True)
         )
         assert len(results) == 2
@@ -569,7 +569,7 @@ class TestUiFeedbackMapper:
 
     def test_diff_missing_urls_returns_inconclusive(self):
         from services.ui_feedback_mapper import ui_feedback_mapper
-        report = asyncio.get_event_loop().run_until_complete(
+        report = asyncio.run(
             ui_feedback_mapper.diff(before_url=None, after_url=None)
         )
         assert report.verdict == "inconclusive"
@@ -585,7 +585,7 @@ class TestUiFeedbackMapper:
             b"\x00\x11\x00\x01\x00\x00\x00\x00\x00\x00IEND\xaeB`\x82"
         ).decode()
         data_uri = f"data:image/png;base64,{b64}"
-        report = asyncio.get_event_loop().run_until_complete(
+        report = asyncio.run(
             ui_feedback_mapper.diff(before_url=data_uri, after_url=data_uri)
         )
         assert report.verdict == "pass"

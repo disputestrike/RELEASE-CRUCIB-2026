@@ -73,7 +73,8 @@ def test_commit_push_pr_queue():
 
 
 # ── voice ──────────────────────────────────────────────────────────────
-def test_voice_transcribe_and_keyterms():
+def test_voice_transcribe_and_keyterms(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_DEV", "1")
     c = _client("routes.voice_input")
     audio = io.BytesIO(b"\x00" * 2048)
     r = c.post("/api/voice/transcribe",

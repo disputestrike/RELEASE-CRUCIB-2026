@@ -84,7 +84,7 @@ const ExportCenter = () => {
         <p className="text-[#666666]">Generate and download your project documentation in multiple formats.</p>
       </div>
 
-      {/* Deploy: one-click deploy ZIP, Vercel, Netlify */}
+      {/* Deploy: ZIP handoff plus configured provider deploys */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -94,7 +94,7 @@ const ExportCenter = () => {
           <Rocket className="w-5 h-5 text-[#1A1A1A]" />
           Deploy to production
         </h3>
-        <p className="text-sm text-gray-500 mb-4">Download a deploy-ready ZIP or open Vercel / Netlify to upload it.</p>
+        <p className="text-sm text-gray-500 mb-4">Download a proof-gated ZIP or open Vercel / Netlify to upload it yourself.</p>
         <div className="flex flex-wrap items-center gap-4">
           <select
             value={deployProjectId}

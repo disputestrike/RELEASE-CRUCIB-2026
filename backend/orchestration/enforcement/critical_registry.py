@@ -155,12 +155,17 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
         claim_regex_ids=("integration_complete", "production_ready"),
         satisfying_checks=(
             "stripe_webhook_idempotency_proven",
+            "payment_webhook_idempotency_proven",
             "webhook",
             "integration",
         ),
-        negative_checks=("stripe_webhook_idempotency_proven", "provider_error"),
-        skip_signal_checks=("stripe_replay_skipped",),
-        presence_hint_substrings=("stripe", "webhook", "integration"),
+        negative_checks=(
+            "stripe_webhook_idempotency_proven",
+            "payment_webhook_idempotency_proven",
+            "provider_error",
+        ),
+        skip_signal_checks=("stripe_replay_skipped", "payment_webhook_replay_skipped"),
+        presence_hint_substrings=("payment", "braintree", "stripe", "webhook", "integration"),
         must_have_negative_test=False,
     ),
     CriticalFeature(

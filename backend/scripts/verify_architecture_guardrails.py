@@ -101,7 +101,7 @@ def verify_workspace_authority(root: Path | None = None) -> List[str]:
             violations.append(f"Expected workspace authority file missing: {rel.as_posix()}")
             continue
         text = file_path.read_text(encoding="utf-8", errors="ignore")
-        if "from project_state import WORKSPACE_ROOT" not in text:
+        if "from backend.project_state import WORKSPACE_ROOT" not in text:
             violations.append(
                 f"Missing project_state WORKSPACE_ROOT import in {rel.as_posix()}"
             )
@@ -140,7 +140,7 @@ def verify_surface_lock() -> List[str]:
     # Import late to keep this script pure-static until this point.
     if str(BACKEND_ROOT) not in sys.path:
         sys.path.insert(0, str(BACKEND_ROOT))
-    from services.skills.skill_registry import list_skills
+    from backend.services.skills.skill_registry import list_skills
 
     violations: List[str] = []
     for skill in list_skills():

@@ -55,6 +55,13 @@ _FENCE_LANG_PATH = re.compile(
     r"))\s*\n(?P<body>.*?)```",
     re.DOTALL | re.IGNORECASE,
 )
+# Fence with comment-style path on first line: ```lang\n// src/App.jsx\n...
+_FENCE_COMMENT_PATH = re.compile(
+    r"```(?P<lang>[\w+\-.#]*)\s*\n"
+    r"(?://|#)\s*(?P<path>[A-Za-z0-9_./\-]+\.(?:jsx?|tsx?|ts|js|py|json|ya?ml|yml|md|html|htm|css|scss|sql|sh|graphql|prisma|toml|xml|txt|mjs|cjs))\s*\n"
+    r"(?P<body>.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
 # Body line: // file: x or # file: x
 _FILE_HINT = re.compile(
     r"^\s*(?://|#)\s*file(?:path)?\s*:\s*(?P<path>[A-Za-z0-9_./\-]+\.(?:jsx?|tsx?|ts|js|py|json|ya?ml|yml|md|html|css|scss|sql))\s*$",
@@ -92,9 +99,17 @@ def _raw_text(blob: Dict[str, Any]) -> str:
 
 
 def _extract_code_for_path(raw: str, rel: str) -> str:
-    from real_agent_runner import _extract_code
-
-    return _extract_code(raw, filepath=rel or "file.txt")
+    """Strip any outer code fence wrapper if the body itself contains one.
+    Returns the raw body as-is (the outer fence was already stripped by the caller regex).
+    """
+    if not raw:
+        return raw
+    # If the body still has a nested fence, strip it
+    import re as _re
+    m = _re.match(r'^```[\w.+-]*\s*\n?(.*?)\n?```\s*$', raw.strip(), _re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return raw
 
 
 def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:
@@ -166,7 +181,14 @@ def parse_proposed_files(
             return
         out.append((rel, body))
 
+    # Highest priority: comment-style path on first line (// src/App.jsx or # backend/main.py)
+    for m in _FENCE_COMMENT_PATH.finditer(raw):
+        add(m.group("path"), m.group("body"))
+        seen_spans.add((m.start(), m.end()))
+
     for m in _FENCE_LANG_PATH.finditer(raw):
+        if any(m.start() >= a and m.end() <= b for a, b in seen_spans):
+            continue
         add(m.group("path"), m.group("body"))
         seen_spans.add((m.start(), m.end()))
 
@@ -190,9 +212,46 @@ def parse_proposed_files(
         single = _extract_code_for_path(raw, default_rel)
         if single.strip():
             dr = _norm_rel(default_rel)
-            if dr:
+            if dr and not _is_prose_content(single, dr):
                 out.append((dr, single))
     return out
+
+
+def _is_prose_content(content: str, rel_path: str) -> bool:
+    """Return True if content looks like prose/JSON rather than code.
+    Used to prevent LLM prose from being written into code files as a fallback.
+    """
+    if not content:
+        return False
+    ext = os.path.splitext(rel_path)[1].lower()
+    code_exts = {".jsx", ".tsx", ".js", ".ts", ".py", ".mjs", ".cjs"}
+    if ext not in code_exts:
+        return False
+    stripped = content.strip()
+    # JSON object written into a code file
+    if stripped.startswith('{"') or stripped.startswith("{'"): 
+        try:
+            import json as _json
+            parsed = _json.loads(stripped)
+            if isinstance(parsed, dict):
+                return True  # Pure JSON object in a code file
+        except (ValueError, TypeError):
+            pass
+    first = stripped.split("\n")[0].strip().lower()
+    # Markdown heading in a code file
+    if first.startswith("# ") or first.startswith("**"):
+        return True
+    # Plain English sentence with no code tokens
+    PROSE_STARTS = (
+        "i ", "i'", "here ", "here'", "appreciate", "certainly", "sure,",
+        "below", "based on", "as requested", "i have", "i'll", "let me",
+        "of course", "happy to", "glad to", "please find", "the following",
+        "above is", "this is", "note:", "note that", "in this", "we have",
+        "i am the", "i am a", "as the",
+    )
+    if any(first.startswith(p) for p in PROSE_STARTS):
+        return True
+    return False
 
 
 def merge_last_writer(pairs: List[Tuple[str, str, str]]) -> Dict[str, Tuple[str, str]]:
@@ -233,7 +292,7 @@ def collect_assembly_pairs(
 
 
 def _safe_write_workspace(workspace_path: str, rel: str, content: str) -> bool:
-    from orchestration.executor import _safe_write
+    from backend.orchestration.executor import _safe_write
 
     return _safe_write(workspace_path, rel, content) is not None
 
@@ -242,7 +301,7 @@ def ensure_minimum_preview_tree(
     workspace_path: str, job_stub: Optional[Dict[str, Any]] = None
 ) -> List[str]:
     """Fill missing Vite contract files without clobbering agent output."""
-    from orchestration.executor import _ensure_preview_contract_files
+    from backend.orchestration.executor import _ensure_preview_contract_files
 
     job = dict(job_stub or {})
     job.setdefault("goal", "")
@@ -353,7 +412,7 @@ async def materialize_from_previous_outputs(
     workspace = Path(__file__).resolve().parents[1] / "workspace" / safe_pid
     workspace.mkdir(parents=True, exist_ok=True)
     try:
-        from orchestration.workspace_assembly import ensure_standard_workspace_scaffold
+        from backend.orchestration.workspace_assembly import ensure_standard_workspace_scaffold
 
         ensure_standard_workspace_scaffold(workspace)
     except Exception:
@@ -367,8 +426,8 @@ async def materialize_from_previous_outputs(
 
     preview_bt = "vite_react"
     if (goal_snippet or "").strip():
-        from orchestration.build_targets import normalize_build_target
-        from orchestration.generation_contract import parse_generation_contract
+        from backend.orchestration.build_targets import normalize_build_target
+        from backend.orchestration.generation_contract import parse_generation_contract
 
         pc = parse_generation_contract(goal_snippet)
         preview_bt = normalize_build_target(
@@ -434,7 +493,7 @@ def materialize_swarm_agent_output(
         upsert_assembly_merge_map_paths(workspace_path, subset)
     if written:
         try:
-            from orchestration.executor import append_node_artifact_record
+            from backend.orchestration.executor import append_node_artifact_record
 
             append_node_artifact_record(
                 workspace_path,

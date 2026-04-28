@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+from .anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 
 ANTHROPIC_MODEL_DEFAULT = ANTHROPIC_HAIKU_MODEL
 CEREBRAS_MODEL_DEFAULT = "llama3.1-8b"

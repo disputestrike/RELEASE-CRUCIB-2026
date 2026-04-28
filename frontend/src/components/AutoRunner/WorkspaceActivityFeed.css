@@ -127,6 +127,31 @@
   color: var(--text-muted);
 }
 
+/* Non-collapsed stream of mapped job events (Codex-class “always see the run”) */
+.uw-af-live-strip {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  max-height: 9.5rem;
+  overflow-y: auto;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--uw-bg-root) 70%, var(--uw-text) 4%);
+  border: 1px solid color-mix(in srgb, var(--uw-text) 6%, transparent);
+}
+
+.uw-af-live-strip li {
+  margin: 0;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--uw-text) 5%, transparent);
+}
+
+.uw-af-live-strip li:last-child {
+  border-bottom: none;
+}
+
 .uw-af-focus-wrap {
   margin-top: 14px;
 }

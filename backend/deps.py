@@ -25,6 +25,16 @@ import jwt
 from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+# FIX: deps.get_db() always returned None (init() never called in production).
+# _get_real_db() fetches a live PostgreSQL connection for every auth check.
+async def _get_real_db():
+    """Always returns a real PG-backed DB handle, or None on error."""
+    try:
+        from .db_pg import get_db as _pg
+        return await _pg()
+    except Exception:
+        return None
+
 # ---------------------------------------------------------------------------
 # Mutable shared state
 # ---------------------------------------------------------------------------
@@ -119,7 +129,7 @@ async def get_current_user(
             }
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
-                from services.dev_guest import get_user as _dev_get_user
+                from backend.services.dev_guest import get_user as _dev_get_user
 
                 user = _dev_get_user(uid)
                 if not user:
@@ -130,7 +140,22 @@ async def get_current_user(
             raise HTTPException(status_code=503, detail="Database not ready")
         user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            # Stateless guest token — DB write failed silently at issue time.
+            # Synthesize a minimal guest profile so the session stays alive.
+            import re as _re
+            if _re.match(r"^[0-9a-f-]{36}$", uid):
+                user = {
+                    "id": uid,
+                    "email": f"guest-{uid[:8]}@crucibai.guest",
+                    "name": "Guest",
+                    "plan": "free",
+                    "token_balance": 50_000,
+                    "credit_balance": 50,
+                    "auth_provider": "guest",
+                    "workspace_mode": "simple",
+                }
+            else:
+                raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
             raise HTTPException(status_code=403, detail="Account suspended")
         return user
@@ -168,7 +193,7 @@ async def get_current_user_sse(
             }
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
-                from services.dev_guest import get_user as _dev_get_user
+                from backend.services.dev_guest import get_user as _dev_get_user
 
                 user = _dev_get_user(uid)
                 if not user:
@@ -179,7 +204,20 @@ async def get_current_user_sse(
             raise HTTPException(status_code=503, detail="Database not ready")
         user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
-            raise HTTPException(status_code=401, detail="User not found")
+            import re as _re
+            if _re.match(r"^[0-9a-f-]{36}$", uid):
+                user = {
+                    "id": uid,
+                    "email": f"guest-{uid[:8]}@crucibai.guest",
+                    "name": "Guest",
+                    "plan": "free",
+                    "token_balance": 50_000,
+                    "credit_balance": 50,
+                    "auth_provider": "guest",
+                    "workspace_mode": "simple",
+                }
+            else:
+                raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
             raise HTTPException(status_code=403, detail="Account suspended")
         return user
@@ -203,7 +241,7 @@ async def get_optional_user(
             uid = payload["user_id"]
             if db is None:
                 if os.environ.get("CRUCIBAI_DEV") == "1":
-                    from services.dev_guest import get_user as _dev_get_user
+                    from backend.services.dev_guest import get_user as _dev_get_user
 
                     user = _dev_get_user(uid)
                     if user:
@@ -259,7 +297,7 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
             uid = payload["user_id"]
             if db is None:
                 if os.environ.get("CRUCIBAI_DEV") == "1":
-                    from services.dev_guest import get_user as _dev_get_user
+                    from backend.services.dev_guest import get_user as _dev_get_user
 
                     user = _dev_get_user(uid)
                 else:
@@ -280,3 +318,8 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
             raise HTTPException(status_code=401, detail="Token expired")
 
     return _inner
+
+
+async def get_user_credits(user: dict = Depends(get_current_user)) -> int:
+    """Return the user's credit balance."""
+    return int((user or {}).get("credit_balance", 0) or 0)

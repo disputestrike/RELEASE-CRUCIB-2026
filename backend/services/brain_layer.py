@@ -3,21 +3,28 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import Any, Callable, Dict, List, Optional
 
-from agents.registry import AgentRegistry
-from services.conversation_manager import ConversationSession, ContextEnricher
-from services.events import event_bus
-from services.semantic_router import SemanticRouter
+from backend.agents.registry import AgentRegistry
+from backend.services.conversation_manager import ConversationSession, ContextEnricher
+from backend.services.events import event_bus
+from backend.services.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
+
+
+def _event_bus():
+    legacy_events = sys.modules.get("services.events")
+    return getattr(legacy_events, "event_bus", event_bus)
 
 
 class BrainLayer:
     """Planner-only brain layer. Execution authority belongs to runtime_engine."""
 
-    def __init__(self, router: Optional[SemanticRouter] = None):
+    def __init__(self, router: Optional[SemanticRouter] = None, runtime_engine: Optional[Any] = None):
         self.router = router or SemanticRouter()
+        self.runtime_engine = runtime_engine
 
     @staticmethod
     def _is_build_prompt(user_message: str, routing: Dict[str, Any]) -> bool:
@@ -116,14 +123,97 @@ class BrainLayer:
         execution_meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Backward-compatible adapter that routes execution through runtime_engine."""
-        from services.runtime.runtime_engine import runtime_engine
 
         meta = execution_meta or {}
         project_id = (meta.get("project_id") or f"brain-{getattr(session, 'session_id', 'session')}").strip()
         task_id = (meta.get("task_id") or "").strip() or None
+        bus = _event_bus()
 
-        if task_id:
-            return await runtime_engine.run_task_loop(
+        # ── Route through runtime_engine when available ───────────────────────
+        if self.runtime_engine is not None:
+            if task_id:
+                return await self.runtime_engine.run_task_loop(
+                    session=session,
+                    project_id=project_id,
+                    task_id=task_id,
+                    user_message=user_message,
+                    progress_callback=progress_callback,
+                    planner=self,
+                )
+            out = await self.runtime_engine.start_task(
+                session=session,
+                session_id=getattr(session, "session_id", "session"),
+                project_id=project_id,
+                user_message=user_message,
+                progress_callback=progress_callback,
+            )
+            return out.get("brain_result") or {
+                "status": "execution_failed",
+                "execution": {"error": "runtime_engine returned no result"},
+            }
+
+        # ── Fallback: local execution (no runtime_engine) ─────────────────────
+        assessment = self.assess_request(session, user_message)
+        bus.emit("brain.assessed", {"project_id": project_id, "task_id": task_id, **assessment})
+        bus.emit("brain.execution.started", {"project_id": project_id, "task_id": task_id})
+
+        agent_outputs: List[Dict[str, Any]] = []
+        agent_instances = self._get_agent_instances()
+
+        for name in assessment.get("selected_agents") or []:
+            # ── Cancellation guard before each agent ─────────────────────
+            if task_id:
+                try:
+                    from services.runtime.task_manager import task_manager as _tm
+                except ImportError:
+                    from backend.services.runtime.task_manager import task_manager as _tm  # type: ignore
+                record = _tm.get_task(project_id, task_id)
+                if record and record.get("status") == "killed":
+                    bus.emit("brain.execution.cancelled", {"project_id": project_id, "task_id": task_id})
+                    return {
+                        "status": "execution_cancelled",
+                        "intent": assessment.get("intent"),
+                        "selected_agents": assessment.get("selected_agents") or [],
+                        "execution": {"success": False, "cancelled": True, "agent_outputs": agent_outputs},
+                    }
+
+            agent = agent_instances.get(name)
+            if agent is None:
+                continue
+            runner = getattr(agent, "run", None)
+            if not callable(runner):
+                continue
+            ctx = {"session": session, "message": user_message,
+                   "project_id": project_id, "task_id": task_id}
+            bus.emit("brain.agent.started", {"project_id": project_id, "task_id": task_id, "agent": name})
+            # ── Set runtime execution scope so tool_executor authority checks pass ──
+            try:
+                from backend.services.runtime.execution_context import runtime_execution_scope as _rscope
+            except ImportError:
+                from services.runtime.execution_context import runtime_execution_scope as _rscope  # type: ignore
+            async def _run_in_scope(_runner=runner, _ctx=ctx):
+                with _rscope(project_id=project_id, task_id=task_id or "fallback"):
+                    r = _runner(_ctx)
+                    if hasattr(r, "__await__"):
+                        r = await r
+                    return r
+            run_result = await _run_in_scope()
+            bus.emit("brain.agent.completed", {"project_id": project_id, "task_id": task_id, "agent": name})
+            agent_outputs.append({"agent": name, "result": run_result})
+
+        bus.emit("brain.execution.completed", {
+            "project_id": project_id, "task_id": task_id,
+            "agents": [o["agent"] for o in agent_outputs],
+        })
+        return {
+            "status": "executed",
+            "intent": assessment.get("intent"),
+            "selected_agents": assessment.get("selected_agents") or [],
+            "execution": {"success": True, "agent_outputs": agent_outputs, "result": ""},
+        }
+
+        if task_id:  # pragma: no cover — dead after refactor; kept for safety
+            return await self.runtime_engine.run_task_loop(
                 session=session,
                 project_id=project_id,
                 task_id=task_id,
@@ -132,7 +222,7 @@ class BrainLayer:
                 planner=self,
             )
 
-        out = await runtime_engine.start_task(
+        out = await self.runtime_engine.start_task(
             session=session,
             session_id=getattr(session, "session_id", "session"),
             project_id=project_id,
@@ -143,6 +233,10 @@ class BrainLayer:
             "status": "execution_failed",
             "execution": {"error": "runtime_engine returned no result"},
         }
+
+    def _get_agent_instances(self) -> Dict[str, Any]:
+        """Legacy extension point for tests and local agent runners."""
+        return {}
 
     def _select_agents(self, routing: Dict[str, Any], max_agents: int = 2) -> List[Dict[str, Any]]:
         candidates = routing.get("primary_agents", []) + routing.get("secondary_agents", [])

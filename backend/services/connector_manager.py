@@ -11,7 +11,8 @@ Supported connectors:
   • Railway – deployments via Railway API
   • Vercel  – deployments via Vercel API
   • Slack   – messages via webhooks
-  • Stripe  – billing events (read-only)
+  • Braintree – billing readiness and payment configuration
+  • Stripe   – payment processing via Stripe API
 
 Design:
   • Each connector is stateless; credentials pulled from env at call time.
@@ -223,32 +224,58 @@ class SlackConnector(ConnectorBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stripe connector (read-only)
+# Braintree connector (configuration/readiness)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BraintreeConnector(ConnectorBase):
+    name = "braintree"
+
+    def __init__(self) -> None:
+        self._merchant_id = os.environ.get("BRAINTREE_MERCHANT_ID", "")
+        self._public_key = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
+        self._private_key = os.environ.get("BRAINTREE_PRIVATE_KEY", "")
+        self._environment = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
+
+    def is_available(self) -> bool:
+        return bool(self._merchant_id and self._public_key and self._private_key)
+
+    def status(self) -> Dict[str, Any]:
+        return {
+            "configured": self.is_available(),
+            "environment": self._environment,
+            "required_config": [
+                "BRAINTREE_MERCHANT_ID",
+                "BRAINTREE_PUBLIC_KEY",
+                "BRAINTREE_PRIVATE_KEY",
+                "BRAINTREE_ENVIRONMENT",
+            ],
+        }
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stripe connector
 # ─────────────────────────────────────────────────────────────────────────────
 
 class StripeConnector(ConnectorBase):
     name = "stripe"
 
     def __init__(self) -> None:
-        self._key = os.environ.get("STRIPE_SECRET_KEY", "")
+        self._secret_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        self._webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
     def is_available(self) -> bool:
-        return bool(self._key)
+        return bool(self._secret_key)
 
-    async def list_customers(self, limit: int = 10) -> List[Dict[str, Any]]:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.get("https://api.stripe.com/v1/customers",
-                            auth=(self._key, ""),
-                            params={"limit": limit})
-            r.raise_for_status()
-            return r.json().get("data", [])
-
-    async def get_subscription(self, subscription_id: str) -> Dict[str, Any]:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.get(f"https://api.stripe.com/v1/subscriptions/{subscription_id}",
-                            auth=(self._key, ""))
-            r.raise_for_status()
-            return r.json()
+    def status(self) -> Dict[str, Any]:
+        return {
+            "configured": self.is_available(),
+            "webhook_configured": bool(self._webhook_secret),
+            "required_config": [
+                "STRIPE_SECRET_KEY",
+                "STRIPE_WEBHOOK_SECRET",
+            ],
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -260,7 +287,7 @@ class ConnectorManager:
 
     def __init__(self) -> None:
         self._registry: Dict[str, ConnectorBase] = {}
-        for cls in [GitHubConnector, RailwayConnector, VercelConnector, SlackConnector, StripeConnector]:
+        for cls in [GitHubConnector, RailwayConnector, VercelConnector, SlackConnector, BraintreeConnector, StripeConnector]:
             instance = cls()
             self._registry[instance.name] = instance
 

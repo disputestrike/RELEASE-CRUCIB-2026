@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from services.session_journal import append_entry, list_entries
+from backend.services.session_journal import append_entry, list_entries
 
 
 def test_session_journal_append_and_list():

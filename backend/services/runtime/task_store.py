@@ -6,15 +6,28 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from project_state import WORKSPACE_ROOT
-
-
 TASKS_DIRNAME = "runtime_tasks"
+
+
+def _get_workspace_root() -> Path:
+    """Look up WORKSPACE_ROOT at call time so test stubs applied after import are respected."""
+    try:
+        import sys as _sys
+        _ps = _sys.modules.get("backend.project_state")
+        if _ps is not None:
+            return Path(getattr(_ps, "WORKSPACE_ROOT", None) or "/tmp/crucibai_ws")
+    except Exception:
+        pass
+    try:
+        from backend.project_state import WORKSPACE_ROOT as _WR
+        return Path(_WR)
+    except Exception:
+        return Path("/tmp/crucibai_ws")
 
 
 def _tasks_dir(project_id: str) -> Path:
     safe_id = (project_id or "").replace("/", "_").replace("\\", "_")
-    root = WORKSPACE_ROOT / safe_id / TASKS_DIRNAME
+    root = _get_workspace_root() / safe_id / TASKS_DIRNAME
     root.mkdir(parents=True, exist_ok=True)
     return root
 

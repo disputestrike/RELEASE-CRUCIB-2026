@@ -10,7 +10,9 @@ from typing import Iterable
 
 from fastapi import APIRouter, HTTPException
 
-from services.proof_manifest import build_replay_plan, verify_manifest
+from backend.services.enterprise_readiness import build_enterprise_readiness
+from backend.services.proof_manifest import build_replay_plan, verify_manifest
+from backend.services.public_proof_readiness import build_public_proof_readiness
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +154,16 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             },
         }
 
+    @router.get("/trust/enterprise-readiness")
+    async def trust_enterprise_readiness():
+        """Honest enterprise, governance, payment, and cost-control readiness matrix."""
+        return build_enterprise_readiness(root_dir)
+
+    @router.get("/trust/public-proof-readiness")
+    async def trust_public_proof_readiness():
+        """Map public growth claims to proof artifacts, routes, and remaining gaps."""
+        return build_public_proof_readiness(root_dir)
+
     @router.get("/trust/full-systems-summary")
     async def trust_full_systems_summary():
         """Public summary of the latest full systems gate proof."""
@@ -206,6 +218,30 @@ def create_trust_router(root_dir: Path) -> APIRouter:
                 "pass_fail": (
                     "proof/full_systems/PASS_FAIL.md" if pass_fail_path else None
                 ),
+            },
+        }
+
+    @router.get("/trust/summary")
+    async def trust_summary():
+        """Compact trust summary consumed by app shell surfaces."""
+        benchmark = await trust_benchmark_summary()
+        security = await trust_security_posture()
+        enterprise = await trust_enterprise_readiness()
+        full_systems = await trust_full_systems_summary()
+        benchmark_ready = benchmark.get("status") == "ready"
+        full_systems_ready = full_systems.get("status") == "ready"
+        enterprise_ready = enterprise.get("status") == "ready"
+        return {
+            "status": "ready" if benchmark_ready and full_systems_ready and enterprise_ready else "partial",
+            "benchmark": benchmark,
+            "security": security,
+            "enterprise": enterprise,
+            "full_systems": full_systems,
+            "checks": {
+                "benchmark_ready": benchmark_ready,
+                "full_systems_ready": full_systems_ready,
+                "enterprise_ready": enterprise_ready,
+                "security_posture_ready": True,
             },
         }
 

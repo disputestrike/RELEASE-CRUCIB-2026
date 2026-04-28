@@ -21,7 +21,13 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
 
-from orchestration.trust.trust_scoring import sha256_file_preview
+try:
+    from backend.orchestration.trust.trust_scoring import sha256_file_preview
+except ImportError:
+    try:
+        from backend.orchestration.trust.trust_scoring import sha256_file_preview
+    except ImportError:
+        def sha256_file_preview(*a, **kw): return ""
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +102,7 @@ def _serve_dist(dist_dir: str) -> Tuple[ThreadingHTTPServer, threading.Thread, i
 
 
 def _run_npm(args: List[str], cwd: str, timeout: int) -> Tuple[int, str]:
-    npm = shutil.which("npm")
+    npm = shutil.which("npm.cmd" if os.name == "nt" else "npm") or shutil.which("npm")
     if not npm:
         return -1, "npm not found on PATH"
     try:
@@ -115,6 +121,37 @@ def _run_npm(args: List[str], cwd: str, timeout: int) -> Tuple[int, str]:
         return -1, f"npm {' '.join(args)} timed out after {timeout}s"
     except OSError as e:
         return -1, str(e)
+
+
+def _run_build_with_autofix(ws: str, build_timeout: int) -> Tuple[int, str, List[Dict[str, Any]]]:
+    attempts: List[Dict[str, Any]] = []
+    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    if code == 0:
+        return code, log, attempts
+
+    try:
+        max_attempts = max(0, min(5, int(os.environ.get("CRUCIBAI_NPM_BUILD_AUTOFIX_ATTEMPTS", "2"))))
+    except ValueError:
+        max_attempts = 2
+    if max_attempts <= 0:
+        return code, log, attempts
+
+    try:
+        from backend.orchestration.npm_build_autofix import repair_npm_build_failure
+    except Exception as exc:
+        attempts.append({"changed_files": [], "reason": "autofix_unavailable", "error": str(exc)[:300]})
+        return code, log, attempts
+
+    for attempt_index in range(1, max_attempts + 1):
+        repair = repair_npm_build_failure(ws, log)
+        repair["attempt"] = attempt_index
+        attempts.append(repair)
+        if not repair.get("changed_files"):
+            break
+        code, log = _run_npm(["run", "build"], ws, build_timeout)
+        if code == 0:
+            break
+    return code, log, attempts
 
 
 def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
@@ -168,7 +205,16 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
         )
     )
 
-    code, log = _run_npm(["run", "build"], ws, build_timeout)
+    code, log, repair_attempts = _run_build_with_autofix(ws, build_timeout)
+    if repair_attempts:
+        proof.append(
+            _proof(
+                "verification",
+                "npm build deterministic autofix attempts",
+                {"attempts": repair_attempts},
+                verification_class="runtime",
+            )
+        )
     if code != 0:
         issues.append(f"npm run build failed (exit {code}): {log[:800]}")
         return {"passed": False, "issues": issues, "proof": proof}
@@ -182,8 +228,8 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     )
 
     dist_dir = os.path.join(ws, "dist")
-    if not os.path.isdir(dist_dir):
-        issues.append("Browser preview: dist/ missing after build.")
+    if not os.path.isfile(os.path.join(dist_dir, "index.html")):
+        issues.append("Browser preview: dist/index.html missing after build.")
         return {"passed": False, "issues": issues, "proof": proof}
 
     try:
@@ -333,20 +379,129 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     return {"passed": passed, "issues": issues, "proof": proof}
 
 
+def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
+    """Build dist/index.html even when Chromium verification is disabled."""
+    proof: List[Dict[str, Any]] = []
+    ws = (workspace_path or "").strip()
+    if not ws or not os.path.isdir(ws):
+        return {
+            "passed": False,
+            "issues": ["Preview build: invalid workspace path."],
+            "proof": proof,
+        }
+
+    dist_index = os.path.join(ws, "dist", "index.html")
+    if os.path.isfile(dist_index):
+        proof.append(
+            _proof(
+                "verification",
+                "Preview artifact already materialized",
+                {"relative_path": "dist/index.html"},
+                verification_class="runtime",
+            )
+        )
+        return {"passed": True, "issues": [], "proof": proof}
+
+    pkg_path = os.path.join(ws, "package.json")
+    if not os.path.isfile(pkg_path):
+        return {
+            "passed": False,
+            "issues": ["Preview build: package.json missing."],
+            "proof": proof,
+        }
+
+    try:
+        with open(pkg_path, encoding="utf-8") as fh:
+            pkg = json.load(fh)
+    except json.JSONDecodeError as e:
+        return {
+            "passed": False,
+            "issues": [f"Preview build: package.json invalid JSON: {e}"],
+            "proof": proof,
+        }
+
+    if not (pkg.get("scripts") or {}).get("build"):
+        return {
+            "passed": False,
+            "issues": ["Preview build: add scripts.build to package.json."],
+            "proof": proof,
+        }
+
+    install_timeout = int(os.environ.get("CRUCIBAI_NPM_INSTALL_TIMEOUT", "300"))
+    build_timeout = int(os.environ.get("CRUCIBAI_NPM_BUILD_TIMEOUT", "180"))
+
+    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
+    if code != 0:
+        return {
+            "passed": False,
+            "issues": [f"npm install failed (exit {code}): {log[:500]}"],
+            "proof": proof,
+        }
+    proof.append(
+        _proof(
+            "verification",
+            "npm install completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
+    )
+
+    code, log, repair_attempts = _run_build_with_autofix(ws, build_timeout)
+    if repair_attempts:
+        proof.append(
+            _proof(
+                "verification",
+                "npm build deterministic autofix attempts",
+                {"attempts": repair_attempts},
+                verification_class="runtime",
+            )
+        )
+    if code != 0:
+        return {
+            "passed": False,
+            "issues": [f"npm run build failed (exit {code}): {log[:800]}"],
+            "proof": proof,
+        }
+    proof.append(
+        _proof(
+            "verification",
+            "npm run build completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
+    )
+
+    if not os.path.isfile(dist_index):
+        return {
+            "passed": False,
+            "issues": ["Preview build: dist/index.html missing after npm run build."],
+            "proof": proof,
+        }
+
+    proof.append(
+        _proof(
+            "verification",
+            "Preview artifact materialized",
+            {"relative_path": "dist/index.html"},
+            verification_class="runtime",
+        )
+    )
+    return {"passed": True, "issues": [], "proof": proof}
+
+
 async def verify_browser_preview(workspace_path: str) -> Dict[str, Any]:
     """
     npm install + npm run build + Playwright E2E. Runs heavy work off the event loop.
     """
     if skip_browser_preview_env():
-        return {
-            "passed": True,
-            "issues": [],
-            "proof": [
-                _proof(
-                    "verification",
-                    "Browser preview skipped (CRUCIBAI_SKIP_BROWSER_PREVIEW)",
-                    {},
-                ),
-            ],
-        }
+        result = await asyncio.to_thread(_materialize_dist_without_playwright, workspace_path)
+        result.setdefault("proof", []).append(
+            _proof(
+                "verification",
+                "Chromium browser preview skipped; static preview build still enforced",
+                {"env": "CRUCIBAI_SKIP_BROWSER_PREVIEW"},
+                verification_class="runtime",
+            )
+        )
+        return result
     return await asyncio.to_thread(_verify_browser_preview_sync, workspace_path)

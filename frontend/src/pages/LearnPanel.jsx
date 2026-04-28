@@ -20,7 +20,7 @@ const sections = [
   {
     icon: Shield,
     title: 'Security and quality',
-    body: 'Use Auto-fix when you see errors. Run Security scan and Accessibility check from the workspace or API.',
+    body: 'Use Auto-fix when supported. Run baseline security checks and only treat accessibility as complete when a validator report proves it.',
   },
 ];
 
@@ -58,7 +58,7 @@ export default function LearnPanel() {
             <Shield className="w-5 h-5 text-[#1A1A1A]" /> Security &amp; accessibility
           </h2>
           <p className="text-sm text-[#666666] mb-3">
-            When you build with us or bring existing code: run <strong className="text-[#1A1A1A]">Security scan</strong> and <strong className="text-[#1A1A1A]">Accessibility check</strong> in the Workspace (toolbar or commands). We return a short checklist and a11y report so you can fix issues before deploy.
+            When you build with us or bring existing code: run baseline <strong className="text-[#1A1A1A]">Security scan</strong> checks in the Workspace where configured. Accessibility is roadmap-only until a WCAG/axe/keyboard/contrast validator report proves it for the project.
           </p>
           <Link to="/security" className="text-sm text-[#1A1A1A] hover:text-[#333]">
             How we keep the platform and your code safe →

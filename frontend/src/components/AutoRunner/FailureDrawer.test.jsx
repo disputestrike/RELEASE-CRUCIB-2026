@@ -37,4 +37,33 @@ describe('FailureDrawer', () => {
     expect(onRetry).toHaveBeenCalled();
     expect(screen.getByText(/Retry requested/i)).toBeInTheDocument();
   });
+
+  test('does not imply automatic retry for synthetic checkpoint failures', () => {
+    const onRetry = jest.fn();
+    render(
+      <FailureDrawer
+        step={{
+          step_key: 'deployment',
+          failure_type: 'runtime_error',
+          error_message: 'Railway deployment timed out',
+          retry_count: 0,
+          can_retry: false,
+          synthetic: true,
+          diagnosis: {
+            failure_class: 'step_exception',
+            explanation: 'Deployment timed out before a retryable step row was available.',
+          },
+        }}
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getAllByText(/job checkpoint, not a retryable step/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Manual steering required before resume/i)).toBeInTheDocument();
+
+    const retry = screen.getByRole('button', { name: /Retry Automatically/i });
+    expect(retry).toBeDisabled();
+    fireEvent.click(retry);
+    expect(onRetry).not.toHaveBeenCalled();
+  });
 });

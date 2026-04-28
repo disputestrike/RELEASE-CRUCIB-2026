@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -35,34 +36,41 @@ def test_repeatability_prompt_suite_has_first_fifty_categories():
 
 
 @pytest.mark.asyncio
-async def test_repeatability_benchmark_writes_passing_scorecard(tmp_path, monkeypatch):
+async def test_repeatability_benchmark_writes_passing_scorecard(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
-    summary = await run_benchmark(
-        suite_path=SUITE,
-        output_dir=tmp_path / "repeatability",
-        run_browser_preview=False,
-        min_pass_rate=0.90,
-        min_average_score=90.0,
-    )
+    # Keep the large generated repeatability tree out of pytest's basetemp on
+    # Windows/OneDrive. Pytest's dead-symlink cleanup can hit PermissionError
+    # after this test even though all assertions passed.
+    with tempfile.TemporaryDirectory(
+        prefix="crucibai-repeatability-", ignore_cleanup_errors=True
+    ) as temp_dir:
+        output_dir = Path(temp_dir) / "repeatability"
+        summary = await run_benchmark(
+            suite_path=SUITE,
+            output_dir=output_dir,
+            run_browser_preview=False,
+            min_pass_rate=0.90,
+            min_average_score=90.0,
+        )
 
-    assert summary["benchmark_version"] == BENCHMARK_VERSION
-    assert summary["prompt_count"] == 50
-    assert summary["passed_count"] == 50
-    assert summary["pass_rate"] == 1.0
-    assert summary["average_score"] >= 90.0
-    assert summary["passed"] is True
-    assert not summary["blockers"]
-    assert (tmp_path / "repeatability" / "summary.json").is_file()
-    assert (tmp_path / "repeatability" / "PASS_FAIL.md").is_file()
-    assert (tmp_path / "repeatability" / "cases" / "saas_dashboard.json").is_file()
-    assert (
-        tmp_path / "repeatability" / "workspaces" / "saas_dashboard" / "package.json"
-    ).is_file()
+        assert summary["benchmark_version"] == BENCHMARK_VERSION
+        assert summary["prompt_count"] == 50
+        assert summary["passed_count"] == 50
+        assert summary["pass_rate"] == 1.0
+        assert summary["average_score"] >= 90.0
+        assert summary["passed"] is True
+        assert not summary["blockers"]
+        assert (output_dir / "summary.json").is_file()
+        assert (output_dir / "PASS_FAIL.md").is_file()
+        assert (output_dir / "cases" / "saas_dashboard.json").is_file()
+        assert (
+            output_dir / "workspaces" / "saas_dashboard" / "package.json"
+        ).is_file()
 
-    case_data = json.loads(
-        (tmp_path / "repeatability" / "cases" / "workflow_automation.json").read_text()
-    )
-    assert case_data["stages"]["preview"]["passed"] is True
-    assert case_data["stages"]["elite_proof"]["passed"] is True
-    assert case_data["stages"]["deploy_build"]["passed"] is True
-    assert case_data["stages"]["deploy_publish"]["passed"] is True
+        case_data = json.loads(
+            (output_dir / "cases" / "workflow_automation.json").read_text()
+        )
+        assert case_data["stages"]["preview"]["passed"] is True
+        assert case_data["stages"]["elite_proof"]["passed"] is True
+        assert case_data["stages"]["deploy_build"]["passed"] is True
+        assert case_data["stages"]["deploy_publish"]["passed"] is True

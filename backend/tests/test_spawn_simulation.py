@@ -29,7 +29,7 @@ def test_simulation_engine_returns_clustered_updates():
 
 @pytest.mark.asyncio
 async def test_spawn_simulate_endpoint_returns_success(monkeypatch):
-    from routes import crucib_workspace_adapter as route
+    from backend.routes import crucib_workspace_adapter as route
 
     class _Runtime:
         def set_pool(self, _pool):
@@ -39,6 +39,7 @@ async def test_spawn_simulate_endpoint_returns_success(monkeypatch):
             return {"id": "job-1", "user_id": "user-1"}
 
     monkeypatch.setattr(route, "_get_auth", lambda: (lambda: {"id": "user-1"}))
+    monkeypatch.setattr(route, "_load_job_with_fallback", lambda _job_id, _user: _Runtime().get_job(_job_id))
 
     async def _pool():
         return object()
@@ -55,7 +56,7 @@ async def test_spawn_simulate_endpoint_returns_success(monkeypatch):
 
     emitted = []
 
-    from services import events as events_module
+    from backend.services import events as events_module
 
     monkeypatch.setattr(events_module.event_bus, "emit", lambda event_type, payload=None: emitted.append((event_type, payload or {})))
 
@@ -72,7 +73,7 @@ async def test_spawn_simulate_endpoint_returns_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_spawn_simulate_stream_endpoint_returns_ndjson(monkeypatch):
-    from routes import crucib_workspace_adapter as route
+    from backend.routes import crucib_workspace_adapter as route
 
     class _Runtime:
         def set_pool(self, _pool):
@@ -82,6 +83,7 @@ async def test_spawn_simulate_stream_endpoint_returns_ndjson(monkeypatch):
             return {"id": "job-1", "user_id": "user-1"}
 
     monkeypatch.setattr(route, "_get_auth", lambda: (lambda: {"id": "user-1"}))
+    monkeypatch.setattr(route, "_load_job_with_fallback", lambda _job_id, _user: _Runtime().get_job(_job_id))
 
     async def _pool():
         return object()

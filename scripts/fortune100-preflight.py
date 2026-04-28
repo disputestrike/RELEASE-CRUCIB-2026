@@ -21,6 +21,7 @@ ENDPOINTS = [
     {"id": "health", "path": "/api/health", "kind": "json"},
     {"id": "llm_health", "path": "/api/health/llm", "kind": "json"},
     {"id": "runtime_health", "path": "/api/orchestrator/runtime-health", "kind": "json"},
+    {"id": "braintree_status", "path": "/api/payments/braintree/status", "kind": "json"},
     {"id": "benchmark_summary", "path": "/api/trust/benchmark-summary", "kind": "json"},
     {"id": "security_posture", "path": "/api/trust/security-posture", "kind": "json"},
     {"id": "full_systems_summary", "path": "/api/trust/full-systems-summary", "kind": "json"},
@@ -72,7 +73,7 @@ def fetch(base_url: str, endpoint: dict[str, str], timeout: float) -> dict[str, 
     return record
 
 
-def check_contract(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def check_contract(records: list[dict[str, Any]], require_payments_configured: bool = False) -> list[dict[str, Any]]:
     by_id = {record["id"]: record for record in records}
     checks: list[dict[str, Any]] = []
 
@@ -84,6 +85,19 @@ def check_contract(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         all(record.get("ok") for record in records),
         "All public readiness endpoints/pages must return 2xx/3xx and valid JSON where expected.",
     )
+
+    braintree = by_id.get("braintree_status", {}).get("json") or {}
+    add(
+        "payment_provider_is_braintree",
+        braintree.get("provider") == "braintree",
+        f"provider={braintree.get('provider')} configured={braintree.get('configured')}",
+    )
+    if require_payments_configured:
+        add(
+            "braintree_credentials_configured",
+            braintree.get("configured") is True,
+            f"configured={braintree.get('configured')} required_config={braintree.get('required_config')}",
+        )
 
     benchmark = by_id.get("benchmark_summary", {}).get("json") or {}
     prompt_count = benchmark.get("prompt_count") or 0
@@ -148,6 +162,11 @@ def main() -> int:
     parser.add_argument("--timeout-sec", type=float, default=30)
     parser.add_argument("--rounds", type=int, default=2)
     parser.add_argument("--concurrency", type=int, default=8)
+    parser.add_argument(
+        "--require-payments-configured",
+        action="store_true",
+        help="Fail the readiness gate unless Braintree reports configured=true.",
+    )
     args = parser.parse_args()
 
     proof_dir = ROOT / args.proof_dir
@@ -164,7 +183,7 @@ def main() -> int:
             records.append(future.result())
 
     records.sort(key=lambda item: (item["id"], item["duration_ms"] or 0))
-    checks = check_contract(records)
+    checks = check_contract(records, require_payments_configured=args.require_payments_configured)
     passed = all(check["passed"] for check in checks)
     summary = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

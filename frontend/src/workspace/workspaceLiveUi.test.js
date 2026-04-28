@@ -2,6 +2,8 @@ import {
   computeDockMeta,
   computeDockMetaPreJob,
   deriveRightRailSubtitle,
+  derivePreviewReadiness,
+  extractActivityChips,
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from './workspaceLiveUi';
@@ -62,6 +64,53 @@ describe('deriveRightRailSubtitle', () => {
     ]);
     expect(s).toMatch(/Working on/);
   });
+
+  test('uses shared event formatter for latest high-signal events', () => {
+    const s = deriveRightRailSubtitle(
+      [
+        { type: 'step_started', payload: { agent_name: 'agents.backend' } },
+        { type: 'file_written', payload: { path: 'src/App.jsx' } },
+      ],
+      [],
+    );
+    expect(s).toBe('Saved file: App.jsx');
+  });
+});
+
+describe('extractActivityChips', () => {
+  test('uses shared event formatter for rich workspace events', () => {
+    const chips = extractActivityChips([
+      { id: 'a', type: 'artifact_delta', payload: { added: 1, changed: 2, removed: 0 } },
+      { id: 'b', type: 'code_repair_applied', payload: { failure_type: 'syntax_error', files: ['src/App.jsx'] } },
+      { id: 'c', type: 'step_infrastructure_failure', payload: {} },
+    ]);
+
+    expect(chips).toEqual([
+      { id: 'a', label: 'Files changed: 1 added, 2 updated, 0 removed', kind: 'info' },
+      { id: 'b', label: 'Repair applied after syntax error: App.jsx', kind: 'info' },
+      {
+        id: 'c',
+        label: 'Infrastructure issue: run stopped for a host or dependency failure',
+        kind: 'warn',
+      },
+    ]);
+  });
+
+  test('deduplicates events and preserves chronological display order', () => {
+    const chips = extractActivityChips(
+      [
+        { id: 'same', type: 'step_started', payload: { agent_name: 'agents.frontend' } },
+        { id: 'same', type: 'step_completed', payload: { agent_name: 'agents.frontend' } },
+        { id: 'done', type: 'file_written', payload: { path: 'src/styles.css' } },
+      ],
+      10,
+    );
+
+    expect(chips).toEqual([
+      { id: 'same', label: 'Done: Frontend', kind: 'ok' },
+      { id: 'done', label: 'Saved file: styles.css', kind: 'ok' },
+    ]);
+  });
 });
 
 describe('isWorkspaceLiveBuildPhase', () => {
@@ -106,5 +155,35 @@ describe('selectWorkspacePreviewStatus', () => {
     expect(
       selectWorkspacePreviewStatus({ jobStatus: 'completed', stage: 'completed', isCompleted: true }),
     ).toBe('ready');
+  });
+});
+
+describe('derivePreviewReadiness', () => {
+  test('shows remote URL as live', () => {
+    const r = derivePreviewReadiness({ previewUrl: 'https://example.com', hasSandpack: false });
+    expect(r.state).toBe('remote_live');
+    expect(r.severity).toBe('ok');
+  });
+
+  test('prefers Sandpack fallback when files are packable', () => {
+    const r = derivePreviewReadiness({ previewStatus: 'building', hasSandpack: true });
+    expect(r.state).toBe('sandpack_fallback');
+    expect(r.label).toBe('File preview');
+  });
+
+  test('reports waiting for index with file count', () => {
+    const r = derivePreviewReadiness({
+      previewStatus: 'building',
+      hasSandpack: false,
+      devPreviewStatus: { preview_state: 'waiting_for_index', readiness: { file_count: 7 } },
+    });
+    expect(r.state).toBe('waiting_for_index');
+    expect(r.detail).toContain('7 files');
+  });
+
+  test('reports completed build without preview target as warning', () => {
+    const r = derivePreviewReadiness({ previewStatus: 'ready', hasSandpack: false });
+    expect(r.state).toBe('ready_without_target');
+    expect(r.severity).toBe('warn');
   });
 });

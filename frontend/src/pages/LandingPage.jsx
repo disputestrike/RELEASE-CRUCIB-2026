@@ -178,7 +178,7 @@ const LandingPage = () => {
             </button>
             <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
-          <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="sm:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -186,7 +186,7 @@ const LandingPage = () => {
 
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto sm:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
               <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
@@ -298,7 +298,7 @@ const LandingPage = () => {
               <div className="mb-4">
                 <Logo variant="full" height={28} href="/" />
               </div>
-              <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
+              <p className="text-sm text-kimi-muted mb-3">Proof-gated web builds, import checks, guarded automation, and evidence-aligned claims.</p>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
               </ul>

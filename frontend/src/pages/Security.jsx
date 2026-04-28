@@ -20,7 +20,7 @@ export default function Security() {
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Platform security</h2>
           <ul className="list-disc pl-6 space-y-2 text-[#333]">
             <li><strong className="text-[#1A1A1A]">Authentication:</strong> Passwords hashed with bcrypt; JWT for sessions; optional MFA (TOTP). We never return passwords or hashes in API responses.</li>
-            <li><strong className="text-[#1A1A1A]">Secrets:</strong> API keys and webhook secrets are stored securely. We do not expose webhook secrets in list endpoints. Stripe webhooks are verified by signature.</li>
+            <li><strong className="text-[#1A1A1A]">Secrets:</strong> API keys and webhook secrets are stored securely. We do not expose webhook secrets in list endpoints. Braintree webhooks are verified by signature.</li>
             <li><strong className="text-[#1A1A1A]">Rate limiting:</strong> Requests are rate-limited per user and IP to prevent abuse.</li>
             <li><strong className="text-[#1A1A1A]">Security headers:</strong> We send headers such as X-Content-Type-Options, X-Frame-Options, HSTS, Content-Security-Policy, and Referrer-Policy to reduce XSS and related risks.</li>
             <li><strong className="text-[#1A1A1A]">HTTPS:</strong> Use HTTPS in production; we send Strict-Transport-Security so browsers enforce TLS.</li>
@@ -30,8 +30,8 @@ export default function Security() {
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Your code and projects</h2>
           <p>When you build with us or bring existing code:</p>
           <ul className="list-disc pl-6 space-y-2 text-[#333]">
-            <li><strong className="text-[#1A1A1A]">Security scan:</strong> In the Workspace you can run a <strong className="text-[#1A1A1A]">Security scan</strong> on your code. We return a short checklist (e.g. no secrets in client code, auth on API) so you can fix issues before deploy.</li>
-            <li><strong className="text-[#1A1A1A]">Accessibility check:</strong> Run an <strong className="text-[#1A1A1A]">Accessibility check</strong> for labels, contrast, keyboard, and ARIA. Use it for code you build here or code you import.</li>
+            <li><strong className="text-[#1A1A1A]">Security checks:</strong> BIV blocks likely client-exposed secrets, and other production/security gates run in the backend. A comprehensive CORS/auth/tenancy security doctor is still marked partial until proof is added.</li>
+            <li><strong className="text-[#1A1A1A]">Accessibility:</strong> Accessibility checks are on the validator roadmap. WCAG/axe/keyboard/contrast proof is not yet claimable as complete for every project.</li>
             <li><strong className="text-[#1A1A1A]">Validate-and-fix:</strong> Use <strong className="text-[#1A1A1A]">Validate-and-fix</strong> to catch syntax and common errors and get suggested fixes.</li>
           </ul>
           <p className="text-[#333] text-sm">We do not scan or modify your code without you triggering these actions. You own your code and data.</p>

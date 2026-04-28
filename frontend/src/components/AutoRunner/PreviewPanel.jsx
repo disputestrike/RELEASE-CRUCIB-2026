@@ -8,8 +8,39 @@ import ErrorOverlay from '../ErrorOverlay';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 import SandpackErrorBoundary from '../SandpackErrorBoundary';
+import { derivePreviewReadiness } from '../../workspace/workspaceLiveUi';
 import '../SandpackErrorBoundary.css';
 import './PreviewPanel.css';
+
+/**
+ * Iframe and new-tab links must target the **API** origin when `REACT_APP_BACKEND_URL` is set;
+ * a path-only `dev_server_url` (e.g. `/api/preview/.../serve`) otherwise resolves to the
+ * static app host and returns HTML or 404 — blank white preview.
+ */
+function resolveAgentPreviewUrl(url, apiBase) {
+  if (url == null || url === '') return null;
+  if (/^https?:\/\//i.test(String(url))) return String(url);
+  const p = String(url);
+  if (p.startsWith('/') && apiBase && /^https?:\/\//i.test(apiBase)) {
+    const origin = new URL(apiBase).origin;
+    return `${origin}${p}`;
+  }
+  if (p.startsWith('/') && typeof window !== 'undefined' && (!apiBase || apiBase.startsWith('/'))) {
+    return `${window.location.origin}${p}`;
+  }
+  return p;
+}
+
+function wsBaseFromApiBase(apiBase) {
+  if (!apiBase) return '';
+  if (apiBase.startsWith('https://')) return apiBase.replace('https://', 'wss://');
+  if (apiBase.startsWith('http://')) return apiBase.replace('http://', 'ws://');
+  if (apiBase.startsWith('/') && typeof window !== 'undefined') {
+    const p = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${p}://${window.location.host}${apiBase}`;
+  }
+  return apiBase;
+}
 
 export default function PreviewPanel({
   previewUrl,
@@ -23,50 +54,110 @@ export default function PreviewPanel({
   jobId = null,
   token = null,
   apiBase = '',
+  /** Drives re-fetch of /dev-preview when the job or workspace on disk changes (e.g. dist/ lands). */
+  jobStatus = null,
 }) {
   const iframeRef = useRef(null);
   const [devServerUrl, setDevServerUrl] = useState(null);
   const [devPreviewError, setDevPreviewError] = useState(null);
+  const [devPreviewStatus, setDevPreviewStatus] = useState(null);
   const [isBootingDevPreview, setIsBootingDevPreview] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
 
   const hasSandpack = sandpackFiles && Object.keys(sandpackFiles).length > 0;
   const remotePreviewUrl = useMemo(() => previewUrl || devServerUrl || null, [previewUrl, devServerUrl]);
-  const useRemote = Boolean(remotePreviewUrl);
+  const resolvedRemoteUrl = useMemo(
+    () => resolveAgentPreviewUrl(remotePreviewUrl, apiBase),
+    [remotePreviewUrl, apiBase],
+  );
+  const useRemote = Boolean(resolvedRemoteUrl);
 
+  // Single-shot GET never worked: the build often returned 202 (no index.html) once, then dist appears
+  // later. We also must re-run when jobStatus → completed and when filesReadyKey bumps (Sync / steps).
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = null;
+    let attempt = 0;
+    const maxAttempts = 40;
+
     if (previewUrl || !jobId || !token || !apiBase) return undefined;
+
+    const isTerminal = (s) => s === 'failed' || s === 'cancelled' || s === 'blocked';
+
     setIsBootingDevPreview(true);
     setDevPreviewError(null);
-    axios.get(`${apiBase}/jobs/${jobId}/dev-preview`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
+    setDevPreviewStatus(null);
+
+    const scheduleRetry = (delayMs) => {
+      if (cancelled) return;
+      if (isTerminal(jobStatus)) return;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        void doFetch();
+      }, delayMs);
+    };
+
+    const doFetch = async () => {
+      if (cancelled) return;
+      try {
+        const res = await axios.get(`${apiBase}/jobs/${encodeURIComponent(jobId)}/dev-preview`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 20000,
+        });
         if (cancelled) return;
-        setDevServerUrl(res.data?.dev_server_url || null);
-      })
-      .catch((err) => {
+        setDevPreviewStatus(res.data || null);
+        setIsBootingDevPreview(false);
+        const u = res.data?.dev_server_url;
+        if (u) {
+          setDevServerUrl(u);
+          setDevPreviewError(null);
+          return;
+        }
+        setDevServerUrl(null);
+        attempt += 1;
+        if (!isTerminal(jobStatus) && attempt < maxAttempts) {
+          setDevPreviewError(null);
+          scheduleRetry(4000);
+        }
+      } catch (e) {
         if (cancelled) return;
-        const detail = err?.response?.data?.detail || err?.message || 'Unable to start live preview';
-        setDevPreviewError(String(detail));
-      })
-      .finally(() => { if (!cancelled) setIsBootingDevPreview(false); });
-    return () => { cancelled = true; };
-  }, [previewUrl, jobId, token, apiBase, retryTick]);
+        setDevPreviewStatus(e?.response?.data || null);
+        setIsBootingDevPreview(false);
+        setDevServerUrl(null);
+        attempt += 1;
+        if (!isTerminal(jobStatus) && attempt < maxAttempts) {
+          setDevPreviewError(null);
+          scheduleRetry(4000);
+        } else {
+          const detail = e?.response?.data?.detail || e?.message || 'Unable to start live preview';
+          setDevPreviewError(String(detail));
+        }
+      }
+    };
+
+    void doFetch();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [previewUrl, jobId, token, apiBase, retryTick, filesReadyKey, jobStatus]);
 
   useEffect(() => {
-    if (!jobId || !token || !apiBase || !remotePreviewUrl) return undefined;
-    const wsBase = apiBase.replace(/^http/i, 'ws');
+    if (!jobId || !token || !apiBase || !resolvedRemoteUrl) return undefined;
+    const wsBase = wsBaseFromApiBase(apiBase);
     const ws = new WebSocket(`${wsBase}/ws/jobs/${jobId}/preview-watch?token=${encodeURIComponent(token)}`);
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data || '{}');
-        if (data?.type === 'files_changed' && Array.isArray(data.files) && data.files.length && iframeRef.current && remotePreviewUrl) {
-          iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
+        if (data?.type === 'files_changed' && Array.isArray(data.files) && data.files.length && iframeRef.current && resolvedRemoteUrl) {
+          const u = resolvedRemoteUrl.replace(/\/$/, '');
+          iframeRef.current.src = `${u}/?t=${Date.now()}`;
         }
       } catch {}
     };
     return () => { try { ws.close(); } catch {} };
-  }, [jobId, token, apiBase, remotePreviewUrl]);
+  }, [jobId, token, apiBase, resolvedRemoteUrl]);
 
   const statusColor = useRemote
     ? 'var(--state-success)'
@@ -85,8 +176,21 @@ export default function PreviewPanel({
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
-          ? 'Preview'
-          : 'Next up';
+        ? 'Preview'
+        : 'Next up';
+  const readiness = derivePreviewReadiness({
+    previewStatus: status,
+    previewUrl: resolvedRemoteUrl || remotePreviewUrl,
+    hasSandpack,
+    devPreviewStatus,
+    devPreviewError,
+    isBootingDevPreview,
+  });
+  const showBootingOverlay = isBootingDevPreview && !useRemote && !hasSandpack;
+  const overlayMessage = devPreviewError || (showBootingOverlay
+    ? 'Booting a workspace dev server so preview updates without a manual refresh.'
+    : null);
+  const overlayTitle = devPreviewError ? 'Preview issue' : 'Starting live preview';
 
   return (
     <div className="preview-panel">
@@ -103,13 +207,16 @@ export default function PreviewPanel({
                 type="button"
                 className="pp-preview-btn"
                 onClick={() => {
-                  if (iframeRef.current && remotePreviewUrl) iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
+                  if (iframeRef.current && resolvedRemoteUrl) {
+                    const u = resolvedRemoteUrl.replace(/\/$/, '');
+                    iframeRef.current.src = `${u}/?t=${Date.now()}`;
+                  }
                 }}
                 title="Refresh preview"
               >
                 <RefreshCw size={12} />
               </button>
-              <a href={remotePreviewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
+              <a href={resolvedRemoteUrl || remotePreviewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
                 <ExternalLink size={12} />
               </a>
             </>
@@ -118,9 +225,13 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        <div className={`pp-preview-state-strip pp-preview-state-strip--${readiness.severity}`} role="status">
+          <span className="pp-preview-state-label">{readiness.label}</span>
+          <span className="pp-preview-state-detail">{readiness.detail}</span>
+        </div>
         <ErrorOverlay
-          title={isBootingDevPreview ? 'Starting live preview' : 'Preview issue'}
-          message={isBootingDevPreview ? 'Booting a workspace dev server so preview updates without a manual refresh.' : devPreviewError}
+          title={overlayTitle}
+          message={overlayMessage}
           onRetry={jobId && token && apiBase ? () => { setDevServerUrl(null); setDevPreviewError(null); setIsBootingDevPreview(false); setRetryTick((v) => v + 1); } : null}
         />
         {status === 'blocked' && hasSandpack && (
@@ -223,7 +334,7 @@ root.render(<App />);`,
         )}
 
         {useRemote && (
-          <iframe ref={iframeRef} className="pp-preview-iframe" src={remotePreviewUrl} title="Live Preview" />
+          <iframe ref={iframeRef} className="pp-preview-iframe" src={resolvedRemoteUrl || remotePreviewUrl} title="Live Preview" />
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (

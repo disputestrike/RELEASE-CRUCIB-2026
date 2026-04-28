@@ -19,19 +19,34 @@ from fastapi import Depends, HTTPException
 ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / ".env", override=True)
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-from deps import get_optional_user
-from dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
-from dev_stub_llm import detect_build_kind as _stub_detect_build_kind
-from dev_stub_llm import is_real_agent_only
-from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
-from dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
-from llm_router import CEREBRAS_MODEL
-from llm_router import TaskComplexity, classifier
-from llm_router import get_cerebras_key as _get_cerebras_key
-from llm_router import router as llm_router
-from services.events import event_bus
-from services.skills import detect_skill
+try:
+    from ..anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+    from ..deps import get_optional_user
+    from ..dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+    from ..dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+    from ..dev_stub_llm import is_real_agent_only
+    from ..dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
+    from ..dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+    from ..llm_router import CEREBRAS_MODEL
+    from ..llm_router import TaskComplexity, classifier
+    from ..llm_router import get_cerebras_key as _get_cerebras_key
+    from ..llm_router import router as llm_router
+    from .events import event_bus
+    from .skills import detect_skill
+except ImportError:  # compatibility for legacy tests importing `services.*`
+    from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+    from backend.deps import get_optional_user
+    from backend.dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+    from backend.dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+    from backend.dev_stub_llm import is_real_agent_only
+    from backend.dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
+    from backend.dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+    from backend.llm_router import CEREBRAS_MODEL
+    from backend.llm_router import TaskComplexity, classifier
+    from backend.llm_router import get_cerebras_key as _get_cerebras_key
+    from backend.llm_router import router as llm_router
+    from backend.services.events import event_bus
+    from backend.services.skills import detect_skill
 
 logger = logging.getLogger(__name__)
 
@@ -46,24 +61,29 @@ ANTHROPIC_API_KEY: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 # ---------------------------------------------------------------------------
 
 MODEL_CONFIG: Dict[str, Dict[str, str]] = {
-    "code": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "analysis": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "general": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "creative": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "fast": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "code": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "analysis": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "general": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "creative": {"provider": "cerebras", "model": CEREBRAS_MODEL},
+    "fast": {"provider": "cerebras", "model": CEREBRAS_MODEL},
 }
 
 MODEL_FALLBACK_CHAINS: List[Dict[str, str]] = [
+    {"provider": "cerebras", "model": CEREBRAS_MODEL},
     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 
 MODEL_CHAINS: Dict[str, Any] = {
     "auto": None,  # resolved dynamically via MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "haiku": [{"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}],
+    "haiku": [
+        {"provider": "cerebras", "model": CEREBRAS_MODEL},
+        {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    ],
 }
 
 # Vision-capable model chain
 VISION_MODEL_CHAIN: List[Dict[str, str]] = [
+    {"provider": "cerebras", "model": CEREBRAS_MODEL},
     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 
@@ -97,7 +117,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
     "saas-mvp-builder": [
         "saas",
         "subscription",
-        "stripe billing",
+        "braintree billing",
         "mvp with billing",
         "paid app",
         "saas mvp",
@@ -110,7 +130,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
         "shop",
         "sell products",
         "product catalog",
-        "stripe checkout",
+        "braintree checkout",
         "marketplace",
         "shopify",
     ],
@@ -212,6 +232,18 @@ async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Task complexity / type classification
 # ---------------------------------------------------------------------------
+
+
+def _is_product_support_query(prompt: str) -> Optional[str]:
+    """Detect if the user is asking for product support and return a canned response."""
+    p = prompt.lower().strip()
+    support_keywords = [
+        "how do i", "how to", "help with", "support", "password reset",
+        "billing", "subscription", "account", "refund", "contact", "issue"
+    ]
+    if any(kw in p for kw in support_keywords) and len(p) < 100:
+        return "For product support, billing inquiries, or technical assistance, please visit our Help Center at https://help.manus.im or contact our support team directly."
+    return None
 
 
 def _classify_task_complexity(prompt: str) -> str:
@@ -341,6 +373,9 @@ def _provider_has_key(
             return bool(effective_keys.get("anthropic"))
         return bool(os.environ.get("ANTHROPIC_API_KEY"))
     if provider == "cerebras":
+        # Check effective_keys first (workspace-level keys), then env
+        if effective_keys:
+            return bool(effective_keys.get("cerebras") or os.environ.get("CEREBRAS_API_KEY"))
         return bool(os.environ.get("CEREBRAS_API_KEY"))
     return False
 
@@ -362,8 +397,8 @@ def _get_model_chain(
 ) -> List[Dict[str, str]]:
     """Return a list of {provider, model} dicts to try in order.
 
-    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) for fast/simple tasks; Haiku for complex/build tasks.
-    ``force_complex=True`` always selects Haiku (for iterative builds).
+    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) is always primary.
+    Anthropic Haiku is fallback only (used when Cerebras key absent or fails).
     """
     cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
         "CEREBRAS_API_KEY"
@@ -386,7 +421,8 @@ def _get_model_chain(
             complexity = (
                 "complex" if force_complex else _classify_task_complexity(message)
             )
-            if complexity == "fast" and cerebras_key:
+            # Cerebras is always primary; Anthropic is fallback only
+            if cerebras_key:
                 chain = [
                     {"provider": "cerebras", "model": CEREBRAS_MODEL},
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
@@ -394,10 +430,7 @@ def _get_model_chain(
             elif anthropic_key:
                 chain = [
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                    {"provider": "cerebras", "model": CEREBRAS_MODEL},
                 ]
-            elif cerebras_key:
-                chain = [{"provider": "cerebras", "model": CEREBRAS_MODEL}]
             else:
                 chain = MODEL_FALLBACK_CHAINS
     else:
@@ -555,14 +588,14 @@ async def _call_cerebras_direct(
                     "https://api.cerebras.ai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {next_key}"},
                     json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_message},
-                            {"role": "user", "content": message},
-                        ],
-                        "max_tokens": 4096,
-                        "temperature": 0.7,
-                    },
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": message},
+                    ],
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                },
                     timeout=120,
                 )
                 if response2.status_code == 200:
@@ -642,6 +675,7 @@ async def _call_llm_with_fallback(
     content_blocks: Optional[List[Dict[str, Any]]] = None,
     idempotency_key: Optional[str] = None,
     require_runtime_scope: bool = False,
+    intent_schema: Optional[Dict[str, Any]] = None,
 ) -> tuple:
     """Intelligent LLM router with Cerebras primary and Haiku fallback.
 
@@ -649,7 +683,7 @@ async def _call_llm_with_fallback(
     Returns ``(response_text, model_used)`` tuple.
     """
     if require_runtime_scope:
-        from services.runtime.execution_authority import require_runtime_authority
+        from backend.services.runtime.execution_authority import require_runtime_authority
 
         require_runtime_authority("llm_service", detail="model execution")
 
@@ -825,6 +859,7 @@ async def _call_llm_with_fallback(
 __all__ = [
     "get_authenticated_or_api_user",
     "_auto_detect_skill",
+    "_is_product_support_query",
     "_classify_task_complexity",
     "detect_task_type",
     "_provider_has_key",

@@ -160,7 +160,7 @@ async def persist_workflow(wf: dict, *, db=None) -> None:
     """Write workflow through to the `automations` table if available."""
     if db is None:
         try:
-            from db_pg import get_db
+            from backend.db_pg import get_db
             db = await get_db()
         except Exception:
             return
@@ -194,7 +194,7 @@ async def persist_run(run: dict, *, db=None) -> None:
     """Write run through to the `automation_runs` table if available."""
     if db is None:
         try:
-            from db_pg import get_db
+            from backend.db_pg import get_db
             db = await get_db()
         except Exception:
             return
@@ -229,7 +229,7 @@ async def load_workflows_from_db(*, db=None) -> int:
     """Hydrate in-memory _workflows from the automations table.  Returns count."""
     if db is None:
         try:
-            from db_pg import get_db
+            from backend.db_pg import get_db
             db = await get_db()
         except Exception:
             return 0

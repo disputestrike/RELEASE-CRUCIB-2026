@@ -10,6 +10,10 @@ metadata:
 
 # SaaS MVP Builder
 
+> **PAYMENT RULE**: All generated SaaS apps use **Stripe** as the default payment integration
+> (Checkout, Billing, Customer Portal, Webhooks). Never implement Braintree unless the user
+> explicitly names Braintree in their prompt. This is enforced by the Build Integrity Validator.
+
 ## When to Use This Skill
 
 Apply this skill when the user wants to build a subscription-based software product:

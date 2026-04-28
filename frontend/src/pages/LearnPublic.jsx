@@ -17,14 +17,14 @@ const faqsExtra = [
   { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
   { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
   { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
-  { q: 'Can I build mobile apps?', a: 'Yes. We support Expo + App Store submission pack. Describe your mobile app; we build it.' },
+  { q: 'Can I build mobile apps?', a: 'Yes. We support an Expo/React Native track that generates expo-mobile/ source, app metadata, EAS config, screens, scripts, and mobile validator proof. App Store and Google Play submission still require your developer credentials, signing, EAS build, and store metadata validation.' },
   { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
   { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 120-agent swarm, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
 ];
 
 const sections = [
-  { id: 'describe', icon: Code, title: 'Describe what you want', body: 'In the Workspace chat, describe your app in plain English. Use "Build a todo app" or "Create a dashboard with charts". Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL.' },
-  { id: 'plan', icon: Palette, title: 'Plan & approve', body: 'For every build we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
+  { id: 'describe', icon: Code, title: 'Describe what you want', body: 'In the Workspace chat, describe your app in plain English. Attach a screenshot for design-to-code. ZIP/workspace imports are validated by Import Doctor; Git and paste continuation stay conditional until full proof is added.' },
+  { id: 'plan', icon: Palette, title: 'Plan & approve', body: 'For every build we generate a structured plan first — features, components, design decisions, risks, and proof gates. You approve it before code is produced.' },
   { id: 'at', icon: Zap, title: 'Use @ and / in chat', body: 'Type @ to add context (e.g. @App.js). Type / for commands like /fix or /explain. The command palette (Ctrl+K) lists all actions.' },
   { id: 'templates', icon: Palette, title: 'Templates and prompts', body: 'Use the Prompt Library and Templates to start from proven patterns. Save your own prompts for reuse. Patterns save tokens for auth, payments, APIs.' },
   { id: 'agents', icon: Zap, title: 'Create automations', body: 'The same AI that builds your app runs inside your automations. Describe what you want — daily digest, lead finder, inbox summarizer — we create the agent. Use run_agent to call our swarm from your automation.' },

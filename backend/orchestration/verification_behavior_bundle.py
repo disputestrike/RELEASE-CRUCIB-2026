@@ -1,5 +1,5 @@
 """
-verification.behavior — tenancy isolation + Stripe idempotency + RBAC smoke in one bundle.
+verification.behavior — tenancy isolation + payment webhook idempotency + RBAC smoke in one bundle.
 
 Also invoked from verification.security so every Auto-Runner job runs behavioral gates without extra DAG nodes.
 """
@@ -26,7 +26,7 @@ async def verify_behavior_bundle_workspace(workspace_path: str) -> Dict[str, Any
     from .verification_stripe_replay import verify_stripe_replay_workspace
     from .verification_tenancy_smoke import verify_tenancy_smoke_workspace
 
-    stripe = verify_stripe_replay_workspace(workspace_path or "")
+    payment_webhook = verify_stripe_replay_workspace(workspace_path or "")
     tenancy = await verify_tenancy_smoke_workspace(workspace_path or "")
     rbac = await verify_rbac_enforcement_workspace(workspace_path or "")
-    return merge_verification_results([stripe, tenancy, rbac])
+    return merge_verification_results([payment_webhook, tenancy, rbac])

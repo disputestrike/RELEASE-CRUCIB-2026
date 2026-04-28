@@ -36,9 +36,12 @@ def compute_production_readiness(
     if any("tenancy" in t and "migration" in t for t in titles_lower):
         score += min(8, 100 - score)
         reasons.append("tenancy_sql_sketch_in_security_proof")
-    if any("stripe" in t and "idempotency" in t for t in titles_lower):
+    if any(
+        ("payment webhook" in t or "stripe" in t) and "idempotency" in t
+        for t in titles_lower
+    ):
         score += min(8, 100 - score)
-        reasons.append("stripe_idempotency_sql_in_security_proof")
+        reasons.append("payment_webhook_idempotency_sql_in_security_proof")
 
     if any(
         (i.get("payload") or {}).get("check") == "rls_policies_in_migrations"
@@ -60,10 +63,12 @@ def compute_production_readiness(
 
     if any(
         (i.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven"
+        or (i.get("payload") or {}).get("check")
+        == "payment_webhook_idempotency_proven"
         for i in flat
     ):
         score += min(10, 100 - score)
-        reasons.append("stripe_replay_idempotency_proven")
+        reasons.append("payment_webhook_replay_idempotency_proven")
 
     if any(
         (i.get("payload") or {}).get("check")

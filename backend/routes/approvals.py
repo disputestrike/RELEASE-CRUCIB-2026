@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api", tags=["approvals"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
     return get_current_user
 
 
@@ -43,7 +43,7 @@ async def list_approvals(
     user: dict = Depends(_get_auth()),
 ):
     """List approvals for the current user."""
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -69,7 +69,7 @@ async def list_approvals(
 
 @router.get("/approvals/{approval_id}")
 async def get_approval(approval_id: str, user: dict = Depends(_get_auth())):
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
 
@@ -98,7 +98,7 @@ async def deny_action(approval_id: str, user: dict = Depends(_get_auth())):
 
 
 async def _decide(approval_id: str, decision: str, user: dict) -> dict:
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
     now = datetime.now(timezone.utc).isoformat()
@@ -139,7 +139,7 @@ async def _decide(approval_id: str, decision: str, user: dict) -> dict:
 @router.post("/agent-runs/{run_id}/cancel")
 async def cancel_agent_run(run_id: str, user: dict = Depends(_get_auth())):
     """Cancel a running agent loop by run_id."""
-    from services.agent_loop import agent_loop
+    from ..services.agent_loop import agent_loop
     success = await agent_loop.cancel(run_id)
     return {"run_id": run_id, "cancelled": success}
 
@@ -147,7 +147,7 @@ async def cancel_agent_run(run_id: str, user: dict = Depends(_get_auth())):
 @router.post("/agent-runs/{run_id}/pause")
 async def pause_agent_run(run_id: str, user: dict = Depends(_get_auth())):
     """Pause a running agent loop."""
-    from services.agent_loop import agent_loop
+    from ..services.agent_loop import agent_loop
     success = await agent_loop.pause(run_id)
     return {"run_id": run_id, "paused": success}
 
@@ -163,7 +163,7 @@ async def list_automation_runs(
     user: dict = Depends(_get_auth()),
 ):
     """List run history for an automation."""
-    from db_pg import get_db
+    from ..db_pg import get_db
     db = await get_db()
 
     try:
@@ -184,8 +184,8 @@ async def list_automation_runs(
 @router.get("/capability-audit")
 async def capability_audit(user: dict = Depends(_get_auth())):
     """Run capability inspection and return the A-Q audit table."""
-    from db_pg import get_db
-    from services.capability_inspector import capability_inspector
+    from ..db_pg import get_db
+    from ..services.capability_inspector import capability_inspectorr
 
     db = await get_db()
     user_id = user.get("id") or user.get("sub", "anon")
@@ -203,7 +203,7 @@ async def launch_agent_loop(
     user: dict = Depends(_get_auth()),
 ):
     """Launch the agent loop with a specified mode and goal."""
-    from services.agent_loop import agent_loop, ExecutionMode
+    from ..services.agent_loop import agent_loop, ExecutionMode
 
     body = await request.json()
     goal      = body.get("goal", "")

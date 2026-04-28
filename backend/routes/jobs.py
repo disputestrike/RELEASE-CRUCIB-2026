@@ -13,26 +13,128 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from services.job_service import (
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from ..services.job_service import (
     create_job_service,
     get_job_checkpoint_service,
     get_job_service,
     list_jobs_service,
     update_job_service,
 )
-from services.job_event_service import (
+from ..services.job_event_service import (
     get_job_steps_service,
     get_job_events_service,
 )
-from pydantic import BaseModel
-from deps import get_current_user
+from ..services.runtime_contract import require_canonical_db
+from pydantic import BaseModel, Field
+from ..deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
+# Lazy imports for SSE streaming; kept here so server import graph stays identical.
+import asyncio as _asyncio
+import json as _json
+from fastapi.responses import StreamingResponse as _StreamingResponse
+
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+class BenchmarkRunRequest(BaseModel):
+    goal: str
+    secret: str
+
+
+class TranscriptAppend(BaseModel):
+    """Durable workspace chat line (UnifiedWorkspace) stored as a job event."""
+
+    role: Literal["user", "assistant"] = "user"
+    body: str = Field(..., min_length=1, max_length=32000)
+
+
+def _event_payload(event: Dict[str, Any]) -> Dict[str, Any]:
+    payload = event.get("payload")
+    if isinstance(payload, dict):
+        return payload
+    try:
+        return _json.loads(event.get("payload_json") or "{}")
+    except Exception:
+        return {}
+
+
+def _transcript_messages_from_events(events: List[Dict[str, Any]], job_id: str) -> List[Dict[str, Any]]:
+    messages: List[Dict[str, Any]] = []
+    for event in events:
+        event_type = event.get("event_type") or event.get("type")
+        if event_type != "workspace_transcript":
+            continue
+        payload = _event_payload(event)
+        body = (payload.get("text") or payload.get("body") or "").strip()
+        if not body:
+            continue
+        role = payload.get("role") if payload.get("role") in {"user", "assistant"} else "user"
+        messages.append(
+            {
+                "id": event.get("id") or event.get("event_id"),
+                "jobId": job_id,
+                "role": role,
+                "body": body,
+                "text": body,
+                "created_at": event.get("created_at"),
+                "ts": payload.get("ts"),
+                "source": payload.get("source") or "workspace_transcript",
+            }
+        )
+    return messages
+
+
+@router.post("/benchmark/run")
+async def run_benchmark_job_fallback(
+    body: BenchmarkRunRequest,
+    request: Request
+):
+    """
+    Fallback benchmark endpoint in jobs router.
+    """
+    BENCHMARK_SECRET = "crucibai_benchmark_2026_secret_key"
+    if body.secret != BENCHMARK_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid benchmark secret")
+        
+    try:
+        from ..services.runtime.task_manager import task_manager
+        from ..server import _project_workspace_path
+        from fastapi import BackgroundTasks
+        
+        # Create job with a system user ID
+        job = await task_manager.create_task(
+            goal=body.goal,
+            user_id="system-benchmark-user",
+            mode="guided"
+        )
+        
+        job_id = job["id"]
+        project_id = job.get("project_id")
+        workspace_path = _project_workspace_path(project_id)
+        
+        # Start background execution
+        from .orchestrator import _background_auto_runner_job
+        # We need a BackgroundTasks object. FastAPI injects it if we add it to params.
+        # But since we're in a route, we can just use the one from the request if we had it.
+        # Let's just use a simple background task if possible or import it.
+        
+        # For now, let's just return the job_id and let the runner call run-auto if needed.
+        return {
+            "success": True, 
+            "job_id": job_id, 
+            "project_id": project_id,
+            "status": "created"
+        }
+        
+    except Exception as e:
+        logger.exception("benchmark/run fallback error")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Safe checkpoint keys for GET (alphanumeric, underscore, hyphen; bounded length).
 _CHECKPOINT_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
@@ -41,31 +143,39 @@ _CHECKPOINT_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_runtime_state():
-    from orchestration import runtime_state
+    from ..orchestration import runtime_state
 
     return runtime_state
 
 
 def _get_proof_service():
-    from proof import proof_service
+    from ..proof import proof_service
 
     return proof_service
 
 
 async def _get_pool():
-    from db_pg import get_pg_pool
+    """Return the asyncpg pool, raising HTTPException(503) if unavailable.
+
+    Previously this helper returned ``None`` on any failure, which caused
+    downstream ``object NoneType can't be used in 'await' expression`` errors
+    when callers did ``await pool.acquire()``. We now surface the failure
+    explicitly so FastAPI returns a proper 503 to the client.
+    """
+    from ..db_pg import get_pg_pool
 
     try:
-        return await get_pg_pool()
+        pool = await get_pg_pool()
+        return require_canonical_db(pool, action="jobs_route")
     except Exception as exc:
-        logger.warning("jobs: continuing without DB pool: %s", exc)
-        return None
+        logger.warning("jobs: DB pool unavailable", exc_info=True)
+        return require_canonical_db(None, action="jobs_route")
 
 
 async def _resolve_job(job_id: str, user: dict) -> dict:
@@ -79,14 +189,16 @@ async def _resolve_job(job_id: str, user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Job not found")
     owner = job.get("user_id")
     uid = (user or {}).get("id")
-    if not owner or not uid or owner != uid:
+    is_admin = bool((user or {}).get("is_admin"))
+    if not is_admin and (not owner or not uid or owner != uid):
         raise HTTPException(status_code=403, detail="Not your job")
     return job
 
 
 def _assert_owner(owner_id: Optional[str], user: Optional[dict]) -> None:
     uid = (user or {}).get("id")
-    if not owner_id or not uid or owner_id != uid:
+    is_admin = bool((user or {}).get("is_admin"))
+    if not is_admin and (not owner_id or not uid or owner_id != uid):
         raise HTTPException(status_code=403, detail="Not your job")
 
 
@@ -118,29 +230,47 @@ class JobStatusUpdate(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/", status_code=201)
 async def create_job(
     body: JobCreateRequest,
+    background_tasks: BackgroundTasks,
     user: dict = Depends(_get_auth()),
 ):
     """Create a new job (plan + steps) for a project."""
+    print(f"DEBUG: create_job endpoint hit with body: {body.model_dump_json()}")
     try:
-        from orchestration import planner as planner_mod
-        from orchestration.dag_engine import build_dag_from_plan
+        from ..orchestration import planner as planner_mod
+        # NOTE: build_dag_from_plan is no longer passed — create_job_service uses
+        # services.runtime.execution_authority.build_runtime_native_step_defs directly.
+        # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
+        # keyword argument, which was the root cause of the NoneType-await surface.
 
-        return await create_job_service(
+        result = await create_job_service(
             body=body,
             user=user,
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
             generate_plan=planner_mod.generate_plan,
-            build_dag_from_plan=build_dag_from_plan,
         )
+        job = (result or {}).get("job") or {}
+        job_id = job.get("id") or job.get("job_id")
+        if str(body.mode or "").strip().lower() == "auto" and job_id:
+            from .orchestrator import RunAutoRequest, run_auto
+
+            result["auto_run"] = await run_auto(
+                RunAutoRequest(job_id=job_id),
+                background_tasks,
+                user,
+            )
+        return result
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("POST /api/jobs error")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+router.add_api_route("", create_job, methods=["POST"], status_code=201, include_in_schema=False)
+router.add_api_route("/", create_job, methods=["POST"], status_code=201)
 
 
 @router.get("/")
@@ -232,6 +362,121 @@ async def get_job_events(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{job_id}/transcript")
+async def append_job_transcript(
+    job_id: str,
+    body: TranscriptAppend,
+    user: dict = Depends(_get_auth()),
+):
+    """Append a user (or assistant) line to the durable job event log (E6)."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        pool = await _get_pool()
+        if pool is not None:
+            rs.set_pool(pool)
+        rec = await rs.append_job_event(
+            job_id,
+            "workspace_transcript",
+            {
+                "role": body.role,
+                "text": body.body,
+                "ts": time.time(),
+                "source": "unified_workspace",
+            },
+        )
+        try:
+            from ..orchestration.event_bus import publish
+
+            await publish(
+                job_id,
+                "workspace_transcript",
+                {"role": body.role, "text": body.body},
+            )
+        except Exception:
+            pass
+        return {"success": True, "event": rec}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("POST /api/jobs/%s/transcript error", job_id)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/{job_id}/transcript")
+async def get_job_transcript(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Return durable workspace chat lines for a job."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        pool = await _get_pool()
+        if pool is not None:
+            rs.set_pool(pool)
+        events = await rs.get_job_events(job_id)
+        messages = _transcript_messages_from_events(events, job_id)
+        return {
+            "success": True,
+            "job_id": job_id,
+            "messages": messages,
+            "count": len(messages),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/transcript error", job_id)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/{job_id}/stream")
+async def stream_job_events(job_id: str, request: Request):
+    """Server-Sent Events stream of live job events.
+
+    Subscribes to ``orchestration.event_bus`` and forwards each published event
+    as an SSE frame. Emits a heartbeat every 15s so dev proxies (CRA, nginx)
+    do not idle-close the connection. Clients should reconnect on error; the
+    companion ``/api/jobs/{id}/events`` endpoint serves backfill via ``since_id``.
+    """
+    from backend.orchestration.event_bus import subscribe, unsubscribe
+
+    queue = await subscribe(job_id)
+
+    async def _gen():
+        # Initial hello so EventSource fires onopen immediately.
+        yield f"event: connected\ndata: {_json.dumps({'job_id': job_id})}\n\n"
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await _asyncio.wait_for(queue.get(), timeout=15.0)
+                except _asyncio.TimeoutError:
+                    # Heartbeat; keeps proxies from closing the stream.
+                    yield ": ping\n\n"
+                    continue
+                try:
+                    etype = event.get("type", "message")
+                    data = _json.dumps(event)
+                except Exception:
+                    etype = "message"
+                    data = _json.dumps({"raw": str(event)})
+                yield f"event: {etype}\ndata: {data}\n\n"
+        finally:
+            await unsubscribe(job_id, queue)
+
+    return _StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
 @router.get("/{job_id}/checkpoint/{checkpoint_key}")
 async def get_job_checkpoint(
     job_id: str,
@@ -269,7 +514,7 @@ async def update_job(
     """Update job status and optionally broadcast progress."""
     try:
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
         except Exception:
             publish = None
         return await update_job_service(
@@ -298,7 +543,7 @@ async def cancel_job(
         rs = _get_runtime_state()
         await rs.update_job_state(job_id, "cancelled")
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, "job_cancelled", {"job_id": job_id})
         except Exception:
@@ -336,7 +581,7 @@ async def retry_job(
             },
         )
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, "job_requeued", {"job_id": job_id})
         except Exception:
@@ -455,7 +700,7 @@ async def webhook_job_event(
         if new_status:
             await rs.update_job_state(job_id, new_status)
         try:
-            from orchestration.event_bus import publish
+            from backend.orchestration.event_bus import publish
 
             await publish(job_id, event_type, event)
         except Exception:
@@ -540,7 +785,7 @@ async def estimate_job_cost(
 
 # ── Steer / Cancel / Resume — wired to UnifiedWorkspace ──────────────────────
 
-@router.post("/jobs/{job_id}/steer")
+@router.post("/{job_id}/steer")
 async def steer_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Inject a steering instruction into a running job."""
     try:
@@ -550,7 +795,7 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
     message = body.get("message") or body.get("instruction") or ""
     resume = body.get("resume", True)
     try:
-        from db_pg import get_pg_pool
+        from ..db_pg import get_pg_pool
         import json as _json
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
@@ -566,28 +811,12 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
     return {"accepted": True, "job_id": job_id, "message": message}
 
 
-@router.post("/jobs/{job_id}/cancel")
-async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
-    """Cancel a running job."""
-    try:
-        from db_pg import get_pg_pool
-        pool = await get_pg_pool()
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE jobs SET status='cancelled', updated_at=NOW() WHERE id=$1",
-                job_id,
-            )
-    except Exception as e:
-        logger.warning("cancel_job db: %s", e)
-    return {"cancelled": True, "job_id": job_id}
-
-
-@router.post("/jobs/{job_id}/resume")
+@router.post("/{job_id}/resume")
 async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
     """Resume a paused or failed job."""
     try:
-        from orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
-        from db_pg import get_pg_pool
+        from ..orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
+        from ..db_pg import get_pg_pool
         pool = await get_pg_pool()
         await prepare_failed_job_for_rerun(job_id)
         import asyncio

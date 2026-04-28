@@ -81,7 +81,7 @@ class TestCreditConcurrency:
         # Set low credits via DB if possible; otherwise skip if we can't set
         from server import db
         user_id = await _get_user_id_from_headers_async(app_client, headers)
-        if user_id:
+        if user_id and db is not None:
             await db.users.update_one({"id": user_id}, {"$set": {"credit_balance": 10}})
         # Attempt to create project and start build (or trigger plan that costs credits)
         r = await app_client.post(

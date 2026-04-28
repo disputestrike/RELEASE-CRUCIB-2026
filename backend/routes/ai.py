@@ -1,3 +1,4 @@
+
 """
 AI routes — chat, streaming chat, iterative build, image-to-code,
 validate-and-fix, async build, tests/docs generation.
@@ -7,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import inspect
+import json
 import logging
 import os
 import uuid
@@ -15,6 +17,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from ..agents.clarification_agent import ClarificationAgent
+from ..agents.schemas import IntentSchema
+from ..orchestration.runtime_state import runtime_state
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +36,7 @@ async def _maybe_await(value: Any) -> Any:
 
 
 def _get_authenticated_or_api_user():
-    from server import get_authenticated_or_api_user
+    from ..server import get_authenticated_or_api_user
 
     return get_authenticated_or_api_user
 
@@ -43,15 +48,27 @@ def _get_optional_user():
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_db():
-    import server
-
-    return server.db
+    # FIX: server.db doesn't exist as a module-level attribute.
+    # Return a lazy coroutine-safe wrapper so callers can do `db = _get_db()`
+    # and then `if db is not None: await db.x.y(...)` without crashing.
+    # Routes that need an awaited db should use `await _get_pg_db()` directly.
+    try:
+        from ..db_pg import get_db as _gpd
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Can't await here — return None so `if db is not None` guards skip safely.
+            # The credit-tracking and history writes are non-critical; chat still works.
+            return None
+        return loop.run_until_complete(_gpd())
+    except Exception:
+        return None
 
 
 # ── Pydantic Models ───────────────────────────────────────────────────────────
@@ -103,8 +120,7 @@ async def ai_chat(
 ):
     """Multi-model AI chat with auto-selection and fallback on failure."""
     from fastapi import Request as _Req
-    from server import (
-        CHAT_WITH_SEARCH_SYSTEM,
+    from ..server import (
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
         _build_chat_system_prompt_for_request,
@@ -115,6 +131,7 @@ async def ai_chat(
         _fetch_search_context,
         _get_model_chain,
         _is_conversational_message,
+        _is_product_support_query,
         _merge_prior_turns_into_message,
         _needs_live_data,
         _speed_from_plan,
@@ -142,18 +159,45 @@ async def ai_chat(
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
         message = (data.message or "").strip()
+        support_response = _is_product_support_query(message)
+        if support_response:
+            return {
+                "response": support_response,
+                "message": support_response,
+                "session_id": data.session_id or str(uuid.uuid4()),
+                "model_used": "canned-support",
+                "tokens_used": 0,
+            }
+
+        # ClarificationAgent is intentionally NOT used in the chat endpoint.
+        # The chat endpoint is for conversational AI responses only.
+        # Build requests are routed to the workspace by the frontend before reaching here.
+        # The orchestrator/build pipeline has its own clarification logic.
+        intent_schema = None
+
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
-        system_message = (
-            data.system_message
-            or await _maybe_await(
-                _build_chat_system_prompt_for_request(message, user_id_for_skill)
-            )
+        # Gold prompt (date, identity, voice) is always the base. Client `system_message`
+        # (e.g. Dashboard Home) is merged as surface guidance only.
+        base_prompt = await _maybe_await(
+            _build_chat_system_prompt_for_request(message, user_id_for_skill)
         )
-        if not data.system_message and _needs_live_data(message):
+        if data.system_message and str(data.system_message).strip():
+            system_message = (
+                base_prompt
+                + "\n\n--- Surface guidance (Home, embed, or client) ---\n"
+                + str(data.system_message).strip()
+            )
+        else:
+            system_message = base_prompt
+        if _needs_live_data(message):
             search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
-                system_message = CHAT_WITH_SEARCH_SYSTEM
+                system_message = (
+                    system_message
+                    + "\n\nThe user message may include a \"Live search results\" block. "
+                    "Use it for time-sensitive or disputed real-world facts; keep voice per rules above."
+                )
                 message_for_llm = (
                     f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
                 )
@@ -178,10 +222,10 @@ async def ai_chat(
                     else att_data
                 )
                 pdf_text = _extract_pdf_text_from_b64(b64)
-                text_parts.append(f"[Contents of PDF '{att_name}']:\n{pdf_text}")
+                text_parts.append(f"[Contents of PDF '{att_name}']: {pdf_text}")
             else:
                 if att_data:
-                    text_parts.append(f"[Attachment '{att_name}']:\n{att_data}")
+                    text_parts.append(f"[Attachment '{att_name}']: {att_data}")
         combined_text = "\n\n".join(text_parts).strip() or "No message."
         content_blocks = None
         if image_blocks:
@@ -234,7 +278,7 @@ async def ai_chat(
         available_credits = user.get("credit_balance", 0) if user else 0
         speed_selector = _speed_from_plan(user_tier)
         if _is_conversational_message(message):
-            from llm_router import HAIKU_MODEL
+            from ..llm_router import HAIKU_MODEL
 
             haiku_key = (effective or {}).get("anthropic") or os.environ.get(
                 "ANTHROPIC_API_KEY"
@@ -251,9 +295,9 @@ async def ai_chat(
             user_id=user["id"] if user else None,
             user_tier=user_tier,
             speed_selector=speed_selector,
-            available_credits=available_credits,
+            intent_schema=intent_schema if intent_schema and not intent_schema.required_tools else None
         )
-        tokens_used = len(data.message.split()) * 2 + len(response.split()) * 2
+        tokens_used = response.get("tokens_used", 0)
         if db is not None:
             await db.chat_history.insert_one(
                 {
@@ -261,7 +305,7 @@ async def ai_chat(
                     "session_id": session_id,
                     "user_id": user["id"] if user else None,
                     "message": data.message,
-                    "response": response,
+                    "response": response["text"],
                     "model": model_used,
                     "tokens_used": tokens_used,
                     "created_at": __import__("datetime")
@@ -273,13 +317,12 @@ async def ai_chat(
             cred = _user_credits(user)
             credit_deduct = min(_tokens_to_credits(tokens_used), cred)
             if credit_deduct > 0 and db is not None:
-                await _ensure_credit_balance(user["id"])
                 await db.users.update_one(
                     {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
                 )
         return {
-            "response": response,
-            "message": response,
+            "response": response["text"],
+            "message": response["text"],
             "session_id": session_id,
             "model_used": model_used,
             "tokens_used": tokens_used,
@@ -287,44 +330,301 @@ async def ai_chat(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"AI chat error: {e}")
+        logger.exception("Error in ai_chat")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/ai/chat/history/{session_id}")
-async def ai_chat_history(session_id: str, user: dict = Depends(_get_auth())):
-    """Get chat history for a session."""
+@router.post("/ai/image_to_code")
+async def ai_image_to_code(
+    image: UploadFile = File(...),
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Image to code API. Convert a screenshot to code."""
+    from ..server import (
+        MIN_CREDITS_FOR_IMAGE_TO_CODE,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
+    )
+
     db = _get_db()
-    if db is None:
-        return {"history": []}
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_IMAGE_TO_CODE:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_IMAGE_TO_CODE} to run image-to-code. Buy more in Credit Center.",
+            )
     try:
-        cursor = db.chat_history.find(
-            {"session_id": session_id, "user_id": user["id"]}
-        ).sort("created_at", 1)
-        history = await cursor.to_list(100)
-        for h in history:
-            h.pop("_id", None)
-        return {"history": history}
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
+        image_data = await image.read()
+        base64_image = base64.b64encode(image_data).decode("utf-8")
+        response, model_used = await _call_llm_with_fallback(
+            message="Convert this image to code.",
+            system_message="You are an expert web developer. You are given an image of a web page, and you have to return the HTML and CSS code to replicate that web page. You should also include any necessary Javascript. Return only the code, no explanations.",
+            session_id=str(uuid.uuid4()),
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            content_blocks=[
+                {"type": "text", "text": "Convert this image to code."},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}},
+            ],
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.image_to_code_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"] if user else None,
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {"code": response["text"], "model_used": model_used, "tokens_used": tokens_used}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.warning(f"chat history error: {e}")
-        return {"history": []}
+        logger.exception("Error in ai_image_to_code")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/ai/chat/stream")
-async def ai_chat_stream(
+@router.post("/ai/validate_and_fix")
+async def ai_validate_and_fix(
+    data: ValidateAndFixBody,
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Validate and fix code API."""
+    from ..server import (
+        MIN_CREDITS_FOR_VALIDATE_AND_FIX,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
+    )
+
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_VALIDATE_AND_FIX:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_VALIDATE_AND_FIX} to run validate-and-fix. Buy more in Credit Center.",
+            )
+    try:
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
+        system_message = f"You are an expert {data.language} developer. You are given a code snippet and you have to validate it and fix any errors. Return only the fixed code, no explanations."
+        response, model_used = await _call_llm_with_fallback(
+            message=data.code,
+            system_message=system_message,
+            session_id=str(uuid.uuid4()),
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.validate_and_fix_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"] if user else None,
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {"code": response["text"], "model_used": model_used, "tokens_used": tokens_used}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error in ai_validate_and_fix")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/generate_tests")
+async def ai_generate_tests(
+    data: AIGenerateTestRequest,
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Generate tests for code API."""
+    from ..server import (
+        MIN_CREDITS_FOR_GENERATE_TESTS,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
+    )
+
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_GENERATE_TESTS:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_GENERATE_TESTS} to generate tests. Buy more in Credit Center.",
+            )
+    try:
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
+        system_message = f"You are an expert {data.language} developer. You are given a code snippet and you have to generate {data.test_type} tests for it. Return only the test code, no explanations."
+        if data.framework:
+            system_message += f" Use the {data.framework} framework."
+        response, model_used = await _call_llm_with_fallback(
+            message=data.code,
+            system_message=system_message,
+            session_id=str(uuid.uuid4()),
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.generate_tests_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"] if user else None,
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {"code": response["text"], "model_used": model_used, "tokens_used": tokens_used}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error in ai_generate_tests")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/generate_docs")
+async def ai_generate_docs(
+    data: AIDocsGenerateRequest,
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Generate documentation for a project API."""
+    from ..server import (
+        MIN_CREDITS_FOR_GENERATE_DOCS,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
+    )
+
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_GENERATE_DOCS:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_GENERATE_DOCS} to generate documentation. Buy more in Credit Center.",
+            )
+    try:
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
+        system_message = "You are an expert technical writer. You are given a project description and a list of features, and you have to generate comprehensive documentation for the project. Return only the documentation, no explanations."
+        message_content = f"Project Name: {data.project_name}\n"
+        if data.description:
+            message_content += f"Description: {data.description}\n"
+        if data.features:
+            message_content += f"Features: {', '.join(data.features)}\n"
+
+        response, model_used = await _call_llm_with_fallback(
+            message=message_content,
+            system_message=system_message,
+            session_id=str(uuid.uuid4()),
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.generate_docs_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"] if user else None,
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {"docs": response["text"], "model_used": model_used, "tokens_used": tokens_used}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error in ai_generate_docs")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/streaming_chat")
+async def ai_streaming_chat(
     data: ChatMessage,
     user: dict = Depends(_get_authenticated_or_api_user()),
 ):
-    """Stream AI response in chunks (real-time code streaming)."""
-    import json as _json
-
-    from server import (
+    """Multi-model AI streaming chat with auto-selection and fallback on failure."""
+    from ..server import (
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
-        _call_llm_with_fallback,
+        _build_chat_system_prompt_for_request,
+        _call_llm_with_fallback_streaming,
         _effective_api_keys,
+        _ensure_credit_balance,
+        _extract_pdf_text_from_b64,
+        _fetch_search_context,
         _get_model_chain,
+        _is_conversational_message,
+        _is_product_support_query,
         _merge_prior_turns_into_message,
+        _needs_live_data,
+        _speed_from_plan,
+        _tokens_to_credits,
         _user_credits,
         chat_llm_available,
         get_workspace_api_keys,
@@ -332,27 +632,13 @@ async def ai_chat_stream(
         screen_user_content,
     )
 
-    if (
-        user
-        and not user.get("public_api")
-        and _user_credits(user) < MIN_CREDITS_FOR_LLM
-    ):
-        raise HTTPException(
-            status_code=402,
-            detail=f"Insufficient credits. Need at least {MIN_CREDITS_FOR_LLM}. Buy more in Credit Center.",
-        )
-    _stream_block = screen_user_content((data.message or "").strip())
-    if _stream_block:
-        raise HTTPException(status_code=400, detail=_stream_block)
-    user_keys_stream = await get_workspace_api_keys(user)
-    effective_stream = _effective_api_keys(user_keys_stream)
-    if is_real_agent_only() and not chat_llm_available(effective_stream):
-        raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
-
-    async def generate():
-        try:
-            combined = _merge_prior_turns_into_message(
-                (data.message or "").strip(), data.prior_turns
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_LLM:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_LLM} to run a build. Buy more in Credit Center.",
             )
             model_chain = _get_model_chain(
                 data.model or "auto", combined, effective_keys=effective_stream
@@ -529,156 +815,333 @@ async def validate_and_fix(
     try:
         user_keys = await get_workspace_api_keys(user)
         effective = _effective_api_keys(user_keys)
+        session_id = data.session_id or str(uuid.uuid4())
+        message = (data.message or "").strip()
+        support_response = _is_product_support_query(message)
+        if support_response:
+            async def generate_canned_response():
+                yield json.dumps({"response": support_response, "message": support_response, "session_id": data.session_id or str(uuid.uuid4()), "model_used": "canned-support", "tokens_used": 0}) + "\n"
+            return StreamingResponse(generate_canned_response(), media_type="application/json")
+
+        # ClarificationAgent is intentionally NOT used in the streaming chat endpoint.
+        # The chat endpoint is for conversational AI responses only.
+        # Build requests are routed to the workspace by the frontend before reaching here.
+        intent_schema = None
+
+        message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
+        user_id_for_skill = (user or {}).get("id") if user else None
+        base_prompt = await _maybe_await(
+            _build_chat_system_prompt_for_request(message, user_id_for_skill)
+        )
+        if data.system_message and str(data.system_message).strip():
+            system_message = (
+                base_prompt
+                + "\n\n--- Surface guidance (Home, embed, or client) ---\n"
+                + str(data.system_message).strip()
+            )
+        else:
+            system_message = base_prompt
+        if _needs_live_data(message):
+            search_ctx = await _maybe_await(_fetch_search_context(message))
+            if search_ctx:
+                system_message = (
+                    system_message
+                    + "\n\nThe user message may include a \"Live search results\" block. "
+                    "Use it for time-sensitive or disputed real-world facts; keep voice per rules above."
+                )
+                message_for_llm = (
+                    f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
+                )
+        text_parts = [message_for_llm] if message_for_llm else []
+        image_blocks = []
+        for att in data.attachments or []:
+            att_type = (att.get("type") or "text").lower()
+            att_data = att.get("data") or ""
+            att_name = att.get("name") or ""
+            if att_type == "image":
+                url = (
+                    att_data
+                    if isinstance(att_data, str)
+                    and (att_data.startswith("data:") or att_data.startswith("http"))
+                    else f"data:image/png;base64,{att_data}"
+                )
+                image_blocks.append({"type": "image_url", "image_url": {"url": url}})
+            elif att_type == "pdf" and att_data:
+                b64 = (
+                    att_data.split(",", 1)[-1]
+                    if "base64," in str(att_data)
+                    else att_data
+                )
+                pdf_text = _extract_pdf_text_from_b64(b64)
+                text_parts.append(f"[Contents of PDF '{att_name}']: {pdf_text}")
+            else:
+                if att_data:
+                    text_parts.append(f"[Attachment '{att_name}']: {att_data}")
+        combined_text = "\n\n".join(text_parts).strip() or "No message."
+        content_blocks = None
+        if image_blocks:
+            content_blocks = [{"type": "text", "text": combined_text}] + image_blocks
+        _content_block = screen_user_content(combined_text)
+        if _content_block:
+            raise HTTPException(status_code=400, detail=_content_block)
+        if is_real_agent_only() and not chat_llm_available(effective):
+            raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
+        if stub_build_enabled():
+            async def generate_stub_response():
+                response = stub_multifile_markdown(
+                    data.message or "", _stub_detect_build_kind(data.message or "")
+                )
+                session_id = data.session_id or str(uuid.uuid4())
+                tokens_used = min(200, max(40, len(combined_text) // 4))
+                if db is not None:
+                    await db.chat_history.insert_one(
+                        {
+                            "id": str(uuid.uuid4()),
+                            "session_id": session_id,
+                            "user_id": user["id"] if user else None,
+                            "message": data.message,
+                            "response": response,
+                            "model": "dev-stub",
+                            "tokens_used": tokens_used,
+                            "created_at": __import__("datetime")
+                            .datetime.now(__import__("datetime").timezone.utc)
+                            .isoformat(),
+                        }
+                    )
+                if user and not user.get("public_api"):
+                    cred = _user_credits(user)
+                    credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+                    if credit_deduct > 0 and db is not None:
+                        await _ensure_credit_balance(user["id"])
+                        await db.users.update_one(
+                            {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                        )
+                yield json.dumps({
+                    "response": response,
+                    "message": response,
+                    "session_id": session_id,
+                    "model_used": "dev-stub",
+                    "tokens_used": tokens_used,
+                }) + "\n"
+            return StreamingResponse(generate_stub_response(), media_type="application/json")
+
         model_chain = _get_model_chain(
-            "auto", data.code[:500], effective_keys=effective
+            data.model or "auto", combined_text, effective_keys=effective
         )
-        validate_prompt = f"Review this {data.language or 'javascript'} code. List any syntax errors, runtime errors, or obvious bugs. Reply with a short list (or 'No issues found').\n\n```\n{data.code[:8000]}\n```"
-        validation_result, _ = await _call_llm_with_fallback(
-            message=validate_prompt,
-            system_message="You are a code reviewer. Reply only with a concise list of issues or 'No issues found'.",
-            session_id=str(uuid.uuid4()),
-            model_chain=model_chain,
-            api_keys=effective,
-        )
-        if (
-            "no issues" in validation_result.lower()
-            or "no issue" in validation_result.lower()
-        ):
-            return {
-                "fixed_code": data.code,
-                "issues_found": [],
-                "valid": True,
-                "message": "No issues found.",
-            }
-        fix_prompt = f"Fix the following code. Issues reported: {validation_result[:1000]}\n\nReturn ONLY the complete fixed code, no markdown fences or explanation.\n\n```\n{data.code[:8000]}\n```"
-        fixed, model_used = await _call_llm_with_fallback(
-            message=fix_prompt,
-            system_message="You output only valid code. No markdown, no commentary.",
-            session_id=str(uuid.uuid4()),
-            model_chain=model_chain,
-            api_keys=effective,
-        )
-        fixed = (
-            fixed.strip()
-            .removeprefix("```jsx")
-            .removeprefix("```js")
-            .removeprefix("```")
-            .removesuffix("```")
-            .strip()
-        )
-        return {
-            "fixed_code": fixed or data.code,
-            "issues_found": [validation_result[:500]],
-            "valid": False,
-            "model_used": model_used,
-        }
+        user_tier = user.get("plan", "free") if user else "free"
+        available_credits = user.get("credit_balance", 0) if user else 0
+        speed_selector = _speed_from_plan(user_tier)
+        if _is_conversational_message(message):
+            from ..llm_router import HAIKU_MODEL
+
+            haiku_key = (effective or {}).get("anthropic") or os.environ.get(
+                "ANTHROPIC_API_KEY"
+            )
+            if haiku_key:
+                model_chain = [("haiku", HAIKU_MODEL, "anthropic")]
+
+        async def generate_llm_response():
+            full_response = ""
+            tokens_used = 0
+            async for chunk, model_used_chunk, tokens_used_chunk in _call_llm_with_fallback_streaming(
+                message=combined_text,
+                system_message=system_message,
+                session_id=session_id,
+                model_chain=model_chain,
+                api_keys=effective,
+                content_blocks=content_blocks,
+                user_id=user["id"] if user else None,
+                user_tier=user_tier,
+                speed_selector=speed_selector,
+                intent_schema=intent_schema if intent_schema and not intent_schema.required_tools else None
+            ):
+                full_response += chunk
+                tokens_used += tokens_used_chunk
+                yield json.dumps({"response": chunk, "message": chunk, "session_id": session_id, "model_used": model_used_chunk, "tokens_used": tokens_used_chunk}) + "\n"
+
+            if db is not None:
+                await db.chat_history.insert_one(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "session_id": session_id,
+                        "user_id": user["id"] if user else None,
+                        "message": data.message,
+                        "response": full_response,
+                        "model": model_used_chunk, # model_used_chunk from the last chunk
+                        "tokens_used": tokens_used,
+                        "created_at": __import__("datetime")
+                        .datetime.now(__import__("datetime").timezone.utc)
+                        .isoformat(),
+                    }
+                )
+            if user and not user.get("public_api"):
+                cred = _user_credits(user)
+                credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+                if credit_deduct > 0 and db is not None:
+                    await db.users.update_one(
+                        {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                    )
+
+        return StreamingResponse(generate_llm_response(), media_type="application/json")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Validate-and-fix error: {str(e)}")
+        logger.exception("Error in ai_streaming_chat")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/ai/build/async")
-async def ai_build_async(data: ChatMessage, user: dict = Depends(_get_auth())):
-    """
-    Async iterative build — infers the appropriate build target from the goal.
-    Returns job_id immediately. Poll GET /api/jobs/{job_id} for progress and results.
-    
-    If the goal is ambiguous, returns clarification options instead of job_id.
-    """
-    from server import MIN_CREDITS_FOR_LLM, _user_credits
-    from orchestration.build_target_inference import infer_build_target, ask_for_build_target
+@router.post("/ai/iterative_build")
+async def ai_iterative_build(
+    data: ChatMessage,
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Iterative build API. Build a project iteratively."""
+    from ..server import (
+        MIN_CREDITS_FOR_ITERATIVE_BUILD,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
+    )
 
-    if (
-        user
-        and not user.get("public_api")
-        and _user_credits(user) < MIN_CREDITS_FOR_LLM
-    ):
-        raise HTTPException(status_code=402, detail="Insufficient credits.")
-    
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_ITERATIVE_BUILD:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_ITERATIVE_BUILD} to run an iterative build. Buy more in Credit Center.",
+            )
     try:
-        goal = (data.message or "").strip()
-        if not goal:
-            raise HTTPException(status_code=400, detail="Goal/prompt is required.")
-        
-        # Step 1: Infer build target from goal
-        inferred_target, candidates, reasoning = infer_build_target(goal)
-        
-        # Step 2: If ambiguous, ask user to clarify instead of defaulting
-        if not inferred_target and not candidates:
-            # No inference possible — show all options
-            clarification = ask_for_build_target(goal)
-            return {
-                "status": "clarification_needed",
-                "message": clarification["question"],
-                "options": clarification["options"],
-                "reasoning": clarification["reasoning"],
-            }
-        
-        # Step 3: If multiple candidates, ask user to choose
-        if not inferred_target and candidates:
-            clarification = ask_for_build_target(goal)
-            return {
-                "status": "clarification_needed",
-                "message": clarification["question"],
-                "candidates": candidates,
-                "options": clarification["options"],
-                "reasoning": clarification["reasoning"],
-            }
-        
-        # Step 4: We have a confident inference — proceed with build
-        from integrations.queue import enqueue_job
-        
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
-        job_id = await enqueue_job(
-            "iterative_build",
-            {
-                "prompt": goal,
-                "build_target": inferred_target,  # Use inferred target instead of build_kind
-                "user_id": user["id"] if user else None,
-                "session_id": session_id,
-            },
+        message = (data.message or "").strip()
+        system_message = (
+            data.system_message
+            or "You are an expert software engineer. You are given a task and you have to complete it iteratively. Provide the next step to complete the task."
         )
+        response, model_used = await _call_llm_with_fallback(
+            message=message,
+            system_message=system_message,
+            session_id=session_id,
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.iterative_build_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "user_id": user["id"] if user else None,
+                    "message": data.message,
+                    "response": response["text"],
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
         return {
-            "job_id": job_id,
+            "response": response["text"],
+            "message": response["text"],
             "session_id": session_id,
-            "build_target": inferred_target,
-            "build_target_label": f"Building {inferred_target}",
-            "status": "queued",
-            "poll_url": f"/api/jobs/{job_id}",
-            "reasoning": reasoning,
+            "model_used": model_used,
+            "tokens_used": tokens_used,
         }
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error in ai_iterative_build")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/ai/tests/generate")
-async def ai_tests_generate(body: AIGenerateTestRequest):
-    """Generate unit or integration tests for given code."""
-    from ai_features import test_generator
-
-    if (body.test_type or "unit").lower() == "unit":
-        result = test_generator.generate_unit_tests(
-            body.code, body.language, body.framework
-        )
-    else:
-        result = test_generator.generate_integration_tests(
-            body.code, body.language, body.framework
-        )
-    return {
-        "code": result.code,
-        "description": result.description,
-        "test_type": result.test_type,
-    }
-
-
-@router.post("/ai/docs/generate")
-async def ai_docs_generate(body: AIDocsGenerateRequest):
-    """Generate README/docs for a project."""
-    from ai_features import documentation_generator
-
-    readme = documentation_generator.generate_readme(
-        body.project_name, body.description, body.features
+@router.post("/ai/async_build")
+async def ai_async_build(
+    data: ChatMessage,
+    user: dict = Depends(_get_authenticated_or_api_user()),
+):
+    """Async build API. Build a project asynchronously."""
+    from ..server import (
+        MIN_CREDITS_FOR_ASYNC_BUILD,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+        get_workspace_api_keys,
     )
-    return {"status": "success", "readme": readme}
+
+    db = _get_db()
+    if user is not None and not user.get("public_api"):
+        credits = _user_credits(user)
+        if credits < MIN_CREDITS_FOR_ASYNC_BUILD:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits. You have {credits}. Need at least {MIN_CREDITS_FOR_ASYNC_BUILD} to run an async build. Buy more in Credit Center.",
+            )
+    try:
+        user_keys = await get_workspace_api_keys(user)
+        effective = _effective_api_keys(user_keys)
+        session_id = data.session_id or str(uuid.uuid4())
+        message = (data.message or "").strip()
+        system_message = (
+            data.system_message
+            or "You are an expert software engineer. You are given a task and you have to complete it asynchronously. Provide the plan to complete the task."
+        )
+        response, model_used = await _call_llm_with_fallback(
+            message=message,
+            system_message=system_message,
+            session_id=session_id,
+            model_chain=[("gpt4o", "gpt-4o", "openai")],
+            api_keys=effective,
+            user_id=user["id"] if user else None,
+        )
+        tokens_used = response.get("tokens_used", 0)
+        if db is not None:
+            await db.async_build_history.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "user_id": user["id"] if user else None,
+                    "message": data.message,
+                    "response": response["text"],
+                    "model": model_used,
+                    "tokens_used": tokens_used,
+                    "created_at": __import__("datetime")
+                    .datetime.now(__import__("datetime").timezone.utc)
+                    .isoformat(),
+                }
+            )
+        if user and not user.get("public_api"):
+            cred = _user_credits(user)
+            credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+            if credit_deduct > 0 and db is not None:
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {
+            "response": response["text"],
+            "message": response["text"],
+            "session_id": session_id,
+            "model_used": model_used,
+            "tokens_used": tokens_used,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error in ai_async_build")
+        raise HTTPException(status_code=500, detail=str(e))

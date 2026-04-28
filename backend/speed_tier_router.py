@@ -95,7 +95,7 @@ class SpeedTierRouter:
     
     @staticmethod
     def should_use_full_swarm(speed_tier: str) -> bool:
-        """Check if this speed tier should use all 123 agents (max only)"""
+        """Check if this speed tier should use all 374 Agents (max only)"""
         config = SpeedTierRouter.SPEED_CONFIGS.get(speed_tier, {})
         return config.get("all_agents", False)
     

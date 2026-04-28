@@ -9,12 +9,12 @@ const outcomeSections = [
   {
     icon: Code2,
     title: 'Build',
-    desc: 'Describe what you want in plain language. Web apps, mobile apps, dashboards, SaaS — we build them all. Plan-first flow shows the structure before we code. Attach a screenshot for design-to-code. Import existing code via paste, ZIP, or Git URL. Voice input supported. Iterate in chat: "add dark mode", "make it responsive" — we update the code instantly.',
+    desc: 'Describe what you want in plain language. Web apps, dashboards, SaaS, landing pages, backend/API projects, and Expo mobile starters are built through a plan-first flow that shows the structure before code. Attach a screenshot for design-to-code. ZIP/workspace imports are checked by Import Doctor; Git/paste continuation still needs end-to-end proof before it is marketed as universal. Mobile outputs are validator-gated Expo/React Native artifacts; app store submission still requires your developer credentials and EAS/store proof.',
   },
   {
     icon: Bot,
     title: 'Agents & Automation',
-    desc: 'The same AI that builds your app runs inside your automations. Describe an automation in plain language — we create the agent (schedule or webhook, with steps). Use run_agent to call our build swarm from your automation. Pre-built templates: daily digest, lead finder, inbox summarizer, status checker. Prompt-to-automation: describe it, we build it.',
+    desc: 'Automations can call the build system through the guarded run_agent bridge. The bridge is tested for recursion depth, cycle detection, job budget, prompt size, and internal-token enforcement. Schedules, webhooks, and templates remain configuration-dependent.',
   },
   {
     icon: Zap,
@@ -24,17 +24,17 @@ const outcomeSections = [
   {
     icon: Download,
     title: 'Deploy & Export',
-    desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. For mobile: Expo (React Native) projects plus App Store and Google Play submission pack. You own all the code. Your automations are running. You\'re live.',
+    desc: 'Export to ZIP or push to GitHub. Deployable web projects include build scripts and deployment guidance, and one-click deployment is only promised where the configured target is available and the validator passes. You own the code and the proof bundle travels with it.',
   },
   {
     icon: Shield,
     title: 'Security & Quality',
-    desc: 'Security scan and accessibility check on every project. Quality score (0–100) per build. 188 tests passing. Security-first. GDPR and CCPA compliant. We build CrucibAI using CrucibAI — we dogfood our own platform.',
+    desc: 'Security checks, preview gates, build integrity validation, and Build Integrity score (0-100) are enforced per build profile. Claims must map to artifacts: tests, proof files, screenshots, build output, and validator results. Accessibility is part of the validator roadmap and must be shown as proof before it is treated as complete.',
   },
   {
     icon: Keyboard,
     title: 'Power Users',
-    desc: 'IDE extensions for VS Code, JetBrains, Sublime, and Vim. Command palette (Ctrl+K), shortcuts, and quick actions. Templates, patterns, and prompt library for fast starts. API access for prompt-to-plan and prompt-to-code. Token usage tracking and add-ons when you need more.',
+    desc: 'Command palette (Ctrl+K), shortcuts, quick actions, templates, patterns, and prompt library for fast starts. API access for prompt-to-plan and prompt-to-code where configured. Token usage tracking and add-ons when you need more. IDE extensions are not claimed unless a configured extension integration is present.',
   },
 ];
 
@@ -56,10 +56,10 @@ export default function Features() {
           <span className="flex items-center gap-2 text-sm text-kimi-muted">
             <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> 120-agent swarm
           </span>
-          <span className="text-sm text-kimi-muted">99.2% success</span>
+          <span className="text-sm text-kimi-muted">Validator-gated delivery</span>
           <span className="text-sm text-kimi-muted">Full transparency</span>
-          <span className="text-sm text-kimi-muted">Web + mobile + agents</span>
-          <span className="text-sm font-medium text-kimi-text">Not promises. Measured.</span>
+          <span className="text-sm text-kimi-muted">Web + Expo mobile + agents</span>
+          <span className="text-sm font-medium text-kimi-text">Artifacts first.</span>
         </motion.div>
         <div className="space-y-8">
           {outcomeSections.map((f, i) => (
