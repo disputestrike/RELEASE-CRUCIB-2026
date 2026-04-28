@@ -46,6 +46,47 @@ function pct(value) {
   return `${Math.round(n * 100)}%`;
 }
 
+/** Coerce heterogeneous API list items to display text — never render a plain object in JSX (#31). */
+function simDisplayLine(raw) {
+  if (raw == null) return '';
+  if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+    return String(raw);
+  }
+  if (typeof raw === 'object') {
+    return (
+      raw.claim_text ||
+      raw.issue ||
+      raw.detail ||
+      raw.text ||
+      raw.label ||
+      raw.description ||
+      (raw.supports_or_refutes && (raw.claim_text || raw.evidence_id)
+        ? `${raw.supports_or_refutes}: ${raw.claim_text || raw.evidence_id}`
+        : null) ||
+      JSON.stringify(raw)
+    );
+  }
+  return String(raw);
+}
+
+/** Stable React key when list items may be objects (keys must not be [object Object]). */
+function simLineKey(prefix, raw, idx) {
+  const idPart =
+    raw != null && typeof raw === 'object' && typeof raw.id === 'string' && raw.id ? raw.id : null;
+  return idPart ? `${prefix}-${idPart}` : `${prefix}-${idx}-${simDisplayLine(raw).slice(0, 64)}`;
+}
+
+function stringifyAside(raw) {
+  if (raw == null) return '';
+  if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+    return String(raw);
+  }
+  if (typeof raw === 'object') {
+    return simDisplayLine(raw);
+  }
+  return String(raw);
+}
+
 async function readJsonResponse(response, label) {
   const contentType = response.headers.get('content-type') || '';
   const body = await response.text();
@@ -487,7 +528,7 @@ export default function WhatIfPage() {
 
       {result && (
         <>
-          <Panel title="Auto-Detected Scenario" icon={Brain} aside={result.engine}>
+          <Panel title="Auto-Detected Scenario" icon={Brain} aside={stringifyAside(result.engine)}>
             <div className="simulation-grid four">
               <div><span>Domain</span><strong>{classification.domain}</strong></div>
               <div><span>Scenario type</span><strong>{String(classification.scenario_type || '').replaceAll('_', ' ')}</strong></div>
@@ -497,13 +538,15 @@ export default function WhatIfPage() {
             <p className="simulation-interpretation">{classification.interpretation}</p>
             {Array.isArray(classification.required_evidence) && (
               <div className="simulation-chips">
-                {classification.required_evidence.map((item) => <span key={item}>{item}</span>)}
+                {classification.required_evidence.map((item, idx) => (
+                  <span key={simLineKey('req', item, idx)}>{simDisplayLine(item)}</span>
+                ))}
               </div>
             )}
           </Panel>
 
           {finalVerdict.verdict && (
-            <Panel title="Final Verdict" icon={CheckCircle2} aside={finalVerdict.confidence_label}>
+            <Panel title="Final Verdict" icon={CheckCircle2} aside={stringifyAside(finalVerdict.confidence_label)}>
               <div className="simulation-grid four">
                 <div><span>Verdict</span><strong>{finalVerdict.verdict}</strong></div>
                 <div><span>Probability</span><strong>{pct(finalVerdict.probability)}</strong></div>
@@ -530,8 +573,16 @@ export default function WhatIfPage() {
               </div>
               <div>
                 <h3>Evidence gaps</h3>
-                {missingEvidence.map((item) => <div className="simulation-gap" key={item}>{item}</div>)}
-                {unsupportedClaims.map((item) => <div className="simulation-warning" key={item}>{item}</div>)}
+                {missingEvidence.map((item, idx) => (
+                  <div className="simulation-gap" key={simLineKey('gap', item, idx)}>
+                    {simDisplayLine(item)}
+                  </div>
+                ))}
+                {unsupportedClaims.map((item, idx) => (
+                  <div className="simulation-warning" key={simLineKey('unsup', item, idx)}>
+                    {simDisplayLine(item)}
+                  </div>
+                ))}
                 {evidencePolicy.minimum_coverage != null && (
                   <div className="simulation-gap simulation-gap-policy">
                     Modeled credibility floor for this domain (minimum coverage):{' '}
@@ -577,8 +628,10 @@ export default function WhatIfPage() {
                 </div>
               ))}
             </div>
-            {(populationModel.warnings || []).map((warning) => (
-              <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
+            {(populationModel.warnings || []).map((warning, idx) => (
+              <div className="simulation-warning" key={simLineKey('pop-warn', warning, idx)}>
+                <AlertTriangle size={13} /> {simDisplayLine(warning)}
+              </div>
             ))}
           </Panel>
 
@@ -639,13 +692,15 @@ export default function WhatIfPage() {
                   </div>
                   <p>{outcome.rationale}</p>
                   <h4>What would change it</h4>
-                  {(outcome.what_would_change || []).slice(0, 3).map((item) => <em key={item}>{item}</em>)}
+                  {(outcome.what_would_change || []).slice(0, 3).map((item, idx) => (
+                    <em key={simLineKey('wwc', item, idx)}>{simDisplayLine(item)}</em>
+                  ))}
                 </div>
               ))}
             </div>
           </Panel>
 
-          <Panel title="Trust Panel" icon={ShieldCheck} aside={trust.trust_score}>
+          <Panel title="Trust Panel" icon={ShieldCheck} aside={stringifyAside(trust.trust_score)}>
             <div className="simulation-trust-grid">
               {Object.entries(trust.components || {}).map(([key, value]) => (
                 <div key={key}>
@@ -654,8 +709,10 @@ export default function WhatIfPage() {
                 </div>
               ))}
             </div>
-            {(trust.warnings || []).map((warning) => (
-              <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
+            {(trust.warnings || []).map((warning, idx) => (
+              <div className="simulation-warning" key={simLineKey('trust-warn', warning, idx)}>
+                <AlertTriangle size={13} /> {simDisplayLine(warning)}
+              </div>
             ))}
           </Panel>
 
@@ -681,7 +738,11 @@ export default function WhatIfPage() {
               {repWhatChange.length > 0 && (
                 <div className="sim-explore-block">
                   <h4>What would most change this picture</h4>
-                  <ul>{repWhatChange.map((item) => <li key={item}>{item}</li>)}</ul>
+                  <ul>
+                    {repWhatChange.map((item, idx) => (
+                      <li key={simLineKey('rwtc', item, idx)}>{simDisplayLine(item)}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {(repExploreFor.length > 0 || repExploreAgainst.length > 0) && (
@@ -689,13 +750,21 @@ export default function WhatIfPage() {
                   {repExploreFor.length > 0 && (
                     <div className="sim-explore-block">
                       <h4>Strongest support in this run</h4>
-                      <ul>{repExploreFor.map((item) => <li key={`f-${item}`}>{item}</li>)}</ul>
+                      <ul>
+                        {repExploreFor.map((item, idx) => (
+                          <li key={simLineKey('sef', item, idx)}>{simDisplayLine(item)}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                   {repExploreAgainst.length > 0 && (
                     <div className="sim-explore-block">
                       <h4>Strongest counterweight</h4>
-                      <ul>{repExploreAgainst.map((item) => <li key={`a-${item}`}>{item}</li>)}</ul>
+                      <ul>
+                        {repExploreAgainst.map((item, idx) => (
+                          <li key={simLineKey('sea', item, idx)}>{simDisplayLine(item)}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
@@ -709,7 +778,9 @@ export default function WhatIfPage() {
               <p>{result.recommendation?.recommendation}</p>
               <h4>Next data to collect</h4>
               <ul>
-                {(report.next_data_to_collect || []).map((item) => <li key={item}>{item}</li>)}
+                {(report.next_data_to_collect || []).map((item, idx) => (
+                  <li key={simLineKey('next', item, idx)}>{simDisplayLine(item)}</li>
+                ))}
               </ul>
               <div className="simulation-replay">
                 Simulation {report.replay_metadata?.simulation_id} / Run {report.replay_metadata?.run_id}
