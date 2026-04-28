@@ -65,6 +65,34 @@ async def test_run_agent_loop_two_turns_tool_then_text(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_run_agent_loop_accumulates_anthropic_usage(tmp_path):
+    from backend.orchestration import runtime_engine as re
+
+    responses = iter(
+        [
+            {
+                "stop_reason": "end_turn",
+                "content": [{"type": "text", "text": "ok"}],
+                "usage": {"input_tokens": 100, "output_tokens": 50},
+            },
+        ]
+    )
+
+    async def fake_llm(messages, system, tools, thinking=None):
+        return next(responses)
+
+    out = await re.run_agent_loop(
+        agent_name="planner",
+        system_prompt="sys",
+        user_message="task",
+        workspace_path=str(tmp_path),
+        call_llm=fake_llm,
+        max_iterations=4,
+    )
+    assert out.get("usage") == {"input_tokens": 100, "output_tokens": 50}
+
+
+@pytest.mark.asyncio
 async def test_run_single_agent_with_context_tool_loop_when_workspace_and_key(
     monkeypatch,
     tmp_path,
@@ -92,6 +120,7 @@ async def test_run_single_agent_with_context_tool_loop_when_workspace_and_key(
             "iterations": 1,
             "files_written": [],
             "elapsed_seconds": 0.01,
+            "usage": {"input_tokens": 400, "output_tokens": 100},
             "messages": [
                 {"role": "user", "content": kwargs.get("user_message", "")},
                 {
@@ -122,7 +151,8 @@ async def test_run_single_agent_with_context_tool_loop_when_workspace_and_key(
 
     assert result["status"] == "completed"
     assert result["output"] == "tool-loop-output"
-    assert result["tokens_used"] >= 100
+    assert result["tokens_used"] == 500
+    assert result.get("anthropic_usage") == {"input_tokens": 400, "output_tokens": 100}
     assert result.get("tool_loop") is True
     assert result.get("tool_loop_iterations") == 1
 

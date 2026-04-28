@@ -912,6 +912,7 @@ async def _run_single_agent_with_context(
                 messages=messages,
                 tools=tools,
                 max_tokens=8192,
+                thinking=thinking,
             )
 
         try:
@@ -935,6 +936,7 @@ async def _run_single_agent_with_context(
                 "iterations": loop_out.get("iterations"),
                 "files_written": loop_out.get("files_written"),
                 "elapsed_seconds": loop_out.get("elapsed_seconds"),
+                "anthropic_usage": loop_out.get("usage"),
             }
             completed_anthropic_tool_loop = True
         except Exception as exc:
@@ -968,6 +970,19 @@ async def _run_single_agent_with_context(
         )
 
     est_tokens = max(100, len(str(output or "")) // 4)
+    if completed_anthropic_tool_loop and isinstance(_meta, dict):
+        u = _meta.get("anthropic_usage") or {}
+        if isinstance(u, dict):
+            inp = u.get("input_tokens")
+            outp = u.get("output_tokens")
+            billed = 0
+            if isinstance(inp, int):
+                billed += inp
+            if isinstance(outp, int):
+                billed += outp
+            if billed > 0:
+                est_tokens = max(100, billed)
+
     result = {
         "status": "completed",
         "output": output,
@@ -983,6 +998,8 @@ async def _run_single_agent_with_context(
         if isinstance(_meta, dict):
             result["tool_loop_iterations"] = _meta.get("iterations")
             result["tool_loop_files_written"] = _meta.get("files_written")
+            if isinstance(_meta.get("anthropic_usage"), dict):
+                result["anthropic_usage"] = _meta["anthropic_usage"]
     return await run_real_post_step(agent_name, project_id, previous_outputs, result)
 
 

@@ -669,14 +669,18 @@ async def _call_anthropic_messages_with_tools(
     messages: List[Dict[str, Any]],
     tools: List[Dict[str, Any]],
     max_tokens: int = 8192,
+    thinking: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Single Claude Messages API turn with tools (HTTP).
 
     Returns normalized dict for ``runtime_engine.run_agent_loop``::
 
         ``stop_reason``: ``end_turn`` | ``tool_use`` | ``max_tokens`` | ...
-        ``content``: list of ``{"type":"text"|"tool_use", ...}`` blocks
+        ``content``: list of ``{"type":"text"|"tool_use"|"thinking"|...}`` blocks
         ``usage``: optional usage payload from API
+
+    When ``thinking`` is set (extended thinking), ``max_tokens`` is raised so
+    ``budget_tokens`` can stay below the output cap per API rules.
 
     Raises on HTTP/API errors so callers can fall back.
     """
@@ -684,20 +688,39 @@ async def _call_anthropic_messages_with_tools(
     if not key:
         raise ValueError("ANTHROPIC_API_KEY not set")
     model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
+
+    effective_max = max_tokens
+    if thinking and (thinking.get("type") == "enabled"):
+        try:
+            budget = int(thinking.get("budget_tokens") or 0)
+        except (TypeError, ValueError):
+            budget = 0
+        # API: budget_tokens must be < max_tokens; leave headroom for visible output + tools.
+        effective_max = max(effective_max, budget + 8192, 16384)
+
     payload: Dict[str, Any] = {
         "model": model,
-        "max_tokens": max_tokens,
+        "max_tokens": effective_max,
         "system": system_message,
         "messages": messages,
         "tools": tools,
     }
+    if thinking:
+        payload["thinking"] = thinking
+
+    headers = {
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+    }
+    # Optional interleaved-thinking beta (some models); harmless when ignored.
+    beta = (os.environ.get("CRUCIBAI_ANTHROPIC_BETA_HEADERS") or "").strip()
+    if beta:
+        headers["anthropic-beta"] = beta
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": key,
-                "anthropic-version": "2023-06-01",
-            },
+            headers=headers,
             json=payload,
             timeout=180,
         )
@@ -729,6 +752,9 @@ async def _call_anthropic_messages_with_tools(
                     "input": block.get("input") if isinstance(block.get("input"), dict) else {},
                 }
             )
+        elif btype in ("thinking", "redacted_thinking"):
+            # Extended thinking blocks must round-trip on follow-up turns with tools.
+            normalized.append(dict(block))
         else:
             normalized.append(block)
 

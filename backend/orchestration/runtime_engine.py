@@ -6,7 +6,8 @@ Replaces one-shot LLM calls with a while(True) tool-use loop:
 - Exits via stop_reason == "end_turn" or max_iterations
 - Read-only tools run in parallel (asyncio.gather, up to 10)
 - Write tools run serially to preserve consistency
-- 15 high-stakes agents get thinking blocks (budget_tokens=8000)
+- 15 high-stakes agents may use extended thinking on turn 1 when
+  CRUCIBAI_ANTHROPIC_EXTENDED_THINKING=1 (Anthropic only)
 """
 from __future__ import annotations
 
@@ -202,6 +203,23 @@ async def _execute_tools_batch(
     ]
 
 
+def _accumulate_usage(
+    totals: Dict[str, int], usage: Optional[Dict[str, Any]]
+) -> None:
+    """Sum Anthropic Messages ``usage`` objects across tool-loop turns."""
+    if not isinstance(usage, dict):
+        return
+    for key in (
+        "input_tokens",
+        "output_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+    ):
+        val = usage.get(key)
+        if isinstance(val, int):
+            totals[key] = totals.get(key, 0) + val
+
+
 # ─── Core agentic loop ────────────────────────────────────────────────────────
 
 async def run_agent_loop(
@@ -219,12 +237,22 @@ async def run_agent_loop(
     messages = [{"role": "user", "content": user_message}]
     iterations = 0
     files_written: List[str] = []
+    usage_totals: Dict[str, int] = {}
     thinking_config = None
 
-    # High-stakes agents get thinking blocks on first turn
-    if agent_name.lower().replace("-", "_").replace(" ", "_") in THINKING_AGENTS:
+    # High-stakes agents may request extended thinking on the first turn (Anthropic only).
+    # Off by default — enable with CRUCIBAI_ANTHROPIC_EXTENDED_THINKING=1 when your model supports it.
+    _think_env = (os.environ.get("CRUCIBAI_ANTHROPIC_EXTENDED_THINKING") or "").strip().lower()
+    if (
+        agent_name.lower().replace("-", "_").replace(" ", "_") in THINKING_AGENTS
+        and _think_env in ("1", "true", "yes", "on")
+    ):
         thinking_config = {"type": "enabled", "budget_tokens": THINKING_BUDGET_TOKENS}
-        logger.info("runtime_engine: agent=%s — thinking enabled (budget=%d)", agent_name, THINKING_BUDGET_TOKENS)
+        logger.info(
+            "runtime_engine: agent=%s — extended thinking enabled (budget=%d)",
+            agent_name,
+            THINKING_BUDGET_TOKENS,
+        )
 
     start_time = time.time()
 
@@ -245,6 +273,7 @@ async def run_agent_loop(
 
         stop_reason = response.get("stop_reason", "end_turn")
         content_blocks = response.get("content", [])
+        _accumulate_usage(usage_totals, response.get("usage"))
 
         # Collect text output
         text_output = " ".join(
@@ -301,6 +330,7 @@ async def run_agent_loop(
         "files_written": files_written,
         "elapsed_seconds": round(time.time() - start_time, 2),
         "messages": messages,
+        "usage": usage_totals if usage_totals else None,
     }
 
 
