@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from .models import ScenarioClassification
 from .repository import new_id, now_iso
@@ -66,6 +65,17 @@ FALLBACK_AGENTS = [
 ]
 
 
+def _extended_roster(classification_domain: str) -> List[Tuple[str, str, float, str]]:
+    """Domain personas first; then FALLBACK titles not yet used — avoids pointless '(2)' duplicates."""
+    domain = (classification_domain or "").strip().lower()
+    primary: List[Tuple[str, str, float, str]] = list(DOMAIN_AGENTS.get(domain) or [])
+    if not primary:
+        return list(FALLBACK_AGENTS)
+    seen_names = {t[0] for t in primary}
+    extra = [t for t in FALLBACK_AGENTS if t[0] not in seen_names]
+    return primary + extra
+
+
 def build_agents(
     *,
     simulation_id: str,
@@ -74,16 +84,15 @@ def build_agents(
     agent_count: int,
     evidence_summary: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
-    templates = DOMAIN_AGENTS.get(classification.domain) or FALLBACK_AGENTS
-    n = max(3, min(int(agent_count or len(templates)), 24))
-    role_counts: Dict[str, int] = Counter()
-    selected: List[tuple] = []
+    roster = _extended_roster(classification.domain)
+    n = max(3, min(int(agent_count or len(roster)), 24))
+    selected: List[Tuple[str, str, float, str]] = []
+    roster_len = max(1, len(roster))
     for i in range(n):
-        tpl = templates[i % len(templates)]
-        role_key = tpl[0]
-        role_counts[role_key] += 1
-        c = role_counts[role_key]
-        role_name = role_key if c == 1 else f"{role_key} ({c})"
+        tpl = roster[i % roster_len]
+        cycle = i // roster_len
+        base = tpl[0]
+        role_name = base if cycle == 0 else f"{base} · modeled lens {cycle}"
         selected.append((role_name, tpl[1], tpl[2], tpl[3]))
     completeness = float((evidence_summary.get("quality") or {}).get("data_completeness") or 0.25)
     now = now_iso()
