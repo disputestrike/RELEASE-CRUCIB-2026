@@ -291,6 +291,11 @@ async def ai_chat(
             speed_selector=speed_selector,
             intent_schema=intent_schema if intent_schema and not intent_schema.required_tools else None
         )
+        # Normalize: llm_service may return a plain string or a dict
+        if isinstance(response, str):
+            response = {"text": response, "tokens_used": 0}
+        elif not isinstance(response, dict):
+            response = {"text": str(response), "tokens_used": 0}
         tokens_used = response.get("tokens_used", 0)
         if db is not None:
             await db.chat_history.insert_one(

@@ -11,7 +11,6 @@ import {
   ThumbsUp, ThumbsDown, Share2, RefreshCw, GitBranch,
 } from 'lucide-react';
 import Logo from '../components/Logo';
-import HomeLeftPane from '../components/HomeLeftPane';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import { useTaskStore } from '../stores/useTaskStore';
@@ -1099,7 +1098,6 @@ const Dashboard = () => {
       <div ref={homeMessagesRef} className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
         {!hasChat && (
           <div className="home-hero-stage">
-            <HomeLeftPane />
             <div className="dashboard-home-column">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
