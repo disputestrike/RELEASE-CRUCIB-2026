@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import json
@@ -747,6 +748,441 @@ async def _init_agent_learning(*_args, **_kwargs):
     return None
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  AGENTIC LOOP — observe → act → inspect → revise (replaces one-shot LLM)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Architecture:  competitor analysis showed every high-quality coding agent
+#  (Claude Code, Replit, Lovable) runs a while(True) loop where the model
+#  can call file/run/search tools mid-generation and decides its own exit
+#  condition via stop_reason == "end_turn".  CrucibAI previously made one
+#  LLM call per agent step and returned.  This section replaces that pattern.
+#
+#  Concurrency:   read-only tools (read_file, list_files, search_files) run
+#  in parallel (asyncio.gather, up to 10 concurrent). Write tools
+#  (write_file, edit_file, run_command) run serially to avoid races.
+#
+#  Safety caps:   20 turns max; tool errors are reported to the model (not
+#  raised), so the model can retry or skip gracefully.
+# ─────────────────────────────────────────────────────────────────────────
+
+# Read-only tools that are safe to execute concurrently
+_READONLY_TOOLS: frozenset = frozenset({"read_file", "list_files", "search_files"})
+
+# Anthropic tool_use definitions exposed to every agent
+WORKSPACE_TOOLS_FOR_AGENTS: list = [
+    {
+        "name": "read_file",
+        "description": (
+            "Read a file from the project workspace. "
+            "Use this to inspect existing code before writing or editing."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Relative path within the project workspace (e.g. src/App.jsx).",
+                },
+            },
+        },
+    },
+    {
+        "name": "write_file",
+        "description": (
+            "Write content to a file in the project workspace. "
+            "Creates the file and any parent directories if they do not exist. "
+            "Overwrites the file completely — include ALL content."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path", "content"],
+            "properties": {
+                "path": {"type": "string", "description": "Relative path (e.g. src/components/Button.jsx)."},
+                "content": {"type": "string", "description": "Complete file content to write."},
+            },
+        },
+    },
+    {
+        "name": "edit_file",
+        "description": (
+            "Perform an exact string replacement inside an existing file. "
+            "old_text must match verbatim (including whitespace and indentation). "
+            "Replaces only the FIRST occurrence."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path", "old_text", "new_text"],
+            "properties": {
+                "path": {"type": "string", "description": "Relative path of the file to edit."},
+                "old_text": {"type": "string", "description": "Exact text to find and replace."},
+                "new_text": {"type": "string", "description": "Replacement text."},
+            },
+        },
+    },
+    {
+        "name": "list_files",
+        "description": "List files and directories in the project workspace.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Subdirectory to list (default: workspace root).",
+                },
+                "pattern": {
+                    "type": "string",
+                    "description": "Optional glob pattern to filter (e.g. '*.py', 'src/**/*.jsx').",
+                },
+            },
+        },
+    },
+    {
+        "name": "run_command",
+        "description": (
+            "Run an allowlisted command in the project workspace. "
+            "Allowed prefixes: pytest, npm test, npm run test, npx jest, "
+            "npx eslint, npm audit, python -m bandit, wc -l, find . "
+            "Use this to verify code compiles / tests pass."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["command"],
+            "properties": {
+                "command": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Command as array of strings (e.g. ['npm', 'test']).",
+                },
+                "cwd": {
+                    "type": "string",
+                    "description": "Working directory relative to workspace root.",
+                },
+            },
+        },
+    },
+    {
+        "name": "search_files",
+        "description": (
+            "Search for a regex pattern across files in the project workspace. "
+            "Returns matching lines with file names and line numbers."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["pattern"],
+            "properties": {
+                "pattern": {"type": "string", "description": "Regex pattern to search for."},
+                "path": {
+                    "type": "string",
+                    "description": "Subdirectory to search within (default: entire workspace).",
+                },
+                "file_pattern": {
+                    "type": "string",
+                    "description": "Glob filter for filenames (e.g. '*.py', '*.{ts,tsx}').",
+                },
+            },
+        },
+    },
+]
+
+
+def _execute_workspace_tool_sync(
+    tool_name: str,
+    inputs: Dict[str, Any],
+    project_id: str,
+    workspace_path: str,
+) -> Dict[str, Any]:
+    """
+    Execute a single workspace tool inside a runtime_execution_scope.
+    All real I/O is delegated to backend.tool_executor.execute_tool.
+    edit_file is synthesised via read → replace → write.
+    search_files uses subprocess grep (not in execute_tool natively).
+    """
+    import subprocess
+    from backend.tool_executor import execute_tool
+    from backend.services.runtime.execution_context import runtime_execution_scope
+
+    task_id = f"agent-loop-{project_id}"
+
+    with runtime_execution_scope(project_id=project_id, task_id=task_id):
+
+        if tool_name == "read_file":
+            return execute_tool(project_id, "file", {
+                "action": "read",
+                "path": inputs.get("path", ""),
+                "task_id": task_id,
+            })
+
+        if tool_name == "write_file":
+            return execute_tool(project_id, "file", {
+                "action": "write",
+                "path": inputs.get("path", ""),
+                "content": inputs.get("content", ""),
+                "task_id": task_id,
+            })
+
+        if tool_name == "edit_file":
+            path = inputs.get("path", "")
+            old_text = inputs.get("old_text", "")
+            new_text = inputs.get("new_text", "")
+            read_result = execute_tool(project_id, "file", {
+                "action": "read", "path": path, "task_id": task_id
+            })
+            if not read_result.get("success"):
+                return {
+                    "success": False,
+                    "output": f"Could not read {path}: {read_result.get('error', '')}",
+                    "error": "read_failed",
+                }
+            current = read_result.get("output", "")
+            if old_text not in current:
+                # Try a looser match (strip trailing whitespace per line)
+                stripped_old = "\n".join(l.rstrip() for l in old_text.splitlines())
+                stripped_cur = "\n".join(l.rstrip() for l in current.splitlines())
+                if stripped_old in stripped_cur:
+                    current = stripped_cur
+                    old_text = stripped_old
+                else:
+                    return {
+                        "success": False,
+                        "output": (
+                            f"edit_file: old_text not found verbatim in {path}. "
+                            "Use read_file first to get the exact text."
+                        ),
+                        "error": "edit_miss",
+                    }
+            updated = current.replace(old_text, new_text, 1)
+            return execute_tool(project_id, "file", {
+                "action": "write", "path": path, "content": updated, "task_id": task_id
+            })
+
+        if tool_name == "list_files":
+            return execute_tool(project_id, "file", {
+                "action": "list",
+                "path": inputs.get("path", ""),
+                "pattern": inputs.get("pattern", ""),
+                "task_id": task_id,
+            })
+
+        if tool_name == "run_command":
+            return execute_tool(project_id, "run", {
+                "command": inputs.get("command", []),
+                "cwd": inputs.get("cwd", ""),
+                "task_id": task_id,
+            })
+
+        if tool_name == "search_files":
+            try:
+                from backend.project_state import WORKSPACE_ROOT
+                ws_root = Path(WORKSPACE_ROOT) / project_id.replace("/", "_").replace("\\", "_")
+                sub_path = (inputs.get("path") or "").lstrip("/\\")
+                search_root = (ws_root / sub_path) if sub_path else ws_root
+                if not search_root.exists():
+                    search_root = ws_root
+                pattern = inputs.get("pattern", ".")
+                file_pat = inputs.get("file_pattern", "")
+                cmd = ["grep", "-rn", "--max-count=20"]
+                if file_pat:
+                    cmd += [f"--include={file_pat}"]
+                cmd += [pattern, str(search_root)]
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                out = proc.stdout.strip()[:6000] or "(no matches)"
+                return {"success": True, "output": out}
+            except Exception as exc:
+                return {"success": False, "output": "", "error": str(exc)}
+
+    return {"success": False, "output": f"Unknown tool: {tool_name}", "error": "unknown_tool"}
+
+
+async def _execute_workspace_tool_async(
+    tool_name: str,
+    inputs: Dict[str, Any],
+    project_id: str,
+    workspace_path: str,
+) -> Dict[str, Any]:
+    """Async shim: runs the sync tool executor in a thread pool so we can await it."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        _execute_workspace_tool_sync,
+        tool_name,
+        inputs,
+        project_id,
+        workspace_path,
+    )
+
+
+async def _call_llm_with_tools_loop(
+    *,
+    message: str,
+    system_message: str,
+    project_id: str,
+    workspace_path: str,
+    api_key: str,
+    model: str,
+    agent_name: str = "",
+    max_turns: int = 20,
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Full agentic loop: while(stop_reason != "end_turn") → execute tools → feed results back.
+
+    Returns (final_text_output, metadata_dict).
+    The final_text_output is the last text block produced by the model (may be a
+    summary/status once the agent has written files via write_file).
+
+    Concurrency model (mirrors Claude Code toolOrchestration.ts):
+      • read-only tools  →  asyncio.gather (up to 10 concurrent)
+      • write / run tools  →  serial (preserves file-system consistency)
+    """
+    import httpx
+    from backend.anthropic_models import normalize_anthropic_model, ANTHROPIC_HAIKU_MODEL
+
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
+    logger = logging.getLogger(__name__)
+
+    messages: List[Dict[str, Any]] = [{"role": "user", "content": message}]
+    files_written: List[str] = []
+    turns = 0
+    final_text = ""
+
+    while turns < max_turns:
+        turns += 1
+
+        # ── Call Anthropic with workspace tools ──────────────────────────
+        try:
+            async with httpx.AsyncClient(timeout=180) as client:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": 8096,
+                        "system": system_message,
+                        "messages": messages,
+                        "tools": WORKSPACE_TOOLS_FOR_AGENTS,
+                    },
+                )
+        except Exception as exc:
+            logger.error("[agent_loop] %s turn %d: HTTP error: %s", agent_name, turns, exc)
+            break
+
+        if resp.status_code != 200:
+            logger.error(
+                "[agent_loop] %s turn %d: Anthropic %s: %s",
+                agent_name, turns, resp.status_code, resp.text[:300],
+            )
+            break
+
+        data = resp.json()
+        stop_reason = data.get("stop_reason", "end_turn")
+        content_blocks = data.get("content", [])
+
+        # Accumulate any text the model produced this turn
+        for block in content_blocks:
+            if isinstance(block, dict) and block.get("type") == "text":
+                final_text = block.get("text", "")
+
+        # Append assistant turn to history
+        messages.append({"role": "assistant", "content": content_blocks})
+
+        if stop_reason == "end_turn":
+            logger.info("[agent_loop] %s done after %d turn(s)", agent_name, turns)
+            break
+
+        if stop_reason != "tool_use":
+            logger.warning("[agent_loop] %s unexpected stop_reason=%s", agent_name, stop_reason)
+            break
+
+        # ── Partition tool calls ────────────────────────────────────────
+        tool_calls = [b for b in content_blocks if isinstance(b, dict) and b.get("type") == "tool_use"]
+        if not tool_calls:
+            break
+
+        read_calls  = [tc for tc in tool_calls if tc.get("name") in _READONLY_TOOLS]
+        write_calls = [tc for tc in tool_calls if tc.get("name") not in _READONLY_TOOLS]
+
+        tool_results: List[Dict[str, Any]] = []
+
+        # ── Read-only: run concurrently (up to 10) ──────────────────────
+        if read_calls:
+            semaphore = asyncio.Semaphore(10)
+
+            async def _run_read(tc: Dict[str, Any]) -> Dict[str, Any]:
+                async with semaphore:
+                    return await _execute_workspace_tool_async(
+                        tc.get("name", ""),
+                        tc.get("input", {}),
+                        project_id,
+                        workspace_path,
+                    )
+
+            read_results = await asyncio.gather(
+                *[_run_read(tc) for tc in read_calls],
+                return_exceptions=True,
+            )
+            for tc, res in zip(read_calls, read_results):
+                if isinstance(res, Exception):
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tc["id"],
+                        "content": f"Error: {res}",
+                        "is_error": True,
+                    })
+                else:
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tc["id"],
+                        "content": str(res.get("output", "")) if res.get("success") else f"Error: {res.get('error', 'unknown')}",
+                        **({"is_error": True} if not res.get("success") else {}),
+                    })
+                logger.debug("[agent_loop] %s read tool=%s ok=%s", agent_name, tc.get("name"), not isinstance(res, Exception))
+
+        # ── Write / run: serial to preserve workspace consistency ────────
+        for tc in write_calls:
+            name = tc.get("name", "")
+            inputs = tc.get("input", {})
+            try:
+                res = await _execute_workspace_tool_async(name, inputs, project_id, workspace_path)
+                if name in ("write_file", "edit_file"):
+                    p = inputs.get("path", "")
+                    if p and p not in files_written:
+                        files_written.append(p)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tc["id"],
+                    "content": str(res.get("output", "ok")) if res.get("success") else f"Error: {res.get('error', 'failed')}",
+                    **({"is_error": True} if not res.get("success") else {}),
+                })
+                logger.info("[agent_loop] %s write tool=%s path=%s ok=%s", agent_name, name, inputs.get("path",""), res.get("success"))
+            except Exception as exc:
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tc["id"],
+                    "content": f"Error: {exc}",
+                    "is_error": True,
+                })
+
+        # ── Feed results back for next turn ─────────────────────────────
+        messages.append({"role": "user", "content": tool_results})
+
+    else:
+        logger.warning("[agent_loop] %s hit max_turns=%d — forcing end_turn", agent_name, max_turns)
+
+    metadata = {
+        "turns": turns,
+        "files_written": files_written,
+        "model": model,
+    }
+    return final_text, metadata
+
+
+# ─── end of agentic loop helpers ───────────────────────────────────────────
+
 async def _run_single_agent_with_context(
     *,
     project_id: str,
@@ -852,14 +1288,41 @@ async def _run_single_agent_with_context(
         f"You are {agent_name}. Output ONLY production-ready code. "
         "No prose, no markdown explanation. Start your response with the first line of code."
     )
-    output, _meta = await _call_llm_with_fallback(
-        message=enriched_prompt,
-        system_message=system_message,
-        session_id=f"{project_id}:{agent_name}",
-        model_chain=model_chain,
-        api_keys=effective,
-        agent_name=agent_name,
+    # ── Agentic loop: try tool-using Anthropic loop first, fall back to
+    #    legacy one-shot if no Anthropic key is available.
+    _anthropic_key = (effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY", "")
+    _primary_model = next(
+        (c.get("model") for c in (model_chain or []) if c.get("provider") == "anthropic"),
+        None,
     )
+
+    if _anthropic_key and _primary_model:
+        # Full observe-act-inspect-revise loop
+        output, _loop_meta = await _call_llm_with_tools_loop(
+            message=enriched_prompt,
+            system_message=system_message,
+            project_id=project_id,
+            workspace_path=workspace_path or "",
+            api_key=_anthropic_key,
+            model=_primary_model,
+            agent_name=agent_name,
+            max_turns=20,
+        )
+        _files_written = _loop_meta.get("files_written", [])
+        _turns = _loop_meta.get("turns", 1)
+    else:
+        # Fallback: legacy one-shot (no Anthropic key in chain)
+        output, _meta_fb = await _call_llm_with_fallback(
+            message=enriched_prompt,
+            system_message=system_message,
+            session_id=f"{project_id}:{agent_name}",
+            model_chain=model_chain,
+            api_keys=effective,
+            agent_name=agent_name,
+        )
+        _files_written = []
+        _turns = 1
+
     result = {
         "status": "completed",
         "output": output,
@@ -869,6 +1332,8 @@ async def _run_single_agent_with_context(
         "project_id": project_id,
         "user_id": user_id,
         "build_kind": build_kind,
+        "files_written": _files_written,
+        "loop_turns": _turns,
     }
     return await run_real_post_step(agent_name, project_id, previous_outputs, result)
 

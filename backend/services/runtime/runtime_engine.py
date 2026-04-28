@@ -282,8 +282,178 @@ class RuntimeEngine:
             task_manager.fail_task(project_id, effective_task_id, error=str(exc))
             raise
 
-    async def run_task_loop(self, **kwargs) -> Dict[str, Any]:
-        """Placeholder for the actual task loop implementation."""
-        return {"status": "completed", "execution": {"success": True, "result": "Mocked loop result"}}
+    async def run_task_loop(
+        self,
+        *,
+        session: Any,
+        project_id: str,
+        task_id: str,
+        user_message: str,
+        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        mode: Optional[str] = None,
+        allowed_phases: Optional[List[str]] = None,
+        planner: Any = None,
+        **_kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Real task execution loop.
+
+        Replaces the one-line mock. Flow:
+          1. BrainLayer.decide()  — intent classification + agent selection
+          2. Emit plan event
+          3. Per-agent execution via execute_request (uses workspace tools)
+          4. Memory / context update after each agent
+          5. Return structured result consumed by execute_with_control
+
+        The I/O contract is unchanged — callers still receive
+        {"status": ..., "execution": {...}, "intent": ..., "selected_agents": [...]}.
+        """
+        brain = planner or self._brain_factory()
+        ctx = ExecutionContext(
+            task_id=task_id,
+            user_id=getattr(session, "user_id", "system"),
+            conversation_id=getattr(session, "session_id", None),
+            project_id=project_id,
+        )
+
+        # ── Step 1: Planning ─────────────────────────────────────────────
+        try:
+            plan = brain.decide(session, user_message)
+        except Exception as exc:
+            logger.exception("[run_task_loop] brain.decide failed: %s", exc)
+            return {
+                "status": "execution_failed",
+                "execution": {"success": False, "error": str(exc)},
+                "intent": "unknown",
+                "selected_agents": [],
+            }
+
+        intent = plan.get("intent", "general")
+        selected_agents: List[str] = plan.get("selected_agents") or []
+        agent_configs: List[Dict[str, Any]] = plan.get("selected_agent_configs") or []
+
+        event_bus.emit("task_plan", {
+            "task_id": task_id,
+            "project_id": project_id,
+            "intent": intent,
+            "selected_agents": selected_agents,
+            "mode": mode,
+        })
+        if progress_callback:
+            try:
+                await asyncio.coroutine(progress_callback)(
+                    {"phase": "planned", "intent": intent, "agents": selected_agents}
+                ) if asyncio.iscoroutinefunction(progress_callback) else progress_callback(
+                    {"phase": "planned", "intent": intent, "agents": selected_agents}
+                )
+            except Exception:
+                pass
+
+        # ── Step 2: Handle clarification requests ────────────────────────
+        if plan.get("status") == "clarification_required":
+            return {
+                "status": "clarification_required",
+                "execution": {
+                    "success": True,
+                    "result": {"assistant_response": plan.get("assistant_response", "")},
+                },
+                "intent": intent,
+                "selected_agents": [],
+            }
+
+        # ── Step 3: Execute selected agents ─────────────────────────────
+        agent_results: Dict[str, Any] = {}
+        phases = allowed_phases or ["inspect", "classify", "plan", "execute", "test", "artifact"]
+
+        for agent_name in selected_agents:
+            # Respect phase gating if allowed_phases was provided
+            agent_cfg = next((c for c in agent_configs if c.get("agent") == agent_name), {})
+
+            event_bus.emit("agent_start", {
+                "task_id": task_id,
+                "project_id": project_id,
+                "agent": agent_name,
+            })
+            if progress_callback:
+                try:
+                    _cb_payload = {"phase": "executing", "agent": agent_name}
+                    if asyncio.iscoroutinefunction(progress_callback):
+                        await progress_callback(_cb_payload)
+                    else:
+                        progress_callback(_cb_payload)
+                except Exception:
+                    pass
+
+            try:
+                exec_meta = {
+                    "project_id": project_id,
+                    "task_id": task_id,
+                    "agent_name": agent_name,
+                    **agent_cfg.get("params", {}),
+                }
+                result = await brain.execute_request(
+                    session=session,
+                    user_message=user_message,
+                    progress_callback=progress_callback,
+                    execution_meta=exec_meta,
+                )
+                agent_results[agent_name] = result
+
+            except Exception as exc:
+                logger.error("[run_task_loop] agent %s failed: %s", agent_name, exc)
+                agent_results[agent_name] = {
+                    "status": "failed",
+                    "error": str(exc),
+                }
+
+            # Update context and memory after each agent
+            ctx.add_step({"agent": agent_name, "result": agent_results[agent_name]})
+            try:
+                memory_add_node(project_id, agent_name, data={"status": "completed", "task_id": task_id})
+            except Exception:
+                pass
+
+            event_bus.emit("agent_complete", {
+                "task_id": task_id,
+                "project_id": project_id,
+                "agent": agent_name,
+                "status": agent_results[agent_name].get("status", "unknown"),
+            })
+
+            # Stop early if a critical failure occurred and mode is not REPAIR
+            if agent_results[agent_name].get("status") == "failed" and mode not in ("repair", "phased"):
+                logger.warning("[run_task_loop] halting at failed agent %s", agent_name)
+                break
+
+        # ── Step 4: Aggregate results ────────────────────────────────────
+        any_failed = any(
+            v.get("status") == "failed" for v in agent_results.values()
+        )
+        final_status = "execution_failed" if any_failed and not agent_results else "execution_completed"
+
+        # Collect last text output for callers that need a string summary
+        summary_parts = []
+        for name, res in agent_results.items():
+            if isinstance(res, dict):
+                text = (
+                    res.get("output")
+                    or (res.get("execution") or {}).get("result")
+                    or res.get("error")
+                    or ""
+                )
+                if text:
+                    summary_parts.append(f"[{name}] {str(text)[:500]}")
+
+        return {
+            "status": final_status,
+            "intent": intent,
+            "selected_agents": selected_agents,
+            "execution": {
+                "success": not any_failed,
+                "result": "\n".join(summary_parts) or "Task completed.",
+                "agent_results": agent_results,
+                "steps": len(ctx.executed_steps),
+            },
+        }
 
 runtime_engine = RuntimeEngine()
