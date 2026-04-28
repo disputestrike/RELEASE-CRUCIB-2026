@@ -1075,7 +1075,7 @@ const Dashboard = () => {
               <div className="dashboard-chips-row dashboard-chips-row--single-line">
                   {HOME_PRIMARY_CHIPS.map((chip) => (
                     <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip dashboard-chip--home-quick">
-                      <chip.icon size={13} className="dashboard-chip-icon" aria-hidden />
+                      <chip.icon size={11} className="dashboard-chip-icon" aria-hidden />
                       <span>{chip.label}</span>
                     </button>
                   ))}
@@ -1090,7 +1090,7 @@ const Dashboard = () => {
                     }}
                   >
                     <span>More</span>
-                    <ChevronDown size={13} className="dashboard-chip-more-chevron" />
+                    <ChevronDown size={11} className="dashboard-chip-more-chevron" />
                   </button>
                   {moreMenuOpen && (
                     <div className="dashboard-more-menu" role="menu">

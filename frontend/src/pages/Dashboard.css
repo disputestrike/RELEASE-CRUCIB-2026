@@ -136,7 +136,7 @@
 
 .dashboard-home-column {
   width: 100%;
-  max-width: min(720px, 92vw);
+  max-width: min(800px, 94vw);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -786,7 +786,7 @@
 }
 
 /* Quick Start Chips */
-/* ── Home quick chips (freeze point UI): one horizontal strip — Build → More ───────── */
+/* ── Home quick chips: single row, no horizontal scroll — fit via compact type ─────── */
 .dashboard-chips-row {
   display: flex;
   flex-wrap: wrap;
@@ -796,25 +796,14 @@
   justify-content: center;
 }
 
+/* No horizontal scroll — chips use smaller type/padding so the full row fits the column. */
 .dashboard-chips-row--single-line {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-}
-
-.dashboard-chips-row--single-line::-webkit-scrollbar {
-  height: 4px;
-}
-.dashboard-chips-row--single-line::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.35);
-  border-radius: 999px;
+  overflow: visible;
 }
 
 .dashboard-more-wrap {
@@ -924,14 +913,20 @@
 }
 
 .dashboard-chip--home-quick {
-  padding: 5px 10px;
-  gap: 5px;
-  font-size: 12px;
+  padding: 3px 8px;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.dashboard-chip-more.dashboard-chip--home-quick {
+  gap: 3px;
 }
 
 .dashboard-home-column .dashboard-chips-row--single-line .dashboard-chip--home-quick {
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .dashboard-chips-grid {
@@ -1281,12 +1276,12 @@
   }
 
   .dashboard-chips-row--single-line {
-    gap: 4px;
+    gap: 3px;
   }
 
   .dashboard-chip.dashboard-chip--home-quick {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 2px 5px;
+    font-size: 10px;
   }
 }
 
