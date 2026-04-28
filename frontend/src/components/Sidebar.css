@@ -724,6 +724,8 @@
   border-color: #d4d4d8 !important;
   color: #404040 !important;
 }
+
+.sidebar-delete-actions button {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 14px;
