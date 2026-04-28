@@ -748,7 +748,9 @@ async def get_job_proof(
         pool = await _get_pool()
         ps.set_pool(pool)
         proof = await ps.get_proof(job_id)
-        return {"success": True, **proof}
+        # success = product verdict (gates + job terminal state), not "HTTP OK" (that's status 200).
+        bv = bool(proof.get("build_verified"))
+        return {**proof, "success": bv}
     except HTTPException:
         raise
     except Exception as e:

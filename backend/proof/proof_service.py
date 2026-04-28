@@ -68,6 +68,9 @@ def _empty_bundle(job_id: str) -> Dict[str, Any]:
         "production_readiness_cap_note": "",
         "production_readiness_factors": [],
         "scorecard": {},
+        "verification_failed_count": 0,
+        "step_exception_count": 0,
+        "build_verified": False,
     }
 
 
@@ -134,6 +137,29 @@ async def fetch_proof_items_raw(job_id: str) -> List[Dict[str, Any]]:
     return out
 
 
+FAILURE_QUALITY_CAP = 40.0  # aligns with steer/build contract when gates fail
+
+
+def compute_build_verdict(
+    *,
+    quality_score_raw: float,
+    verification_failed_count: int,
+    step_exception_count: int,
+    job_status: Optional[str],
+) -> tuple[float, bool]:
+    """
+    Product truth for proof JSON: build_verified only when job completed cleanly
+    and no stored verification_failure rows (§11 — narrative must match verifier).
+    """
+    st = (job_status or "").strip().lower()
+    bad_proof = verification_failed_count + step_exception_count
+    build_verified = bad_proof == 0 and st == "completed"
+    q = float(quality_score_raw)
+    if not build_verified:
+        q = min(q, FAILURE_QUALITY_CAP)
+    return round(q, 2), build_verified
+
+
 async def get_proof(job_id: str) -> Dict[str, Any]:
     """Return proof bundle grouped by category for the proof panel UI."""
     if _pool is None:
@@ -145,8 +171,17 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         rows = await conn.fetch(
             "SELECT * FROM proof_items WHERE job_id=$1 ORDER BY created_at", job_id
         )
+        job_quick = await conn.fetchrow(
+            "SELECT * FROM jobs WHERE id=$1",
+            job_id,
+        )
 
     items = [dict(r) for r in rows]
+    job_quick_dict = dict(job_quick) if job_quick else None
+    job_status_str = (
+        str((job_quick_dict or {}).get("status") or "").strip().lower()
+        or None
+    )
     bundle: Dict[str, List] = {
         "files": [],
         "routes": [],
@@ -196,11 +231,22 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         if i.get("proof_type") in ("compile", "api", "test", "milestone")
     )
     if total_items == 0:
-        quality_score = 0.0
+        quality_score_raw = 0.0
     else:
-        quality_score = float(
+        quality_score_raw = float(
             min(100, round(70 + (verified_items / max(1, total_items)) * 30))
         )
+
+    vf_cnt = sum(
+        1 for i in items if i.get("proof_type") == "verification_failed"
+    )
+    sx_cnt = sum(1 for i in items if i.get("proof_type") == "step_exception")
+    quality_score, build_verified = compute_build_verdict(
+        quality_score_raw=quality_score_raw,
+        verification_failed_count=vf_cnt,
+        step_exception_count=sx_cnt,
+        job_status=job_status_str,
+    )
 
     category_counts = {k: len(v) for k, v in bundle.items()}
 
@@ -256,9 +302,8 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             compute_production_readiness,
         )
 
+        goal = str((job_quick_dict or {}).get("goal") or "")
         async with _pool.acquire() as conn:
-            gj = await conn.fetchrow("SELECT goal FROM jobs WHERE id=$1", job_id)
-            goal = (gj.get("goal") or "") if gj else ""
             bp = await conn.fetchrow(
                 "SELECT plan_json FROM build_plans WHERE job_id=$1 ORDER BY created_at DESC LIMIT 1",
                 job_id,
@@ -308,13 +353,13 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         from proof.build_contract import build_contract
 
         async with _pool.acquire() as conn:
-            job_row = await conn.fetchrow("SELECT * FROM jobs WHERE id=$1", job_id)
             step_rows = await conn.fetch(
                 "SELECT * FROM job_steps WHERE job_id=$1 ORDER BY order_index, created_at",
                 job_id,
             )
+        jr = job_quick_dict if job_quick_dict else None
         contract = build_contract(
-            job=dict(job_row) if job_row else {"id": job_id},
+            job=dict(jr) if jr else {"id": job_id},
             steps=[dict(row) for row in step_rows],
             bundle=bundle,
             bundle_sha256=bundle_sha256,
@@ -332,21 +377,22 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
 
     proof_index_doc: Optional[Dict[str, Any]] = None
     try:
-        if _pool is not None:
+        pid = (job_quick_dict or {}).get("project_id") if job_quick_dict else None
+        if not pid and _pool is not None:
             async with _pool.acquire() as conn:
                 jrow = await conn.fetchrow(
                     "SELECT project_id FROM jobs WHERE id = $1", job_id
                 )
             pid = (jrow or {}).get("project_id")
-            if pid:
-                from pathlib import Path
+        if pid:
+            from pathlib import Path
 
-                from project_state import WORKSPACE_ROOT
+            from project_state import WORKSPACE_ROOT
 
-                safe = str(pid).replace("..", "").strip()
-                idx_path = Path(WORKSPACE_ROOT) / safe / "META" / "proof_index.json"
-                if idx_path.is_file():
-                    proof_index_doc = json.loads(idx_path.read_text(encoding="utf-8"))
+            safe = str(pid).replace("..", "").strip()
+            idx_path = Path(WORKSPACE_ROOT) / safe / "META" / "proof_index.json"
+            if idx_path.is_file():
+                proof_index_doc = json.loads(idx_path.read_text(encoding="utf-8"))
     except Exception:
         logger.debug("get_proof: proof_index load skipped", exc_info=True)
 
@@ -355,6 +401,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "quality_score": quality_score,
         "total_proof_items": total_items,
         "verification_proof_items": verified_items,
+        "verification_failed_count": vf_cnt,
+        "step_exception_count": sx_cnt,
+        "build_verified": build_verified,
         "category_counts": category_counts,
         "bundle": bundle,
         "bundle_sha256": bundle_sha256,
