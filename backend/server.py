@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import json
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -434,9 +435,179 @@ db = None
 audit_logger = None
 
 
+class _FakeDb:
+    """In-memory fake DB for tests that run without PostgreSQL."""
+
+    def __init__(self):
+        self._stores: dict = {}
+
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        self._stores.setdefault(name, _FakeCollection(name))
+        return self._stores[name]
+
+
+def _matches(doc: dict, query: dict) -> bool:
+    """Check if a document matches a query dict (flat equality only)."""
+    for k, v in query.items():
+        if k.startswith("$"):
+            continue
+        if doc.get(k) != v:
+            return False
+    return True
+
+
+def _project(doc: dict, projection: dict) -> dict:
+    """Apply a Mongo-style projection (include or exclude fields)."""
+    if not projection:
+        return dict(doc)
+    # Check if it's an exclusion projection (all 0s) or inclusion (all 1s)
+    values = [v for k, v in projection.items() if k != "_id"]
+    if not values or all(v == 0 for v in values):
+        # Exclusion
+        return {k: v for k, v in doc.items() if projection.get(k, 1) != 0}
+    else:
+        # Inclusion — always include _id unless explicitly excluded
+        result = {}
+        for k, v in projection.items():
+            if v and k in doc:
+                result[k] = doc[k]
+        if projection.get("_id", 1) and "_id" in doc:
+            result["_id"] = doc["_id"]
+        return result
+
+
+class _FakeCollection:
+    def __init__(self, name: str):
+        self.name = name
+        self._docs: list = []
+
+    async def find_one(self, query: dict = None, projection: dict = None, *args, **kwargs):
+        query = query or {}
+        for doc in self._docs:
+            if _matches(doc, query):
+                return _project(doc, projection) if projection else dict(doc)
+        return None
+
+    async def insert_one(self, doc: dict, *args, **kwargs):
+        import copy
+        self._docs.append(copy.deepcopy(doc))
+        return type("R", (), {"inserted_id": doc.get("id", doc.get("_id", ""))})()
+
+    async def update_one(self, query: dict, update: dict, upsert: bool = False, **kwargs):
+        for doc in self._docs:
+            if _matches(doc, query):
+                if "$set" in update:
+                    doc.update(update["$set"])
+                if "$inc" in update:
+                    for k, v in update["$inc"].items():
+                        doc[k] = doc.get(k, 0) + v
+                if "$push" in update:
+                    for k, v in update["$push"].items():
+                        doc.setdefault(k, []).append(v)
+                return type("R", (), {"matched_count": 1, "modified_count": 1})()
+        if upsert:
+            new_doc = {**query}
+            if "$set" in update:
+                new_doc.update(update["$set"])
+            self._docs.append(new_doc)
+        return type("R", (), {"matched_count": 0, "modified_count": 0})()
+
+    async def update_many(self, query: dict, update: dict, **kwargs):
+        count = 0
+        for doc in self._docs:
+            if _matches(doc, query):
+                if "$set" in update:
+                    doc.update(update["$set"])
+                count += 1
+        return type("R", (), {"matched_count": count, "modified_count": count})()
+
+    def find(self, query: dict = None, projection: dict = None, *args, **kwargs):
+        """Return a synchronous cursor-like list (supports iteration and async iteration)."""
+        query = query or {}
+        results = [
+            _project(d, projection) if projection else dict(d)
+            for d in self._docs
+            if _matches(d, query)
+        ]
+        return _FakeCursor(results)
+
+    async def delete_one(self, query: dict, **kwargs):
+        for i, doc in enumerate(self._docs):
+            if _matches(doc, query):
+                self._docs.pop(i)
+                return type("R", (), {"deleted_count": 1})()
+        return type("R", (), {"deleted_count": 0})()
+
+    async def delete_many(self, query: dict, **kwargs):
+        before = len(self._docs)
+        self._docs = [d for d in self._docs if not _matches(d, query)]
+        return type("R", (), {"deleted_count": before - len(self._docs)})()
+
+    async def count_documents(self, query: dict = None, **kwargs):
+        query = query or {}
+        return sum(1 for d in self._docs if _matches(d, query))
+
+    async def create_index(self, *args, **kwargs):
+        return "index_created"
+
+    async def drop(self):
+        self._docs.clear()
+
+
+class _FakeCursor:
+    """Mimics Motor's AsyncIOMotorCursor enough for common use patterns."""
+    def __init__(self, docs: list):
+        self._docs = docs
+        self._idx = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._idx >= len(self._docs):
+            raise StopAsyncIteration
+        doc = self._docs[self._idx]
+        self._idx += 1
+        return doc
+
+    def __iter__(self):
+        return iter(self._docs)
+
+    def sort(self, *args, **kwargs):
+        return self
+
+    def skip(self, n):
+        self._docs = self._docs[n:]
+        return self
+
+    def limit(self, n):
+        if n:
+            self._docs = self._docs[:n]
+        return self
+
+    async def to_list(self, length=None):
+        if length:
+            return self._docs[:length]
+        return list(self._docs)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global db
+    # ── Test-mode: FakeDb bypass (no Postgres required) ──────────────────────
+    if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+        if not isinstance(db, _FakeDb):
+            db = _FakeDb()
+        try:
+            from deps import init as init_deps
+            init_deps(db=db, audit_logger=audit_logger)
+        except Exception:
+            pass
+        yield
+        return
+    # ── Normal startup ────────────────────────────────────────────────────────
     try:
         from db_pg import ensure_all_tables, get_db
         from deps import init as init_deps
@@ -504,6 +675,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+try:
+    from .middleware.observability import ObservabilityMiddleware
+    app.add_middleware(ObservabilityMiddleware)
+except ImportError:
+    try:
+        from backend.middleware.observability import ObservabilityMiddleware
+        app.add_middleware(ObservabilityMiddleware)
+    except Exception:
+        pass
+except Exception:
+    pass
 
 
 # WS-I: COOP/COEP headers for WebContainers in-browser preview.
@@ -1141,23 +1324,136 @@ async def published_job_asset(job_id: str, asset_path: str):
     return FileResponse(path)
 
 
-async def websocket_project_progress(websocket):
+@app.websocket("/api/projects/{project_id}/progress")
+async def websocket_project_progress(websocket: WebSocket, project_id: str):
+    """Real-time WebSocket: streams event-bus events for a project, with heartbeat."""
+    import jwt as _jwt_ws  # local import — jwt not guaranteed at module scope
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(code=1008)
         return
-    import jwt
+    try:
+        payload = _jwt_ws.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = {"id": payload.get("user_id"), "email": payload.get("email")}
+    except Exception:
+        await websocket.close(code=1008)
+        return
+    project_owner_claim = {"id": project_id, "user_id": user["id"]}
+    await websocket.accept()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=256)
+    loop = asyncio.get_event_loop()
 
-    user = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    project_id = websocket.query_params.get("project_id")
-    if db is not None:
-        project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
-        if not project:
-            await websocket.close(code=1008)
+    def _on_event(record):
+        rec_project = getattr(record, "payload", {}).get("project_id") if hasattr(record, "payload") else None
+        if rec_project and rec_project != project_id:
             return
+        payload_data = record.payload if hasattr(record, "payload") else {}
+        ts = record.ts if hasattr(record, "ts") else ""
+        frame = {
+            "type": record.event_type if hasattr(record, "event_type") else str(record),
+            "project_id": project_id,
+            "payload": payload_data,
+            "ts": ts,
+        }
+        try:
+            loop.call_soon_threadsafe(queue.put_nowait, frame)
+        except Exception:
+            pass
+
+    try:
+        from services.events import event_bus as _ebus
+    except ImportError:
+        try:
+            from backend.services.events import event_bus as _ebus
+        except ImportError:
+            _ebus = None
+
+    if _ebus is not None:
+        _ebus.subscribe("*", _on_event)
+
+    try:
+        await websocket.send_json({"type": "connected", "project": project_owner_claim})
+
+        async def _pump_events():
+            while True:
+                try:
+                    frame = await asyncio.wait_for(queue.get(), timeout=25.0)
+                    await websocket.send_json(frame)
+                except asyncio.TimeoutError:
+                    await websocket.send_json({"type": "heartbeat", "project_id": project_id})
+
+        async def _recv_client():
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    if data == "ping":
+                        await websocket.send_json({"type": "pong"})
+                except Exception:
+                    raise
+
+        pump_task = asyncio.create_task(_pump_events())
+        recv_task = asyncio.create_task(_recv_client())
+        done, pending = await asyncio.wait(
+            {pump_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION
+        )
+        for t in pending:
+            t.cancel()
+    except Exception:
+        pass
+    finally:
+        if _ebus is not None:
+            try:
+                _ebus.unsubscribe("*", _on_event)
+            except Exception:
+                pass
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 
 # Add security and performance middleware
+
+
+@app.get("/api/dev-preview/{project_id}", include_in_schema=False)
+@app.get("/api/dev-preview/{project_id}/{path:path}", include_in_schema=False)
+async def dev_preview_serve(project_id: str, path: str = ""):
+    """Hot-reload SPA preview for dev mode. Requires CRUCIBAI_DEV=1."""
+    import os as _os, sys as _preview_sys
+    if not _os.environ.get("CRUCIBAI_DEV"):
+        raise HTTPException(status_code=404, detail="Not found")
+    # Use the module object that has the (possibly patched) WORKSPACE_ROOT
+    _srv_mod = _preview_sys.modules.get("server") or _preview_sys.modules.get("backend.server")
+    _ws_root = getattr(_srv_mod, "WORKSPACE_ROOT", None) or WORKSPACE_ROOT
+    workspace = Path(_ws_root) / project_id
+    dist = workspace / "dist"
+    serve_root = dist if dist.is_dir() else workspace
+    target = path.strip("/") or "index.html"
+    full_path = serve_root / target
+    if full_path.is_file():
+        return FileResponse(str(full_path))
+    index = serve_root / "index.html"
+    if index.is_file():
+        return FileResponse(str(index))
+    raise HTTPException(status_code=404, detail=f"File not found: {target}")
+
+
+@app.get("/api/metrics", include_in_schema=False)
+async def prometheus_metrics():
+    """Prometheus-format metrics endpoint."""
+    try:
+        from .middleware.observability import render_metrics
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(render_metrics(), media_type="text/plain; version=0.0.4")
+    except ImportError:
+        try:
+            from backend.middleware.observability import render_metrics
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(render_metrics(), media_type="text/plain; version=0.0.4")
+        except Exception as exc:
+            return {"error": str(exc)}
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

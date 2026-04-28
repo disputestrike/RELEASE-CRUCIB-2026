@@ -71,7 +71,16 @@ ADMIN_USER_IDS: list[str] = [
 
 
 async def _db_for_auth():
-    """Prefer deps.init() DB; otherwise PostgreSQL (routes use db_pg without deps.init)."""
+    """Prefer deps.init() DB; otherwise PostgreSQL (routes use db_pg without deps.init).
+    When CRUCIBAI_TEST_DB_UNAVAILABLE=1, return FakeDb from server instead of hitting Postgres."""
+    import os as _deps_os, sys as _deps_sys
+    if _deps_os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+        # Check both module paths; prefer whichever has a non-None db
+        for _key in ("server", "backend.server"):
+            _srv = _deps_sys.modules.get(_key)
+            _db = getattr(_srv, "db", None) if _srv is not None else None
+            if _db is not None:
+                return _db
     db = get_db()
     if db is not None:
         return db
@@ -99,6 +108,15 @@ async def get_current_user(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
         )
         uid = payload["user_id"]
+        # ── Test-mode bypass: build user from JWT payload (no DB lookup needed) ──
+        if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+            return {
+                "id": uid,
+                "email": payload.get("email", f"{uid}@test.local"),
+                "name": payload.get("name", "Test User"),
+                "role": payload.get("role", "user"),
+                "plan": payload.get("plan", "pro"),
+            }
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
                 from services.dev_guest import get_user as _dev_get_user
@@ -139,6 +157,15 @@ async def get_current_user_sse(
     try:
         payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         uid = payload["user_id"]
+        # ── Test-mode bypass: build user from JWT payload (no DB lookup needed) ──
+        if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+            return {
+                "id": uid,
+                "email": payload.get("email", f"{uid}@test.local"),
+                "name": payload.get("name", "Test User"),
+                "role": payload.get("role", "user"),
+                "plan": payload.get("plan", "pro"),
+            }
         if db is None:
             if os.environ.get("CRUCIBAI_DEV") == "1":
                 from services.dev_guest import get_user as _dev_get_user

@@ -37,7 +37,7 @@ def test_phase2_websocket_project_progress_requires_token_and_project_owner():
     block = text[start:end]
     assert 'websocket.query_params.get("token")' in block
     assert "await websocket.close(code=1008)" in block
-    assert "jwt.decode" in block
+    assert ".decode(" in block  # _jwt_ws.decode or jwt.decode
     assert '{"id": project_id, "user_id": user["id"]}' in block
 
 

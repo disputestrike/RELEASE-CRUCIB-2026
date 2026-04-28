@@ -42,6 +42,7 @@ except ImportError:
         get_optional_user,
     )
 
+import sys as _auth_sys
 try:
     from db_pg import get_db as _get_pg_db
 except ImportError:
@@ -49,7 +50,15 @@ except ImportError:
 
 
 async def get_db():
-    """Return real PostgreSQL-backed DB. Replaces deps.get_db() which was always None."""
+    """Return real PostgreSQL-backed DB, or FakeDb when CRUCIBAI_TEST_DB_UNAVAILABLE=1."""
+    import os as _auth_os
+    if _auth_os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+        # Check both module paths; prefer whichever has a non-None db
+        for _key in ("server", "backend.server"):
+            _srv = _auth_sys.modules.get(_key)
+            _db = getattr(_srv, "db", None) if _srv is not None else None
+            if _db is not None:
+                return _db
     return await _get_pg_db()
 
 

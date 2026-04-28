@@ -64,7 +64,7 @@ def _get_server_helpers():
 import asyncio as _asyncio
 import sys as _sys
 
-_sys.path.insert(0, os.path.dirname(__file__))
+# sys.path.insert removed: was poisoning agents namespace package
 
 
 # Lazy-load orchestration modules to avoid circular imports

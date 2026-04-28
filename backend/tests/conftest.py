@@ -180,3 +180,53 @@ def mock_metrics():
     metrics.active_agents = MagicMock()
     metrics.errors_total = MagicMock()
     return metrics
+
+
+# ─── Tier-1: Event-bus and execution-context per-test re-linking ─────────────
+
+@pytest.fixture(autouse=True)
+def _relink_event_bus_per_test_v2():
+    """Ensure backend.services.events points to real module each test."""
+    import sys
+    real_mod = None
+    for key in ("backend.services.events", "services.events"):
+        if key in sys.modules:
+            real_mod = sys.modules[key]
+            break
+    if real_mod is None:
+        try:
+            import importlib
+            real_mod = importlib.import_module("backend.services.events")
+        except ImportError:
+            try:
+                real_mod = importlib.import_module("services.events")
+            except ImportError:
+                pass
+    if real_mod is not None:
+        sys.modules.setdefault("backend.services.events", real_mod)
+        sys.modules.setdefault("services.events", real_mod)
+    yield
+    # nothing to restore — we only added entries, never removed
+
+
+@pytest.fixture(autouse=True)
+def _relink_execution_context_per_test():
+    """Re-bind ContextVars in runtime modules to avoid cross-test bleed."""
+    import sys
+    try:
+        rt_key = next(
+            (k for k in sys.modules if "services.runtime" in k or "runtime.execution" in k),
+            None
+        )
+        if rt_key:
+            rt = sys.modules[rt_key]
+            for attr in ("current_project_id", "current_task_id", "current_skill_hint"):
+                if hasattr(rt, attr):
+                    ctx_var = getattr(rt, attr)
+                    try:
+                        ctx_var.set(None)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    yield

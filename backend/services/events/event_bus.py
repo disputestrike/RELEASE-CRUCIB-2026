@@ -54,5 +54,14 @@ class EventBus:
         with self._lock:
             return list(self._recent[-n:])
 
+    def unsubscribe(self, event_type: str, callback) -> None:
+        """Remove a previously registered callback. Safe to call even if not subscribed."""
+        with self._lock:
+            subs = self._subscribers.get(event_type, [])
+            try:
+                subs.remove(callback)
+            except ValueError:
+                pass
+
 
 event_bus = EventBus()
