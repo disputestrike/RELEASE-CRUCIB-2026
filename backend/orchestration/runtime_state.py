@@ -21,7 +21,26 @@ except ImportError:
     except ImportError:
         IntentSchema = None
 
-from backend.project_state import WORKSPACE_ROOT
+def _ws_root():
+    """Look up WORKSPACE_ROOT dynamically so stubs applied at test module level are respected."""
+    import sys as _sys
+    _ps = _sys.modules.get("backend.project_state")
+    if _ps is not None:
+        val = getattr(_ps, "WORKSPACE_ROOT", None)
+        if val is not None:
+            return Path(val)
+    try:
+        from backend.project_state import WORKSPACE_ROOT as _WR
+        return Path(_WR)
+    except Exception:
+        return Path("/tmp/crucibai_ws")
+
+# Keep WORKSPACE_ROOT as a module attribute for backward compat (code that uses it directly)
+# but runtime_state internal methods will use _ws_root() for dynamic resolution.
+try:
+    from backend.project_state import WORKSPACE_ROOT
+except Exception:
+    WORKSPACE_ROOT = Path("/tmp/crucibai_ws")
 from backend.services.events import event_bus
 from backend.services.runtime.task_manager import task_manager
 
@@ -355,7 +374,7 @@ class RuntimeStateAdapter:
 
     def _list_projects(self) -> List[str]:
         out: List[str] = []
-        for child in WORKSPACE_ROOT.iterdir():
+        for child in _ws_root().iterdir():
             if not child.is_dir():
                 continue
             rt = child / "runtime_tasks"
@@ -365,7 +384,7 @@ class RuntimeStateAdapter:
 
     def _find_project_for_job(self, job_id: str) -> Optional[str]:
         for project_id in self._list_projects():
-            candidate = WORKSPACE_ROOT / project_id / "runtime_tasks" / f"{job_id}.json"
+            candidate = _ws_root() / project_id / "runtime_tasks" / f"{job_id}.json"
             if candidate.exists():
                 return project_id
         return None

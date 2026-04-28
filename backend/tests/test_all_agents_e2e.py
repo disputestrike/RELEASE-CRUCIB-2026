@@ -1,5 +1,5 @@
 """
-Comprehensive E2E and Load Testing for All 123 Agents
+Comprehensive E2E and Load Testing for All 374 Agents
 Tests all agents with realistic scenarios and load conditions.
 """
 
@@ -310,7 +310,7 @@ async def main():
     print("CRUCIBAI - COMPREHENSIVE TESTING SUITE")
     print("=" * 70)
     print("\nThis test suite includes:")
-    print("  1. E2E tests for all 123 agents")
+    print("  1. E2E tests for all 374 Agents")
     print("  2. Load tests (concurrent requests)")
     print("  3. Stress tests (maximum load)")
     print("\nNote: Mock agents used for demonstration")

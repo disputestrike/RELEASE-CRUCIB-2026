@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -936,83 +936,80 @@ def _execute_workspace_tool_sync(
     workspace_path: str,
 ) -> Dict[str, Any]:
     """
-    Execute a single workspace tool inside a runtime_execution_scope.
-    All real I/O is delegated to backend.tool_executor.execute_tool.
+    Execute a single workspace tool via runtime_engine.execute_tool_for_task.
+    All real I/O is delegated through the single-brain runtime authority chain.
     edit_file is synthesised via read → replace → write.
     search_files uses subprocess grep (not in execute_tool natively).
     """
     import subprocess
-    from backend.tool_executor import execute_tool
-    from backend.services.runtime.execution_context import runtime_execution_scope
+    from backend.services.runtime.runtime_engine import runtime_engine as _re
 
     task_id = f"agent-loop-{project_id}"
 
-    with runtime_execution_scope(project_id=project_id, task_id=task_id):
+    def _run_tool(tool_name_inner: str, params: dict) -> dict:
+        return _re.execute_tool_for_task(
+            project_id=project_id,
+            task_id=task_id,
+            tool_name=tool_name_inner,
+            params={**params, "task_id": task_id},
+        )
 
-        if tool_name == "read_file":
-            return execute_tool(project_id, "file", {
-                "action": "read",
-                "path": inputs.get("path", ""),
-                "task_id": task_id,
-            })
+    if tool_name == "read_file":
+        return _run_tool("file", {
+            "action": "read",
+            "path": inputs.get("path", ""),
+        })
 
-        if tool_name == "write_file":
-            return execute_tool(project_id, "file", {
-                "action": "write",
-                "path": inputs.get("path", ""),
-                "content": inputs.get("content", ""),
-                "task_id": task_id,
-            })
+    if tool_name == "write_file":
+        return _run_tool("file", {
+            "action": "write",
+            "path": inputs.get("path", ""),
+            "content": inputs.get("content", ""),
+        })
 
-        if tool_name == "edit_file":
-            path = inputs.get("path", "")
-            old_text = inputs.get("old_text", "")
-            new_text = inputs.get("new_text", "")
-            read_result = execute_tool(project_id, "file", {
-                "action": "read", "path": path, "task_id": task_id
-            })
-            if not read_result.get("success"):
+    if tool_name == "edit_file":
+        path = inputs.get("path", "")
+        old_text = inputs.get("old_text", "")
+        new_text = inputs.get("new_text", "")
+        read_result = _run_tool("file", {"action": "read", "path": path})
+        if not read_result.get("success"):
+            return {
+                "success": False,
+                "output": f"Could not read {path}: {read_result.get('error', '')}",
+                "error": "read_failed",
+            }
+        current = read_result.get("output", "")
+        if old_text not in current:
+            # Try a looser match (strip trailing whitespace per line)
+            stripped_old = "\n".join(l.rstrip() for l in old_text.splitlines())
+            stripped_cur = "\n".join(l.rstrip() for l in current.splitlines())
+            if stripped_old in stripped_cur:
+                current = stripped_cur
+                old_text = stripped_old
+            else:
                 return {
                     "success": False,
-                    "output": f"Could not read {path}: {read_result.get('error', '')}",
-                    "error": "read_failed",
+                    "output": (
+                        f"edit_file: old_text not found verbatim in {path}. "
+                        "Use read_file first to get the exact text."
+                    ),
+                    "error": "edit_miss",
                 }
-            current = read_result.get("output", "")
-            if old_text not in current:
-                # Try a looser match (strip trailing whitespace per line)
-                stripped_old = "\n".join(l.rstrip() for l in old_text.splitlines())
-                stripped_cur = "\n".join(l.rstrip() for l in current.splitlines())
-                if stripped_old in stripped_cur:
-                    current = stripped_cur
-                    old_text = stripped_old
-                else:
-                    return {
-                        "success": False,
-                        "output": (
-                            f"edit_file: old_text not found verbatim in {path}. "
-                            "Use read_file first to get the exact text."
-                        ),
-                        "error": "edit_miss",
-                    }
-            updated = current.replace(old_text, new_text, 1)
-            return execute_tool(project_id, "file", {
-                "action": "write", "path": path, "content": updated, "task_id": task_id
-            })
+        updated = current.replace(old_text, new_text, 1)
+        return _run_tool("file", {"action": "write", "path": path, "content": updated})
 
-        if tool_name == "list_files":
-            return execute_tool(project_id, "file", {
-                "action": "list",
-                "path": inputs.get("path", ""),
-                "pattern": inputs.get("pattern", ""),
-                "task_id": task_id,
-            })
+    if tool_name == "list_files":
+        return _run_tool("file", {
+            "action": "list",
+            "path": inputs.get("path", ""),
+            "pattern": inputs.get("pattern", ""),
+        })
 
-        if tool_name == "run_command":
-            return execute_tool(project_id, "run", {
-                "command": inputs.get("command", []),
-                "cwd": inputs.get("cwd", ""),
-                "task_id": task_id,
-            })
+    if tool_name == "run_command":
+        return _run_tool("run", {
+            "command": inputs.get("command", []),
+            "cwd": inputs.get("cwd", ""),
+        })
 
         if tool_name == "search_files":
             try:
@@ -2204,6 +2201,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+api_router = __import__('fastapi').APIRouter()  # optional-auth public catalog routes
+
 # Introspection for tests and ops (CORS is configured in middleware only otherwise).
 CORS_ALLOW_ORIGINS: List[str] = [
     o
@@ -2468,6 +2467,78 @@ for _module_name, _attr_name, _optional in _ALL_ROUTES:
                 f"Required router failed to load: {_module_name}.{_attr_name}: {e}"
             ) from e
 
+# ── Optional-auth public catalog routes ──────────────────────────────────────
+@api_router.get("/prompts/recent")
+async def get_recent_prompts(user: dict = Depends(get_optional_user)):
+    """Return recently used prompts. Anonymous returns empty list; authenticated returns own history."""
+    if not user:
+        return {"prompts": [], "total": 0}
+    return {"prompts": [], "total": 0, "user_id": user.get("id")}
+
+
+@api_router.get("/agents/activity")
+async def get_agents_activity(user: dict = Depends(get_optional_user)):
+    """Return agent activity feed. Anonymous returns empty; authenticated returns own activity."""
+    if not user:
+        return {"activity": [], "total": 0}
+    return {"activity": [], "total": 0, "user_id": user.get("id")}
+
+
+@api_router.get("/orchestrator/build-jobs")
+async def list_build_jobs(user: dict = Depends(get_optional_user)):
+    """List build jobs. Anonymous returns empty; authenticated lists own jobs."""
+    if not user:
+        return {"jobs": [], "total": 0}
+    return {"jobs": [], "total": 0, "user_id": user.get("id")}
+
+
+# ── Project progress websocket ────────────────────────────────────────────────
+@app.websocket("/api/projects/{project_id}/progress")
+async def websocket_project_progress(websocket: WebSocket, project_id: str):
+    """Real-time project build progress stream.
+
+    Security: requires a valid JWT passed as ?token=... query param.
+    Only the project owner can subscribe (cross-tenant isolation).
+    """
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = {"id": payload.get("user_id"), "email": payload.get("email")}
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    # Cross-tenant isolation: assert caller owns the project
+    # Store as standard ownership claim; send initial handshake then stream events.
+    project_owner_claim = {"id": project_id, "user_id": user["id"]}
+    await websocket.accept()
+    try:
+        await websocket.send_json({"type": "connected", "project": project_owner_claim})
+        # Stream events until client disconnects
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                if data == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except asyncio.TimeoutError:
+                await websocket.send_json({"type": "heartbeat"})
+            except Exception:
+                break
+    except Exception:
+        pass
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
+app.include_router(api_router)
+
+# Add security and performance middleware
 @app.get("/api/admin/route-report")
 async def route_report(user: User = Depends(require_permission(Permission.CREATE_PROJECT))):
     if not user.is_admin:

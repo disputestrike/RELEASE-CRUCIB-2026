@@ -4,10 +4,16 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from backend.services.brain_layer import BrainLayer
-from backend.services.conversation_manager import ContextManager
-from backend.services.events import event_bus
-from backend.services.runtime.task_manager import task_manager
+try:
+    from services.brain_layer import BrainLayer
+    from services.conversation_manager import ContextManager
+    from services.events import event_bus
+    from services.runtime.task_manager import task_manager
+except ImportError:  # pragma: no cover
+    from backend.services.brain_layer import BrainLayer  # type: ignore[no-redef]
+    from backend.services.conversation_manager import ContextManager  # type: ignore[no-redef]
+    from backend.services.events import event_bus  # type: ignore[no-redef]
+    from backend.services.runtime.task_manager import task_manager  # type: ignore[no-redef]
 
 router = APIRouter(prefix="/api", tags=["chat"])
 

@@ -5,9 +5,14 @@ __all__ = ["runtime_state", "build_memory"]
 
 def __getattr__(name):
     if name == "runtime_state":
-        from . import runtime_state as _rs
+        import importlib
+        _rs = importlib.import_module("backend.orchestration.runtime_state")
+        # Cache in this module's namespace to prevent repeated __getattr__ calls
+        globals()["runtime_state"] = _rs
         return _rs
     if name == "build_memory":
-        from . import build_memory as _bm
+        import importlib
+        _bm = importlib.import_module("backend.orchestration.build_memory")
+        globals()["build_memory"] = _bm
         return _bm
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

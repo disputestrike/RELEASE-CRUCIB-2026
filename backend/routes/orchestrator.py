@@ -62,7 +62,9 @@ def _get_server_globals():
 import asyncio as _asyncio
 import sys as _sys
 
-_sys.path.insert(0, os.path.dirname(__file__))
+# Removed: adding routes/ to sys.path caused "agents" namespace package to be
+# shadowed by routes/agents.py when "import agents" was used elsewhere.
+# All imports in this file use relative paths (from ..X) so this was never needed.
 
 
 # Lazy-load orchestration modules to avoid circular imports

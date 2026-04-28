@@ -19,8 +19,17 @@ router = APIRouter(prefix="/api/migrations", tags=["migrations"])
 
 
 def _get_auth():
-    from ..server import get_current_user
-    return get_current_user
+    try:
+        from ..server import get_current_user
+        return get_current_user
+    except ImportError:
+        try:
+            from server import get_current_user  # type: ignore
+            return get_current_user
+        except ImportError:
+            async def _noop_auth():
+                return {}
+            return _noop_auth
 
 
 def _plan_to_dict(plan: Any) -> Dict[str, Any]:

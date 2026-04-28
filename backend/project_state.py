@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 # Previously this was defined independently as Path(__file__).parent / "workspace",
 # which diverged from config.py's {repo}/workspaces path and caused job lookup
 # to return None (task_store saves under config.py path; runtime_state looked here).
-from .config import WORKSPACE_ROOT
+try:
+    from .config import WORKSPACE_ROOT
+except ImportError:
+    from config import WORKSPACE_ROOT  # type: ignore[import]
 
 # Schema: state is a flat dict; we use keys like plan, requirements, stack, design_spec, etc.
 DEFAULT_STATE: Dict[str, Any] = {

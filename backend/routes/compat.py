@@ -11,13 +11,18 @@ router = APIRouter(prefix="/api", tags=["compat"])
 
 
 def _get_auth():
-    from ..deps import get_current_user
-
+    try:
+        from ..deps import get_current_user
+    except ImportError:
+        from deps import get_current_user  # type: ignore[import]
     return get_current_user
 
 
 def _get_optional_user():
-    from ..deps import get_optional_user
+    try:
+        from ..deps import get_optional_user
+    except ImportError:
+        from deps import get_optional_user  # type: ignore[import]
 
     return get_optional_user
 

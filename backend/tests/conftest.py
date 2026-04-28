@@ -39,6 +39,63 @@ logger = logging.getLogger(__name__)
 # Import `backend.*` like production; required before test modules that import `server` top-level.
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
+# Also add backend/ so tests can do `from services.X` or `from routes.X` directly
+_BACKEND_ROOT_STR = str(_BACKEND_ROOT)
+if _BACKEND_ROOT_STR not in sys.path:
+    sys.path.insert(1, _BACKEND_ROOT_STR)
+
+
+# ── Early module-level unification ───────────────────────────────────────────
+# Run at import time (before any test collection) so cross-contamination between
+# test files doesn't cause failures when run together. The session fixture
+# _unify_event_buses does the same work but fires too late (after first import).
+def _early_unify_modules():
+    try:
+        # 1. Unify runtime_engine
+        import services.runtime.runtime_engine as _rte
+        sys.modules.setdefault("backend.services.runtime.runtime_engine", _rte)
+    except Exception:
+        pass
+    try:
+        # 2. Unify brain_layer
+        import services.brain_layer as _sbl
+        sys.modules.setdefault("backend.services.brain_layer", _sbl)
+        _bbl = sys.modules.get("backend.services.brain_layer")
+        if _bbl is not None and _bbl is not _sbl:
+            _sbl.BrainLayer = _bbl.BrainLayer  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    try:
+        # 3. Unify events
+        import services.events as _sev
+        import backend.services.events as _bev
+        _old = _bev.event_bus
+        _bev.event_bus = _sev.event_bus
+        for _mod in list(sys.modules.values()):
+            if _mod is None:
+                continue
+            if getattr(_mod, "event_bus", None) is _old:
+                try:
+                    setattr(_mod, "event_bus", _sev.event_bus)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    try:
+        # 4. Unify task_manager
+        import services.runtime.task_manager as _stm
+        sys.modules.setdefault("backend.services.runtime.task_manager", _stm)
+    except Exception:
+        pass
+    try:
+        # 5. Unify execution_context
+        import backend.services.runtime.execution_context as _bec
+        sys.modules.setdefault("services.runtime.execution_context", _bec)
+    except Exception:
+        pass
+
+_early_unify_modules()
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 class _RepoTemporaryDirectory:
@@ -552,3 +609,211 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.get_closest_marker("postgres_only"):
             item.add_marker(skip_pg)
+
+
+# ── Event-bus unification ──────────────────────────────────────────────────
+# test_agent_loop.py stubs backend.services.events at collection time with a
+# _FakeBus.  runtime_engine.py therefore captures the stub's event_bus.  Tests
+# that directly import `from services.events import event_bus` and monkeypatch
+# its .emit attribute would otherwise patch a *different* object.
+# This autouse session fixture overwrites runtime_engine's module-level
+# `event_bus` reference with the real singleton after all modules are loaded.
+
+@pytest.fixture(autouse=True, scope="session")
+def _unify_event_buses():
+    """Unify module-level singletons so monkeypatching in tests is consistent."""
+    import sys as _sys
+    import types as _types
+    # 1. Ensure services.runtime.runtime_engine and backend.services.runtime.runtime_engine
+    #    are the SAME module object (test_agent_loop stubs the backend.* path)
+    try:
+        import services.runtime.runtime_engine as _rte
+        _sys.modules.setdefault("backend.services.runtime.runtime_engine", _rte)
+        # Overwrite event_bus reference with real one
+        from services.events import event_bus as _real_bus
+        _rte.event_bus = _real_bus
+    except Exception:
+        pass
+    # 2. Ensure event_bus monkeypatching reaches runtime_engine regardless of import path
+    try:
+        from services.events import event_bus as _real_bus
+        import services.runtime.runtime_engine as _rte
+        _rte.event_bus = _real_bus
+    except Exception:
+        pass
+    # 3. Unify brain_layer so class-level monkeypatches apply regardless of import path
+    try:
+        import services.brain_layer as _sbl
+        _sys.modules.setdefault("backend.services.brain_layer", _sbl)
+        # If backend.* was already loaded as a separate module, sync the class
+        _bbl = _sys.modules.get("backend.services.brain_layer")
+        if _bbl is not None and _bbl is not _sbl:
+            _sbl.BrainLayer = _bbl.BrainLayer  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    # 4. Unify events module so event_bus monkeypatches propagate across all import paths
+    try:
+        import services.events as _sev
+        import backend.services.events as _bev
+        # Capture old backend event_bus before unifying
+        _old_bev_bus = _bev.event_bus
+        # Make backend.services.events.event_bus === services.events.event_bus
+        _bev.event_bus = _sev.event_bus
+        # Also update any already-loaded modules that captured the old backend event_bus
+        for _mod in list(_sys.modules.values()):
+            if _mod is None:
+                continue
+            if getattr(_mod, "event_bus", None) is _old_bev_bus:
+                try:
+                    setattr(_mod, "event_bus", _sev.event_bus)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    # 5. Unify task_manager across import paths
+    try:
+        import services.runtime.task_manager as _stm
+        _sys.modules.setdefault("backend.services.runtime.task_manager", _stm)
+    except Exception:
+        pass
+    # 6. Unify execution_context so ContextVars are shared across import paths
+    #    (brain_layer sets context via backend.*, tool_executor reads via backend.*)
+    try:
+        import backend.services.runtime.execution_context as _bec
+        _sys.modules.setdefault("services.runtime.execution_context", _bec)
+    except Exception:
+        pass
+
+@pytest.fixture(autouse=True, scope="function")
+def _relink_event_bus_per_test():
+    """Before each test, ensure all loaded modules share the same event_bus object.
+
+    test_agent_loop.py installs a FakeBus on backend.services.events at module
+    load time.  Later tests that monkeypatch services.events.event_bus.emit need
+    ALL modules (llm_service, brain_layer, hook_bus, etc.) to hold a reference
+    to *that same* object, so we re-unify on each function entry.
+    """
+    import sys as _sys
+
+    # Identify the canonical event_bus (from services.events, which tests patch)
+    try:
+        import services.events as _sev_mod
+        _canonical = _sev_mod.event_bus
+    except Exception:
+        yield
+        return
+
+    # Walk every loaded module and replace stale event_bus references
+    for _mod in list(_sys.modules.values()):
+        if _mod is None:
+            continue
+        _current = getattr(_mod, "event_bus", None)
+        if _current is None or _current is _canonical:
+            continue
+        # Replace only real event_bus-shaped objects (has emit/subscribe), not
+        # arbitrary modules or objects that happen to have an event_bus attr.
+        if callable(getattr(_current, "emit", None)) and _current is not _canonical:
+            try:
+                setattr(_mod, "event_bus", _canonical)
+            except Exception:
+                pass
+
+    # Also ensure backend.services.events.event_bus points to canonical
+    try:
+        import backend.services.events as _bev_mod
+        if _bev_mod.event_bus is not _canonical:
+            _bev_mod.event_bus = _canonical
+    except Exception:
+        pass
+
+    yield  # test runs here
+
+@pytest.fixture(autouse=True, scope="function")  
+def _relink_event_bus_per_test_v2():
+    """Enhanced per-test event bus relink that also restores the backend.services.events stub."""
+    import sys as _sys
+
+    try:
+        import services.events as _sev_mod
+        _canonical = _sev_mod.event_bus
+    except Exception:
+        yield
+        return
+
+    # 1. Restore sys.modules["backend.services.events"] to the REAL module
+    #    (test_agent_loop.py installs a stub module with FakeBus at collection time)
+    _bev_stub = _sys.modules.get("backend.services.events")
+    if _bev_stub is not None and not callable(getattr(_bev_stub, "subscribe", None)):
+        # It's the stub (has no subscribe) - replace with real module
+        _sys.modules["backend.services.events"] = _sev_mod
+
+    # 2. Explicitly fix tool_executor (it does `from backend.services.events import event_bus`)
+    for _key in ("tool_executor", "backend.tool_executor"):
+        _tex = _sys.modules.get(_key)
+        if _tex is not None and getattr(_tex, "event_bus", None) is not _canonical:
+            try:
+                setattr(_tex, "event_bus", _canonical)
+            except Exception:
+                pass
+
+    # 3. Walk all remaining modules and fix stale references
+    for _mod in list(_sys.modules.values()):
+        if _mod is None:
+            continue
+        _current = getattr(_mod, "event_bus", None)
+        if _current is None or _current is _canonical:
+            continue
+        if callable(getattr(_current, "emit", None)):
+            try:
+                setattr(_mod, "event_bus", _canonical)
+            except Exception:
+                pass
+
+    yield  # test runs here
+
+@pytest.fixture(autouse=True, scope="function")
+def _relink_execution_context_per_test():
+    """Restore execution_context stub from test_agent_loop.py before each test.
+
+    test_agent_loop.py stubs backend.services.runtime.execution_context with
+    fake lambdas (all return None).  Modules imported after that stub (like
+    tool_executor) capture the fake callables, so require_runtime_authority
+    always raises PermissionError in subsequent tests.
+    """
+    import sys as _sys
+
+    # The real execution_context was captured by _early_unify_modules as
+    # services.runtime.execution_context before any test stubs ran.
+    _real_ec = _sys.modules.get("services.runtime.execution_context")
+    if _real_ec is None:
+        try:
+            import backend.services.runtime.execution_context as _real_ec
+            _sys.modules.setdefault("services.runtime.execution_context", _real_ec)
+        except Exception:
+            yield
+            return
+
+    # 1. Restore sys.modules["backend.services.runtime.execution_context"]
+    _bec_stub = _sys.modules.get("backend.services.runtime.execution_context")
+    if _bec_stub is not None and _bec_stub is not _real_ec:
+        _sys.modules["backend.services.runtime.execution_context"] = _real_ec
+
+    # 2. Fix any module that imported execution_context names directly
+    _ec_attrs = ("current_project_id", "current_task_id", "current_skill_hint",
+                 "runtime_execution_scope")
+    for _mod_name, _mod in list(_sys.modules.items()):
+        if _mod is None or _mod is _real_ec:
+            continue
+        for _attr in _ec_attrs:
+            _real_fn = getattr(_real_ec, _attr, None)
+            _mod_fn = getattr(_mod, _attr, None)
+            if _real_fn is None or _mod_fn is None:
+                continue
+            # Replace if the module has a different callable (the fake lambda)
+            if _mod_fn is not _real_fn and callable(_mod_fn) and callable(_real_fn):
+                try:
+                    setattr(_mod, _attr, _real_fn)
+                except Exception:
+                    pass
+
+    yield  # test runs here

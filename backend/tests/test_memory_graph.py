@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import sys
 import uuid
 
 import pytest
 
-from services.runtime.memory_graph import add_node, add_edge, query_nodes, get_graph
+# Remove stubs injected by test_agent_loop.py so the real modules load
+for _k in [
+    "backend.services.runtime.memory_graph",
+    "services.runtime.memory_graph",
+    "backend.project_state",
+    "backend.config",
+]:
+    sys.modules.pop(_k, None)
+
+from backend.services.runtime.memory_graph import add_node, add_edge, query_nodes, get_graph
 
 
 def _pid() -> str:
@@ -55,7 +65,7 @@ def test_explicit_node_id():
 
 
 def test_retention_prunes_oldest(monkeypatch):
-    import services.runtime.memory_graph as mg
+    import backend.services.runtime.memory_graph as mg
     monkeypatch.setattr(mg, "_MAX_NODES", 3)
     project_id = _pid()
     ids = []

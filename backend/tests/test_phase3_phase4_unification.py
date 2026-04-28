@@ -61,11 +61,11 @@ def test_runtime_state_adapter_sees_task_manager_job_and_events():
     task_id = task["task_id"]
 
     # Adapter should read task as a job and include its status.
-    job = asyncio.get_event_loop().run_until_complete(runtime_state.get_job(task_id))
+    job = asyncio.run(runtime_state.get_job(task_id))
     assert job is not None
     assert job["id"] == task_id
 
     # Adapter events are file-backed; mirror writes should be visible via append/get flow once an adapter event is added.
-    asyncio.get_event_loop().run_until_complete(runtime_state.append_job_event(task_id, "phase3_probe", {"ok": True}))
-    rows = asyncio.get_event_loop().run_until_complete(runtime_state.get_job_events(task_id, limit=50))
+    asyncio.run(runtime_state.append_job_event(task_id, "phase3_probe", {"ok": True}))
+    rows = asyncio.run(runtime_state.get_job_events(task_id, limit=50))
     assert any(r.get("event_type") == "phase3_probe" for r in rows)

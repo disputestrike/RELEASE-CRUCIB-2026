@@ -8,7 +8,7 @@ from backend.orchestration.repair_loop import is_enabled, run_repair_loop
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 async def _ast_verify(code: str):

@@ -127,34 +127,92 @@ class BrainLayer:
         meta = execution_meta or {}
         project_id = (meta.get("project_id") or f"brain-{getattr(session, 'session_id', 'session')}").strip()
         task_id = (meta.get("task_id") or "").strip() or None
+        bus = _event_bus()
 
-        if self.runtime_engine is None:
-            assessment = self.assess_request(session, user_message)
-            bus = _event_bus()
-            bus.emit("brain.assessed", {"project_id": project_id, "task_id": task_id, **assessment})
-            bus.emit("brain.execution.started", {"project_id": project_id, "task_id": task_id})
-            results: Dict[str, Any] = {}
-            agent_instances = self._get_agent_instances()
-            for name in assessment.get("selected_agents") or []:
-                agent = agent_instances.get(name)
-                if agent is None:
-                    continue
-                runner = getattr(agent, "run", None)
-                if not callable(runner):
-                    continue
-                run_result = runner({"session": session, "message": user_message, "project_id": project_id})
-                if hasattr(run_result, "__await__"):
-                    run_result = await run_result
-                results[name] = run_result
-            bus.emit("brain.execution.completed", {"project_id": project_id, "task_id": task_id, "agents": list(results)})
-            return {
-                "status": "executed",
-                "intent": assessment.get("intent"),
-                "selected_agents": assessment.get("selected_agents") or [],
-                "execution": {"success": True, "result": results},
+        # ── Route through runtime_engine when available ───────────────────────
+        if self.runtime_engine is not None:
+            if task_id:
+                return await self.runtime_engine.run_task_loop(
+                    session=session,
+                    project_id=project_id,
+                    task_id=task_id,
+                    user_message=user_message,
+                    progress_callback=progress_callback,
+                    planner=self,
+                )
+            out = await self.runtime_engine.start_task(
+                session=session,
+                session_id=getattr(session, "session_id", "session"),
+                project_id=project_id,
+                user_message=user_message,
+                progress_callback=progress_callback,
+            )
+            return out.get("brain_result") or {
+                "status": "execution_failed",
+                "execution": {"error": "runtime_engine returned no result"},
             }
 
-        if task_id:
+        # ── Fallback: local execution (no runtime_engine) ─────────────────────
+        assessment = self.assess_request(session, user_message)
+        bus.emit("brain.assessed", {"project_id": project_id, "task_id": task_id, **assessment})
+        bus.emit("brain.execution.started", {"project_id": project_id, "task_id": task_id})
+
+        agent_outputs: List[Dict[str, Any]] = []
+        agent_instances = self._get_agent_instances()
+
+        for name in assessment.get("selected_agents") or []:
+            # ── Cancellation guard before each agent ─────────────────────
+            if task_id:
+                try:
+                    from services.runtime.task_manager import task_manager as _tm
+                except ImportError:
+                    from backend.services.runtime.task_manager import task_manager as _tm  # type: ignore
+                record = _tm.get_task(project_id, task_id)
+                if record and record.get("status") == "killed":
+                    bus.emit("brain.execution.cancelled", {"project_id": project_id, "task_id": task_id})
+                    return {
+                        "status": "execution_cancelled",
+                        "intent": assessment.get("intent"),
+                        "selected_agents": assessment.get("selected_agents") or [],
+                        "execution": {"success": False, "cancelled": True, "agent_outputs": agent_outputs},
+                    }
+
+            agent = agent_instances.get(name)
+            if agent is None:
+                continue
+            runner = getattr(agent, "run", None)
+            if not callable(runner):
+                continue
+            ctx = {"session": session, "message": user_message,
+                   "project_id": project_id, "task_id": task_id}
+            bus.emit("brain.agent.started", {"project_id": project_id, "task_id": task_id, "agent": name})
+            # ── Set runtime execution scope so tool_executor authority checks pass ──
+            try:
+                from backend.services.runtime.execution_context import runtime_execution_scope as _rscope
+            except ImportError:
+                from services.runtime.execution_context import runtime_execution_scope as _rscope  # type: ignore
+            async def _run_in_scope(_runner=runner, _ctx=ctx):
+                with _rscope(project_id=project_id, task_id=task_id or "fallback"):
+                    r = _runner(_ctx)
+                    if hasattr(r, "__await__"):
+                        r = await r
+                    return r
+            run_result = await _run_in_scope()
+            bus.emit("brain.agent.completed", {"project_id": project_id, "task_id": task_id, "agent": name})
+            agent_outputs.append({"agent": name, "result": run_result})
+
+        bus.emit("brain.execution.completed", {
+            "project_id": project_id, "task_id": task_id,
+            "agents": [o["agent"] for o in agent_outputs],
+        })
+        return {
+            "status": "executed",
+            "intent": assessment.get("intent"),
+            "selected_agents": assessment.get("selected_agents") or [],
+            "execution": {"success": True, "agent_outputs": agent_outputs, "result": ""},
+        }
+
+        if task_id:  # pragma: no cover — dead after refactor; kept for safety
             return await self.runtime_engine.run_task_loop(
                 session=session,
                 project_id=project_id,

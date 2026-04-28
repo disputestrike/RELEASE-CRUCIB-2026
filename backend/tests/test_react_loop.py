@@ -8,7 +8,7 @@ from services.react_loop import react_stream
 def _run(gen_coro):
     async def _collect():
         return [e async for e in gen_coro]
-    return asyncio.get_event_loop().run_until_complete(_collect())
+    return asyncio.run(_collect())
 
 
 def test_default_stream_emits_thought_text_final():

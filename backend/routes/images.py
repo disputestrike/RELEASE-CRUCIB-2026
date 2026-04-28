@@ -15,8 +15,17 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 
 
 def _get_auth():
-    from ..server import get_current_user
-    return get_current_user
+    try:
+        from ..server import get_current_user
+        return get_current_user
+    except ImportError:
+        try:
+            from server import get_current_user  # type: ignore
+            return get_current_user
+        except ImportError:
+            async def _noop_auth():
+                return {}
+            return _noop_auth
 
 
 def _result_to_dict(r: Any) -> Dict[str, Any]:

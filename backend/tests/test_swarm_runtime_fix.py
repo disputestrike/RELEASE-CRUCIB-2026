@@ -35,6 +35,11 @@ async def test_run_single_agent_with_context_returns_completed_result_for_planne
     monkeypatch.setattr(server, "_init_agent_learning", AsyncMock(return_value=None))
     monkeypatch.setattr(server, "_vector_memory", _UnavailableVectorMemory())
     monkeypatch.setattr(server, "_pgvector_memory", _UnavailableVectorMemory())
+    monkeypatch.setattr(
+        server,
+        "_call_llm_with_tools_loop",
+        AsyncMock(return_value=("Planner output", {"files_written": [], "turns": 1})),
+    )
 
     result = await server._run_single_agent_with_context(
         project_id="proj-1",

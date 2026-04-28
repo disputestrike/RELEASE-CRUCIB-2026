@@ -34,6 +34,14 @@ async def test_job_workspace_download_zip_preserves_code_tree(monkeypatch):
 
         monkeypatch.setattr(workspace, "_assert_job_access", fake_assert_job_access)
 
+        # Bypass delivery gate — BIV hasn't run in unit test workspace
+        from backend.orchestration import delivery_gate as _dg
+        class _PassedGate:
+            passed = True
+            status = 200
+            detail = "OK"
+        monkeypatch.setattr(_dg, "run_download_gate", lambda *a, **kw: _PassedGate())
+
         response = await workspace.download_job_workspace_zip("job-download-1", user={"id": "user-1"})
         payload = await _read_streaming_response(response)
 

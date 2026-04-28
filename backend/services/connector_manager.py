@@ -12,6 +12,7 @@ Supported connectors:
   • Vercel  – deployments via Vercel API
   • Slack   – messages via webhooks
   • Braintree – billing readiness and payment configuration
+  • Stripe   – payment processing via Stripe API
 
 Design:
   • Each connector is stateless; credentials pulled from env at call time.
@@ -251,6 +252,32 @@ class BraintreeConnector(ConnectorBase):
         }
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stripe connector
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StripeConnector(ConnectorBase):
+    name = "stripe"
+
+    def __init__(self) -> None:
+        self._secret_key = os.environ.get("STRIPE_SECRET_KEY", "")
+        self._webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+    def is_available(self) -> bool:
+        return bool(self._secret_key)
+
+    def status(self) -> Dict[str, Any]:
+        return {
+            "configured": self.is_available(),
+            "webhook_configured": bool(self._webhook_secret),
+            "required_config": [
+                "STRIPE_SECRET_KEY",
+                "STRIPE_WEBHOOK_SECRET",
+            ],
+        }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ConnectorManager
 # ─────────────────────────────────────────────────────────────────────────────
@@ -260,7 +287,7 @@ class ConnectorManager:
 
     def __init__(self) -> None:
         self._registry: Dict[str, ConnectorBase] = {}
-        for cls in [GitHubConnector, RailwayConnector, VercelConnector, SlackConnector, BraintreeConnector]:
+        for cls in [GitHubConnector, RailwayConnector, VercelConnector, SlackConnector, BraintreeConnector, StripeConnector]:
             instance = cls()
             self._registry[instance.name] = instance
 

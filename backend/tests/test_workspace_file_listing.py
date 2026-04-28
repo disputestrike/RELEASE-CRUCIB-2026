@@ -106,7 +106,7 @@ def test_assert_job_access_uses_runtime_project_id(monkeypatch):
 
     import asyncio
 
-    workspace = asyncio.get_event_loop().run_until_complete(
+    workspace = asyncio.run(
         workspace_routes._assert_job_access("tsk_runtime", {"id": "user-1"})
     )
 

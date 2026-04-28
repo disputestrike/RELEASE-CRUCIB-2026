@@ -1,5 +1,5 @@
 """
-Build 100-Feature Enterprise SaaS using CrucibAI's 123 Agents
+Build 100-Feature Enterprise SaaS using CrucibAI's 374 Agents
 Complete orchestration and execution of the ultimate test.
 """
 

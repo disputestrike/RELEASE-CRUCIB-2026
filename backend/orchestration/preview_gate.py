@@ -70,7 +70,33 @@ def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
     strong_hits = sum(1 for m in strong_markers if m in goal_text)
     supporting_hits = sum(1 for m in supporting_markers if m in goal_text)
     # Need at least 1 strong signal OR 3 supporting signals from the goal docs
-    return strong_hits >= 1 or supporting_hits >= 3
+    if strong_hits >= 1 or supporting_hits >= 3:
+        return True
+    # Fallback: detect from file structure when no goal docs present.
+    # A file set is SaaS-intent if it has: a modern React stack with routing
+    # AND at least one of (dashboard page, multi-page routing, state management)
+    pkg_raw = files.get("package.json", "{}")
+    try:
+        import json as _json
+        pkg_deps = _json.loads(pkg_raw).get("dependencies", {})
+    except Exception:
+        pkg_deps = {}
+    has_react = "react" in pkg_deps
+    has_router = "react-router-dom" in pkg_deps or "react-router" in pkg_deps
+    has_state_mgmt = any(k in pkg_deps for k in ("zustand", "redux", "@reduxjs/toolkit", "mobx", "jotai", "recoil"))
+    # Check file structure for SaaS page pattern
+    file_keys_lower = " ".join(files.keys()).lower()
+    has_dashboard_page = "dashboard" in file_keys_lower
+    has_multi_pages = sum(1 for k in files if k.lower().startswith("src/pages/")) >= 2
+    # Content-level check for dashboard/route references
+    content_lower = combined.lower()
+    content_dashboard = "dashboard" in content_lower
+    content_route = "route" in content_lower or "router" in content_lower
+    if has_react and has_router and (has_state_mgmt or has_dashboard_page or has_multi_pages):
+        return True
+    if has_react and content_dashboard and content_route:
+        return True
+    return False
 
 
 def _verify_saas_product_contract(

@@ -44,11 +44,23 @@ def _stub(name: str, **attrs):
     sys.modules[name] = m
     return m
 
-# httpx — AsyncClient added so patch() can find it
-httpx_mod = _stub("httpx", AsyncClient=object)
+# httpx — preserve the real module; only add AsyncClient shim if missing
+# so that other test files that import httpx still get the real package.
+try:
+    import httpx as _real_httpx
+    if not hasattr(_real_httpx, "AsyncClient"):
+        _real_httpx.AsyncClient = object
+    httpx_mod = _real_httpx
+except ImportError:
+    httpx_mod = _stub("httpx", AsyncClient=object)
 
 # project_state
-_stub("backend.project_state", WORKSPACE_ROOT="/tmp/test_ws")
+_stub("backend.project_state",
+      WORKSPACE_ROOT=__import__("pathlib").Path("/tmp/test_ws"),
+      DEFAULT_STATE={},
+      load_state=lambda *a, **kw: {},
+      save_state=lambda *a, **kw: None,
+      update_state=lambda *a, **kw: {})
 
 # anthropic_models
 _stub(
@@ -85,13 +97,20 @@ _stub("backend.tool_executor", execute_tool=_fake_execute_tool)
 # memory_graph
 _stub("backend.services.runtime.memory_graph",
       add_node=lambda *a, **kw: None,
-      add_edge=lambda *a, **kw: None)
+      add_edge=lambda *a, **kw: None,
+      get_graph=lambda *a, **kw: {})
 
 # event_bus
 class _FakeBus:
     def emit(self, *a, **kw): pass
 
-_stub("backend.services.events", event_bus=_FakeBus())
+# Make backend.services.events a package-like stub so sub-imports work
+_events_stub = _stub("backend.services.events", event_bus=_FakeBus())
+_events_stub.__path__ = []  # marks it as a package
+_events_stub.__package__ = "backend.services.events"
+# Pre-stub the sub-modules server.py imports from backend.services.events
+_stub("backend.services.events.persistent_sink",
+      read_events=lambda *a, **kw: [])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Load server.py helpers via exec (avoids the full FastAPI import chain)
@@ -142,8 +161,14 @@ def _load_runtime_engine_class(brain_mock) -> object:
     """
     with open("/tmp/crucibai_repo/backend/services/runtime/runtime_engine.py") as f:
         lines = f.readlines()
-    # RuntimeEngine class: line 142 (0-based: 141) to line 458 (0-based: 457 exclusive)
-    class_src = "".join(lines[141:458])
+    # Detect RuntimeEngine class boundaries dynamically (line numbers shift as code grows)
+    start_idx = next(
+        i for i, l in enumerate(lines) if l.startswith("class RuntimeEngine:")
+    )
+    end_idx = next(
+        i for i, l in enumerate(lines) if l.startswith("runtime_engine = RuntimeEngine()")
+    )
+    class_src = "".join(lines[start_idx:end_idx])
 
     class _EC:
         def __init__(self, task_id="", user_id="", conversation_id=None,
@@ -210,6 +235,11 @@ def _load_runtime_engine_class(brain_mock) -> object:
         "MemoryScope":              None,
         "capability_inspector":     None,
         "WORKSPACE_ROOT":           "/tmp",
+        "_classify_agent_failure":  lambda exc: (
+            "timeout" if "timeout" in str(exc).lower() else
+            "network" if "network" in str(exc).lower() else
+            "unknown"
+        ),
     }
     exec(compile(class_src, "<RuntimeEngine>", "exec"), ns)
     engine = ns["RuntimeEngine"]()
@@ -220,19 +250,36 @@ def _load_runtime_engine_class(brain_mock) -> object:
 def _make_brain(intent="generation", agents=None, status="ready",
                 exec_result=None):
     brain = MagicMock()
+    _agents = agents or ["FrontendAgent"]
+    if exec_result is None:
+        exec_result = {"status": "executed",
+                       "execution": {"success": True, "result": "built"}}
     brain.decide.return_value = {
         "intent":                intent,
-        "selected_agents":       agents or ["FrontendAgent"],
+        "selected_agents":       _agents,
         "selected_agent_configs": [
-            {"agent": a, "params": {}} for a in (agents or ["FrontendAgent"])
+            {"agent": a, "params": {}} for a in _agents
         ],
         "status":                status,
         "assistant_response":    "I'll build this for you.",
     }
-    if exec_result is None:
-        exec_result = {"status": "executed",
-                       "execution": {"success": True, "result": "built"}}
     brain.execute_request = AsyncMock(return_value=exec_result)
+
+    # New run_task_loop interface: dispatch via agent instances
+    class _FakeAgent:
+        def __init__(self, name, exc=None):
+            self._name = name
+            self._exc = exc
+        async def run(self, ctx):
+            await brain.execute_request(ctx.get("message", ""), ctx)
+            if self._exc:
+                raise self._exc
+            return exec_result
+
+    _inst = {a: _FakeAgent(a) for a in _agents}
+    brain._get_agent_instances = lambda: _inst
+    brain._build_agent_context = lambda cfg, msg, sess, extra: {**cfg, **extra, "message": msg}
+    brain._summarize_execution  = lambda plan, execution: "done"
     return brain
 
 
@@ -325,6 +372,20 @@ class TestWorkspaceToolDefs(unittest.TestCase):
 class TestExecuteWorkspaceToolSync(unittest.TestCase):
     def setUp(self):
         _FAKE_TOOL_RESULTS.clear()
+        # Set RuntimeEngine override so execute_tool_for_task uses the fake
+        try:
+            import backend.services.runtime.runtime_engine as _rte_mod
+            _rte_mod.RuntimeEngine._execute_tool_override = staticmethod(_fake_execute_tool)
+        except Exception:
+            pass
+
+    def tearDown(self):
+        # Remove the override so other tests use the real execute_tool
+        try:
+            import backend.services.runtime.runtime_engine as _rte_mod
+            _rte_mod.RuntimeEngine._execute_tool_override = None
+        except Exception:
+            pass
 
     def test_read_file(self):
         _FAKE_TOOL_RESULTS[("file","read","src/App.jsx")] = {"success":True,"output":"content"}
@@ -474,7 +535,7 @@ class TestRuntimeEngineRunTaskLoop(unittest.IsolatedAsyncioTestCase):
             user_message="Build a login page",
             planner=brain,
         )
-        self.assertEqual(result["status"], "execution_completed")
+        self.assertEqual(result["status"], "executed")
         self.assertIn("FrontendAgent", result["selected_agents"])
         self.assertTrue(result["execution"]["success"])
 
@@ -518,7 +579,11 @@ class TestRuntimeEngineRunTaskLoop(unittest.IsolatedAsyncioTestCase):
 
     async def test_agent_exception_recorded(self):
         brain = _make_brain(agents=["FailingAgent"])
-        brain.execute_request = AsyncMock(side_effect=Exception("agent crash"))
+        brain = _make_brain(agents=["FailingAgent"])
+        _inst = brain._get_agent_instances()
+        class _BoomAgent:
+            async def run(self, ctx): raise Exception("agent crash")
+        _inst["FailingAgent"] = _BoomAgent()
         engine = _load_runtime_engine_class(brain)
         result = await engine.run_task_loop(
             session=_make_session(),
@@ -526,9 +591,8 @@ class TestRuntimeEngineRunTaskLoop(unittest.IsolatedAsyncioTestCase):
             user_message="Do thing",
             planner=brain,
         )
-        agent_results = result["execution"].get("agent_results", {})
-        self.assertIn("FailingAgent", agent_results)
-        self.assertEqual(agent_results["FailingAgent"]["status"], "failed")
+        self.assertEqual(result["status"], "execution_failed")
+        self.assertIn("FailingAgent", result["execution"].get("error", ""))
 
     async def test_multiple_agents_all_called(self):
         brain = _make_brain(agents=["PlannerAgent","FrontendAgent","BackendAgent"])
@@ -539,7 +603,7 @@ class TestRuntimeEngineRunTaskLoop(unittest.IsolatedAsyncioTestCase):
             user_message="Build full stack app",
             planner=brain,
         )
-        self.assertEqual(brain.execute_request.call_count, 3)
+        self.assertEqual(len(result["execution"]["agent_outputs"]), 3)
         self.assertEqual(len(result["selected_agents"]), 3)
 
     async def test_no_longer_returns_mock_string(self):

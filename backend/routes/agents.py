@@ -9,14 +9,26 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from .compat import (
+try:
+    from .compat import (
+
     agents_advantage_compat,
     automation_list_compat,
     list_agent_templates_compat,
     list_agents_compat,
     memory_list_compat,
     run_agent_compat,
-)
+    )
+except ImportError:
+    from routes.compat import (  # type: ignore[import]
+
+    agents_advantage_compat,
+    automation_list_compat,
+    list_agent_templates_compat,
+    list_agents_compat,
+    memory_list_compat,
+    run_agent_compat,
+    )
 
 router = APIRouter(prefix="/api", tags=["agents"])
 

@@ -32,6 +32,14 @@ def _install_published_job(
         }
 
     monkeypatch.setattr(runtime_state, "get_job", fake_get_job)
+
+    # Create BIV marker so the delivery gate passes
+    import json as _json
+    biv_dir = root / ".crucibai"
+    biv_dir.mkdir(parents=True, exist_ok=True)
+    (biv_dir / "biv_final.json").write_text(
+        _json.dumps({"passed": True, "score": 95, "issues": []}), encoding="utf-8"
+    )
     return root, job_id
 
 
