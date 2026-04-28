@@ -214,7 +214,6 @@ def _extract_artifact_from_llm_output(
 from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
 from backend.agent_resilience import get_criticality
 
-from .executor import _safe_write, _strip_prose_preamble
 from .agent_selection_logic import (
     BASE_AGENTS,
     build_full_phases_from_dag,
@@ -773,7 +772,9 @@ async def run_swarm_agent_step(
                 
                 if extracted:
                     # Route through _safe_write so all language/garbage guards apply
-                    written = _safe_write(workspace_path, artifact_rel_path, extracted)
+                    # Lazy import to avoid circular import with executor.py
+                    from .executor import _safe_write as _sw
+                    written = _sw(workspace_path, artifact_rel_path, extracted)
                     if written:
                         if artifact_rel_path not in changed_files:
                             changed_files.append(artifact_rel_path)
