@@ -241,8 +241,14 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
         return {"fixed": False, "reason": "LLM returned identical content"}
 
     try:
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write(fixed_content)
+        from backend.orchestration.executor import _safe_write as _exec_safe_write
+
+        rel_norm = rel_path.replace("\\", "/").lstrip("/")
+        if not _exec_safe_write(workspace_path, rel_norm, fixed_content):
+            return {
+                "fixed": False,
+                "reason": "Write rejected by safety guards (invalid path or blocked content)",
+            }
         logger.info(
             "llm_code_repair: fixed %s (%d→%d chars)",
             rel_path,

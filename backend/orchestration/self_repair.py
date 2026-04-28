@@ -66,19 +66,20 @@ _VALID_VITE_MARKERS = (
 
 
 def _safe_write(workspace_path: str, rel_path: str, content: str) -> bool:
+    """Must match executor._safe_write (prose strip + pollution gates)."""
     if not workspace_path:
         return False
-    full = os.path.normpath(os.path.join(workspace_path, rel_path))
-    if not full.startswith(os.path.normpath(workspace_path)):
-        logger.warning("self_repair: rejected path escape %s", rel_path)
-        return False
-    os.makedirs(os.path.dirname(full), exist_ok=True)
     try:
-        with open(full, "w", encoding="utf-8") as f:
-            f.write(content)
-        logger.info("self_repair: wrote %s (%d chars)", rel_path, len(content))
-        return True
-    except OSError as e:
+        from backend.orchestration.executor import _safe_write as _exec_safe_write
+
+        rel_norm = rel_path.replace("\\", "/").lstrip("/")
+        out = _exec_safe_write(workspace_path, rel_norm, content)
+        if out:
+            logger.info("self_repair: wrote %s (%d chars)", rel_norm, len(content))
+            return True
+        logger.warning("self_repair: write rejected for %s", rel_norm)
+        return False
+    except Exception as e:
         logger.error("self_repair: failed to write %s: %s", rel_path, e)
         return False
 

@@ -68,6 +68,8 @@ from .verification_api_smoke import healthcheck_sh_script
 from .verifier import verify_step
 from .verifier_issue_files import candidate_files_from_verification_issues
 from .brain_narration import build_failure_guidance
+from .control_plane_audit import log_write_gate_violation
+from .file_language_sanity import detect_write_time_violations
 from .placeholder_detection import contains_placeholder
 from .context_registry import merge_file_ownership
 from backend.orchestration.runtime_state import runtime_state_adapter
@@ -572,6 +574,12 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
         logger.warning("executor: rejected path escape %s", rel)
         return None
     content = _strip_prose_preamble(content, rel)
+    poll = detect_write_time_violations(rel, content)
+    if poll:
+        for msg in poll[:6]:
+            logger.warning("executor: REJECTED write %s — %s", rel, msg)
+        log_write_gate_violation(rel=rel, reasons=poll, job_id=job_id)
+        return None
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)

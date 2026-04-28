@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any, Dict, Iterable, List, Tuple
 
@@ -355,6 +356,14 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
     infra_bits = contract["deployment"] + contract["testing"] + contract["apis"]
     if infra_bits:
         summary_lines.append(f"Ops: {', '.join(infra_bits)}")
+    contract["staged_fullstack_env"] = os.environ.get(
+        "CRUCIBAI_STAGED_FULLSTACK", ""
+    ).strip().lower() in ("1", "true", "yes")
+    if contract["staged_fullstack_env"]:
+        summary_lines.append(
+            "Staged full-stack waves (CRUCIBAI_STAGED_FULLSTACK): ship valid Vite/React pages "
+            "before expanding backend/API files."
+        )
     contract["summary_lines"] = summary_lines
     return contract
 

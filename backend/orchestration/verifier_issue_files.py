@@ -27,6 +27,41 @@ _RE_IN_FILE = re.compile(
     r"\b(?:in|for)\s+((?:[\w.-]+/)*[\w.-]+\.(?:jsx?|tsx?|py|json|css|mjs|cjs))\b",
     re.IGNORECASE,
 )
+# Esbuild stderr lines: src/layouts/SEO.jsx:3:0: ERROR ...
+_RE_STDERR_LINE_COL = re.compile(
+    r"\b([\w./-]+\.(?:jsx?|tsx?|mjs|cjs|js|ts))\s*:\s*\d+(?:\s*:\s*\d+)?\s*:?",
+    re.IGNORECASE,
+)
+# Python tracebacks: File "backend/auth.py", line 42
+_RE_PY_TRACE_FILE = re.compile(
+    r'File\s+"([^"]+\.py)"', re.IGNORECASE
+)
+# Python: Sorry: SyntaxError: ... (bad.py, line 9)
+_RE_PY_PAREN_FILE = re.compile(
+    r"\(([^\s()]+\.py),\s*line\s+\d+\)",
+    re.IGNORECASE,
+)
+
+
+def _extract_paths_from_issue_text(blob: str) -> List[str]:
+    """Pull every plausible workspace-relative path out of compile/py_compile stderr."""
+    found: List[str] = []
+    if not blob:
+        return found
+
+    def _push(raw: str) -> None:
+        rel = raw.strip().replace("\\", "/").lstrip("/")
+        if rel and rel not in found:
+            found.append(rel)
+
+    for m in _RE_STDERR_LINE_COL.finditer(blob):
+        _push(m.group(1))
+    for m in _RE_PY_TRACE_FILE.finditer(blob):
+        _push(m.group(1))
+    for m in _RE_PY_PAREN_FILE.finditer(blob):
+        _push(m.group(1))
+
+    return found
 
 
 def candidate_files_from_verification_issues(
@@ -48,6 +83,10 @@ def candidate_files_from_verification_issues(
                 rel = m.group(1).strip().replace("\\", "/").lstrip("/")
                 if rel and rel not in found:
                     found.append(rel)
+        # Deep scan: stderr often lists secondary files (imports / reexports).
+        for rel in _extract_paths_from_issue_text(s):
+            if rel not in found:
+                found.append(rel)
 
     # If tooling missing, bias toward common entries when issues mention esbuild/npx
     low = blob.lower()

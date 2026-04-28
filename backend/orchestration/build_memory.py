@@ -64,6 +64,14 @@ def save_build_memory(workspace_path: str, memory: Dict[str, Any]) -> None:
         logger.warning("build_memory: failed to save %s: %s", p, e)
 
 
+def _staged_fullstack_env_enabled() -> bool:
+    return os.environ.get("CRUCIBAI_STAGED_FULLSTACK", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 def init_build_memory(workspace_path: str, goal: str, build_type: str = "fullstack") -> Dict[str, Any]:
     """Initialize a fresh build memory for a new job."""
     memory: Dict[str, Any] = {
@@ -81,6 +89,31 @@ def init_build_memory(workspace_path: str, goal: str, build_type: str = "fullsta
         "complexity_score": _estimate_complexity(goal),
         "model_decisions": {},
     }
+    # P2 — Manus-style convergence: optional staged waves for large full-stack builds (env-driven).
+    bt = str(build_type or "").lower()
+    if _staged_fullstack_env_enabled() and bt in (
+        "fullstack",
+        "saas",
+        "ecommerce",
+        "backend",
+    ):
+        memory["delivery_strategy"] = "staged_fullstack_waves"
+        memory["staged_waves"] = [
+            {
+                "wave": 1,
+                "focus": "vite_client_shell_routes",
+                "done_when": "frontend entrypoints + pages compile (verification.compile)",
+            },
+            {
+                "wave": 2,
+                "focus": "backend_api_auth_db",
+                "done_when": "Python compiles + API smoke passes",
+            },
+        ]
+        memory["agent_hints"] = (
+            "STAGED BUILD (CRUCIBAI_STAGED_FULLSTACK): finish Wave 1 (all routed pages + "
+            "valid JSX/TS) before adding Wave 2 backend files. Do not paste manifests into components."
+        )
     save_build_memory(workspace_path, memory)
     return memory
 
@@ -147,6 +180,17 @@ def get_memory_summary(workspace_path: str) -> str:
     complexity = memory.get("complexity_score", 0)
     if complexity:
         lines.append(f"**Complexity Score:** {complexity}/10")
+
+    if memory.get("delivery_strategy") == "staged_fullstack_waves":
+        lines.append("\n**Delivery Strategy:** staged waves — complete frontend compile gate before backend expansion.")
+        for w in memory.get("staged_waves") or []:
+            if isinstance(w, dict):
+                lines.append(
+                    f"  - Wave {w.get('wave')}: {w.get('focus')} → {w.get('done_when')}"
+                )
+        ah = memory.get("agent_hints")
+        if ah:
+            lines.append(f"\n{ah}")
 
     stack = memory.get("stack", {})
     if stack:

@@ -116,3 +116,10 @@ pytest-final.txt
 
 # WS-D: RAG store
 data/chroma/
+
+# Pytest / gate scratch (never commit)
+.tmp_delivery_gate_tests/
+backend/.tmp*/
+
+# Local reference extract (Manus / competitor zips) — do not commit
+_manus_saas_ui_extract/
