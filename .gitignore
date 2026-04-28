@@ -123,3 +123,4 @@ backend/.tmp*/
 
 # Local reference extract (Manus / competitor zips) — do not commit
 _manus_saas_ui_extract/
+.tmp_saas_manus_ref/
