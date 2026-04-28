@@ -560,3 +560,149 @@ class TestRuntimeEngineRunTaskLoop(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Adaptive thinking tests
+# ═══════════════════════════════════════════════════════════════════════════
+
+_THINKING_AGENTS    = _NS["_THINKING_AGENTS"]
+_THINKING_CAPABLE   = _NS["_THINKING_CAPABLE_MODELS"]
+_THINKING_BUDGET    = _NS["_THINKING_BUDGET_TOKENS"]
+
+
+class TestThinkingAgentSet(unittest.TestCase):
+    """_THINKING_AGENTS must contain the high-stakes agents and nothing trivial."""
+
+    def test_planner_in_thinking_agents(self):
+        self.assertIn("Planner", _THINKING_AGENTS)
+
+    def test_architecture_in_thinking_agents(self):
+        self.assertIn("Architecture Agent", _THINKING_AGENTS)
+
+    def test_security_agent_in_thinking_agents(self):
+        self.assertIn("Security Agent", _THINKING_AGENTS)
+
+    def test_backend_generation_in_thinking_agents(self):
+        self.assertIn("Backend Generation", _THINKING_AGENTS)
+
+    def test_frontend_generation_in_thinking_agents(self):
+        self.assertIn("Frontend Generation", _THINKING_AGENTS)
+
+    def test_budget_is_positive_int(self):
+        self.assertIsInstance(_THINKING_BUDGET, int)
+        self.assertGreater(_THINKING_BUDGET, 0)
+
+    def test_capable_models_include_sonnet(self):
+        self.assertTrue(any("sonnet" in m for m in _THINKING_CAPABLE))
+
+
+class TestAdaptiveThinkingLoop(unittest.IsolatedAsyncioTestCase):
+    """Verify that use_thinking=True sends the right API payload."""
+
+    def setUp(self):
+        _FAKE_TOOL_RESULTS.clear()
+
+    def _capture_client(self, responses):
+        """Return a fake client that records every request body."""
+        captured = []
+        class _Capturing(_FakeClient):
+            async def post(self, *args, **kwargs):
+                captured.append(kwargs.get("json", {}))
+                return await super().post(*args, **kwargs)
+        return _Capturing(responses), captured
+
+    async def test_thinking_block_sent_on_turn_1_for_capable_model(self):
+        client, captured = self._capture_client([_end_turn("plan done")])
+        with patch("httpx.AsyncClient", return_value=client):
+            await _call_loop(
+                message="Plan the app",
+                system_message="You are a planner",
+                project_id="p1", workspace_path="",
+                api_key="sk-test",
+                model="claude-sonnet-4-6",   # matches "claude-sonnet-4" prefix
+                agent_name="Planner",
+                use_thinking=True,
+                max_turns=5,
+            )
+        self.assertTrue(len(captured) >= 1, "No API call was made")
+        body = captured[0]
+        self.assertIn("thinking", body, "thinking key missing from request body")
+        self.assertEqual(body["thinking"]["type"], "enabled")
+        self.assertEqual(body["thinking"]["budget_tokens"], _THINKING_BUDGET)
+
+    async def test_max_tokens_increased_when_thinking(self):
+        client, captured = self._capture_client([_end_turn("done")])
+        with patch("httpx.AsyncClient", return_value=client):
+            await _call_loop(
+                message="Plan", system_message="Planner",
+                project_id="p1", workspace_path="",
+                api_key="sk-test",
+                model="claude-sonnet-4-6",
+                use_thinking=True,
+                max_turns=1,
+            )
+        body = captured[0]
+        self.assertGreater(
+            body.get("max_tokens", 0), _THINKING_BUDGET,
+            "max_tokens must exceed budget_tokens when thinking is on",
+        )
+
+    async def test_thinking_NOT_sent_for_incapable_model(self):
+        """Non-Anthropic models (Cerebras, etc.) must NOT get the thinking block."""
+        client, captured = self._capture_client([_end_turn("done")])
+        with patch("httpx.AsyncClient", return_value=client):
+            await _call_loop(
+                message="Plan", system_message="Planner",
+                project_id="p1", workspace_path="",
+                api_key="sk-test",
+                model="llama-3.3-70b",       # Cerebras model — not thinking-capable
+                use_thinking=True,            # caller requested it, model can't do it
+                max_turns=1,
+            )
+        body = captured[0]
+        self.assertNotIn("thinking", body,
+            "thinking key must NOT appear for non-Anthropic models")
+
+    async def test_thinking_NOT_sent_on_turn_2(self):
+        """Thinking fires only on turn 1. Subsequent turns must not include it."""
+        _FAKE_TOOL_RESULTS[("file", "list", "")] = {"success": True, "output": "src/"}
+        responses = [
+            # Turn 1: model uses a tool
+            _FakeResp(200, {
+                "stop_reason": "tool_use",
+                "content": [{"type": "tool_use", "id": "t1",
+                              "name": "list_files", "input": {}}],
+            }),
+            # Turn 2: model ends
+            _end_turn("done"),
+        ]
+        client, captured = self._capture_client(responses)
+        with patch("httpx.AsyncClient", return_value=client):
+            await _call_loop(
+                message="Plan", system_message="Planner",
+                project_id="p1", workspace_path="",
+                api_key="sk-test",
+                model="claude-sonnet-4-6",
+                use_thinking=True,
+                max_turns=5,
+            )
+        self.assertEqual(len(captured), 2, "Expected exactly 2 API calls")
+        self.assertIn("thinking", captured[0],   "Turn 1 must have thinking")
+        self.assertNotIn("thinking", captured[1], "Turn 2 must NOT have thinking")
+
+    async def test_thinking_false_skips_block(self):
+        """use_thinking=False must produce a clean request with no thinking key."""
+        client, captured = self._capture_client([_end_turn("done")])
+        with patch("httpx.AsyncClient", return_value=client):
+            await _call_loop(
+                message="Write code", system_message="Coder",
+                project_id="p1", workspace_path="",
+                api_key="sk-test",
+                model="claude-sonnet-4-6",
+                use_thinking=False,
+                max_turns=1,
+            )
+        body = captured[0]
+        self.assertNotIn("thinking", body)
+        self.assertEqual(body.get("max_tokens"), 8096)

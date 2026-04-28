@@ -770,6 +770,47 @@ async def _init_agent_learning(*_args, **_kwargs):
 # Read-only tools that are safe to execute concurrently
 _READONLY_TOOLS: frozenset = frozenset({"read_file", "list_files", "search_files"})
 
+# Agents that benefit from extended thinking before they write.
+# These are the agents whose mistakes are most expensive downstream:
+#   • Planners write the architecture every other agent follows
+#   • Architecture agents define component contracts
+#   • Security agents must catch subtle vulnerabilities
+# Thinking is ONLY activated when the Anthropic model supports it
+# (claude-3-7-sonnet and later).  Cerebras / fallback models skip it silently.
+_THINKING_AGENTS: frozenset = frozenset({
+    # Planning & architecture
+    "Planner",
+    "Architecture Agent",
+    "Technical Architecture",
+    "System Architecture",
+    "Database Schema",
+    "API Design",
+    # Security — subtle issues require deep reasoning
+    "Security Agent",
+    "Security Audit",
+    "Security Review",
+    # Complex multi-file generators that must reason about the whole workspace
+    "Backend Generation",
+    "Frontend Generation",
+    "Integration Agent",
+    "Full Stack Generator",
+    # Quality gates that need to reason, not just scan
+    "UX Auditor",
+    "Code Review Agent",
+    "Test Strategy Agent",
+})
+
+# Models that support extended thinking (must be claude-3-7-sonnet or later)
+_THINKING_CAPABLE_MODELS: tuple = (
+    "claude-3-7-sonnet",
+    "claude-sonnet-4",
+    "claude-opus-4",
+)
+
+# Thinking token budget.  High enough that the model can reason through
+# a non-trivial codebase; low enough to stay within cost budget.
+_THINKING_BUDGET_TOKENS: int = 8000
+
 # Anthropic tool_use definitions exposed to every agent
 WORKSPACE_TOOLS_FOR_AGENTS: list = [
     {
@@ -1024,17 +1065,23 @@ async def _call_llm_with_tools_loop(
     model: str,
     agent_name: str = "",
     max_turns: int = 20,
+    use_thinking: bool = False,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Full agentic loop: while(stop_reason != "end_turn") → execute tools → feed results back.
 
     Returns (final_text_output, metadata_dict).
-    The final_text_output is the last text block produced by the model (may be a
-    summary/status once the agent has written files via write_file).
 
     Concurrency model (mirrors Claude Code toolOrchestration.ts):
       • read-only tools  →  asyncio.gather (up to 10 concurrent)
       • write / run tools  →  serial (preserves file-system consistency)
+
+    Adaptive thinking (mirrors Claude Code thinkingConfig: { type: 'adaptive' }):
+      • Enabled when use_thinking=True AND the model supports it
+      • Inserts a private reasoning block before the first tool-use or output
+      • Only Anthropic models claude-3-7-sonnet+ support this; others skip silently
+      • Thinking blocks from the response are preserved in the message history
+        so the model retains its reasoning across tool calls
     """
     import httpx
     from backend.anthropic_models import normalize_anthropic_model, ANTHROPIC_HAIKU_MODEL
@@ -1051,21 +1098,52 @@ async def _call_llm_with_tools_loop(
         turns += 1
 
         # ── Call Anthropic with workspace tools ──────────────────────────
+        # Determine whether to activate extended thinking this turn.
+        # Rules:
+        #   • Only turn 1 (the model thinks before acting, not between retries)
+        #   • Only when the caller requested thinking AND the model supports it
+        #   • Thinking blocks must be passed back in subsequent turns so the
+        #     model keeps its reasoning context across tool calls
+        _model_lower = model.lower()
+        _thinking_this_turn = (
+            use_thinking
+            and turns == 1
+            and any(_model_lower.startswith(m) for m in _THINKING_CAPABLE_MODELS)
+        )
+        _req_max_tokens = (
+            _THINKING_BUDGET_TOKENS + 8096  # thinking + output budget
+            if _thinking_this_turn
+            else 8096
+        )
+        _req_body: Dict[str, Any] = {
+            "model": model,
+            "max_tokens": _req_max_tokens,
+            "system": system_message,
+            "messages": messages,
+            "tools": WORKSPACE_TOOLS_FOR_AGENTS,
+        }
+        if _thinking_this_turn:
+            # Extended thinking: model gets a private scratchpad before acting.
+            # betas header enables the feature on older API versions.
+            _req_body["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": _THINKING_BUDGET_TOKENS,
+            }
+            logger.info("[agent_loop] %s turn 1: extended thinking enabled (budget=%d)",
+                        agent_name, _THINKING_BUDGET_TOKENS)
+
         try:
             async with httpx.AsyncClient(timeout=180) as client:
+                _headers = {
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                }
+                if _thinking_this_turn:
+                    _headers["anthropic-beta"] = "interleaved-thinking-2025-05-14"
                 resp = await client.post(
                     "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                    },
-                    json={
-                        "model": model,
-                        "max_tokens": 8096,
-                        "system": system_message,
-                        "messages": messages,
-                        "tools": WORKSPACE_TOOLS_FOR_AGENTS,
-                    },
+                    headers=_headers,
+                    json=_req_body,
                 )
         except Exception as exc:
             logger.error("[agent_loop] %s turn %d: HTTP error: %s", agent_name, turns, exc)
@@ -1297,6 +1375,9 @@ async def _run_single_agent_with_context(
     )
 
     if _anthropic_key and _primary_model:
+        # Adaptive thinking: enabled for agents where deep pre-reasoning matters.
+        # Mirrors Claude Code's thinkingConfig: { type: 'adaptive' }.
+        _use_thinking = agent_name in _THINKING_AGENTS
         # Full observe-act-inspect-revise loop
         output, _loop_meta = await _call_llm_with_tools_loop(
             message=enriched_prompt,
@@ -1307,6 +1388,7 @@ async def _run_single_agent_with_context(
             model=_primary_model,
             agent_name=agent_name,
             max_turns=20,
+            use_thinking=_use_thinking,
         )
         _files_written = _loop_meta.get("files_written", [])
         _turns = _loop_meta.get("turns", 1)
