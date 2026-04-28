@@ -1,14 +1,9 @@
 """WS-C smoke tests for the repair_loop orchestration."""
 import ast
-import asyncio
 
 import pytest
 
 from backend.orchestration.repair_loop import is_enabled, run_repair_loop
-
-
-def _run(coro):
-    return asyncio.run(coro)
 
 
 async def _ast_verify(code: str):
@@ -29,30 +24,33 @@ def test_feature_flag_on(monkeypatch):
     assert is_enabled() is True
 
 
-def test_repair_loop_converges_in_two_rounds():
+@pytest.mark.asyncio
+async def test_repair_loop_converges_in_two_rounds():
     async def attempt(code, notes):
         # round 1: still broken; round 2: fix it
         if "round 1" in " ".join(notes):
             return "x = 1\n"
         return "x = 1 =\n"
 
-    res = _run(run_repair_loop("x =\n", attempt, _ast_verify, max_rounds=5))
+    res = await run_repair_loop("x =\n", attempt, _ast_verify, max_rounds=5)
     assert res.ok
     assert res.rounds == 2
     assert res.final_code.strip() == "x = 1"
 
 
-def test_repair_loop_gives_up():
+@pytest.mark.asyncio
+async def test_repair_loop_gives_up():
     async def attempt(code, notes):
         return "def (:\n"  # permanently broken
 
-    res = _run(run_repair_loop("def (:\n", attempt, _ast_verify, max_rounds=3))
+    res = await run_repair_loop("def (:\n", attempt, _ast_verify, max_rounds=3)
     assert not res.ok
     assert res.rounds == 3
     assert len(res.scratchpad) == 3
 
 
-def test_events_emitted():
+@pytest.mark.asyncio
+async def test_events_emitted():
     events = []
 
     async def emit(name, payload):
@@ -61,7 +59,7 @@ def test_events_emitted():
     async def attempt(code, notes):
         return "a = 1\n"
 
-    res = _run(run_repair_loop("a =\n", attempt, _ast_verify, max_rounds=2, emit=emit))
+    res = await run_repair_loop("a =\n", attempt, _ast_verify, max_rounds=2, emit=emit)
     assert res.ok
     names = [e[0] for e in events]
     assert "repair.round.start" in names
