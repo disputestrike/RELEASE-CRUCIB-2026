@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, Dict, List
 
 from .models import ScenarioClassification
@@ -75,7 +76,15 @@ def build_agents(
 ) -> List[Dict[str, Any]]:
     templates = DOMAIN_AGENTS.get(classification.domain) or FALLBACK_AGENTS
     n = max(3, min(int(agent_count or len(templates)), 24))
-    selected = [templates[i % len(templates)] for i in range(n)]
+    role_counts: Dict[str, int] = Counter()
+    selected: List[tuple] = []
+    for i in range(n):
+        tpl = templates[i % len(templates)]
+        role_key = tpl[0]
+        role_counts[role_key] += 1
+        c = role_counts[role_key]
+        role_name = role_key if c == 1 else f"{role_key} ({c})"
+        selected.append((role_name, tpl[1], tpl[2], tpl[3]))
     completeness = float((evidence_summary.get("quality") or {}).get("data_completeness") or 0.25)
     now = now_iso()
     agents = []

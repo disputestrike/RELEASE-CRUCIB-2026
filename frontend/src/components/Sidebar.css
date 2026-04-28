@@ -782,6 +782,7 @@
 .sidebar-item-icon.status-completed { color: #86efac; }
 .sidebar-item-icon.status-running { color: var(--theme-text, #e4e4e7); animation: pulse 2s infinite; }
 .sidebar-item-icon.status-build-terminal { color: var(--theme-muted, #94a3b8); }
+.sidebar-item-icon.status-simulation { color: #047857; }
 .sidebar-item-icon.status-failed { color: #f87171; }
 .sidebar-item-icon.status-pending { color: var(--theme-muted, #71717a); }
 .sidebar-item-icon.status-chat { color: var(--theme-muted, #a1a1aa); }

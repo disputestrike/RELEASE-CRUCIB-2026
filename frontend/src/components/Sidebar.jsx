@@ -166,6 +166,8 @@ export const Sidebar = ({
       createdAt: t.createdAt ?? Date.now(),
       linkedProjectId: t.linkedProjectId || null,
       jobId: t.jobId || null,  // CRITICAL: must be mapped so openTask can pass jobId in URL
+      simulationId: t.simulationId || null,
+      runId: t.runId || null,
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
@@ -205,7 +207,11 @@ export const Sidebar = ({
       navigate(`/app/workspace?projectId=${encodeURIComponent(item.id)}`);
       return;
     }
-    else if (item.type === 'chat' || item.type === 'query') {
+    if (item.type === 'simulation' && item.simulationId && item.runId) {
+      navigate(`/app/what-if?simulationId=${encodeURIComponent(item.simulationId)}&runId=${encodeURIComponent(item.runId)}`);
+      return;
+    }
+    if (item.type === 'chat' || item.type === 'query') {
       navigate(`/app/chat?taskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
@@ -217,7 +223,12 @@ export const Sidebar = ({
 
   const openInNewTab = (item) => {
     if (item.isProject) window.open(`${window.location.origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`, '_blank');
-    else if (item.type === 'chat' || item.type === 'query') {
+    else if (item.type === 'simulation' && item.simulationId && item.runId) {
+      window.open(
+        `${window.location.origin}/app/what-if?simulationId=${encodeURIComponent(item.simulationId)}&runId=${encodeURIComponent(item.runId)}`,
+        '_blank',
+      );
+    } else if (item.type === 'chat' || item.type === 'query') {
       window.open(`${window.location.origin}/app/chat?taskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
@@ -316,7 +327,9 @@ export const Sidebar = ({
     const origin = window.location.origin;
     let url;
     if (item.isProject) url = `${origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`;
-    else if (item.type === 'chat' || item.type === 'query') {
+    else if (item.type === 'simulation' && item.simulationId && item.runId) {
+      url = `${origin}/app/what-if?simulationId=${encodeURIComponent(item.simulationId)}&runId=${encodeURIComponent(item.runId)}`;
+    } else if (item.type === 'chat' || item.type === 'query') {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
       url = `${origin}/app/chat?${qs.toString()}`;
@@ -408,6 +421,7 @@ export const Sidebar = ({
   const TaskStatusIcon = ({ status, type }) => {
     if (type === 'chat' || type === 'query') return <MessageCircle size={14} className="sidebar-item-icon status-chat" />;
     if (type === 'agent') return <Zap size={14} className="sidebar-item-icon status-agent" />;
+    if (type === 'simulation') return <GitBranch size={14} className="sidebar-item-icon status-simulation" aria-hidden />;
     if (type === 'build') {
       if (status === 'running' || status === 'queued') return <Clock size={14} className="sidebar-item-icon status-running" />;
       return <Layers size={14} className="sidebar-item-icon status-build-terminal" aria-hidden />;
@@ -474,9 +488,17 @@ export const Sidebar = ({
     const isHomeChatSelected =
       (item.type === 'chat' || item.type === 'query')
       && Boolean(homeChatTaskId && homeChatTaskId === item.id);
+    const isSimulationSelected =
+      item.type === 'simulation'
+      && location.pathname.startsWith('/app/what-if')
+      && Boolean(
+        item.simulationId && item.runId
+        && searchParams.get('simulationId') === item.simulationId
+        && searchParams.get('runId') === item.runId,
+      );
     const isSelected = item.isProject
       ? Boolean(workspaceProjectId && workspaceProjectId === item.id)
-      : (isHomeChatSelected || currentTaskId === item.id || jobMatches || (!isLocalTask && isActive(`/app/projects/${item.id}`)));
+      : (isSimulationSelected || isHomeChatSelected || currentTaskId === item.id || jobMatches || (!isLocalTask && isActive(`/app/projects/${item.id}`)));
     const isEditing = renameTaskId === item.id;
     const showMenu = menuTaskId === item.id;
     return (
@@ -571,7 +593,7 @@ export const Sidebar = ({
             <button type="button" onClick={() => { openInNewTab(item); setMenuTaskId(null); }}>
               <ExternalLink size={14} /> Open in new tab
             </button>
-            {!item.isProject && (
+            {!item.isProject && item.type !== 'simulation' && (
               <>
                 <button
                   type="button"
@@ -786,7 +808,7 @@ export const Sidebar = ({
           </Link>
           <Link to="/app/what-if" className={`sidebar-nav-item ${isActivePrefix('/app/what-if') ? 'active' : ''}`}>
             <GitBranch size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">What-If</span>
+            <span className="sidebar-nav-label">Simulation</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>

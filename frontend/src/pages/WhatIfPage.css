@@ -452,6 +452,158 @@
   padding-top: 10px;
 }
 
+.sim-engine-line {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.sim-inline-spin {
+  animation: sim-spin 0.9s linear infinite;
+}
+
+.sim-activity-strip {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.sim-activity-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.sim-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.sim-activity-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.sim-activity-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.sim-activity-running { background: #dbeafe; color: #1d4ed8; }
+.sim-activity-completed { background: #dcfce7; color: #15803d; }
+.sim-activity-error { background: #fee2e2; color: #b91c1c; }
+.sim-activity-unknown { background: #f3f4f6; color: #4b5563; }
+
+.sim-activity-label {
+  color: #374151;
+  max-width: min(420px, 76vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulation-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid #bae6fd;
+  background: #ecfeff;
+  color: #0c4a6e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.simulation-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+button.simulation-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button.simulation-secondary:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+button.simulation-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sim-live-world-canvas {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 720 / 300;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  display: block;
+  margin: 8px 0 4px;
+}
+
+.sim-replay-snippet {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.sim-replay-snippet h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sim-replay-snippet ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.sim-replay-muted {
+  color: #94a3b8;
+}
+
+@keyframes sim-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 920px) {
   .simulation-grid.four,
   .simulation-agent-grid,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -9,13 +9,17 @@ import {
   Loader2,
   Play,
   RadioTower,
+  RefreshCw,
   Search,
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
+import { useTaskStore } from '../stores/useTaskStore';
 import VoiceInput from '../components/VoiceInput';
+import { hydrateSimulationDetail } from './whatIfHydrate';
 import './WhatIfPage.css';
 
 const PROMPTS = [
@@ -49,6 +53,85 @@ async function readJsonResponse(response, label) {
   }
 }
 
+const SIM_ACTIVITY_KEY = 'crucibai_simulation_activity_strip';
+
+function readActivityStrip() {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(SIM_ACTIVITY_KEY) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushSimulationActivity(entry) {
+  try {
+    const next = [{ ...entry, ts: Date.now() }, ...readActivityStrip()].slice(0, 16);
+    sessionStorage.setItem(SIM_ACTIVITY_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return readActivityStrip();
+  }
+}
+
+function seededRandom(seedStr) {
+  let h = 2166136261;
+  const s = String(seedStr || 'x');
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h ^= h >>> 13;
+    h = Math.imul(h, 1274126177);
+    return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+  };
+}
+
+const STANCE_COLORS = ['#16a34a', '#dc2626', '#ca8a04', '#64748b', '#7c3aed', '#0891b2'];
+
+function PopulationDotsCanvas({ clusters, seedKey }) {
+  const ref = useRef(null);
+  const dots = useMemo(() => {
+    if (!clusters || !clusters.length) return [];
+    const out = [];
+    const totalDots = Math.min(2000, Math.max(240, clusters.length * 260));
+    let assigned = 0;
+    clusters.forEach((c, ci) => {
+      const share = Math.max(0.02, Number(c.share ?? 0.1));
+      const count = Math.max(24, Math.floor(totalDots * share));
+      const rnd = seededRandom(`${seedKey || 's'}_${ci}_${c.label}`);
+      const col = STANCE_COLORS[ci % STANCE_COLORS.length];
+      for (let j = 0; j < count && assigned < totalDots; j += 1) {
+        out.push({ x: rnd() * 100, y: rnd() * 100, col });
+        assigned += 1;
+      }
+    });
+    return out.slice(0, totalDots);
+  }, [clusters, seedKey]);
+
+  useLayoutEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || !dots.length) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, w, h);
+    dots.forEach((d) => {
+      ctx.beginPath();
+      ctx.fillStyle = d.col;
+      ctx.globalAlpha = 0.85;
+      ctx.arc((d.x / 100) * w, (d.y / 100) * h, 2.1, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }, [dots]);
+
+  return <canvas ref={ref} width={720} height={300} className="sim-live-world-canvas" role="img" aria-label="Sample population stance visualization" />;
+}
+
 function Panel({ title, icon, children, aside }) {
   const Icon = icon || Activity;
   return (
@@ -64,6 +147,8 @@ function Panel({ title, icon, children, aside }) {
 
 export default function WhatIfPage() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { upsertTask } = useTaskStore();
   const [prompt, setPrompt] = useState(PROMPTS[0]);
   const [assumptionsText, setAssumptionsText] = useState('');
   const [depth, setDepth] = useState('balanced');
@@ -71,11 +156,86 @@ export default function WhatIfPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [hydrating, setHydrating] = useState(false);
+  const [activityStrip, setActivityStrip] = useState(() => readActivityStrip());
+  const loadedFromUrlRef = useRef('');
 
   const assumptions = useMemo(
     () => assumptionsText.split('\n').map((row) => row.trim()).filter(Boolean),
     [assumptionsText],
   );
+
+  const persistCompletedRun = useCallback(
+    (payload, cleanPrompt) => {
+      const simId = payload?.simulation?.id || payload?.run?.simulation_id;
+      const runId = payload?.run?.id;
+      if (!simId || !runId) return;
+      const taskId = `sim_${simId}_${runId}`;
+      upsertTask({
+        id: taskId,
+        name: cleanPrompt.slice(0, 120) || 'Simulation',
+        prompt: cleanPrompt,
+        type: 'simulation',
+        status: 'completed',
+        simulationId: simId,
+        runId,
+        createdAt: Date.now(),
+      });
+      setSearchParams(
+        { simulationId: simId, runId },
+        { replace: true },
+      );
+    },
+    [setSearchParams, upsertTask],
+  );
+
+  const applyRunPayload = useCallback((payload) => {
+    if (payload?.fallback_used === 'runtime_what_if') {
+      setResult(payload);
+      return;
+    }
+    if (payload?.run && payload?.agents) {
+      setResult(payload);
+      return;
+    }
+    setResult(payload);
+  }, []);
+
+  useEffect(() => {
+    const sid = (searchParams.get('simulationId') || '').trim();
+    const rid = (searchParams.get('runId') || '').trim();
+    if (!sid || !rid || !token) return;
+    const key = `${sid}|${rid}`;
+    if (loadedFromUrlRef.current === key) return;
+    let cancelled = false;
+    (async () => {
+      setHydrating(true);
+      setError('');
+      try {
+        const res = await fetch(`${API}/simulations/${encodeURIComponent(sid)}/runs/${encodeURIComponent(rid)}`, {
+          credentials: 'include',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        const body = await readJsonResponse(res, 'Load simulation run');
+        if (cancelled) return;
+        const hydrated = hydrateSimulationDetail(body);
+        const sim = body.simulation || {};
+        if (sim.prompt) setPrompt(String(sim.prompt));
+        if (Array.isArray(sim.assumptions) && sim.assumptions.length) {
+          setAssumptionsText(sim.assumptions.join('\n'));
+        }
+        setResult(hydrated);
+        loadedFromUrlRef.current = key;
+      } catch (e) {
+        if (!cancelled) setError(e?.message || 'Could not load saved simulation.');
+      } finally {
+        if (!cancelled) setHydrating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, token]);
 
   const runSimulation = async () => {
     const cleanPrompt = String(prompt || '').trim();
@@ -86,6 +246,9 @@ export default function WhatIfPage() {
     setLoading(true);
     setError('');
     setResult(null);
+    loadedFromUrlRef.current = '';
+    pushSimulationActivity({ status: 'running', label: cleanPrompt.slice(0, 80) });
+    setActivityStrip(readActivityStrip());
     try {
       const headers = {
         'Content-Type': 'application/json',
@@ -122,7 +285,11 @@ export default function WhatIfPage() {
         body: JSON.stringify(runPayload),
       });
       try {
-        setResult(await readJsonResponse(runRes, 'Run simulation'));
+        const runJson = await readJsonResponse(runRes, 'Run simulation');
+        applyRunPayload(runJson);
+        persistCompletedRun(runJson, cleanPrompt);
+        pushSimulationActivity({ status: 'completed', label: cleanPrompt.slice(0, 80), simulationId, runId: runJson?.run?.id });
+        setActivityStrip(readActivityStrip());
       } catch (runErr) {
         const fallbackRes = await fetch(`${API}/runtime/what-if`, {
           method: 'POST',
@@ -137,10 +304,15 @@ export default function WhatIfPage() {
           }),
         });
         const fallback = await readJsonResponse(fallbackRes, 'Run simulation fallback');
-        setResult({ ...fallback, fallback_used: 'runtime_what_if' });
+        const merged = { ...fallback, fallback_used: 'runtime_what_if' };
+        setResult(merged);
+        pushSimulationActivity({ status: 'completed', label: cleanPrompt.slice(0, 80), note: 'compat runtime' });
+        setActivityStrip(readActivityStrip());
       }
     } catch (err) {
       setError(err?.message || 'Simulation failed.');
+      pushSimulationActivity({ status: 'error', label: cleanPrompt.slice(0, 80) });
+      setActivityStrip(readActivityStrip());
     } finally {
       setLoading(false);
     }
@@ -161,6 +333,16 @@ export default function WhatIfPage() {
   const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
   const finalVerdict = result?.final_verdict || report?.final_verdict || {};
   const evidencePolicy = report?.evidence_summary?.evidence_policy || result?.trust_score?.evidence_policy || {};
+  const replayEvents = Array.isArray(result?.replay_events) ? result.replay_events : [];
+
+  const engineLabel =
+    loading || hydrating
+      ? hydrating
+        ? 'Loading saved run…'
+        : 'Simulation running…'
+      : classification.domain
+        ? String(classification.domain)
+        : '—';
 
   return (
     <div className="simulation-page">
@@ -169,11 +351,35 @@ export default function WhatIfPage() {
         <h1>Simulation</h1>
         <p>
           Ask any scenario. CrucibAI classifies it, identifies evidence needs, creates
-          scenario-specific agents, runs debate rounds, tracks belief shifts, and produces
-          an auditable report with trust scoring.
+          scenario-specific agents, runs debate rounds, tracks belief shifts, produces
+          an auditable report with trust scoring, and shows how modeled viewpoints cluster—on this page only.
         </p>
+        <div className="sim-engine-line" aria-live="polite">
+          <GitBranch size={14} aria-hidden /> <span>Scenario domain: <strong>{engineLabel}</strong></span>
+          {(loading || hydrating) && <Loader2 size={14} className="spin sim-inline-spin" aria-hidden />}
+        </div>
       </header>
 
+      {activityStrip.length > 0 && (
+        <section className="sim-activity-strip" aria-label="Simulation activity on this browser">
+          <div className="sim-activity-head">Recent runs (this device)</div>
+          <ul className="sim-activity-list">
+            {activityStrip.map((row, idx) => (
+              <li key={`${row.ts || idx}_${idx}`}>
+                <span className={`sim-activity-badge sim-activity-${row.status || 'unknown'}`}>{row.status || '—'}</span>
+                <span className="sim-activity-label">{row.label || 'Simulation'}{row.note ? ` · ${row.note}` : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(hydrating || (loading && !result)) && (
+        <div className="simulation-status-banner" role="status">
+          <Loader2 className="spin" size={16} aria-hidden />
+          {hydrating ? 'Opening your saved Reality Engine run…' : 'Agents and population models are running—keep this tab open.'}
+        </div>
+      )}
       <Panel title="Universal Input" icon={Search}>
         <textarea
           className="simulation-prompt"
@@ -186,7 +392,7 @@ export default function WhatIfPage() {
           <VoiceInput
             apiEndpoint={API}
             token={token}
-            disabled={loading}
+            disabled={loading || hydrating}
             onTranscribed={(text) => {
               setPrompt((current) => {
                 const existing = String(current || '').trim();
@@ -246,10 +452,19 @@ export default function WhatIfPage() {
             {attachments.map((file) => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}
           </div>
         )}
-        <div className="simulation-actions">
-          <button type="button" className="simulation-run" onClick={runSimulation} disabled={loading}>
+        <div className="simulation-actions simulation-actions-row">
+          <button type="button" className="simulation-run" onClick={runSimulation} disabled={loading || hydrating}>
             {loading ? <Loader2 size={15} className="spin" /> : <Play size={15} />}
             {loading ? 'Running Simulation...' : 'Run Simulation'}
+          </button>
+          <button
+            type="button"
+            className="simulation-secondary"
+            onClick={runSimulation}
+            disabled={loading || hydrating}
+            title="Re-run using the same prompt and depth"
+          >
+            <RefreshCw size={14} /> Rerun
           </button>
           {error && <span className="simulation-error"><AlertTriangle size={14} /> {error}</span>}
         </div>
@@ -344,6 +559,30 @@ export default function WhatIfPage() {
             {(populationModel.warnings || []).map((warning) => (
               <div className="simulation-warning" key={warning}><AlertTriangle size={13} /> {warning}</div>
             ))}
+          </Panel>
+
+          <Panel title="Live World View" icon={RadioTower} aside={`${populationModel.population_size ? Number(populationModel.population_size).toLocaleString() : '—'} modeled perspectives · sampled visualization`}>
+            <p className="simulation-interpretation">
+              Dots are sampled proportional to cohort weights—use this as an at-a-glance stance map alongside the audited clusters below.
+            </p>
+            <PopulationDotsCanvas
+              clusters={populationClusters.length ? populationClusters : [{ label: 'Aggregated', share: 1, rationale: 'No cluster split returned.' }]}
+              seedKey={result?.run?.id || `${classification.domain || 'x'}-${finalVerdict?.verdict || 'v'}`}
+            />
+            {replayEvents.length > 0 && (
+              <div className="sim-replay-snippet">
+                <h4>Latest engine events</h4>
+                <ul>
+                  {replayEvents.slice(-10).reverse().map((ev) => (
+                    <li key={ev.id || `${ev.created_at}_${ev.event_type}`}>
+                      <code>{ev.event_type || ev.type}</code>
+                      {' '}
+                      <span className="sim-replay-muted">{String(ev.created_at || '').slice(0, 19)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Panel>
 
           <Panel title="Debate Timeline" icon={GitBranch}>
