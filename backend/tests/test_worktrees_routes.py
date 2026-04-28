@@ -8,11 +8,11 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_worktree_create_merge_delete_routes(monkeypatch, tmp_path):
-    from routes import worktrees as route
+    import sys
 
-    user = {"id": "user-1"}
-
-    monkeypatch.setitem(__import__("sys").modules, "project_state", SimpleNamespace(WORKSPACE_ROOT=tmp_path))
+    monkeypatch.setitem(
+        sys.modules, "backend.project_state", SimpleNamespace(WORKSPACE_ROOT=tmp_path)
+    )
 
     dst = tmp_path / "jobs" / "job-1"
 
@@ -20,10 +20,14 @@ async def test_worktree_create_merge_delete_routes(monkeypatch, tmp_path):
         return dst
 
     monkeypatch.setitem(
-        __import__("sys").modules,
-        "routes.workspace",
+        sys.modules,
+        "backend.routes.workspace",
         SimpleNamespace(_assert_job_access=_assert_job_access),
     )
+
+    from backend.routes import worktrees as route
+
+    user = {"id": "user-1"}
 
     created = await route.create_worktree(route.WorktreeCreateRequest(id="branch-A"), user=user)
     assert created["id"] == "branch-A"

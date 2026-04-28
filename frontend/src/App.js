@@ -454,6 +454,7 @@ function App() {
           <Route path="/status" element={<Status />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
+            <Route path="chat" element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
             <Route path="workspace" element={<UnifiedWorkspace />} />
             <Route path="workspace-manus" element={<WorkspaceManus />} />

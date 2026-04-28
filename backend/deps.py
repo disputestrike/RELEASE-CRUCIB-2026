@@ -25,16 +25,6 @@ import jwt
 from fastapi import Depends, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-# FIX: deps.get_db() always returned None (init() never called in production).
-# _get_real_db() fetches a live PostgreSQL connection for every auth check.
-async def _get_real_db():
-    """Always returns a real PG-backed DB handle, or None on error."""
-    try:
-        from .db_pg import get_db as _pg
-        return await _pg()
-    except Exception:
-        return None
-
 # ---------------------------------------------------------------------------
 # Mutable shared state
 # ---------------------------------------------------------------------------
@@ -51,8 +41,26 @@ def init(*, db=None, audit_logger=None) -> None:
 
 
 def get_db():
-    """Return the live DB instance (None when DATABASE_URL is not configured)."""
+    """Return ``deps.init`` DB when set (e.g. pytest ``_FakeDb``); else ``None``."""
     return _state["db"]
+
+
+async def get_documents_db_async():
+    """Mongo-style DB: injected via ``deps.init`` (tests) or PostgreSQL (runtime)."""
+
+    injected = _state.get("db")
+    if injected is not None:
+        return injected
+    try:
+        from .db_pg import get_db as _pg
+
+        return await _pg()
+    except Exception:
+        return None
+
+
+async def _get_real_db():
+    return await get_documents_db_async()
 
 
 def get_audit_logger():

@@ -19,12 +19,9 @@ except ImportError:
         AGENT_DAG = {}
         def build_dynamic_dag(*a, **kw): return {}
 try:
-    from backend.agents.clarification_agent import IntentSchema
+    from backend.agents.schemas import IntentSchema
 except ImportError:
-    try:
-        from agents.clarification_agent import IntentSchema
-    except ImportError:
-        IntentSchema = None
+    IntentSchema = None  # pragma: no cover
 
 
 def _truncate_text(value: Any, limit: int = 220) -> str:

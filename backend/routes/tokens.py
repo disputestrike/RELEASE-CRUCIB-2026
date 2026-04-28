@@ -62,10 +62,11 @@ def _get_token_constants():
     )
 
 
-def _get_server_helpers():
-    """Lazy wrapper to avoid circular import with server.py."""
-    from ..server import _get_server_helpers as _ssh
-    return _ssh()
+def _get_credit_helpers():
+    """Return ``_user_credits`` / ``_ensure_credit_balance`` (not ``_get_server_helpers`` routing tuple)."""
+    from ..server import _ensure_credit_balance, _user_credits
+
+    return _user_credits, _ensure_credit_balance
 
 
 try:
@@ -220,8 +221,10 @@ async def get_credit_balance(user: dict = Depends(_get_optional_user())):
 async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())):
     """Direct credit grant. In production (Braintree configured), use Braintree checkout instead."""
     db = _get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
     TOKEN_BUNDLES, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
-    _user_credits, _ensure_credit_balance, _ = _get_server_helpers()
+    _user_credits, _ensure_credit_balance = _get_credit_helpers()
     if BRAINTREE_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
         raise HTTPException(
             status_code=400 if BRAINTREE_CONFIGURED else 503,
@@ -248,7 +251,10 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
     )
-    new_cred = _user_credits(user) + credits
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    new_cred = int((fresh or {}).get("credit_balance") or 0) if fresh else (
+        _user_credits(user) + credits
+    )
     if data.bundle in ("builder", "pro", "scale", "teams"):
         await db.users.update_one({"id": user["id"]}, {"$set": {"plan": data.bundle}})
     return {
@@ -265,8 +271,10 @@ async def purchase_tokens_custom(
 ):
     """Custom credit purchase (slider): 100-10000 credits at $0.03/credit. When Braintree is enabled, use Braintree checkout instead."""
     db = _get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
     _, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
-    _user_credits, _ensure_credit_balance, _ = _get_server_helpers()
+    _user_credits, _ensure_credit_balance = _get_credit_helpers()
     if BRAINTREE_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
         raise HTTPException(
             status_code=400 if BRAINTREE_CONFIGURED else 503,
@@ -292,7 +300,10 @@ async def purchase_tokens_custom(
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
     )
-    new_cred = _user_credits(user) + credits
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    new_cred = int((fresh or {}).get("credit_balance") or 0) if fresh else (
+        _user_credits(user) + credits
+    )
     return {
         "message": "Purchase successful",
         "new_balance": new_cred,
@@ -304,10 +315,13 @@ async def purchase_tokens_custom(
 @router.get("/tokens/history")
 async def get_token_history(user: dict = Depends(_get_auth())):
     db = _get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
     _, _, _, _, _, _, _ = _get_token_constants()
-    _user_credits, _ensure_credit_balance, _ = _get_server_helpers()
+    _user_credits, _ensure_credit_balance = _get_credit_helpers()
     await _ensure_credit_balance(user["id"])
-    cred = _user_credits(user)
+    row = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    cred = _credit_balance_from_user(row or user)
     cursor = db.token_ledger.find({"user_id": user["id"]}, {"_id": 0}).sort(
         "created_at", -1
     )
@@ -319,7 +333,7 @@ async def get_token_history(user: dict = Depends(_get_auth())):
 async def get_token_usage(user: dict = Depends(_get_auth())):
     db = _get_db()
     _, _, _, _, _, _, MAX_TOKEN_USAGE_LIST = _get_token_constants()
-    _user_credits, _, _ = _get_server_helpers()
+    _user_credits, _ = _get_credit_helpers()
     usage = await db.token_usage.find({"user_id": user["id"]}, {"_id": 0}).to_list(
         MAX_TOKEN_USAGE_LIST
     )

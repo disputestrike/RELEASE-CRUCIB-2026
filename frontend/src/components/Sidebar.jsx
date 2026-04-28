@@ -17,7 +17,7 @@ import './Sidebar.css';
 /**
  * Sidebar — minimal primary nav (Manus-style density).
  * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
- * Recent builds: one rail per engagement — outcome (including failures) stays inside Workspace, not as a separate “failed” affordance here.
+ * Recent: one combined list (chats + builds), newest first — separate “Active” / “Today” buckets removed.
  * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
@@ -94,6 +94,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
+  const isHomeRoute = location.pathname === '/app' || location.pathname === '/app/chat';
   /** Unified workspace: Manus-style headline — logo only in pane 1; wordmark lives in workspace center header. */
   const workspaceHeadlineLayout =
     /^\/app\/workspace(\/|$)/.test(location.pathname) || /^\/app\/workspace-manus(\/|$)/.test(location.pathname);
@@ -110,6 +111,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       ? searchParams.get('jobId')
       : null;
 
+  const homeChatTaskId =
+    location.pathname === '/app' || location.pathname === '/app/chat'
+      ? (searchParams.get('chatTaskId') || searchParams.get('taskId'))
+      : null;
+
   const togglePin = React.useCallback((id) => {
     setPinnedIds((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(0, 40);
@@ -122,7 +128,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     });
   }, []);
 
-  // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for Recent builds grouping
+  // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for ordering
   const listItems = useMemo(() => {
     const fromProjects = (projects || []).map(p => ({
       id: p.id,
@@ -153,41 +159,28 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     return listItems.filter(item => item.name?.toLowerCase().includes(q)).slice(0, 50);
   }, [listItems, searchQuery]);
 
-  /** Pinned → Active → Recent (Today / Earlier). Failed builds stay in-thread under Workspace — no separate “Failed” bucket on the rail. */
-  const historyBuckets = useMemo(() => {
+  /** Pinned rows first (manual order), then everything else by recency — no Active/Today/Earlier subgroups. */
+  const recentHistoryItems = useMemo(() => {
     const pinSet = new Set(pinnedIds);
-    const pinned = [];
-    const active = [];
-    const pool = [];
     const now = Date.now();
-    for (const item of filteredListItems) {
-      if (pinSet.has(item.id)) {
-        pinned.push(item);
-        continue;
-      }
-      const st = String(item.status || '').toLowerCase();
-      if (st === 'running' || st === 'queued') {
-        active.push(item);
-        continue;
-      }
-      pool.push(item);
-    }
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const todayStart = startOfToday.getTime();
-    const today = [];
-    const earlier = [];
-    pool.forEach((item) => {
+    const getTs = (item) => {
       let ts = item.createdAt;
       if (ts == null && typeof item.id === 'string' && item.id.startsWith('task_')) {
         const parsed = parseInt(item.id.replace(/^task_(\d+).*/, '$1'), 10);
         ts = Number.isFinite(parsed) ? parsed : now;
       }
       if (ts == null) ts = now;
-      if (ts >= todayStart) today.push(item);
-      else earlier.push(item);
-    });
-    return { pinned, active, today, earlier };
+      return ts;
+    };
+    const pinned = [];
+    const unpinned = [];
+    for (const item of filteredListItems) {
+      if (pinSet.has(item.id)) pinned.push(item);
+      else unpinned.push(item);
+    }
+    pinned.sort((a, b) => pinnedIds.indexOf(a.id) - pinnedIds.indexOf(b.id));
+    unpinned.sort((a, b) => getTs(b) - getTs(a));
+    return [...pinned, ...unpinned];
   }, [filteredListItems, pinnedIds]);
 
   const openTask = (item) => {
@@ -196,7 +189,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       return;
     }
     else if (item.type === 'chat' || item.type === 'query') {
-      navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
+      navigate(`/app/chat?taskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -208,7 +201,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const openInNewTab = (item) => {
     if (item.isProject) window.open(`${window.location.origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`, '_blank');
     else if (item.type === 'chat' || item.type === 'query') {
-      window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
+      window.open(`${window.location.origin}/app/chat?taskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -248,9 +241,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     let url;
     if (item.isProject) url = `${origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`;
     else if (item.type === 'chat' || item.type === 'query') {
-      const qs = new URLSearchParams({ chatTaskId: item.id });
+      const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
-      url = `${origin}/app?${qs.toString()}`;
+      url = `${origin}/app/chat?${qs.toString()}`;
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -402,9 +395,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
     const jobMatches = Boolean(item.jobId && workspaceJobId && item.jobId === workspaceJobId);
+    const isHomeChatSelected =
+      (item.type === 'chat' || item.type === 'query')
+      && Boolean(homeChatTaskId && homeChatTaskId === item.id);
     const isSelected = item.isProject
       ? Boolean(workspaceProjectId && workspaceProjectId === item.id)
-      : (currentTaskId === item.id || jobMatches || (!isLocalTask && isActive(`/app/projects/${item.id}`)));
+      : (isHomeChatSelected || currentTaskId === item.id || jobMatches || (!isLocalTask && isActive(`/app/projects/${item.id}`)));
     const isEditing = renameTaskId === item.id;
     const showMenu = menuTaskId === item.id;
     return (
@@ -596,7 +592,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Search" aria-label="Search">
             <Search size={20} />
           </button>
-          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Recent builds" aria-label="Recent builds">
+          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Recent" aria-label="Recent">
             <History size={20} />
           </button>
         </div>
@@ -673,7 +669,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <button
               type="button"
               onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
-              className={`sidebar-nav-item sidebar-create-main ${isActive('/app') ? 'active' : ''}`}
+              className={`sidebar-nav-item sidebar-create-main ${isHomeRoute ? 'active' : ''}`}
             >
               <Plus size={18} className="sidebar-nav-icon" />
               <span className="sidebar-nav-label">New</span>
@@ -704,7 +700,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-nav-group-label">Work</div>
         <div className="sidebar-nav-section">
-          <Link to="/app" className={`sidebar-nav-item ${isActive('/app') ? 'active' : ''}`}>
+          <Link to="/app" className={`sidebar-nav-item ${isHomeRoute ? 'active' : ''}`}>
             <Home size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Home</span>
           </Link>
@@ -748,42 +744,16 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </nav>
 
-      {/* Recent builds — only when there is at least one task or project */}
+      {/* Recent — chats + builds in one list */}
       {listItems.length > 0 && (
       <div className="sidebar-section sidebar-section-tasks">
         <div className="sidebar-section-header">
-          <h3 className="sidebar-section-title">Recent builds</h3>
+          <h3 className="sidebar-section-title">Recent</h3>
         </div>
         <div className="sidebar-section-items sidebar-section-items-scroll">
-          {(historyBuckets.pinned.length > 0
-            || historyBuckets.active.length > 0
-            || historyBuckets.today.length > 0
-            || historyBuckets.earlier.length > 0) ? (
+          {(recentHistoryItems.length > 0) ? (
             <>
-              {historyBuckets.pinned.length > 0 && (
-                <>
-                  <div className="sidebar-history-group-label">Pinned</div>
-                  {historyBuckets.pinned.map((item) => renderHistoryRow(item))}
-                </>
-              )}
-              {historyBuckets.active.length > 0 && (
-                <>
-                  <div className="sidebar-history-group-label">Active</div>
-                  {historyBuckets.active.map((item) => renderHistoryRow(item))}
-                </>
-              )}
-              {historyBuckets.today.length > 0 && (
-                <>
-                  <div className="sidebar-history-group-label">Today</div>
-                  {historyBuckets.today.map((item) => renderHistoryRow(item))}
-                </>
-              )}
-              {historyBuckets.earlier.length > 0 && (
-                <>
-                  <div className="sidebar-history-group-label">Earlier</div>
-                  {historyBuckets.earlier.map((item) => renderHistoryRow(item))}
-                </>
-              )}
+              {recentHistoryItems.map((item) => renderHistoryRow(item))}
             </>
           ) : (
             <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No history yet'}</div>

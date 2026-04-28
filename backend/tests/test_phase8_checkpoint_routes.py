@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
+
+import backend.deps as deps_mod
 
 
 class _FakeRequest:
@@ -13,12 +13,25 @@ class _FakeRequest:
         return self._payload
 
 
+def _patch_documents_db(monkeypatch):
+    async def _stub():
+        return object()
+
+    monkeypatch.setattr(deps_mod, "get_documents_db_async", _stub)
+
+
+def _patch_agent_loop(monkeypatch, instance):
+    import backend.services.agent_loop as almod
+
+    monkeypatch.setattr(almod, "agent_loop", instance)
+
+
 @pytest.mark.asyncio
 async def test_get_latest_thread_checkpoint_returns_resume_state(monkeypatch):
-    from routes import artifacts as route
+    from backend.routes import artifacts as route
 
     class _AgentLoop:
-        async def load_checkpoint(self, *, thread_id, db):
+        async def load_checkpoint(self, *, thread_id, db):  # noqa: ARG002
             return {
                 "id": "cp-1",
                 "thread_id": thread_id,
@@ -28,11 +41,8 @@ async def test_get_latest_thread_checkpoint_returns_resume_state(monkeypatch):
                 "checkpoint_data": {"run_id": "run-1", "phase": "execute"},
             }
 
-    async def _get_db():
-        return object()
-
-    monkeypatch.setitem(__import__("sys").modules, "db_pg", SimpleNamespace(get_db=_get_db))
-    monkeypatch.setitem(__import__("sys").modules, "services.agent_loop", SimpleNamespace(agent_loop=_AgentLoop()))
+    _patch_documents_db(monkeypatch)
+    _patch_agent_loop(monkeypatch, _AgentLoop())
 
     out = await route.get_latest_thread_checkpoint("thread-1", user={"id": "u1"})
     assert out["thread_id"] == "thread-1"
@@ -43,10 +53,10 @@ async def test_get_latest_thread_checkpoint_returns_resume_state(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_resume_thread_returns_resume_state(monkeypatch):
-    from routes import artifacts as route
+    from backend.routes import artifacts as route
 
     class _AgentLoop:
-        async def load_checkpoint(self, *, thread_id, db):
+        async def load_checkpoint(self, *, thread_id, db):  # noqa: ARG002
             return {
                 "id": "cp-2",
                 "thread_id": thread_id,
@@ -58,11 +68,8 @@ async def test_resume_thread_returns_resume_state(monkeypatch):
         async def resume(self, run_id):
             return {"run_id": run_id, "status": "resumed"}
 
-    async def _get_db():
-        return object()
-
-    monkeypatch.setitem(__import__("sys").modules, "db_pg", SimpleNamespace(get_db=_get_db))
-    monkeypatch.setitem(__import__("sys").modules, "services.agent_loop", SimpleNamespace(agent_loop=_AgentLoop()))
+    _patch_documents_db(monkeypatch)
+    _patch_agent_loop(monkeypatch, _AgentLoop())
 
     out = await route.resume_thread("thread-2", _FakeRequest({}), user={"id": "u2"})
     assert out["thread_id"] == "thread-2"
@@ -72,17 +79,14 @@ async def test_resume_thread_returns_resume_state(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_latest_thread_checkpoint_none(monkeypatch):
-    from routes import artifacts as route
+    from backend.routes import artifacts as route
 
     class _AgentLoop:
-        async def load_checkpoint(self, *, thread_id, db):
+        async def load_checkpoint(self, *, thread_id, db):  # noqa: ARG002
             return None
 
-    async def _get_db():
-        return object()
-
-    monkeypatch.setitem(__import__("sys").modules, "db_pg", SimpleNamespace(get_db=_get_db))
-    monkeypatch.setitem(__import__("sys").modules, "services.agent_loop", SimpleNamespace(agent_loop=_AgentLoop()))
+    _patch_documents_db(monkeypatch)
+    _patch_agent_loop(monkeypatch, _AgentLoop())
 
     out = await route.get_latest_thread_checkpoint("thread-empty", user={"id": "u3"})
     assert out["thread_id"] == "thread-empty"
@@ -91,48 +95,55 @@ async def test_get_latest_thread_checkpoint_none(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_thread_memory_summary_uses_checkpoint_run_id(monkeypatch):
-    from routes import artifacts as route
+    from backend.routes import artifacts as route
 
     class _AgentLoop:
-        async def load_checkpoint(self, *, thread_id, db):
+        async def load_checkpoint(self, *, thread_id, db):  # noqa: ARG002
             return {
                 "id": "cp-3",
                 "thread_id": thread_id,
                 "checkpoint_data": {"run_id": "run-3", "phase": "execute"},
             }
 
-    async def _get_db():
-        return object()
-
-    def _query_nodes(project_id, *, task_id=None, node_type=None, tag=None, limit=50):
+    def _query_nodes(project_id, *, task_id=None, node_type=None, tag=None, limit=50):  # noqa: ARG001
         assert task_id == "run-3"
         return [
             {
                 "id": "n1",
                 "type": "step_result",
                 "tags": ["step", "run-3"],
-                "payload": {"step_id": "run-3-step-1", "skill": "build", "provider": {"alias": "haiku"}, "success": True},
+                "payload": {
+                    "step_id": "run-3-step-1",
+                    "skill": "build",
+                    "provider": {"alias": "haiku"},
+                    "success": True,
+                },
                 "ts": 1.0,
             },
             {
                 "id": "n2",
                 "type": "step_result",
                 "tags": ["step", "run-3", "provider:haiku"],
-                "payload": {"step_id": "run-3-step-2", "skill": "build", "provider": {"alias": "haiku"}, "success": False},
+                "payload": {
+                    "step_id": "run-3-step-2",
+                    "skill": "build",
+                    "provider": {"alias": "haiku"},
+                    "success": False,
+                },
                 "ts": 2.0,
-            }
+            },
         ]
 
-    def _get_graph(project_id):
+    def _get_graph(project_id):  # noqa: ARG001
         return {"nodes": {"n1": {}}, "edges": [{"from": "n1", "to": "n1", "relation": "next_step"}]}
 
-    monkeypatch.setitem(__import__("sys").modules, "db_pg", SimpleNamespace(get_db=_get_db))
-    monkeypatch.setitem(__import__("sys").modules, "services.agent_loop", SimpleNamespace(agent_loop=_AgentLoop()))
-    monkeypatch.setitem(
-        __import__("sys").modules,
-        "services.runtime.memory_graph",
-        SimpleNamespace(query_nodes=_query_nodes, get_graph=_get_graph),
-    )
+    _patch_documents_db(monkeypatch)
+    _patch_agent_loop(monkeypatch, _AgentLoop())
+
+    import backend.services.runtime.memory_graph as mg_mod
+
+    monkeypatch.setattr(mg_mod, "query_nodes", _query_nodes)
+    monkeypatch.setattr(mg_mod, "get_graph", _get_graph)
 
     out = await route.get_thread_memory_summary("thread-3", limit=25, user={"id": "u3"})
     assert out["thread_id"] == "thread-3"
@@ -149,17 +160,14 @@ async def test_get_thread_memory_summary_uses_checkpoint_run_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_thread_memory_summary_without_checkpoint(monkeypatch):
-    from routes import artifacts as route
+    from backend.routes import artifacts as route
 
     class _AgentLoop:
-        async def load_checkpoint(self, *, thread_id, db):
+        async def load_checkpoint(self, *, thread_id, db):  # noqa: ARG002
             return None
 
-    async def _get_db():
-        return object()
-
-    monkeypatch.setitem(__import__("sys").modules, "db_pg", SimpleNamespace(get_db=_get_db))
-    monkeypatch.setitem(__import__("sys").modules, "services.agent_loop", SimpleNamespace(agent_loop=_AgentLoop()))
+    _patch_documents_db(monkeypatch)
+    _patch_agent_loop(monkeypatch, _AgentLoop())
 
     out = await route.get_thread_memory_summary("thread-empty", user={"id": "u4"})
     summary = out["summary"]

@@ -276,14 +276,14 @@ class BrainLayer:
     def _get_agent_instances(self) -> Dict[str, Any]:
         # Ensure decorator-registered agents are imported before reading registry.
         try:
-            import agents.clarification_agent  # noqa: F401
-            import agents.code_analysis_agent  # noqa: F401
-            import agents.database_agent  # noqa: F401
-            import agents.deployment_agent  # noqa: F401
-            import agents.design_agent  # noqa: F401
-            import agents.documentation_agent  # noqa: F401
-            import agents.stack_selector_agent  # noqa: F401
-            import agents.workspace_explorer_agent  # noqa: F401
+            import backend.agents.clarification_agent  # noqa: F401
+            import backend.agents.code_analysis_agent  # noqa: F401
+            import backend.agents.database_agent  # noqa: F401
+            import backend.agents.deployment_agent  # noqa: F401
+            import backend.agents.design_agent  # noqa: F401
+            import backend.agents.documentation_agent  # noqa: F401
+            import backend.agents.stack_selector_agent  # noqa: F401
+            import backend.agents.workspace_explorer_agent  # noqa: F401
         except Exception as exc:
             logger.warning("Agent module bootstrap incomplete: %s", exc)
 

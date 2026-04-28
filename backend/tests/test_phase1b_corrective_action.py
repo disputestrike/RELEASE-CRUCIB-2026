@@ -82,7 +82,7 @@ def test_cf3_runtime_engine_imports_memory_store():
 
 # ── CF4: images route is loadable ────────────────────────────────────────────
 def test_cf4_images_route_has_generate_and_batch():
-    from routes.images import router
+    from backend.routes.images import router
     paths = {r.path for r in router.routes}
     assert "/api/images/generate" in paths
     assert "/api/images/batch" in paths
@@ -90,7 +90,7 @@ def test_cf4_images_route_has_generate_and_batch():
 
 # ── CF5: migration route is loadable ─────────────────────────────────────────
 def test_cf5_migration_route_has_all_four_endpoints():
-    from routes.migration import router
+    from backend.routes.migration import router
     paths = {r.path for r in router.routes}
     assert "/api/migrations/plan" in paths
     assert "/api/migrations/execute" in paths

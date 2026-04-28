@@ -200,3 +200,49 @@ async def test_run_single_agent_skips_tool_loop_without_workspace(monkeypatch):
     )
 
     assert result["output"] == "Planner output"
+
+
+@pytest.mark.asyncio
+async def test_run_agent_loop_run_command_allowlisted(tmp_path, monkeypatch):
+    """run_command invokes allowlisted argv and attaches output to transcript."""
+
+    monkeypatch.setenv("CRUCIB_SWARM_CMD_TIMEOUT_S", "30")
+
+    from backend.orchestration import runtime_engine as re
+
+    responses = iter(
+        [
+            {
+                "stop_reason": "tool_use",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "toolu_rc",
+                        "name": "run_command",
+                        "input": {"argv": ["python", "--version"]},
+                    },
+                ],
+            },
+            {
+                "stop_reason": "end_turn",
+                "content": [{"type": "text", "text": "Got command output."}],
+            },
+        ]
+    )
+
+    async def fake_llm(messages, system, tools, thinking=None):
+        return next(responses)
+
+    out = await re.run_agent_loop(
+        agent_name="Test Runner",
+        system_prompt="You test builds.",
+        user_message="Check Python version.",
+        workspace_path=str(tmp_path),
+        call_llm=fake_llm,
+        max_iterations=8,
+    )
+
+    assert out["iterations"] == 2
+    transcript = repr(out["messages"])
+    assert "exit_code=" in transcript or "[stdout]" in transcript
+    assert re.extract_final_assistant_text(out["messages"]) == "Got command output."

@@ -16,10 +16,7 @@ except ImportError:
 try:
     from backend.agents.schemas import IntentSchema
 except ImportError:
-    try:
-        from agents.schemas import IntentSchema
-    except ImportError:
-        IntentSchema = None
+    IntentSchema = None  # pragma: no cover
 
 from backend.project_state import WORKSPACE_ROOT
 from backend.services.events import event_bus

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import json
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api", tags=["compat"])
@@ -613,6 +613,27 @@ async def create_project_from_template_compat(
         except Exception:
             pass
     return {"project": project}
+
+
+@router.post("/stripe/webhook")
+async def stripe_webhook_verify(request: Request):
+    """Verify Stripe signatures when ``STRIPE_WEBHOOK_SECRET`` is set; else 503."""
+    from fastapi.responses import JSONResponse
+
+    import os
+
+    wh_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature") or ""
+    if not wh_secret:
+        return JSONResponse({"detail": "stripe_webhook_not_configured"}, status_code=503)
+    try:
+        import stripe
+
+        stripe.Webhook.construct_event(payload, sig, wh_secret)
+    except Exception:
+        return JSONResponse({"detail": "invalid_signature"}, status_code=400)
+    return {"received": True}
 
 
 @router.post("/stripe/create-checkout-session")

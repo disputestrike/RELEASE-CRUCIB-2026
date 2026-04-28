@@ -588,6 +588,17 @@ def _assert_job_owner_match(owner_id: Optional[str], user: dict) -> None:
         raise _HTTPEx(status_code=403, detail="You do not have access to this job.")
 
 
+def _is_admin_user(user: Optional[dict]) -> bool:
+    """True for configured admin IDs or acceptable ``admin_role`` (tests may monkeypatch)."""
+    if not user:
+        return False
+    uid = user.get("id")
+    if uid and str(uid) in ADMIN_USER_IDS:
+        return True
+    role = user.get("admin_role")
+    return role in ADMIN_ROLES
+
+
 def _get_server_helpers():
     return (
         _user_credits,
@@ -1977,6 +1988,8 @@ async def llm_health_check():
 # This keeps the server file clean and modular.
 _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.auth", "auth_router", False),
+    ("backend.routes.admin", "router", False),
+    ("backend.routes.debug_api", "router", False),
     ("backend.routes.runtime", "router", False),
     ("backend.routes.simulations", "router", False),
     ("backend.routes.projects", "projects_router", False),
@@ -2005,6 +2018,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),
     ("backend.routes.tokens", "router", False),
+    ("backend.routes.misc", "router", False),
     ("backend.routes.vibecoding", "router", False),
     ("backend.routes.worktrees", "router", False),
     ("backend.routes.artifacts", "router", False),

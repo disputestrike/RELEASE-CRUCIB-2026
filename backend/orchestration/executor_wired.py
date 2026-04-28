@@ -14,16 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Iterable, Tuple
 
-try:  # pragma: no cover - import style depends on PYTHONPATH
-    from agents.database_architect_agent import heuristic_schema_from_requirements
-    from agents.preview_validator_agent import PreviewValidatorAgent
-    from memory.vector_db import get_vector_memory
-except ImportError:  # pragma: no cover
-    from backend.agents.database_architect_agent import (
-        heuristic_schema_from_requirements,
-    )
-    from backend.agents.preview_validator_agent import PreviewValidatorAgent
-    from backend.memory.vector_db import get_vector_memory
+from backend.agents.database_architect_agent import heuristic_schema_from_requirements
+from backend.agents.preview_validator_agent import PreviewValidatorAgent
+from backend.memory.vector_db import get_vector_memory
 
 logger = logging.getLogger(__name__)
 

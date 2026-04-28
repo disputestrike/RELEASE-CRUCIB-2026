@@ -974,7 +974,7 @@ async def handle_frontend_generate(
         ):
             full_system_mode = True
             logger.info("Full-system builder selected for job %s", job_id)
-            from agents.builder_agent import BuilderAgent
+            from backend.agents.builder_agent import BuilderAgent
 
             agent = BuilderAgent()
             result = await agent.execute(
@@ -1030,7 +1030,7 @@ async def handle_frontend_generate(
             try:
                 import json
 
-                from agents.frontend_agent import FrontendAgent
+                from backend.agents.frontend_agent import FrontendAgent
 
                 agent = FrontendAgent()
                 logger.info(f"Agent instantiated: {agent.name}")
@@ -1350,7 +1350,7 @@ async def handle_backend_route(
             try:
                 import json
 
-                from agents.backend_agent import BackendAgent
+                from backend.agents.backend_agent import BackendAgent
 
                 agent = BackendAgent()
                 context = {

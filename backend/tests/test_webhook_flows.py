@@ -65,7 +65,7 @@ async def test_stripe_webhook_rejects_invalid_signature(app_client):
 @pytest.mark.asyncio
 async def test_build_plan_returns_structure(app_client):
     """Build plan endpoint returns plan text or suggestions when credits sufficient."""
-    import routes.projects as projects_mod
+    import backend.routes.projects as projects_mod
 
     auth_headers = await register_and_get_headers(app_client)
     llm_returns = [

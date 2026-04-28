@@ -233,7 +233,7 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
         return {"fixed": False, "reason": "LLM returned no content"}
 
     # Strip any markdown fences the LLM added despite instructions
-    from agents.code_repair_agent import strip_code_fences
+    from backend.agents.code_repair_agent import strip_code_fences
 
     fixed_content = strip_code_fences(fixed_content)
 

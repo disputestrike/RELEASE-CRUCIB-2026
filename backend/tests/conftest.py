@@ -126,7 +126,7 @@ def _ensure_test_env():
 
 _ensure_test_env()
 _ensure_temp_paths()
-os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "99999")
+os.environ.setdefault("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "1")
 os.environ["DISABLE_CSRF_FOR_TEST"] = "1"
 os.environ.setdefault("CRUCIBAI_TEST", "1")
 os.environ.setdefault("CRUCIBAI_LOG_DIR", str((_TEST_TEMP_ROOT / "logs").resolve()))

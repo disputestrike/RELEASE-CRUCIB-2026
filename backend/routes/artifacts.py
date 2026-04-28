@@ -47,8 +47,8 @@ async def list_artifacts(
     user: dict = Depends(_get_auth()),
 ):
     """List artifacts for the current user, optionally filtered by thread or type."""
-    from ..db_pg import get_db
-    db = await get_db()
+    from ..deps import get_documents_db_async
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     params: dict = {"user_id": user_id, "limit": limit}
@@ -78,10 +78,10 @@ async def create_artifact(
     user: dict = Depends(_get_auth()),
 ):
     """Create an artifact from provided content."""
-    from ..db_pg import get_db
+    from ..deps import get_documents_db_async
     from ..services.artifact_builder import artifact_builder
 
-    db = await get_db()
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     body = await request.json()
@@ -126,8 +126,8 @@ async def create_artifact(
 
 @router.get("/artifacts/{artifact_id}")
 async def get_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
-    from ..db_pg import get_db
-    db = await get_db()
+    from ..deps import get_documents_db_async
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     try:
@@ -145,8 +145,8 @@ async def get_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
 
 @router.get("/artifacts/{artifact_id}/download")
 async def download_artifact(artifact_id: str, user: dict = Depends(_get_auth())):
-    from ..db_pg import get_db
-    db = await get_db()
+    from ..deps import get_documents_db_async
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     try:
@@ -185,8 +185,8 @@ def _ext(mime_type: str) -> str:
 
 @router.get("/artifacts/{artifact_id}/versions")
 async def list_artifact_versions(artifact_id: str, user: dict = Depends(_get_auth())):
-    from ..db_pg import get_db
-    db = await get_db()
+    from ..deps import get_documents_db_async
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     # Verify ownership
@@ -216,8 +216,8 @@ async def list_artifact_versions(artifact_id: str, user: dict = Depends(_get_aut
 
 @router.get("/threads/{thread_id}/artifacts")
 async def list_thread_artifacts(thread_id: str, user: dict = Depends(_get_auth())):
-    from ..db_pg import get_db
-    db = await get_db()
+    from ..deps import get_documents_db_async
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     try:
@@ -241,10 +241,10 @@ async def save_thread_checkpoint(
     user: dict = Depends(_get_auth()),
 ):
     """Save a checkpoint for the given thread."""
-    from ..db_pg import get_db
+    from ..deps import get_documents_db_async
     from ..services.agent_loop import agent_loop
 
-    db = await get_db()
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
     body = await request.json()
 
@@ -265,10 +265,10 @@ async def get_latest_thread_checkpoint(
     user: dict = Depends(_get_auth()),
 ):
     """Return latest checkpoint for a thread (non-mutating)."""
-    from ..db_pg import get_db
+    from ..deps import get_documents_db_async
     from ..services.agent_loop import agent_loop
 
-    db = await get_db()
+    db = await get_documents_db_async()
     cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
     if not cp:
         return {"thread_id": thread_id, "checkpoint": None}
@@ -294,11 +294,11 @@ async def get_thread_memory_summary(
     user: dict = Depends(_get_auth()),
 ):
     """Return a compact memory-graph summary for a thread."""
-    from ..db_pg import get_db
+    from ..deps import get_documents_db_async
     from ..services.agent_loop import agent_loop
     from ..services.runtime.memory_graph import query_nodes, get_graph
 
-    db = await get_db()
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
     project_id = f"runtime-{user_id}"
 
@@ -391,10 +391,10 @@ async def resume_thread(
     user: dict = Depends(_get_auth()),
 ):
     """Resume agent loop from latest checkpoint for this thread."""
-    from ..db_pg import get_db
+    from ..deps import get_documents_db_async
     from ..services.agent_loop import agent_loop
 
-    db = await get_db()
+    db = await get_documents_db_async()
     user_id = user.get("id") or user.get("sub", "anon")
 
     cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)

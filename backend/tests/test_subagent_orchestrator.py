@@ -5,7 +5,8 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_subagent_orchestrator_runs_parallel_branches(monkeypatch):
-    from services.runtime.subagent_orchestrator import SubagentOrchestrator
+    import backend.services.runtime.runtime_engine as runtime_engine_module
+    from backend.services.runtime.subagent_orchestrator import SubagentOrchestrator
 
     calls = []
 
@@ -13,8 +14,6 @@ async def test_subagent_orchestrator_runs_parallel_branches(monkeypatch):
         calls.append(kwargs)
         role = (kwargs.get("agent_name") or "").split(":")[-1]
         return (f"recommendation from {role}", "fake-model")
-
-    from services.runtime import runtime_engine as runtime_engine_module
 
     monkeypatch.setattr(
         runtime_engine_module.runtime_engine,
@@ -39,8 +38,8 @@ async def test_subagent_orchestrator_runs_parallel_branches(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_subagent_orchestrator_falls_back_without_model(monkeypatch):
-    from services.runtime.subagent_orchestrator import SubagentOrchestrator
-    from services.runtime import runtime_engine as runtime_engine_module
+    import backend.services.runtime.runtime_engine as runtime_engine_module
+    from backend.services.runtime.subagent_orchestrator import SubagentOrchestrator
 
     async def _fail(**_kwargs):
         raise RuntimeError("provider unavailable")

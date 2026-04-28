@@ -273,6 +273,12 @@ const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 5);
 
 const HOME_CHAT_SYSTEM = `You are CrucibAI on the user's Home screen. Reply with real substance: answer the question properly, use clear paragraphs when helpful, and avoid one-line brush-offs. If they ask about you, explain in a few sentences what you can do (clarify goals, design and build web apps and sites, run builds in Workspace with live progress and preview). Stay practical; offer a concrete next step when it fits.`;
 
+/** Home chat URLs use either ?chatTaskId= or /app/chat?taskId= (same id). */
+function getHomeChatTaskIdFromSearch(searchParams) {
+  if (!searchParams) return null;
+  return searchParams.get('chatTaskId') || searchParams.get('taskId') || null;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -317,7 +323,7 @@ const Dashboard = () => {
   const LAST_HOME_CHAT_KEY = 'crucibai_last_home_chat_task_id';
 
   useEffect(() => {
-    const chatTaskId = location.state?.chatTaskId || searchParams.get('chatTaskId');
+    const chatTaskId = location.state?.chatTaskId || getHomeChatTaskIdFromSearch(searchParams);
     const newAgent = location.state?.newAgent;
 
     if (newAgent) {
@@ -349,12 +355,19 @@ const Dashboard = () => {
         });
         setConversationStarted(true);
       }
+      // Canonical home-chat URL (?taskId= matches production deep links; legacy ?chatTaskId= redirects here).
+      if (location.pathname === '/app' && (searchParams.get('chatTaskId') || searchParams.get('taskId'))) {
+        const qs = new URLSearchParams({ taskId: chatTaskId });
+        const pidFromUrlLegacy = searchParams.get('projectId');
+        if (pidFromUrlLegacy) qs.set('projectId', pidFromUrlLegacy);
+        navigate(`/app/chat?${qs.toString()}`, { replace: true });
+      }
       setPrompt('');
       inputRef.current?.focus();
       return;
     }
 
-    // No ?chatTaskId= — restore last Home chat so leaving to Workspace and back does not wipe the thread
+    // No chat id in URL — restore last Home chat so leaving to Workspace and back does not wipe the thread
     try {
       const last = sessionStorage.getItem(LAST_HOME_CHAT_KEY);
       if (last) {
@@ -364,14 +377,14 @@ const Dashboard = () => {
           chatTaskIdRef.current = last;
           setChatMessages(normalizeMessagesForStore(msgs));
           setConversationStarted(true);
-          navigate(`/app?chatTaskId=${encodeURIComponent(last)}`, { replace: true });
+          navigate(`/app/chat?taskId=${encodeURIComponent(last)}`, { replace: true });
           return;
         }
       }
     } catch (_) { void 0; }
 
     chatTaskIdRef.current = null;
-  }, [location.state?.chatTaskId, location.state?.newAgent, searchParams.get('chatTaskId'), storeTasks, navigate]);
+  }, [location.state?.chatTaskId, location.state?.newAgent, location.pathname, searchParams.get('chatTaskId'), searchParams.get('taskId'), storeTasks, navigate]);
 
   // Autofocus prompt on load
   useEffect(() => {
@@ -597,9 +610,9 @@ const Dashboard = () => {
     if (!existingTaskId) {
       chatTaskIdRef.current = taskId;
       // Keep URL in sync so task context survives refresh (preserve project link from sidebar)
-      const qs = new URLSearchParams({ chatTaskId: taskId });
+      const qs = new URLSearchParams({ taskId });
       if (pidFromUrl) qs.set('projectId', pidFromUrl);
-      navigate(`/app?${qs.toString()}`, { replace: true });
+      navigate(`/app/chat?${qs.toString()}`, { replace: true });
     } else if (messagesAfterUser) {
       updateTask(taskId, { messages: messagesAfterUser, prompt: userPrompt });
     }
@@ -890,7 +903,7 @@ const Dashboard = () => {
     const text = formatChatContent(chatMessages[i]?.content);
     const base = `${window.location.origin}/app`;
     const tid = chatTaskIdRef.current;
-    const url = tid ? `${base}?chatTaskId=${encodeURIComponent(tid)}` : base;
+    const url = tid ? `${base}/chat?taskId=${encodeURIComponent(tid)}` : base;
     const payload = text ? `${text}\n\n—\n${url}` : url;
     const done = () => setActionFeedback({ type: 'share', index: i, role: 'assistant' });
     if (navigator.share) {

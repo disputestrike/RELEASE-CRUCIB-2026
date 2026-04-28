@@ -154,7 +154,7 @@ async def test_build_plan_with_auth(app_client):
     """Layer 1e: Build plan with auth returns 200 (or 402 if insufficient credits)."""
     from unittest.mock import AsyncMock, patch
 
-    import routes.projects as projects_mod
+    import backend.routes.projects as projects_mod
 
     auth_headers = await register_and_get_headers(app_client)
     llm_returns = [

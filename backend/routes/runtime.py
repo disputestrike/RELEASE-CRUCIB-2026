@@ -207,30 +207,43 @@ async def runtime_metrics(_user: dict = Depends(_get_optional_user())):
 
 @router.get("/inspect")
 async def runtime_inspect(
-    limit: int = Query(10, ge=1, le=100),
-    _user: dict = Depends(_get_auth()),
+    limit: int = Query(50, ge=1, le=200),
+    user: dict = Depends(_get_auth()),
 ):
-    """Inspectable runtime snapshot for product surfaces.
+    """Per-user runtime snapshot aligned with checkpoint/debug inspectors (tasks, costs, graph)."""
+    try:
+        from services.runtime.cost_tracker import cost_tracker
+        from services.runtime.memory_graph import get_graph
+        from services.runtime.task_manager import task_manager as _tm
+    except ImportError:
+        from backend.services.runtime.cost_tracker import cost_tracker
+        from backend.services.runtime.memory_graph import get_graph
+        from backend.services.runtime.task_manager import task_manager as _tm
 
-    Returns recent events and active task metadata without exposing secrets.
-    """
-    events = [
-        {"type": row.event_type, "payload": row.payload, "ts": row.ts}
-        for row in event_bus.recent_events(limit=limit)
-    ]
-    tasks = list(getattr(task_manager, "tasks", {}).values())[-limit:]
+    uid = str((user or {}).get("id") or "guest")
+    project_id = f"runtime-{uid}"
+    tasks = _tm.list_project_tasks(project_id, limit=limit)
+    mg = get_graph(project_id)
+    nodes = mg.get("nodes") or {}
+    ledger_raw = cost_tracker.all_tasks()
+    ledger = {k: dict(v) for k, v in ledger_raw.items()}
+
     return {
         "success": True,
         "status": "available",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_id": project_id,
+        "task_count": len(tasks),
         "tasks": tasks,
-        "events": events,
-        "capabilities": {
-            "task_lifecycle": "available",
-            "event_replay": "available",
-            "swarm_spawn": "available",
-            "agent_catalog_count": _agent_catalog_count(),
+        "cost_ledger": ledger,
+        "memory_graph": {
+            "node_count": len(nodes),
+            "edge_count": len(mg.get("edges") or []),
         },
+        "inspect": {
+            "timeline": [],
+            "phase_summary": [{"phase": "execute", "count": len(tasks)}],
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -312,3 +325,37 @@ async def run_what_if(body: WhatIfBody, user: dict = Depends(_get_auth())):
         ],
         **result,
     }
+
+
+class BenchmarkRunPayload(BaseModel):
+    execute_live: bool = False
+    max_runs: int = Field(3, ge=1, le=64)
+    output_subdir: str = Field("bench", max_length=240)
+
+
+_benchmark_latest: Dict[str, Any] = {}
+
+
+@router.post("/benchmark/run")
+async def runtime_benchmark_run(
+    body: BenchmarkRunPayload,
+    _user: dict = Depends(_get_auth()),
+):  # noqa: ARG001
+    n = int(body.max_runs or 3)
+    aggregate = {"p50_ms": 72.4, "p95_ms": 180.5, "samples": max(3, n * 30)}
+    out = {
+        "success": True,
+        "mode": "simulated",
+        "total_runs": n,
+        "aggregate": aggregate,
+        "output_subdir": body.output_subdir,
+    }
+    global _benchmark_latest
+    _benchmark_latest = out
+    return out
+
+
+@router.get("/benchmark/latest")
+async def runtime_benchmark_latest(_user: dict = Depends(_get_auth())):  # noqa: ARG001
+    snap = dict(_benchmark_latest) if _benchmark_latest else {}
+    return {"success": True, "latest": snap or None}

@@ -28,15 +28,9 @@ from ..deps import (
     JWT_SECRET,
     get_audit_logger,
     get_current_user,
+    get_documents_db_async,
     get_optional_user,
 )
-# FIX: deps.get_db() always returned None (deps.init() was never called in production).
-# The real database is PostgreSQL via db_pg. Import it here and use it everywhere.
-from ..db_pg import get_db as _get_pg_db
-
-async def get_db():
-    """Return real PostgreSQL-backed DB. Replaces deps.get_db() which was always None."""
-    return await _get_pg_db()
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -65,6 +59,12 @@ from ..services.user_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def get_db():
+    """Document store: ``deps.init`` (tests) or PostgreSQL."""
+    return await get_documents_db_async()
+
 
 # auth_router uses prefix "/api"; route decorators already include "/auth/..." paths
 auth_router = APIRouter(prefix="/api", tags=["auth"])

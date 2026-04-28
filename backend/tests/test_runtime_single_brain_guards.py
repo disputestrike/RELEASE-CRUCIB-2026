@@ -20,7 +20,7 @@ async def test_direct_tool_execution_is_forbidden_outside_runtime_scope():
 
 @pytest.mark.asyncio
 async def test_direct_agent_run_is_forbidden_outside_runtime_scope():
-    from agents.base_agent import BaseAgent
+    from backend.agents.base_agent import BaseAgent
 
     class _DummyAgent(BaseAgent):
         async def execute(self, context):

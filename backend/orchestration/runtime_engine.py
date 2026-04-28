@@ -2,7 +2,8 @@
 runtime_engine.py — Agentic loop engine for CrucibAI (FIX 13-16).
 
 Replaces one-shot LLM calls with a while(True) tool-use loop:
-- Agent observes workspace, acts with file tools, inspects results
+- Agent observes workspace, acts with file tools; may run allowlisted shell commands
+  (``run_command``) for build/test feedback in the same loop
 - Exits via stop_reason == "end_turn" or max_iterations
 - Read-only tools run in parallel (asyncio.gather, up to 10)
 - Write tools run serially to preserve consistency
@@ -14,14 +15,21 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import subprocess
 import time
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from backend.tool_executor import is_allowlisted_run_command
 
 logger = logging.getLogger(__name__)
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 MAX_LOOP_ITERATIONS = 12
 PARALLEL_READ_LIMIT = 10
+
+# Default max wall time for a single run_command (npm build, tests, etc.)
+_DEFAULT_CMD_TIMEOUT_S = float(os.environ.get("CRUCIB_SWARM_CMD_TIMEOUT_S", "600"))
 
 THINKING_AGENTS = frozenset({
     "planner", "architect", "architecture", "security", "security_review",
@@ -95,6 +103,87 @@ def _edit_file(workspace_path: str, rel: str, old_str: str, new_str: str) -> str
         return f"[error editing {rel}: {e}]"
 
 
+def _norm_cwd(rel: str) -> str:
+    rel = (rel or "").strip().replace("\\", "/").lstrip("/")
+    if rel.startswith(".."):
+        return ""
+    return rel
+
+
+def _workspace_subdir(workspace_path: str, cwd_rel: str) -> tuple[Optional[Path], Optional[str]]:
+    root = Path(workspace_path).resolve()
+    sub = _norm_cwd(cwd_rel)
+    target = root if not sub else (root / sub).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None, "[run_command rejected: cwd escapes workspace]"
+    if not root.is_dir():
+        return None, "[run_command: workspace is not a directory]"
+    return target, None
+
+
+async def _execute_run_command(workspace_path: str, tool_input: Dict[str, Any]) -> str:
+    raw = tool_input.get("argv") if "argv" in tool_input else tool_input.get("command")
+    if raw is None:
+        return "[run_command: missing argv]"
+    if isinstance(raw, str):
+        return '[run_command rejected: pass argv as array e.g. ["npm","run","build"]]'
+
+    argv: List[str] = []
+    for item in raw or []:
+        s = str(item).strip()
+        if s:
+            argv.append(s)
+    if not argv:
+        return "[run_command: empty argv]"
+    if not is_allowlisted_run_command(argv):
+        return f"[run_command rejected: not allowlisted: {argv!r}]"
+
+    cw_err: Optional[str]
+    cwd_slot, cw_err = _workspace_subdir(
+        workspace_path, str(tool_input.get("cwd") or tool_input.get("working_directory") or "")
+    )
+    if cw_err:
+        return cw_err
+    assert cwd_slot is not None
+    cwd_path = cwd_slot.resolve()
+
+    timeout_s = float(os.environ.get("CRUCIB_SWARM_CMD_TIMEOUT_S", str(int(_DEFAULT_CMD_TIMEOUT_S))))
+    timeout_s = max(5.0, min(timeout_s, 7200.0))
+
+    def _run_sync() -> str:
+        try:
+            proc = subprocess.run(
+                argv,
+                cwd=str(cwd_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired:
+            return f"[run_command subprocess timeout ({timeout_s}s) for {' '.join(argv)}]"
+        except OSError as ose:
+            return f"[run_command os error: {ose}]"
+
+        hdr = f"exit_code={proc.returncode}\ncwd={cwd_path}\ncmd={' '.join(argv)}\n---\n"
+        out = proc.stdout or ""
+        err = proc.stderr or ""
+        parts = []
+        if out.strip():
+            parts.append("[stdout]\n" + out[:200_000])
+        if err.strip():
+            parts.append("[stderr]\n" + err[:200_000])
+        body = "\n".join(parts) if parts else "(no stdout/stderr)"
+        return hdr + body
+
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_run_sync), timeout=timeout_s + 35.0)
+    except asyncio.TimeoutError:
+        return f"[run_command asyncio layer timeout (> {timeout_s + 35.0}s) for {' '.join(argv)}]"
+
+
 # ─── Tool definitions for the LLM ─────────────────────────────────────────────
 
 TOOL_DEFINITIONS = [
@@ -149,6 +238,29 @@ TOOL_DEFINITIONS = [
             "required": ["path", "old_str", "new_str"],
         },
     },
+    {
+        "name": "run_command",
+        "description": (
+            "Run an allowlisted build/check command inside the workspace (never pass raw shell). "
+            "Use argv as a list, e.g. [\"npm\", \"run\", \"build\"] or [\"python\", \"--version\"]. "
+            "Optional cwd is a path relative to workspace root (subfolder only)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "argv": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Argv list (no shell), first element is executable",
+                },
+                "cwd": {
+                    "type": "string",
+                    "description": "Working directory relative to workspace (optional)",
+                },
+            },
+            "required": ["argv"],
+        },
+    },
 ]
 
 READ_ONLY_TOOLS = {"read_file", "list_files", "search_files"}
@@ -168,6 +280,8 @@ async def _execute_tool(tool_name: str, tool_input: Dict[str, Any], workspace_pa
         return _write_file(workspace_path, tool_input.get("path", ""), tool_input.get("content", ""))
     elif tool_name == "edit_file":
         return _edit_file(workspace_path, tool_input.get("path", ""), tool_input.get("old_str", ""), tool_input.get("new_str", ""))
+    elif tool_name == "run_command":
+        return await _execute_run_command(workspace_path, tool_input)
     else:
         return f"[unknown tool: {tool_name}]"
 
@@ -176,29 +290,31 @@ async def _execute_tools_batch(
     tool_uses: List[Dict[str, Any]],
     workspace_path: str,
 ) -> List[Dict[str, Any]]:
-    """Execute tool calls: read-only in parallel (up to PARALLEL_READ_LIMIT), writes serially."""
-    read_only = [t for t in tool_uses if t["name"] in READ_ONLY_TOOLS]
-    writes = [t for t in tool_uses if t["name"] in WRITE_TOOLS]
+    """Execute tools. Parallelize only homogeneous read-only batches; otherwise sequential."""
 
-    results: Dict[str, str] = {}
+    names = [t["name"] for t in tool_uses]
+    if not tool_uses:
+        return []
 
-    # Parallel read-only tools
-    if read_only:
+    def _pure_reads() -> bool:
+        return names and all(n in READ_ONLY_TOOLS for n in names)
+
+    if _pure_reads():
         semaphore = asyncio.Semaphore(PARALLEL_READ_LIMIT)
-        async def _bounded(tool):
+
+        async def _one(tool: Dict[str, Any]):
             async with semaphore:
                 return tool["id"], await _execute_tool(tool["name"], tool.get("input", {}), workspace_path)
-        pairs = await asyncio.gather(*[_bounded(t) for t in read_only])
-        for tid, result in pairs:
-            results[tid] = result
 
-    # Serial write tools
-    for tool in writes:
-        results[tool["id"]] = await _execute_tool(tool["name"], tool.get("input", {}), workspace_path)
+        pairs = await asyncio.gather(*[_one(t) for t in tool_uses])
+        results_map = dict(pairs)
+    else:
+        results_map = {}
+        for t in tool_uses:
+            results_map[t["id"]] = await _execute_tool(t["name"], t.get("input", {}) or {}, workspace_path)
 
-    # Return in original order
     return [
-        {"type": "tool_result", "tool_use_id": t["id"], "content": results.get(t["id"], "[no result]")}
+        {"type": "tool_result", "tool_use_id": t["id"], "content": results_map.get(t["id"], "[no result]")}
         for t in tool_uses
     ]
 

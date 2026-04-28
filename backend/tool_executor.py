@@ -46,13 +46,22 @@ RUN_ALLOWLIST = [
     (["python", "-m", "pytest"], True),  # prefix match
     (["npm", "test"], True),
     (["npm", "run", "test"], True),
+    (["npm", "run", "build"], True),
+    (["npm", "run", "lint"], True),
+    (["npm", "install"], True),
+    (["npm", "ci"], True),
+    (["pnpm", "run", "build"], True),
+    (["pnpm", "install"], True),
+    (["npx", "tsc"], True),
+    (["npx", "vite", "build"], True),
+    (["npx", "eslint"], True),
+    (["python", "-m", "compileall"], True),
     (["npx", "jest"], True),
     (["python", "-m", "bandit"], True),
     (["npx", "source-map-explorer"], True),
     (["npx", "lighthouse"], True),
     (["npm", "audit"], True),
     (["npm", "run", "audit"], True),
-    (["npx", "eslint"], True),
     (["vercel"], True),
     (["npx", "vercel"], True),
     (["node", "--version"], True),
@@ -90,6 +99,11 @@ def _is_run_allowed(cmd: List[str]) -> bool:
         if len(cmd) >= len(allow_prefix) and cmd[: len(allow_prefix)] == allow_prefix:
             return True
     return False
+
+
+def is_allowlisted_run_command(cmd: List[str]) -> bool:
+    """Public check for orchestration / swarm ``run_command`` tool (same rules as execute_tool run)."""
+    return _is_run_allowed(cmd)
 
 
 def _is_safe_url(url: str) -> bool:
