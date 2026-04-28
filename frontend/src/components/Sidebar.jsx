@@ -93,6 +93,7 @@ export const Sidebar = ({
   const [accountMenuPortaledStyle, setAccountMenuPortaledStyle] = useState(null);
   const [dismissedProjectIds, setDismissedProjectIds] = useState(readDismissedProjectIds);
   const { token } = useAuth();
+  const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
 
   // Close account menu on outside click (expanded footer, collapsed strip, or portaled menu)
   useEffect(() => {
