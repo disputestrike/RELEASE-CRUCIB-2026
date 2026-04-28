@@ -623,6 +623,12 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
         return None
     issues_before = detect_write_time_violations(rel, content)
     content = _strip_prose_preamble(content, rel)
+    try:
+        from .lineage_banner import prepend_lineage_banner
+
+        content = prepend_lineage_banner(rel, content, job_id)
+    except Exception:
+        pass
     issues_after = detect_write_time_violations(rel, content)
     poll = list(dict.fromkeys(issues_before + issues_after))
     if poll:

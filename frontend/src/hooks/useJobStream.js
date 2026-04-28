@@ -19,16 +19,28 @@ const EMPTY_PROOF = {
   },
   total_proof_items: 0,
   verification_proof_items: 0,
+  verification_failed_count: 0,
+  step_exception_count: 0,
   quality_score: 0,
   category_counts: {},
+  build_verified: false,
+  success: false,
 };
 
 function normalizeProofPayload(data, jobId) {
-  if (data && typeof data === 'object' && data.bundle) return data;
+  if (data && typeof data === 'object' && data.bundle) {
+    const bv = typeof data.build_verified === 'boolean' ? data.build_verified : false;
+    return {
+      ...data,
+      build_verified: bv,
+      success: typeof data.success === 'boolean' ? data.success : bv,
+    };
+  }
   return {
     ...EMPTY_PROOF,
     job_id: jobId,
-    success: true,
+    success: false,
+    build_verified: false,
   };
 }
 
