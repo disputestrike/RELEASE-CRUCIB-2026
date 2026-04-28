@@ -1072,19 +1072,17 @@ const Dashboard = () => {
               {inputForm}
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="dashboard-chips" ref={moreMenuRef}>
-              <div className="dashboard-chips-row">
-                <div className="dashboard-chips-grid">
+              <div className="dashboard-chips-row dashboard-chips-row--single-line">
                   {HOME_PRIMARY_CHIPS.map((chip) => (
-                    <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip">
-                      <chip.icon size={16} className="dashboard-chip-icon" />
+                    <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip dashboard-chip--home-quick">
+                      <chip.icon size={13} className="dashboard-chip-icon" aria-hidden />
                       <span>{chip.label}</span>
                     </button>
                   ))}
-                </div>
                 <div className="dashboard-more-wrap">
                   <button
                     type="button"
-                    className={`dashboard-chip dashboard-chip-more ${moreMenuOpen ? 'open' : ''}`}
+                    className={`dashboard-chip dashboard-chip-more dashboard-chip--home-quick ${moreMenuOpen ? 'open' : ''}`}
                     aria-expanded={moreMenuOpen}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1092,7 +1090,7 @@ const Dashboard = () => {
                     }}
                   >
                     <span>More</span>
-                    <ChevronDown size={16} className="dashboard-chip-more-chevron" />
+                    <ChevronDown size={13} className="dashboard-chip-more-chevron" />
                   </button>
                   {moreMenuOpen && (
                     <div className="dashboard-more-menu" role="menu">

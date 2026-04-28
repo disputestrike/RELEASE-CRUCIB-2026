@@ -786,6 +786,7 @@
 }
 
 /* Quick Start Chips */
+/* ── Home quick chips (freeze point UI): one horizontal strip — Build → More ───────── */
 .dashboard-chips-row {
   display: flex;
   flex-wrap: wrap;
@@ -795,8 +796,30 @@
   justify-content: center;
 }
 
+.dashboard-chips-row--single-line {
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.dashboard-chips-row--single-line::-webkit-scrollbar {
+  height: 4px;
+}
+.dashboard-chips-row--single-line::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 999px;
+}
+
 .dashboard-more-wrap {
   position: relative;
+  flex-shrink: 0;
 }
 
 .dashboard-chip-more {
@@ -892,12 +915,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   width: 100%;
 }
 
 .dashboard-prompt-inline .dashboard-prompt-form {
   width: 100%;
+}
+
+.dashboard-chip--home-quick {
+  padding: 5px 10px;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dashboard-home-column .dashboard-chips-row--single-line .dashboard-chip--home-quick {
+  flex-shrink: 0;
 }
 
 .dashboard-chips-grid {
@@ -929,6 +963,10 @@
   color: #fff;
   background: var(--theme-input, #27272a);
   transform: translateY(-1px);
+}
+
+[data-theme="light"] .dashboard-chip.dashboard-chip--home-quick {
+  background: #FFFFFF;
 }
 
 .dashboard-chip-icon {
@@ -1242,13 +1280,13 @@
     font-size: 18px;
   }
 
-  .dashboard-chips-grid {
-    gap: 6px;
+  .dashboard-chips-row--single-line {
+    gap: 4px;
   }
 
-  .dashboard-chip {
-    padding: 6px 10px;
-    font-size: 13px;
+  .dashboard-chip.dashboard-chip--home-quick {
+    padding: 4px 8px;
+    font-size: 11px;
   }
 }
 
