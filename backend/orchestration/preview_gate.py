@@ -56,24 +56,23 @@ def _has_file(files: Dict[str, str], *needles: str) -> bool:
 
 
 def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
+    # Only check file PATHS (not generated code content) to avoid false-positives.
+    # Generated React code always contains words like "settings", "dashboard", "analytics"
+    # in imports/comments — scanning file contents causes every build to trigger the
+    # strict SaaS contract gate, even for chatbots, automation tools, etc.
     rel_joined = " ".join(files.keys()).lower()
-    text = (combined + "\n" + rel_joined).lower()
-    markers = (
+    path_markers = (
         "saas",
-        "product ui",
-        "dashboard",
-        "analytics",
         "pricing",
+        "analytics",
         "settings",
+        "billing",
+        "subscription",
         "team",
-        "modern ui",
-        "design system",
-        "multiple pages",
-        "responsive layout",
-        "landing page",
-        "marketing page",
+        "dashboard",
     )
-    return sum(1 for marker in markers if marker in text) >= 3
+    # Require at least 4 of the SaaS-specific page/route paths to exist
+    return sum(1 for marker in path_markers if marker in rel_joined) >= 4
 
 
 def _verify_saas_product_contract(
