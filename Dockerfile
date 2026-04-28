@@ -20,7 +20,7 @@ FROM python:3.11.0-slim
 WORKDIR /app
 
 # Cache-bust: force rebuild - timestamp: 2026-03-04-1937
-RUN echo "Build: 2026-03-04"
+RUN echo "Build: 2026-04-28-crucibai-sync"
 
 COPY requirements.txt .
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
