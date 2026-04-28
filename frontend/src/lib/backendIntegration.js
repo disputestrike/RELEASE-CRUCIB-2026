@@ -11,6 +11,8 @@
  * This file is the single source of truth for all API calls.
  */
 
+import { workspaceZipQuery } from './workspaceZip';
+
 const BASE = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
@@ -95,8 +97,8 @@ export async function getFileContent(jobId, path, token) {
   return res.ok ? (await res.json()).content || '' : '';
 }
 
-export function getDownloadURL(jobId) {
-  return `${BASE}/api/jobs/${jobId}/workspace/download`;
+export function getDownloadURL(jobId, jobStatus) {
+  return `${BASE}/api/jobs/${encodeURIComponent(jobId)}/workspace/download${workspaceZipQuery(jobStatus)}`;
 }
 
 // ── Preview ───────────────────────────────────────────────────────────────────

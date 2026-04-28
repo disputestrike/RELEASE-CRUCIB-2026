@@ -761,7 +761,7 @@ export default function ThreePaneWorkspace() {
 
             {activeTab === 'Proof' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                {jobId ? <ProofPanel jobId={jobId} proof={proof} /> : <div className="workspace-panel-empty">No proof yet. Start a run to generate evidence artifacts.</div>}
+                {jobId ? <ProofPanel jobId={jobId} jobStatus={job?.status} proof={proof} /> : <div className="workspace-panel-empty">No proof yet. Start a run to generate evidence artifacts.</div>}
               </div>
             ) : null}
 

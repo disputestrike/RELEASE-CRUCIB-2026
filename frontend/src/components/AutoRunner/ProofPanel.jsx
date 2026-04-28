@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../authContext';
 import { API_BASE as API } from '../../apiBase';
+import { workspaceZipQuery } from '../../lib/workspaceZip';
 import './ProofPanel.css';
 
 const CATEGORIES = [
@@ -81,6 +82,7 @@ function MilestoneHint({ batch, repairCount }) {
 export default function ProofPanel({
   proof,
   jobId,
+  jobStatus,
   onExport: _onExport,
   openWorkspacePath,
   milestoneBatch = null,
@@ -107,12 +109,21 @@ export default function ProofPanel({
     if (!jobId || !token || !API) return;
     setZipBusy(true);
       try {
+      const qs = workspaceZipQuery(jobStatus);
       const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(jobId)}/workspace/download`,
+        `${API}/jobs/${encodeURIComponent(jobId)}/workspace/download${qs}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) {
-        const errText = await res.text().catch(() => '');
+        let errText = await res.text().catch(() => '');
+        try {
+          const j = JSON.parse(errText);
+          const d = j?.detail;
+          if (typeof d === 'string') errText = d;
+          else if (d != null) errText = JSON.stringify(d);
+        } catch {
+          /* keep raw */
+        }
         throw new Error(errText || res.statusText || `HTTP ${res.status}`);
       }
       const blob = await res.blob();
@@ -127,7 +138,7 @@ export default function ProofPanel({
     } finally {
       setZipBusy(false);
     }
-  }, [jobId, token]);
+  }, [jobId, token, jobStatus]);
 
   const toggleItem = (idx) => {
     setExpandedItems((prev) => {

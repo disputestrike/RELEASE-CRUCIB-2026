@@ -23,6 +23,7 @@ import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
+import { workspaceZipQuery } from '../lib/workspaceZip';
 import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
@@ -1030,12 +1031,21 @@ export default function App() {
     if (!effectiveJobId || !token || !API) return;
     setZipBusy(true);
     try {
+      const qs = workspaceZipQuery(job?.status);
       const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/download`,
+        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/download${qs}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) {
-        const errText = await res.text().catch(() => '');
+        let errText = await res.text().catch(() => '');
+        try {
+          const j = JSON.parse(errText);
+          const d = j?.detail;
+          if (typeof d === 'string') errText = d;
+          else if (d != null) errText = JSON.stringify(d);
+        } catch {
+          /* keep raw */
+        }
         throw new Error(errText || res.statusText || `HTTP ${res.status}`);
       }
       const blob = await res.blob();
@@ -1050,7 +1060,7 @@ export default function App() {
     } finally {
       setZipBusy(false);
     }
-  }, [effectiveJobId, token, API]);
+  }, [effectiveJobId, token, API, job?.status]);
 
   const workspaceNavValue = useMemo(
     () => ({
@@ -2105,6 +2115,7 @@ export default function App() {
                   <ProofPanel
                     proof={proof}
                     jobId={effectiveJobId}
+                    jobStatus={job?.status}
                     onExport={() => {}}
                     openWorkspacePath={openWorkspacePath}
                     milestoneBatch={milestoneBatch}
