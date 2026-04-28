@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
+import { API_BASE } from '../apiBase';
+import { useAuth } from '../authContext';
+import {
+  clearCanonicalWorkspaceTaskId,
+  getCanonicalWorkspaceTaskIdFromStorage,
+} from '../workspace/canonicalWorkspaceTask';
 import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
@@ -21,7 +28,15 @@ import './Sidebar.css';
  * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
-export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
+export const Sidebar = ({
+  user,
+  onLogout,
+  projects = [],
+  tasks: propTasks = [],
+  sidebarOpen = true,
+  onToggleSidebar,
+  onProjectsRefresh,
+}) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -36,6 +51,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const [renameTaskId, setRenameTaskId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [moveProjectExpanded, setMoveProjectExpanded] = useState(false);
   const menuDropdownRef = useRef(null);
@@ -56,6 +72,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const accountMenuDropdownRef = React.useRef(null);
   const [accountMenuPortaledStyle, setAccountMenuPortaledStyle] = useState(null);
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
+  const { token } = useAuth();
 
   // Close account menu on outside click (expanded footer, collapsed strip, or portaled menu)
   useEffect(() => {
@@ -220,19 +237,78 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   };
 
   const handleDeleteClick = (item) => {
-    if (item.isProject) return;
+    if (item.isProject && !token) return;
     setMenuTaskId(null);
     setDeleteConfirmTask(item);
   };
 
-  const handleDeleteConfirm = () => {
-    if (!deleteConfirmTask) return;
-    const wasViewing = currentTaskId === deleteConfirmTask.id;
-    const wasLastTask = storeTasks.length === 1;
-    removeTask(deleteConfirmTask.id);
-    setDeleteConfirmTask(null);
-    if (wasViewing || wasLastTask) {
-      navigate('/app', { replace: true, state: { newAgent: true } });
+  const clearPinnedAndLinkedTasksAfterProjectRemoval = useCallback((projectId) => {
+    if (!projectId) return;
+    setPinnedIds((prev) => {
+      const next = prev.filter((x) => x !== projectId);
+      try {
+        localStorage.setItem('crucibai_sidebar_pinned_ids', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+    (storeTasks || []).forEach((t) => {
+      if (t.linkedProjectId === projectId) removeTask(t.id);
+    });
+  }, [storeTasks, removeTask]);
+
+  const handleDeleteConfirm = async () => {
+    const item = deleteConfirmTask;
+    if (!item || deleteBusy) return;
+    try {
+      if (item.isProject) {
+        if (!token || !API_BASE) {
+          window.alert('Sign in required to delete a project.');
+          return;
+        }
+        setDeleteBusy(true);
+        const base = String(API_BASE).replace(/\/$/, '');
+        await axios.delete(`${base}/projects/${encodeURIComponent(item.id)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000,
+        });
+        clearPinnedAndLinkedTasksAfterProjectRemoval(item.id);
+        onProjectsRefresh?.();
+        if (workspaceProjectId === item.id) {
+          navigate('/app', { replace: true, state: { newAgent: true } });
+        }
+      } else {
+        const wasViewing =
+          currentTaskId === item.id
+          || Boolean(workspaceJobId && item.jobId && workspaceJobId === item.jobId);
+        const wasLastTask = storeTasks.length === 1;
+        removeTask(item.id);
+        if (String(getCanonicalWorkspaceTaskIdFromStorage() || '') === String(item.id)) {
+          clearCanonicalWorkspaceTaskId();
+        }
+        setPinnedIds((prev) => {
+          if (!prev.includes(item.id)) return prev;
+          const next = prev.filter((x) => x !== item.id);
+          try {
+            localStorage.setItem('crucibai_sidebar_pinned_ids', JSON.stringify(next));
+          } catch {
+            /* ignore */
+          }
+          return next;
+        });
+        if (wasViewing || wasLastTask) {
+          navigate('/app', { replace: true, state: { newAgent: true } });
+        }
+      }
+      setDeleteConfirmTask(null);
+    } catch (e) {
+      const msg = e?.response?.status === 401 || e?.response?.status === 403
+        ? 'You must be signed in to delete this project.'
+        : 'Could not delete. Try again or check your connection.';
+      window.alert(msg);
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -544,9 +620,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 )}
               </>
             )}
-            {isLocalTask && (
+            {(!item.isProject || !!token) && (
               <button type="button" className="danger" onClick={() => handleDeleteClick(item)}>
-                <Trash2 size={14} /> Delete
+                <Trash2 size={14} /> {item.isProject ? 'Delete project…' : 'Remove from Recent'}
               </button>
             )}
           </div>,
@@ -767,7 +843,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         createPortal(
           <div
             className="sidebar-delete-overlay"
-            onClick={() => setDeleteConfirmTask(null)}
+            onClick={() => { if (!deleteBusy) setDeleteConfirmTask(null); }}
             role="presentation"
           >
             <div
@@ -778,14 +854,21 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               aria-labelledby="sidebar-delete-confirm-title"
             >
               <p className="sidebar-delete-title" id="sidebar-delete-confirm-title">
-                Delete &quot;{deleteConfirmTask.name}&quot;?
+                {deleteConfirmTask.isProject
+                  ? `Delete project “${deleteConfirmTask.name || 'Untitled'}” permanently?`
+                  : <>Remove “{deleteConfirmTask.name || 'this build'}” from Recent?</>}
               </p>
+              {deleteConfirmTask.isProject && (
+                <p className="sidebar-delete-sub" role="note">
+                  This removes the server project and related data from your account.
+                </p>
+              )}
               <div className="sidebar-delete-actions">
-                <button type="button" onClick={() => setDeleteConfirmTask(null)}>
+                <button type="button" disabled={deleteBusy} onClick={() => setDeleteConfirmTask(null)}>
                   Cancel
                 </button>
-                <button type="button" className="danger" onClick={handleDeleteConfirm}>
-                  Delete
+                <button type="button" className="danger" disabled={deleteBusy} onClick={handleDeleteConfirm}>
+                  {deleteBusy ? 'Working…' : deleteConfirmTask.isProject ? 'Delete project' : 'Remove'}
                 </button>
               </div>
             </div>

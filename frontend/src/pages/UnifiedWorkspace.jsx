@@ -63,6 +63,7 @@ import {
   taskEntryFromJob,
   taskStatusFromJobStatus,
 } from '../workspace/workspaceTaskBinding';
+import { setCanonicalWorkspaceTaskId } from '../workspace/canonicalWorkspaceTask';
 import { failureStepFromLatestFailure } from '../workspace/workspaceFailureUtils';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
@@ -150,6 +151,12 @@ export default function UnifiedWorkspace() {
       sessionBootstrapRef.current = false;
     });
   }, [authLoading, token, ensureGuest]);
+
+  /** Keep Home “single build” canonical id aligned with whichever task this URL represents. */
+  useEffect(() => {
+    const tid = taskIdFromUrl && String(taskIdFromUrl).trim();
+    if (tid) setCanonicalWorkspaceTaskId(tid);
+  }, [taskIdFromUrl]);
 
   const [healthMs, setHealthMs] = useState(null);
   useEffect(() => {

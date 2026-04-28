@@ -110,6 +110,7 @@ const Layout = () => {
       tasks={storeTasks}
       sidebarOpen={sidebarOpen}
       onToggleSidebar={toggleSidebar}
+      onProjectsRefresh={fetchSidebarData}
     />
   );
 

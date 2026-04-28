@@ -19,6 +19,10 @@ import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import './Dashboard.css';
 import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
+import {
+  clearCanonicalWorkspaceTaskId,
+  reuseOrCreateWorkspaceBuildTask,
+} from '../workspace/canonicalWorkspaceTask';
 
 /** Backup when `location.state` is dropped (refresh / edge navigation); consumed in UnifiedWorkspace. */
 function stashWorkspaceAutostartGoal(text) {
@@ -327,6 +331,7 @@ const Dashboard = () => {
     const newAgent = location.state?.newAgent;
 
     if (newAgent) {
+      clearCanonicalWorkspaceTaskId();
       try {
         sessionStorage.removeItem('crucibai_last_home_chat_task_id');
       } catch (_) { void 0; }
@@ -529,7 +534,14 @@ const Dashboard = () => {
       const spec = pendingBuildSpecRef.current;
       pendingBuildSpecRef.current = null;
       const taskName = spec.slice(0, 60);
-      const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
+      const taskId = reuseOrCreateWorkspaceBuildTask({
+        storeTasks,
+        addTask,
+        updateTask,
+        name: taskName,
+        prompt: spec,
+        status: 'pending',
+      });
       stashWorkspaceAutostartGoal(spec);
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
@@ -550,7 +562,14 @@ const Dashboard = () => {
       setChatLoading(false);
       const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
       const taskName = (spec || userPrompt).slice(0, 60);
-      const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
+      const taskId = reuseOrCreateWorkspaceBuildTask({
+        storeTasks,
+        addTask,
+        updateTask,
+        name: taskName,
+        prompt: spec || userPrompt,
+        status: 'pending',
+      });
       stashWorkspaceAutostartGoal(spec || userPrompt);
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
@@ -672,7 +691,14 @@ const Dashboard = () => {
         const lastSpace = cut.lastIndexOf(' ');
         return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
       })();
-      const taskId = addTask({ name: taskName, prompt: chip.prompt, status: 'pending', type: 'build' });
+      const taskId = reuseOrCreateWorkspaceBuildTask({
+        storeTasks,
+        addTask,
+        updateTask,
+        name: taskName,
+        prompt: chip.prompt,
+        status: 'pending',
+      });
       stashWorkspaceAutostartGoal(chip.prompt);
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
@@ -947,7 +973,14 @@ const Dashboard = () => {
       const lastSpace = cut.lastIndexOf(' ');
       return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
     })();
-    const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
+    const taskId = reuseOrCreateWorkspaceBuildTask({
+      storeTasks,
+      addTask,
+      updateTask,
+      name: taskName,
+      prompt: spec,
+      status: 'pending',
+    });
     stashWorkspaceAutostartGoal(spec);
     const ws = new URLSearchParams();
     if (taskId) ws.set('taskId', taskId);

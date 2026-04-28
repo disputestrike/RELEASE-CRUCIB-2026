@@ -174,7 +174,7 @@ export default function WorkspaceOrchestrationBoard({
       <section className="wsv4-hero">
         <div>
           <div className="wsv4-kicker"><Sparkles size={14} /> Workspace Orchestration</div>
-          <h1>{buildTitle || 'Active build workspace'}</h1>
+          <h1>{buildTitle || 'Workspace build'}</h1>
           <p>
             One run, one thread, one work surface. Plan, execution, proof, code, and preview stay connected so the build never
             collapses back into a status page.
