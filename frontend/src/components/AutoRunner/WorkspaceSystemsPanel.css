@@ -207,11 +207,12 @@
   align-items: center;
 }
 
+/* QR code must always have white background for scanner readability */
 .wsp-qr {
   width: 88px;
   height: 88px;
   border-radius: 8px;
-  background: #fff;
+  background: #fff !important;
   object-fit: contain;
 }
 

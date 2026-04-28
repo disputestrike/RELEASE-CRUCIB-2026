@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
-from services.runtime.execution_authority import build_runtime_native_step_defs
+from ..services.runtime.execution_authority import build_runtime_native_step_defs
+from ..services.runtime_contract import require_canonical_db
 
 
 async def create_job_service(
@@ -18,12 +19,17 @@ async def create_job_service(
     planner_project_state: Optional[dict] = None,
 ):
     rs = runtime_state_getter()
+    # Surface failures in pool acquisition explicitly — raising HTTPException(503)
+    # instead of swallowing and returning None fixes the downstream
+    # "object NoneType can't be used in 'await' expression" errors.
     try:
         pool = await pool_getter()
-    except Exception:
-        pool = None
-    if pool:
         rs.set_pool(pool)
+    except Exception as exc:
+        import logging as _lg
+        _lg.getLogger(__name__).warning("create_job_service: pool unavailable", exc_info=True)
+        pool = None
+    pool = require_canonical_db(pool, action="create_job")
 
     project_id = body.project_id or user.get("id", "default")
     if resolve_project_id is not None:

@@ -6,6 +6,7 @@ Raw server paths are never accepted from clients.
 """
 
 import io
+import hashlib
 import logging
 import mimetypes
 import os
@@ -26,21 +27,21 @@ router = APIRouter(prefix="/api", tags=["workspace"])
 
 def _get_auth():
     """Import auth dep lazily to avoid circular imports."""
-    from server import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
 
 def _workspace_root() -> Path:
-    from server import ROOT_DIR
+    from ..services.workspace_resolver import workspace_resolver
 
-    return Path(ROOT_DIR) / "workspace"
+    return workspace_resolver.workspace_root() / "projects"
 
 
 def _project_workspace_path(project_id: str) -> Path:
-    root = _workspace_root()
-    safe = project_id.replace("/", "_").replace("\\", "_").replace("..", "_")
-    return root / safe
+    from ..services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.project_workspace_path(project_id)
 
 
 def _safe_resolve(workspace: Path, rel: str) -> Path:
@@ -54,7 +55,7 @@ def _safe_resolve(workspace: Path, rel: str) -> Path:
 async def _assert_project_access(project_id: str, user: dict) -> Path:
     """Verify user owns project and return workspace path."""
     try:
-        from server import _user_can_access_project_workspace
+        from ..server import _user_can_access_project_workspace
 
         ok = await _user_can_access_project_workspace(user.get("id"), project_id)
         if not ok:
@@ -67,23 +68,11 @@ async def _assert_project_access(project_id: str, user: dict) -> Path:
 async def _assert_job_access(job_id: str, user: dict) -> Path:
     """Verify user owns job and return workspace path."""
     try:
-        from db_pg import get_pg_pool
-        from server import _assert_job_owner_match, _get_orchestration
+        from ..db_pg import get_pg_pool
+        from ..server import _assert_job_owner_match
+        from ..orchestration import runtime_state as _runtime_state
 
-        runtime_state = None
-        try:
-            orchestration_obj = _get_orchestration()
-            if isinstance(orchestration_obj, tuple):
-                runtime_state = orchestration_obj[0] if orchestration_obj else None
-            elif orchestration_obj is not None:
-                runtime_state = orchestration_obj
-        except Exception:
-            runtime_state = None
-
-        if runtime_state is None:
-            from orchestration import runtime_state as _runtime_state
-
-            runtime_state = _runtime_state
+        runtime_state = _runtime_state
 
         try:
             pool = await get_pg_pool()
@@ -102,19 +91,343 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
         return _project_workspace_path(job_id)
 
 
-def _collect_job_workspace_files(workspace: Path) -> List[Dict[str, Any]]:
+HEAVY_WORKSPACE_DIRS = {
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+}
+PREVIEW_ARTIFACT_DIRS = {"dist", "build", "out", "public"}
+INTERNAL_WORKSPACE_DIRS = {"META", "outputs", ".tmp"}
+CODE_FILE_EXTS = {
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".html",
+    ".json",
+    ".sql",
+    ".md",
+    ".yaml",
+    ".yml",
+}
+PREVIEW_ARTIFACT_EXTS = {
+    ".html",
+    ".js",
+    ".mjs",
+    ".css",
+    ".json",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+}
+
+
+def _workspace_candidates(primary: Path, job_id: str = "") -> List[Path]:
+    """Return plausible workspace roots for a job without trusting client paths.
+
+    Runtime task state historically lives under ``WORKSPACE_ROOT/{project_id}``,
+    while app files for preview live under ``WORKSPACE_ROOT/projects/{project_id}``.
+    Listing/reading must tolerate both so a completed build cannot show an empty
+    file room just because one surface resolved a different workspace root.
+    """
+    from ..services.workspace_resolver import workspace_resolver
+
+    return workspace_resolver.candidates_for(primary, job_id)
+
+
+def _file_kind(rel: str, full: Path) -> str:
+    top = rel.split("/", 1)[0]
+    if top in PREVIEW_ARTIFACT_DIRS:
+        return "preview_artifact"
+    if top in INTERNAL_WORKSPACE_DIRS:
+        return "internal"
+    if full.suffix.lower() in CODE_FILE_EXTS:
+        return "source"
+    return "asset"
+
+
+def _collect_workspace_files_from_root(workspace: Path) -> List[Dict[str, Any]]:
     files: List[Dict[str, Any]] = []
-    if not workspace.exists():
+    if not workspace.exists() or not workspace.is_dir():
         return files
-    skip = {"node_modules", ".git", "__pycache__", "dist", "build"}
     for root, dirs, filenames in os.walk(workspace):
-        dirs[:] = [d for d in dirs if d not in skip]
+        dirs[:] = [
+            d
+            for d in dirs
+            if d not in HEAVY_WORKSPACE_DIRS and not d.startswith(".tmp")
+        ]
         for name in filenames:
             full = Path(root) / name
-            rel = str(full.relative_to(workspace)).replace("\\", "/")
-            files.append({"path": rel, "size": full.stat().st_size})
-    files.sort(key=lambda x: x["path"])
+            try:
+                rel = str(full.relative_to(workspace)).replace("\\", "/")
+                stat = full.stat()
+            except OSError:
+                continue
+            kind = _file_kind(rel, full)
+            if kind == "preview_artifact" and full.suffix.lower() not in PREVIEW_ARTIFACT_EXTS:
+                continue
+            files.append(
+                {
+                    "path": rel,
+                    "size": stat.st_size,
+                    "kind": kind,
+                    "is_code": full.suffix.lower() in CODE_FILE_EXTS,
+                    "is_preview_artifact": kind == "preview_artifact",
+                }
+            )
     return files
+
+
+def _collect_job_workspace_files(workspace: Path, job_id: str = "") -> List[Dict[str, Any]]:
+    by_path: Dict[str, Dict[str, Any]] = {}
+    for candidate in _workspace_candidates(workspace, job_id):
+        for row in _collect_workspace_files_from_root(candidate):
+            path = row.get("path")
+            if not path:
+                continue
+            existing = by_path.get(path)
+            if existing is None:
+                by_path[path] = row
+                continue
+            # Prefer source over preview artifacts over internal metadata when
+            # the same relative path exists in multiple compatible roots.
+            rank = {"source": 0, "asset": 1, "preview_artifact": 2, "internal": 3}
+            if rank.get(row.get("kind"), 9) < rank.get(existing.get("kind"), 9):
+                by_path[path] = row
+
+    product_files = [
+        row
+        for row in by_path.values()
+        if row.get("kind") not in {"internal"}
+    ]
+    internal_files = [
+        row
+        for row in by_path.values()
+        if row.get("kind") == "internal"
+    ]
+    files = product_files or internal_files
+    files.sort(key=lambda x: (x.get("kind") == "preview_artifact", x["path"]))
+    return files
+
+
+def _workspace_manifest_payload(workspace: Path, job_id: str, files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    paths = {str(row.get("path") or "") for row in files}
+    source_count = sum(1 for row in files if row.get("kind") == "source")
+    preview_count = sum(1 for row in files if row.get("kind") == "preview_artifact")
+    total_size = sum(int(row.get("size") or 0) for row in files)
+    candidate_exists = any(p.exists() and p.is_dir() for p in _workspace_candidates(workspace, job_id))
+    has_app_entry = any(
+        path.endswith(("App.jsx", "App.js", "App.tsx", "App.ts", "main.jsx", "main.tsx", "index.jsx", "index.tsx"))
+        for path in paths
+    )
+    digest = hashlib.sha256("\n".join(sorted(paths)[:200]).encode("utf-8")).hexdigest()[:16]
+    return {
+        "job_id": job_id,
+        "workspace_exists": candidate_exists,
+        "count": len(files),
+        "total_count": len(files),
+        "source_count": source_count,
+        "preview_artifact_count": preview_count,
+        "has_package_json": "package.json" in paths,
+        "has_app_entry": has_app_entry,
+        "has_dist_index": "dist/index.html" in paths,
+        "fingerprint": f"{len(files)}:{total_size}:{digest}",
+    }
+
+
+def _stable_task_id_for_job(job_id: str) -> str:
+    clean = str(job_id or "").strip()
+    return f"task_job_{clean}" if clean else ""
+
+
+def _job_id_from_task_id(task_id: Optional[str]) -> Optional[str]:
+    raw = str(task_id or "").strip()
+    if raw.startswith("task_job_") and len(raw) > len("task_job_"):
+        return raw[len("task_job_"):]
+    return None
+
+
+def _job_id_from_session_id(session_id: Optional[str]) -> Optional[str]:
+    raw = str(session_id or "").strip()
+    if raw.startswith("job:") and len(raw) > len("job:"):
+        return raw[len("job:"):]
+    return _job_id_from_task_id(raw)
+
+
+def _project_id_from_session_id(session_id: Optional[str]) -> Optional[str]:
+    raw = str(session_id or "").strip()
+    if raw.startswith("project:") and len(raw) > len("project:"):
+        return raw[len("project:"):]
+    return None
+
+
+async def _load_job_for_session(job_id: str, user: dict) -> Dict[str, Any]:
+    try:
+        from ..db_pg import get_pg_pool
+        from ..server import _assert_job_owner_match
+        from ..orchestration import runtime_state as _runtime_state
+
+        try:
+            pool = await get_pg_pool()
+        except Exception as exc:
+            logger.warning("workspace session: continuing without DB pool for job %s: %s", job_id, exc)
+            pool = None
+        if pool is not None:
+            _runtime_state.set_pool(pool)
+        job = await _runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
+        return dict(job)
+    except HTTPException:
+        raise
+    except (ImportError, AttributeError) as exc:
+        raise HTTPException(status_code=503, detail=f"Workspace session resolver unavailable: {exc}")
+
+
+def _preview_status_for_session(job_id: str, workspace: Path, files: List[Dict[str, Any]]) -> Dict[str, Any]:
+    manifest = _workspace_manifest_payload(workspace, job_id, files)
+    serve_root: Optional[Path] = None
+    try:
+        from .preview_serve import _resolve_serve_root
+
+        for candidate in _workspace_candidates(workspace, job_id):
+            root = _resolve_serve_root(candidate)
+            if root is not None and (root / "index.html").exists():
+                serve_root = root
+                break
+    except Exception as exc:
+        logger.debug("workspace session: preview readiness scan skipped for %s: %s", job_id, exc)
+
+    if serve_root is not None:
+        status = "ready"
+        url = f"/api/preview/{job_id}/serve" if job_id else None
+    elif manifest.get("has_package_json") or manifest.get("has_app_entry"):
+        status = "building"
+        url = None
+    elif manifest.get("workspace_exists"):
+        status = "preparing"
+        url = None
+    else:
+        status = "unavailable"
+        url = None
+
+    return {
+        "status": status,
+        "url": url,
+        "serveRoot": str(serve_root) if serve_root is not None else None,
+        "manifest": manifest,
+    }
+
+
+def _workspace_session_payload(
+    *,
+    job: Optional[Dict[str, Any]],
+    job_id: Optional[str],
+    task_id: Optional[str],
+    project_id: Optional[str],
+    workspace: Path,
+    files: List[Dict[str, Any]],
+    resolved_from: str,
+) -> Dict[str, Any]:
+    durable_job_id = str((job_id or (job.get("id") if job else "")) or "").strip()
+    durable_project_id = str((project_id or (job.get("project_id") if job else "")) or "").strip()
+    durable_task_id = str(_stable_task_id_for_job(durable_job_id) or task_id or "").strip()
+    session_id = f"job:{durable_job_id}" if durable_job_id else f"project:{durable_project_id}"
+    return {
+        "sessionId": session_id,
+        "taskId": durable_task_id or None,
+        "jobId": durable_job_id or None,
+        "projectId": durable_project_id or None,
+        "status": (job or {}).get("status") or ("idle" if durable_project_id else "unknown"),
+        "goal": (job or {}).get("goal") or "",
+        "threadId": f"job:{durable_job_id}" if durable_job_id else None,
+        "workspacePath": str(workspace),
+        "workspaceExists": any(p.exists() and p.is_dir() for p in _workspace_candidates(workspace, durable_job_id)),
+        "previewStatus": _preview_status_for_session(durable_job_id, workspace, files),
+        "resolvedFrom": resolved_from,
+    }
+
+
+def _resolve_job_workspace_file(workspace: Path, rel: str, job_id: str = "") -> Path:
+    for candidate in _workspace_candidates(workspace, job_id):
+        try:
+            full = _safe_resolve(candidate, rel)
+        except HTTPException:
+            raise
+        if full.exists() and full.is_file():
+            return full
+    return _safe_resolve(workspace, rel)
+
+
+@router.get("/workspace/session/resolve")
+async def resolve_workspace_session(
+    sessionId: Optional[str] = Query(None, description="Canonical session id, e.g. job:{id}"),
+    taskId: Optional[str] = Query(None, description="Frontend task id, including task_job_{jobId}"),
+    jobId: Optional[str] = Query(None, description="Backend job id"),
+    projectId: Optional[str] = Query(None, description="Project id fallback"),
+    user: dict = Depends(_get_auth()),
+):
+    """Resolve scattered workspace identifiers into one canonical session.
+
+    This is the backend contract the frontend uses before binding chat, preview,
+    files, proof, timeline, and task history to a workspace. It intentionally
+    does not build or mutate the workspace; preview materialization remains in
+    /api/jobs/{job_id}/dev-preview and final gates.
+    """
+    resolved_job_id = (
+        str(jobId or "").strip()
+        or _job_id_from_session_id(sessionId)
+        or _job_id_from_task_id(taskId)
+    )
+    resolved_project_id = str(projectId or "").strip() or _project_id_from_session_id(sessionId)
+
+    if resolved_job_id:
+        job = await _load_job_for_session(resolved_job_id, user)
+        resolved_project_id = str(job.get("project_id") or resolved_project_id or resolved_job_id)
+        workspace = _project_workspace_path(resolved_project_id)
+        files = _collect_job_workspace_files(workspace, resolved_job_id)
+        return {
+            "success": True,
+            "session": _workspace_session_payload(
+                job=job,
+                job_id=resolved_job_id,
+                task_id=taskId,
+                project_id=resolved_project_id,
+                workspace=workspace,
+                files=files,
+                resolved_from="job",
+            ),
+        }
+
+    if resolved_project_id:
+        workspace = await _assert_project_access(resolved_project_id, user)
+        files = _collect_job_workspace_files(workspace, "")
+        return {
+            "success": True,
+            "session": _workspace_session_payload(
+                job=None,
+                job_id=None,
+                task_id=taskId,
+                project_id=resolved_project_id,
+                workspace=workspace,
+                files=files,
+                resolved_from="project",
+            ),
+        }
+
+    raise HTTPException(status_code=400, detail="Provide jobId, taskId, sessionId, or projectId")
 
 
 # ── Project workspace file routes ─────────────────────────────────────────────
@@ -199,7 +512,7 @@ async def list_job_workspace_files(
 ):
     """List files in a job's workspace (paginated; same shape as orchestration job workspace tests)."""
     workspace = await _assert_job_access(job_id, user)
-    all_files = _collect_job_workspace_files(workspace) if workspace.exists() else []
+    all_files = _collect_job_workspace_files(workspace, job_id)
     total = len(all_files)
     off = max(0, int(offset))
     lim = max(1, min(int(limit), 1000))
@@ -217,6 +530,17 @@ async def list_job_workspace_files(
     }
 
 
+@router.get("/jobs/{job_id}/workspace/manifest")
+async def get_job_workspace_manifest(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Compact workspace manifest for polling while a job is active."""
+    workspace = await _assert_job_access(job_id, user)
+    all_files = _collect_job_workspace_files(workspace, job_id)
+    return _workspace_manifest_payload(workspace, job_id, all_files)
+
+
 @router.get("/jobs/{job_id}/workspace/file")
 async def get_job_workspace_file(
     job_id: str,
@@ -225,7 +549,7 @@ async def get_job_workspace_file(
 ):
     """Get contents of a specific file in a job's workspace."""
     workspace = await _assert_job_access(job_id, user)
-    full_path = _safe_resolve(workspace, path)
+    full_path = _resolve_job_workspace_file(workspace, path, job_id)
 
     if not full_path.exists() or not full_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {path}")
@@ -250,7 +574,7 @@ async def get_job_workspace_file_raw(
 ):
     """Stream raw bytes for a file in the job workspace (images, binaries)."""
     workspace = await _assert_job_access(job_id, user)
-    full_path = _safe_resolve(workspace, path)
+    full_path = _resolve_job_workspace_file(workspace, path, job_id)
     if not full_path.exists() or not full_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     media = mimetypes.guess_type(full_path.name)[0] or "application/octet-stream"
@@ -319,13 +643,19 @@ async def get_project_deploy_files(
 
 
 @router.get("/jobs/{job_id}/workspace/download")
+@router.get("/jobs/{job_id}/workspace-zip")
+@router.get("/jobs/{job_id}/export/full.zip")
 async def download_job_workspace_zip(
     job_id: str,
+    draft: bool = False,
     user: dict = Depends(_get_auth()),
 ):
     """
     Download the complete job workspace as a ZIP file.
     This is the proof/handoff bundle — everything the AI built.
+
+    Gate: BIV must have passed and proof score must meet minimum threshold.
+    Pass ?draft=true to skip the proof score gate (explicit draft export).
     """
     import io
     import zipfile
@@ -334,6 +664,21 @@ async def download_job_workspace_zip(
     workspace = await _assert_job_access(job_id, user)
     if not workspace.exists():
         raise HTTPException(status_code=404, detail="Workspace not found or empty")
+
+    # ── Delivery gate: BIV + proof score ─────────────────────────────────────
+    try:
+        from backend.orchestration.delivery_gate import run_download_gate
+        gate = run_download_gate(str(workspace), draft=draft)
+        if not gate.passed:
+            raise HTTPException(status_code=gate.status, detail=gate.detail)
+    except HTTPException:
+        raise
+    except Exception as _gate_err:
+        import logging
+        logging.getLogger(__name__).warning(
+            "download_gate check failed (allowing): %s", _gate_err
+        )
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Build ZIP in memory
     buf = io.BytesIO()
@@ -344,7 +689,7 @@ async def download_job_workspace_zip(
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(workspace):
             dirs[:] = [d for d in dirs if d not in skip_dirs]
-            for fname in files:
+            for fname in sorted(files):
                 if any(fname.endswith(ext) for ext in skip_exts):
                     continue
                 full = Path(root) / fname

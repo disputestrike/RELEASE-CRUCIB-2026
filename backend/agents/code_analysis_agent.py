@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.base_agent import AgentValidationError, BaseAgent
-from agents.registry import AgentRegistry
+from backend.agents.base_agent import AgentValidationError, BaseAgent
+from backend.agents.registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -323,7 +323,7 @@ Code snippet:
 Provide concise, actionable suggestions."""
 
             response = await self.llm_client.messages.create(
-                model="claude-3-5-haiku-20241022",
+                model="cerebras",
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )

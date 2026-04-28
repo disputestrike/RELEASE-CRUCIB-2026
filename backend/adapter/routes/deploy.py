@@ -7,7 +7,7 @@ router = APIRouter()
 
 def _get_auth():
     try:
-        from server import get_current_user
+        from backend.server import get_current_user
         return get_current_user
     except Exception:
         from fastapi import Request
@@ -21,7 +21,7 @@ class DeployRequest(BaseModel):
 @router.post("/api/builds/{job_id}/deploy")
 async def deploy_build(job_id: str, req: DeployRequest, user: dict = Depends(_get_auth())):
     try:
-        from db_pg import get_pg_pool
+        from backend.db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT project_id FROM jobs WHERE id=$1", job_id)

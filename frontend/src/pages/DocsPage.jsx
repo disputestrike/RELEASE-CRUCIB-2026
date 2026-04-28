@@ -34,7 +34,7 @@ const API_SECTIONS = [
       { method: 'GET', path: '/api/projects/:id', desc: 'Get project details', body: null, response: '{ "id": "...", "name": "...", "files": {...}, "status": "..." }' },
       { method: 'DELETE', path: '/api/projects/:id', desc: 'Delete a project', body: null, response: '{ "ok": true }' },
       { method: 'POST', path: '/api/projects/:id/duplicate', desc: 'Duplicate a project', body: null, response: '{ "project": {...} }' },
-      { method: 'POST', path: '/api/projects/import', desc: 'Import from paste, ZIP, or Git', body: '{ "source": "git", "git_url": "..." }', response: '{ "project_id": "..." }' },
+      { method: 'POST', path: '/api/projects/import', desc: 'Import validated ZIP/workspace sources; Git and paste continuation are conditional until full proof is added', body: '{ "source": "zip", "files": [...] }', response: '{ "project_id": "...", "import_doctor": {...} }' },
     ]
   },
   {
@@ -68,7 +68,7 @@ const API_SECTIONS = [
     id: 'deploy',
     title: 'Deploy',
     icon: Rocket,
-    description: 'One-click deploy to Vercel, Netlify, or Railway.',
+    description: 'Provider deployment endpoints when tokens, provider target, and proof gates are configured.',
     endpoints: [
       { method: 'POST', path: '/api/deploy/one-click/vercel', desc: 'Deploy to Vercel', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
       { method: 'POST', path: '/api/deploy/one-click/netlify', desc: 'Deploy to Netlify', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
@@ -85,7 +85,7 @@ const API_SECTIONS = [
     endpoints: [
       { method: 'GET', path: '/api/tokens/balance', desc: 'Get current token balance', body: null, response: '{ "balance": 50000, "tier": "pro" }' },
       { method: 'GET', path: '/api/tokens/usage', desc: 'Get usage history', body: null, response: '{ "usage": [...], "total": 125000 }' },
-      { method: 'POST', path: '/api/stripe/create-checkout', desc: 'Create Stripe checkout session', body: '{ "tier": "pro" }', response: '{ "checkout_url": "https://..." }' },
+      { method: 'POST', path: '/api/payments/braintree/checkout', desc: 'Complete Braintree checkout from a payment method nonce', body: '{ "bundle": "pro", "payment_method_nonce": "..." }', response: '{ "ok": true, "transaction_id": "..." }' },
       { method: 'GET', path: '/api/tokens/referral', desc: 'Get referral code and stats', body: null, response: '{ "code": "...", "referrals": 5, "earned": 5000 }' },
     ]
   },
@@ -102,11 +102,11 @@ const API_SECTIONS = [
     id: 'security',
     title: 'Security',
     icon: Shield,
-    description: 'Audit logs, RBAC, and security scanning.',
+    description: 'Audit logs, RBAC surfaces, and baseline security scanning.',
     endpoints: [
       { method: 'GET', path: '/api/audit-log', desc: 'Get audit log entries', body: null, response: '{ "entries": [...] }' },
       { method: 'GET', path: '/api/audit-log/export', desc: 'Export audit log as CSV', body: null, response: 'CSV file' },
-      { method: 'POST', path: '/api/ai/security-scan', desc: 'Run security scan on code', body: '{ "code": "...", "language": "python" }', response: '{ "vulnerabilities": [...], "score": 92 }' },
+      { method: 'POST', path: '/api/ai/security-scan', desc: 'Run baseline security scan on code', body: '{ "code": "...", "language": "python" }', response: '{ "vulnerabilities": [...], "score": 92 }' },
     ]
   },
   {

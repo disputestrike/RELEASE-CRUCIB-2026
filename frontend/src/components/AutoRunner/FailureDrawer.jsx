@@ -5,6 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, RefreshCw, Code2, PauseCircle, AlertTriangle } from 'lucide-react';
 import { formatWorkspaceBuildError } from '../../workspace/workspaceErrorUtils';
+import { describeFailureRecovery } from '../../workspace/workspaceFailureUtils';
 import './FailureDrawer.css';
 
 const FAILURE_LABELS = {
@@ -46,14 +47,17 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
   const failureType = step.failure_type || 'unknown';
   const label = FAILURE_LABELS[failureType] || failureType.toUpperCase();
   const outputFiles = step.output_files || [];
-  const retryCount = step.retry_count || 0;
-  const retryStrategy = RETRY_STRATEGIES[failureType] || RETRY_STRATEGIES.unknown;
+  const recoveryState = describeFailureRecovery(step, { maxStepRetries: MAX_STEP_RETRIES });
+  const retryStrategy = recoveryState.canRetry
+    ? RETRY_STRATEGIES[failureType] || RETRY_STRATEGIES.unknown
+    : 'Manual steering required before resume';
   const diagnosis = step.diagnosis || {};
   const repairActions = diagnosis.repair_actions || step.retry_plan || [];
   const fixStrategy = step.fix_strategy || diagnosis.fix_strategy || 'targeted_patch';
-  const canRetry = retryCount < MAX_STEP_RETRIES;
+  const canRetry = recoveryState.canRetry;
 
   const handleRetryAuto = () => {
+    if (!canRetry) return;
     setRetryTriggered(true);
     onRetry?.(step);
   };
@@ -126,10 +130,14 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
         </div>
 
         <div className="fd-retry-info">
-          Attempt {Math.min(retryCount + 1, MAX_ATTEMPTS)} of {MAX_ATTEMPTS}
+          Attempt {recoveryState.currentAttempt} of {MAX_ATTEMPTS}
           {' '}
           <span className="fd-retry-meta">({MAX_STEP_RETRIES} auto-retries max)</span>
         </div>
+
+        {!canRetry && recoveryState.disabledReason && (
+          <div className="fd-retry-info fd-retry-meta">Why retry is disabled: {recoveryState.disabledReason}</div>
+        )}
 
         {(diagnosis.explanation || repairActions.length > 0 || retryTriggered) && (
           <div className="fd-recovery">
@@ -152,8 +160,8 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
 
             <div className={`fd-recovery-status ${canRetry ? 'fd-recovery-in_progress' : 'fd-recovery-exhausted'}`}>
               {canRetry
-                ? `Next retry will be attempt ${Math.min(retryCount + 2, MAX_ATTEMPTS)} of ${MAX_ATTEMPTS}`
-                : `All ${MAX_ATTEMPTS} attempts exhausted`}
+                ? `Next retry will be attempt ${recoveryState.nextAttempt} of ${MAX_ATTEMPTS}`
+                : recoveryState.disabledReason || `All ${MAX_ATTEMPTS} attempts exhausted`}
             </div>
 
             {retryTriggered && canRetry && (
@@ -164,7 +172,7 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
       </div>
 
       <div className="fd-actions">
-        <button className="fd-btn fd-btn-retry" onClick={handleRetryAuto} disabled={!canRetry}>
+        <button className="fd-btn fd-btn-retry" onClick={handleRetryAuto} disabled={!canRetry} title={!canRetry ? recoveryState.disabledReason : undefined}>
           <RefreshCw size={12} /> Retry Automatically
         </button>
         <button className="fd-btn fd-btn-code" onClick={() => onOpenCode?.(step)}>

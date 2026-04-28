@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+import secrets
+import os
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict
@@ -32,12 +34,12 @@ def _get_db():
 
 
 def _get_token_constants():
-    import server
+    from .. import server
 
     return (
         server.TOKEN_BUNDLES,
         server.ANNUAL_PRICES,
-        server.STRIPE_SECRET,
+        server.BRAINTREE_CONFIGURED,
         server.FRONTEND_URL,
         server.REFERRAL_CAP_PER_MONTH,
         server.CREDITS_PER_TOKEN,
@@ -46,13 +48,13 @@ def _get_token_constants():
 
 
 def _get_server_helpers():
-    from server import _ensure_credit_balance, _generate_referral_code, _user_credits
-
-    return _user_credits, _ensure_credit_balance, _generate_referral_code
+    """Lazy wrapper to avoid circular import with server.py."""
+    from ..server import _get_server_helpers as _ssh
+    return _ssh()
 
 
 try:
-    from server import TokenPurchase, TokenPurchaseCustom
+    from ..server import TokenPurchase, TokenPurchaseCustom
 except ImportError:
     from pydantic import BaseModel
 
@@ -181,11 +183,29 @@ async def get_bundles():
     }
 
 
+@router.get("/credits/balance")
+async def get_credit_balance(user: dict = Depends(_get_optional_user())):
+    """Credit Center compatibility endpoint.
+
+    Returns a truthful balance from the authenticated user object even when the
+    optional ledger database collections are unavailable.
+    """
+    credits = _credit_balance_from_user(user)
+    tokens = int(_user_value(user, "token_balance", credits * 1000) or credits * 1000)
+    return {
+        "status": "ready",
+        "credit_balance": credits,
+        "token_balance": tokens,
+        "plan": _user_value(user, "plan", "free"),
+        "source": "user_session",
+    }
+
+
 @router.post("/tokens/purchase")
 async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())):
-    """Direct credit grant. In production (Stripe configured), use Stripe Checkout instead."""
+    """Direct credit grant. In production (Braintree configured), use Braintree checkout instead."""
     db = _get_db()
-    TOKEN_BUNDLES, _, STRIPE_SECRET, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
+    TOKEN_BUNDLES, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
     _user_credits, _ensure_credit_balance, _ = _get_server_helpers()
     # Keep direct purchase available for backend integration flows.
     # Stripe checkout remains available via dedicated billing endpoints.
@@ -241,9 +261,9 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())
 async def purchase_tokens_custom(
     data: TokenPurchaseCustom, user: dict = Depends(_get_auth())
 ):
-    """Custom credit purchase (slider): 100-10000 credits at $0.03/credit. When Stripe enabled, use Stripe instead."""
+    """Custom credit purchase (slider): 100-10000 credits at $0.03/credit. When Braintree is enabled, use Braintree checkout instead."""
     db = _get_db()
-    _, _, STRIPE_SECRET, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
+    _, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
     _user_credits, _ensure_credit_balance, _ = _get_server_helpers()
     # Keep direct purchase available for backend integration flows.
     # Stripe checkout remains available via dedicated billing endpoints.
@@ -370,12 +390,12 @@ async def get_referral_code(user: dict = Depends(_get_auth())):
             "code": row["code"],
             "link": f"{FRONTEND_URL or ''}/auth?ref={row['code']}",
         }
-    code = _generate_referral_code()
+    code = f"CRUCIB-{secrets.token_urlsafe(6).replace('-', '').replace('_', '').upper()[:8]}"
     while await db.referral_codes.find_one({"code": code}):
-        code = _generate_referral_code()
+        code = f"CRUCIB-{secrets.token_urlsafe(6).replace('-', '').replace('_', '').upper()[:8]}"
     await db.referral_codes.insert_one(
         {
-            "user_id": user["id"],
+            "user_id": uid,
             "code": code,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -388,6 +408,9 @@ async def get_referral_stats(user: dict = Depends(_get_auth())):
     """Referrals sent this month and total."""
     db = _get_db()
     _, _, _, _, REFERRAL_CAP_PER_MONTH, _, _ = _get_token_constants()
+    uid = _user_value(user, "id", "guest")
+    if db is None:
+        return {"this_month": 0, "total": 0, "cap": REFERRAL_CAP_PER_MONTH, "status": "ready_without_persistence"}
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if db is None:

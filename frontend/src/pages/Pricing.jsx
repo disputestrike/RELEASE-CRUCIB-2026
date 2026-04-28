@@ -21,8 +21,8 @@ const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 // Outcome language — what you actually build, not feature names
 const PLAN_FEATURES = {
   free: [
-    '2 full apps — frontend + backend + database + auth',
-    'OR 4 landing pages — fully designed, SEO-ready',
+    '2 proof-gated app build runs',
+    'OR 4 landing-page build runs',
     'Live preview · export ZIP · push to GitHub',
     '126-agent swarm · voice input · templates',
     'No credit card required',
@@ -36,22 +36,22 @@ const PLAN_FEATURES = {
     'Credits roll over — never lose unused credits',
   ],
   pro: [
-    '10 complete production apps per month',
-    'OR 20 landing pages · OR 6 mobile apps',
+    '10 proof-gated app build runs per month',
+    'OR 20 landing pages · OR 6 Expo mobile artifact runs',
     'Everything in Builder',
     'Max speed (priority queue) · priority support',
     'Credits roll over',
   ],
   scale: [
-    '20 complete production apps per month',
-    'OR 40 landing pages · OR 13 mobile apps',
+    '20 proof-gated app build runs per month',
+    'OR 40 landing pages · OR 13 Expo mobile artifact runs',
     'Everything in Pro',
     'High-volume builds for agencies & studios',
     'Credits roll over',
   ],
   teams: [
-    '50 complete production apps per month',
-    'OR 100 landing pages · OR 33 mobile apps',
+    '50 proof-gated app build runs per month',
+    'OR 100 landing pages · OR 33 Expo mobile artifact runs',
     'Everything in Scale',
     'Teams, agencies, white-label studios',
     'Priority support · team billing · credits roll over',
@@ -79,28 +79,9 @@ function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api,
     }
     setLoading(true);
     try {
-      await axios.post(`${api}/tokens/purchase-custom`, { credits }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      navigate('/app/tokens?success=1');
-      window.location.reload();
+      navigate('/app/tokens', { state: { customCredits: credits } });
     } catch (e) {
-      const detail = e.response?.data?.detail ?? '';
-      const useStripe = typeof detail === 'string' && detail.includes('Stripe');
-      if (useStripe) {
-        try {
-          const { data } = await axios.post(
-            `${api}/stripe/create-checkout-session-custom`,
-            { credits },
-            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-          );
-          if (data?.url) window.location.href = data.url;
-        } catch (e2) {
-          logApiError('Stripe custom checkout', e2);
-        }
-      } else {
-        logApiError('Purchase custom credits', e);
-      }
+      logApiError('Open Braintree credit checkout', e);
     } finally {
       setLoading(false);
     }
@@ -239,7 +220,7 @@ export default function Pricing() {
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
           <p className="text-kimi-muted max-w-xl mx-auto">The only builder that gives you the complete stack — frontend, backend, database, auth, and payments — in every build. Plus mobile apps with App Store &amp; Play Store submission guide. Free tier: 200 credits. Credits roll over. No surprises.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
-            <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI beats the others at every price point</p>
+            <p className="text-sm font-medium text-[#1A1A1A] mb-2">What each credit funds</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
               <li>• Every build includes frontend + backend + database + auth + Stripe payments — not just a frontend.</li>
               <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
@@ -258,10 +239,10 @@ export default function Pricing() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
-              <p className="text-stone-500 mb-4">200 credits. Build 2 complete apps or 4 landing pages. No credit card.</p>
+              <p className="text-stone-500 mb-4">200 credits. Run 2 app builds or 4 landing-page builds. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 full apps — frontend + backend + database + auth</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing pages — designed, SEO-ready, exportable</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 proof-gated app build runs</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing-page build runs</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Live preview · export to ZIP · push to GitHub</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 126-agent swarm · voice input · templates &amp; prompts</li>
               </ul>
@@ -381,7 +362,7 @@ export default function Pricing() {
         {/* Outcome calculator */}
         <div className="mt-16 max-w-2xl mx-auto p-6 rounded-2xl border border-stone-200 bg-white shadow-sm">
           <h3 className="text-lg font-semibold mb-2">How many credits do I need?</h3>
-          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app (frontend + backend + DB + auth + payments) · 150 credits ≈ 1 mobile app with App Store guide. Enter your goals below.</p>
+          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing-page run · 100 credits ≈ 1 app build run · 150 credits ≈ 1 Expo mobile artifact run with store submission guidance. Enter your goals below.</p>
           <OutcomeCalculator bundles={bundles} onSelectPlan={(key) => {
             if (user) navigate('/app/tokens', { state: { addon: key } });
             else navigate('/app/tokens?addon=' + encodeURIComponent(key));

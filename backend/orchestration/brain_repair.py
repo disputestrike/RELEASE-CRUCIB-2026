@@ -142,16 +142,41 @@ async def run_full_brain_repair(
     llm_repairs: List[Dict[str, Any]] = []
     causal_analysis: Dict[str, Any] = {}
 
+    # Files that deterministic repair replaced with a scaffold stub are NOT truly fixed —
+    # they need LLM regeneration to produce real code. We exclude only files that were
+    # genuinely fixed (e.g. added npm dep, fixed vite config, stripped a preamble that
+    # left real code behind). Scaffold replacements are still in critical_unfixed.
+    scaffold_replaced = {
+        r.get("file")
+        for r in repair_result.get("repairs", [])
+        if r.get("fixed") and r.get("action") in (
+            "replaced_json_prose_with_scaffold",
+            "replaced_with_scaffold",
+            "created_minimal",
+        )
+    }
+    truly_fixed_by_det = {
+        r.get("file")
+        for r in repair_result.get("repairs", [])
+        if r.get("fixed") and r.get("file") not in scaffold_replaced
+    }
     critical_unfixed = [
         f
         for f in diagnosis.get("critical_findings", [])
         if f.get("file")
-        and f.get("file")
-        not in [
-            r.get("file") for r in repair_result.get("repairs", []) if r.get("fixed")
-        ]
+        and f.get("file") not in truly_fixed_by_det
         and not f.get("file", "").startswith("proof_bundle")
     ]
+    # Also include scaffold-replaced files — they need LLM to regenerate real code
+    for rel in scaffold_replaced:
+        if rel and not any(f.get("file") == rel for f in critical_unfixed):
+            critical_unfixed.append({
+                "file": rel,
+                "check": "scaffold_replaced",
+                "issues": ["File was scaffold-replaced — needs LLM regeneration"],
+                "severity": "critical",
+                "fix_hint": "regenerate_with_llm",
+            })
 
     # LLM repair: normally retry 1+; verification/implementation gates need fixes on first failure too.
     verify_or_impl = (step_key or "").startswith(
@@ -181,13 +206,14 @@ async def run_full_brain_repair(
             if llm_result.get("fixed"):
                 logger.info("brain: LLM fixed %s", rel_path)
 
-        # Also run CodeRepairAgent with LLM callback on Python/JSON files
+        # Also run CodeRepairAgent with LLM callback on Python/JSON/JSX files
         if workspace_path:
             affected_files = diagnosis.get("affected_files", [])
             py_json_files = [
                 f
                 for f in affected_files
-                if f.endswith((".py", ".json", ".yaml", ".yml"))
+                if f.endswith((".py", ".json", ".yaml", ".yml",
+                               ".jsx", ".tsx", ".js", ".ts"))
             ]
             if py_json_files:
                 repaired = await CodeRepairAgent.repair_workspace_files(

@@ -210,7 +210,7 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             flat.append(row)
 
     try:
-        from orchestration.trust.trust_scoring import compute_trust_metrics
+        from backend.orchestration.trust.trust_scoring import compute_trust_metrics
 
         has_screenshot = any(
             (row.get("payload") or {}).get("kind") == "preview_screenshot"
@@ -247,11 +247,11 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
     spec_compliance = 100.0
     spec_guard_snapshot: Dict[str, Any] = {}
     try:
-        from orchestration.spec_guardian import (
+        from backend.orchestration.spec_guardian import (
             evaluate_goal_against_runner,
             merge_plan_risk_flags_into_report,
         )
-        from orchestration.truth_scores import (
+        from backend.orchestration.truth_scores import (
             build_honest_scorecard,
             compute_production_readiness,
         )

@@ -13,15 +13,16 @@ import textwrap
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-from agents.code_repair_agent import CodeRepairAgent
-from agents.database_architect_agent import (
+from backend.agents.code_repair_agent import CodeRepairAgent
+from backend.agents.database_architect_agent import (
     SchemaToSQL,
     heuristic_schema_from_requirements,
 )
-from anthropic_models import ANTHROPIC_HAIKU_MODEL
+from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
+from backend.llm_router import CEREBRAS_MODEL
 
 from .compliance_sketch import build_compliance_sketch_markdown
-from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
+from .domain_packs import compliance_regulated_intent, multitenant_intent, braintree_intent
 from .enterprise_command_pack import (
     build_enterprise_backend_file_set,
     build_enterprise_database_file_set,
@@ -67,7 +68,10 @@ from .verification_api_smoke import healthcheck_sh_script
 from .verifier import verify_step
 from .verifier_issue_files import candidate_files_from_verification_issues
 from .brain_narration import build_failure_guidance
+from .placeholder_detection import contains_placeholder
 from .context_registry import merge_file_ownership
+from backend.orchestration.runtime_state import runtime_state_adapter
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -251,43 +255,50 @@ def list_items():
 '''
 
 
-def _stripe_routes_sketch() -> str:
+def _stripe_webhook_routes_sketch() -> str:
     return '''"""Stripe webhook — idempotency + signature sketch (CrucibAI).
-1) Apply db/migrations/003_stripe_idempotency_sketch.sql
-2) pip install stripe && set STRIPE_WEBHOOK_SECRET
-3) stripe.Webhook.construct_event(...) then INSERT ... ON CONFLICT DO NOTHING
+1) pip install stripe && set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET
+2) Register your webhook endpoint in the Stripe Dashboard.
 """
 import os
-from fastapi import APIRouter, HTTPException, Request
+import stripe
+from fastapi import APIRouter, Form, Header, HTTPException, Request
 
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
-
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 
 @router.post("/webhook")
-async def stripe_webhook(request: Request):
-    _ = await request.body()
-    if not os.environ.get("STRIPE_WEBHOOK_SECRET"):
-        raise HTTPException(status_code=503, detail="STRIPE_WEBHOOK_SECRET not configured")
-    # event = stripe.Webhook.construct_event(payload, sig_header, whsec)
-    # await db.execute("INSERT INTO stripe_events_processed (id) VALUES ($1) ON CONFLICT DO NOTHING", event["id"])
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    if not stripe.api_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured")
+    payload = await request.body()
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    event_type = event.get("type", "")
+    if event_type == "payment_intent.succeeded":
+        pass  # Handle successful payment
+    elif event_type.startswith("customer.subscription."):
+        pass  # Handle subscription lifecycle
     return {"received": True}
 '''
 
-
-def _ensure_stripe_router_mounted(workspace_path: str) -> None:
-    """Append Stripe router mount to backend/main.py once (after stripe_routes.py exists)."""
+def _ensure_braintree_router_mounted(workspace_path: str) -> None:
+    """Append Braintree router mount to backend/main.py once (after braintree_routes.py exists)."""
     rel = "backend/main.py"
     text = _read_text(workspace_path, rel)
-    if not text or "CRUCIBAI_STRIPE_ROUTER_MOUNT" in text:
+    if not text or "CRUCIBAI_BRAINTREE_ROUTER_MOUNT" in text:
         return
     if "FastAPI" not in text or "app =" not in text:
         return
     suffix = """
 
-# CRUCIBAI_STRIPE_ROUTER_MOUNT — Stripe webhook routes (backend/stripe_routes.py)
+# CRUCIBAI_BRAINTREE_ROUTER_MOUNT — Braintree webhook routes (backend/braintree_routes.py)
 try:
-    import stripe_routes
-    app.include_router(stripe_routes.router)
+    import braintree_routes
+    app.include_router(braintree_routes.router)
 except Exception:
     pass
 """
@@ -325,7 +336,7 @@ def _production_sketch_readme() -> str:
     return """# Production sketch checklist (CrucibAI)
 
 - [ ] Secrets only in env — run production gate scan (deploy.build verification)
-- [ ] Stripe: webhook signature + `stripe_events_processed` idempotency table
+- [ ] Braintree: webhook signature + `braintree_events_processed` idempotency table
 - [ ] Multi-tenant: apply `db/migrations/002_multitenancy_rls.sql` (RLS on `app_items`); extend policies to other tables
 - [ ] Auth: replace client-demo tokens with server session or JWT validation
 - [ ] Observability: JSON logs + trace context; optional `deploy/observability/*.stub.*` for local OTel/Prometheus/Grafana
@@ -507,7 +518,7 @@ def _strip_prose_preamble(content: str, rel: str) -> str:
     return content
 
 
-def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
+def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None) -> Optional[str]:
     """Write UTF-8 text under workspace; returns normalized relative path or None."""
     if not base or not isinstance(base, str):
         return None
@@ -518,12 +529,43 @@ def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
         logger.warning("executor: rejected path escape %s", rel)
         return None
     content = _strip_prose_preamble(content, rel)
+    # Language sanity gate: reject markdown/manifest/prose written into source files.
+    # No agent output starting with markdown headings, file manifests, or JS in .py
+    # should ever reach disk — those are LLM confusion artifacts, not code.
+    _JSX_EXTS = {".jsx", ".tsx", ".js", ".ts"}
+    _ext = os.path.splitext(rel)[1].lower()
+    if _ext in _JSX_EXTS and _is_manifest_content(content):
+        logger.warning(
+            "executor: REJECTED manifest/markdown write to %s (%d bytes) — template preserved",
+            rel, len(content),
+        )
+        return None
+    # Also apply the manifest/markdown check to Python files (catches markdown prose in .py)
+    if _ext == ".py" and content.strip() and _is_manifest_content(content):
+        logger.warning(
+            "executor: REJECTED manifest/markdown write to Python file %s (%d bytes)",
+            rel, len(content),
+        )
+        return None
+    # Reject JS content written into Python files
+    if _ext == ".py" and content.strip():
+        _py_first = content.strip().splitlines()[0].strip()
+        if _py_first.startswith("//") or _py_first in ("javascript", "typescript") or \
+           ("import " in _py_first and " from '" in _py_first):
+            logger.warning(
+                "executor: REJECTED JS-in-Python write to %s — first line: %r",
+                rel, _py_first[:80],
+            )
+            return None
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    with open(full, "w", encoding="utf-8") as fh:
-        fh.write(content)
-    return rel
+        with open(full, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        if job_id:
+            # Emit a file_written event
+            asyncio.create_task(runtime_state_adapter.append_job_event(job_id, "file_written", {"path": rel.replace("\\", "/"), "content_length": len(content), "timestamp": time.time()}))
+        return rel
 
 
 def _read_text(base: str, rel: str) -> Optional[str]:
@@ -546,6 +588,31 @@ def _write_file_set(workspace_path: str, file_set: List[tuple[str, str]]) -> Lis
         if w:
             written.append(w)
     return written
+
+
+_MANIFEST_LINE_RE = re.compile(
+    r"^\s*(server/|src/|backend/|client/|frontend/|\[NEW\b|\[PATCH\b)",
+    re.MULTILINE,
+)
+_MARKDOWN_LINE_RE = re.compile(
+    r"^\s*(#{1,6}\s|\*\*|```|>\s|---\s*$|===\s*$|\|\s*\w)",
+    re.MULTILINE,
+)
+
+
+_FIRST_LINE_HEADING_RE = re.compile(r"^\s*(#{1,6}\s|\*\*[`\[])")
+
+def _is_manifest_content(text: str) -> bool:
+    """Return True if text looks like a file-path manifest or markdown doc, not source code."""
+    if not text or not text.strip():
+        return True
+    lines = [ln for ln in text.strip().splitlines() if ln.strip()][:15]
+    # Fast-path: first non-empty line is a markdown heading or bold-backtick — always garbage
+    if lines and _FIRST_LINE_HEADING_RE.match(lines[0]):
+        return True
+    manifest_hits = sum(1 for ln in lines if _MANIFEST_LINE_RE.match(ln))
+    markdown_hits = sum(1 for ln in lines if _MARKDOWN_LINE_RE.match(ln))
+    return manifest_hits >= min(3, len(lines)) or markdown_hits >= min(2, len(lines))
 
 
 def _full_system_manifest_path(workspace_path: str) -> str:
@@ -626,11 +693,285 @@ def _merge_package_dependencies(
                 **(fallback_pkg.get(section) or {}),
             }
             merged.pop("@types/react-router-dom", None)
+            # Evict the old vite-plugin-react (requires vite@^0.16); use @vitejs/plugin-react
+            merged.pop("vite-plugin-react", None)
         existing_pkg[section] = merged
 
     if not existing_pkg.get("type"):
         existing_pkg["type"] = fallback_pkg.get("type", "module")
     return json.dumps(existing_pkg, indent=2)
+
+
+
+# ── Universal build-type contract helpers ────────────────────────────────────
+
+def _infer_build_kind(job: Dict[str, Any]) -> str:
+    """
+    Resolve build kind from job fields or goal text.
+    Returns: saas | fullstack | frontend | website | mobile | automation | api | backend
+    """
+    explicit = (
+        job.get("build_kind") or
+        job.get("build_type") or
+        job.get("stack_kind") or ""
+    ).strip().lower()
+    if explicit:
+        return explicit
+
+    goal = " ".join(
+        str(job.get(k) or "")
+        for k in ("goal", "prompt", "description", "title")
+    ).lower()
+
+    if any(k in goal for k in ("mobile", "ios", "android", "expo", "react native")):
+        return "mobile"
+    if any(k in goal for k in ("automate", "cron", "scheduler", "workflow", "pipeline")):
+        return "automation"
+    if any(k in goal for k in ("api only", "rest api", "fastapi", "flask api", "graphql api")):
+        return "api"
+    if any(k in goal for k in ("landing page", "portfolio", "marketing site", "static site")):
+        return "website"
+    # saas heuristic mirrors is_saas_ui_goal threshold
+    try:
+        from .manus_parity_template import _SAAS_INTENT_MARKERS  # type: ignore
+        if sum(1 for m in _SAAS_INTENT_MARKERS if m in goal) >= 2:
+            return "saas"
+    except Exception:
+        pass
+    return "fullstack"
+
+
+def _ensure_mobile_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Expo / React-Native minimum contract: App.tsx + app.json + babel.config.js."""
+    # App.tsx — fill-if-missing only (agents own real UI code)
+    if not _read_text(workspace_path, "App.tsx") and not _read_text(workspace_path, "App.js"):
+        app_tsx = (
+            "import React from 'react';\n"
+            "import { View, Text, StyleSheet } from 'react-native';\n\n"
+            "export default function App() {\n"
+            "  return (\n"
+            "    <View style={styles.container}>\n"
+            "      <Text style={styles.title}>CrucibAI App</Text>\n"
+            "      <Text style={styles.sub}>Your mobile app is ready.</Text>\n"
+            "    </View>\n"
+            "  );\n"
+            "}\n\n"
+            "const styles = StyleSheet.create({\n"
+            "  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f0f0f' },\n"
+            "  title:     { fontSize: 28, fontWeight: '700', color: '#fff', marginBottom: 8 },\n"
+            "  sub:       { fontSize: 16, color: '#888' },\n"
+            "});\n"
+        )
+        if _safe_write(workspace_path, "App.tsx", app_tsx):
+            written.append("App.tsx")
+
+    # app.json — required by Expo CLI
+    if not _read_text(workspace_path, "app.json"):
+        import json as _json
+        goal_name = re.sub(r"[^a-z0-9]+", "-",
+            (job.get("goal") or "crucibai-app")[:40].lower()).strip("-") or "crucibai-app"
+        app_json = {
+            "expo": {
+                "name": goal_name,
+                "slug": goal_name,
+                "version": "1.0.0",
+                "orientation": "portrait",
+                "platforms": ["ios", "android"],
+                "sdkVersion": "51.0.0",
+            }
+        }
+        if _safe_write(workspace_path, "app.json", _json.dumps(app_json, indent=2)):
+            written.append("app.json")
+
+    # babel.config.js — required by Expo transformer
+    if not _read_text(workspace_path, "babel.config.js"):
+        babel = "module.exports = { presets: ['babel-preset-expo'] };\n"
+        if _safe_write(workspace_path, "babel.config.js", babel):
+            written.append("babel.config.js")
+
+    # package.json — ensure Expo deps present
+    pkg_path = "package.json"
+    existing_pkg = _read_text(workspace_path, pkg_path) or ""
+    try:
+        import json as _json
+        pkg_obj = _json.loads(existing_pkg) if existing_pkg.strip() else {}
+    except Exception:
+        pkg_obj = {}
+    deps = pkg_obj.setdefault("dependencies", {})
+    dev_deps = pkg_obj.setdefault("devDependencies", {})
+    need_write = False
+    for k, v in {"expo": "~51.0.0", "react": "18.2.0", "react-native": "0.74.0"}.items():
+        if k not in deps:
+            deps[k] = v
+            need_write = True
+    if "babel-preset-expo" not in dev_deps:
+        dev_deps["babel-preset-expo"] = "^10.0.0"
+        need_write = True
+    if not pkg_obj.get("main"):
+        pkg_obj["main"] = "expo-router/entry"
+        need_write = True
+    if need_write:
+        import json as _json
+        if _safe_write(workspace_path, pkg_path, _json.dumps(pkg_obj, indent=2)):
+            written.append(pkg_path)
+
+
+def _ensure_automation_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Automation/workflow build: workflow.json + executor.py + requirements.txt."""
+    if not _read_text(workspace_path, "workflow.json"):
+        import json as _json
+        goal_str = (job.get("goal") or "automation workflow")[:120]
+        wf = {
+            "name": goal_str,
+            "version": "1.0.0",
+            "trigger": {"type": "manual"},
+            "steps": [
+                {"id": "start",   "action": "log",     "params": {"message": "Workflow started"}},
+                {"id": "process", "action": "execute", "params": {"script": "executor.py"}, "depends_on": ["start"]},
+                {"id": "done",    "action": "log",     "params": {"message": "Workflow complete"}, "depends_on": ["process"]},
+            ],
+        }
+        if _safe_write(workspace_path, "workflow.json", _json.dumps(wf, indent=2)):
+            written.append("workflow.json")
+
+    if not _read_text(workspace_path, "executor.py") and not _read_text(workspace_path, "main.py"):
+        executor_py = (
+            '#!/usr/bin/env python3\n'
+            '"""Automation executor — entry point for CrucibAI workflow."""\n'
+            'import json\n'
+            'import sys\n'
+            'import logging\n\n'
+            'logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")\n'
+            'logger = logging.getLogger(__name__)\n\n\n'
+            'def run(step_id: str = "process") -> dict:\n'
+            '    logger.info("Executing step: %s", step_id)\n'
+            '    # TODO: implement step logic\n'
+            '    return {"step": step_id, "status": "ok"}\n\n\n'
+            'if __name__ == "__main__":\n'
+            '    step = sys.argv[1] if len(sys.argv) > 1 else "process"\n'
+            '    result = run(step)\n'
+            '    print(json.dumps(result))\n'
+        )
+        if _safe_write(workspace_path, "executor.py", executor_py):
+            written.append("executor.py")
+
+    if not _read_text(workspace_path, "requirements.txt"):
+        if _safe_write(workspace_path, "requirements.txt", "# CrucibAI automation dependencies\n"):
+            written.append("requirements.txt")
+
+
+def _ensure_api_backend_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Pure API/backend build: main.py with /health + requirements.txt + Procfile."""
+    main_text = _read_text(workspace_path, "main.py") or _read_text(workspace_path, "server.py")
+    if not main_text:
+        main_py = (
+            '"""CrucibAI API — generated entry point."""\n'
+            'from fastapi import FastAPI\n'
+            'from fastapi.middleware.cors import CORSMiddleware\n'
+            'from datetime import datetime, timezone\n\n'
+            'app = FastAPI(title="CrucibAI API", version="0.1.0")\n\n'
+            'app.add_middleware(\n'
+            '    CORSMiddleware,\n'
+            '    allow_origins=["*"],\n'
+            '    allow_credentials=True,\n'
+            '    allow_methods=["*"],\n'
+            '    allow_headers=["*"],\n'
+            ')\n\n\n'
+            '@app.get("/health")\n'
+            'def health():\n'
+            '    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}\n\n\n'
+            '@app.get("/api/v1/status")\n'
+            'def status():\n'
+            '    return {"ready": True}\n'
+        )
+        if _safe_write(workspace_path, "main.py", main_py):
+            written.append("main.py")
+    elif main_text and '@app.get("/health")' not in main_text and "@app.get('/health')" not in main_text:
+        health_snippet = (
+            '\n\n@app.get("/health")\n'
+            'def health():\n'
+            '    from datetime import datetime, timezone\n'
+            '    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}\n'
+        )
+        target = "main.py" if _read_text(workspace_path, "main.py") else "server.py"
+        if _safe_write(workspace_path, target, main_text + health_snippet):
+            written.append(target)
+
+    if not _read_text(workspace_path, "requirements.txt"):
+        reqs = "fastapi>=0.110.0\nuvicorn[standard]>=0.29.0\npython-dotenv>=1.0.0\n"
+        if _safe_write(workspace_path, "requirements.txt", reqs):
+            written.append("requirements.txt")
+
+    if not _read_text(workspace_path, "Procfile"):
+        if _safe_write(workspace_path, "Procfile", "web: uvicorn main:app --host 0.0.0.0 --port $PORT\n"):
+            written.append("Procfile")
+
+
+def _ensure_website_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """Static website / landing page contract: index.html + styles.css + main.js."""
+    if not _read_text(workspace_path, "index.html"):
+        goal_text = (job.get("goal") or "Website")[:80]
+        html = (
+            "<!DOCTYPE html>\n"
+            "<html lang=\"en\">\n"
+            "<head>\n"
+            "  <meta charset=\"UTF-8\" />\n"
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
+            f"  <title>{goal_text}</title>\n"
+            "  <link rel=\"stylesheet\" href=\"styles.css\" />\n"
+            "</head>\n"
+            "<body>\n"
+            "  <main id=\"app\">\n"
+            f"    <h1>{goal_text}</h1>\n"
+            "    <p>Loading&hellip;</p>\n"
+            "  </main>\n"
+            "  <script type=\"module\" src=\"main.js\"></script>\n"
+            "</body>\n"
+            "</html>\n"
+        )
+        if _safe_write(workspace_path, "index.html", html):
+            written.append("index.html")
+
+    if not _read_text(workspace_path, "styles.css"):
+        css = (
+            "*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n"
+            "body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #f0f0f0; }\n"
+            "#app { max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }\n"
+            "h1   { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; }\n"
+            "p    { font-size: 1.2rem; color: #aaa; }\n"
+        )
+        if _safe_write(workspace_path, "styles.css", css):
+            written.append("styles.css")
+
+    if not _read_text(workspace_path, "main.js"):
+        if _safe_write(workspace_path, "main.js", "// CrucibAI website entry\nconsole.log('CrucibAI website ready');\n"):
+            written.append("main.js")
+
+
+def _ensure_fullstack_contract(workspace_path: str, job: Dict[str, Any], written: list) -> None:
+    """
+    Full-stack: repair missing/garbage App.jsx, fill backend/main.py if absent.
+    Does NOT force-overwrite valid agent code.
+    """
+    existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
+    if not existing_app or _is_manifest_content(existing_app):
+        tmpl = _template_file_map(job)
+        app_tmpl = tmpl.get("src/App.jsx")
+        if app_tmpl and _safe_write(workspace_path, "src/App.jsx", app_tmpl):
+            written.append("src/App.jsx")
+    if not _read_text(workspace_path, "src/main.jsx"):
+        tmpl = _template_file_map(job)
+        t = tmpl.get("src/main.jsx")
+        if t and _safe_write(workspace_path, "src/main.jsx", t):
+            written.append("src/main.jsx")
+    if not _read_text(workspace_path, "backend/main.py"):
+        bridge = _backend_main_bridge_py(multitenant=multitenant_intent(job))
+        if _safe_write(workspace_path, "backend/main.py", bridge):
+            written.append("backend/main.py")
+    if not _read_text(workspace_path, "requirements.txt"):
+        reqs = "fastapi>=0.110.0\nuvicorn[standard]>=0.29.0\npython-dotenv>=1.0.0\n"
+        if _safe_write(workspace_path, "requirements.txt", reqs):
+            written.append("requirements.txt")
 
 
 def _ensure_preview_contract_files(
@@ -672,15 +1013,48 @@ def _ensure_preview_contract_files(
         "src/index.js",
     ]
     for rel in required_paths:
-        if not _read_text(workspace_path, rel):
-            if _safe_write(workspace_path, rel, template_map[rel]):
+        existing_content = _read_text(workspace_path, rel)
+        if not existing_content:
+            content = template_map.get(rel)
+            if content and _safe_write(workspace_path, rel, content):
                 written.append(rel)
 
-    if not _read_text(workspace_path, "src/App.jsx") and not _read_text(
-        workspace_path, "src/App.js"
-    ):
-        if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
+    # SaaS-specific pages — only guaranteed when this is a SaaS UI build
+    from .manus_parity_template import is_saas_ui_goal
+    if is_saas_ui_goal(job):
+        saas_pages = [
+            "src/pages/AnalyticsPage.jsx",
+            "src/pages/PricingPage.jsx",
+            "src/pages/SettingsPage.jsx",
+            "src/pages/NotFoundPage.jsx",
+        ]
+        for rel in saas_pages:
+            if not _read_text(workspace_path, rel):
+                content = template_map.get(rel)
+                if content and _safe_write(workspace_path, rel, content):
+                    written.append(rel)
+
+    existing_app = _read_text(workspace_path, "src/App.jsx") or _read_text(workspace_path, "src/App.js")
+    # ARCHITECTURAL RULE: Final Assembly owns the entrypoints.
+    # For SaaS UI builds the manus template IS the correct App.jsx — force-write it
+    # so no agent output can override the final product shape.
+    # For non-SaaS builds replace only when missing or garbage, preserving valid agent code.
+    _force_entrypoints = is_saas_ui_goal(job)
+    _needs_app_repair = not existing_app or _is_manifest_content(existing_app)
+    if _force_entrypoints or _needs_app_repair:
+        app_tmpl = template_map.get("src/App.jsx")
+        if app_tmpl and _safe_write(workspace_path, "src/App.jsx", app_tmpl):
             written.append("src/App.jsx")
+        # main.jsx: force for SaaS; fill-if-missing otherwise
+        if _force_entrypoints or not _read_text(workspace_path, "src/main.jsx"):
+            main_tmpl = template_map.get("src/main.jsx")
+            if main_tmpl and _safe_write(workspace_path, "src/main.jsx", main_tmpl):
+                written.append("src/main.jsx")
+        # ShellLayout.jsx: force for SaaS; fill-if-missing otherwise
+        if _force_entrypoints or not _read_text(workspace_path, "src/components/ShellLayout.jsx"):
+            shell_tmpl = template_map.get("src/components/ShellLayout.jsx")
+            if shell_tmpl and _safe_write(workspace_path, "src/components/ShellLayout.jsx", shell_tmpl):
+                written.append("src/components/ShellLayout.jsx")
 
     # Next.js App Router track (parallel to root Vite) — P2 open item: Next-specific preview templates.
     next_prefix = "next-app-stub/"
@@ -692,6 +1066,27 @@ def _ensure_preview_contract_files(
         if _safe_write(workspace_path, rel, content):
             written.append(rel)
 
+    # ── Universal build-type contracts ────────────────────────────────────────
+    # Every build type ships with its minimum runnable contract regardless of
+    # which agents ran. saas is already handled above via _force_entrypoints.
+    _build_kind = _infer_build_kind(job)
+    if _build_kind == "mobile":
+        _ensure_mobile_contract(workspace_path, job, written)
+    elif _build_kind == "automation":
+        _ensure_automation_contract(workspace_path, job, written)
+    elif _build_kind in ("api", "backend"):
+        _ensure_api_backend_contract(workspace_path, job, written)
+    elif _build_kind in ("website", "frontend"):
+        _ensure_website_contract(workspace_path, job, written)
+    elif _build_kind == "fullstack":
+        _ensure_fullstack_contract(workspace_path, job, written)
+
+    if written:
+        logger.info(
+            "_ensure_preview_contract_files: build_kind=%s wrote %d contract file(s): %s",
+            _build_kind, len(written), written,
+        )
+
     return written
 
 
@@ -702,7 +1097,7 @@ Keeps smoke/security checks deterministic even when agents emit root-level serve
 """
 
 try:
-    from server import app as app  # type: ignore
+    from backend.server import app as app  # type: ignore
 except Exception:
 {textwrap.indent(fallback, "    ")}
 '''
@@ -732,6 +1127,27 @@ def _ensure_swarm_runtime_contract_files(
     if not backend_main_text:
         bridge = _backend_main_bridge_py(multitenant=multitenant_intent(job))
         if _safe_write(workspace_path, backend_main_rel, bridge):
+            written.append(backend_main_rel)
+    elif backend_main_text and '@app.get("/health")' not in backend_main_text and "@app.get('/health')" not in backend_main_text:
+        # Agent wrote a backend but forgot /health — inject it before first route or at end
+        health_snippet = '''
+
+@app.get("/health")
+def health():
+    from datetime import datetime, timezone
+    return {"status": "ok", "ts": datetime.now(timezone.utc).isoformat()}
+'''
+        # Insert after app middleware block if present, else append
+        if "add_middleware" in backend_main_text:
+            insert_after = re.search(r"app\.add_middleware\([^)]+\)\n", backend_main_text)
+            if insert_after:
+                pos = insert_after.end()
+                backend_main_text = backend_main_text[:pos] + health_snippet + backend_main_text[pos:]
+            else:
+                backend_main_text += health_snippet
+        else:
+            backend_main_text += health_snippet
+        if _safe_write(workspace_path, backend_main_rel, backend_main_text):
             written.append(backend_main_rel)
 
     auth_rel = "backend/auth.py"
@@ -796,7 +1212,8 @@ async def handle_planning_step(
                     crew_pack = await run_crew_for_goal(
                         job.get("goal") or "",
                         workspace_path,
-                        system_prompt=combined or None,
+                        system_prompt=job.get("elite_system_prompt") or "",
+                        job_id=job.get("id") or "",
                     )
                     written.extend(crew_pack.get("written") or [])
                 except Exception as exc:
@@ -846,7 +1263,7 @@ async def handle_frontend_generate(
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
-                    "llm_model": job.get("llm_model") or ANTHROPIC_HAIKU_MODEL,
+                    "llm_model": job.get("llm_model") or CEREBRAS_MODEL,
                     "max_tokens": 12000,
                 }
             )
@@ -1356,19 +1773,12 @@ PROTECTED_PREFIX = "/api/private"
                 },
             ]
 
-        elif key == "backend.stripe":
-            stripe_py = _stripe_routes_sketch()
+        elif key in ("backend.braintree", "backend.stripe"):
+            # Always write Stripe — Braintree is retired from the platform
+            stripe_py = _stripe_webhook_routes_sketch()
             w = _safe_write(workspace_path, "backend/stripe_routes.py", stripe_py)
             if w:
                 out_files.append(w)
-            _ensure_stripe_router_mounted(workspace_path)
-            m = _read_text(workspace_path, "backend/main.py")
-            if (
-                m
-                and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m
-                and "backend/main.py" not in out_files
-            ):
-                out_files.append("backend/main.py")
             routes_added = [
                 {
                     "method": "POST",
@@ -1474,7 +1884,7 @@ async def handle_db_migration(
             }
 
         mt = multitenant_intent(job)
-        st = stripe_intent(job)
+        st = braintree_intent(job)
         if key == "database.migration":
             try:
                 schema = heuristic_schema_from_requirements(job.get("goal") or "")
@@ -1483,6 +1893,7 @@ async def handle_db_migration(
                     workspace_path,
                     "db/schema_blueprint.json",
                     json.dumps(schema_payload, indent=2),
+                    job_id=job.get("id"),
                 )
                 if blueprint:
                     out.append(blueprint)
@@ -1490,13 +1901,14 @@ async def handle_db_migration(
                     workspace_path,
                     "db/migrations/000_schema_blueprint.sql",
                     "\n\n".join(SchemaToSQL.generate_sql(schema)),
+                    job_id=job.get("id"),
                 )
                 if blueprint_sql:
                     out.append(blueprint_sql)
             except Exception as exc:
                 logger.warning("Database schema blueprint generation skipped: %s", exc)
             sql = migration_001_app_schema_sql()
-            w = _safe_write(workspace_path, "db/migrations/001_schema.sql", sql)
+            w = _safe_write(workspace_path, "db/migrations/001_schema.sql", sql, job_id=job.get("id"))
             if w:
                 out.append(w)
             if mt:
@@ -1505,21 +1917,23 @@ async def handle_db_migration(
                     workspace_path,
                     f"db/migrations/{MULTITENANCY_MIGRATION_FILENAME}",
                     sql_mt,
+                    job_id=job.get("id"),
                 )
                 if w2:
                     out.append(w2)
             if st:
-                sql_st = """-- 003_stripe_idempotency_sketch.sql — webhook dedupe
-CREATE TABLE IF NOT EXISTS stripe_events_processed (
+                sql_st = """-- 003_braintree_idempotency_sketch.sql — webhook dedupe
+CREATE TABLE IF NOT EXISTS braintree_events_processed (
   id TEXT PRIMARY KEY,
   received_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_stripe_events_received ON stripe_events_processed(received_at);
+CREATE INDEX IF NOT EXISTS idx_braintree_events_received ON braintree_events_processed(received_at);
 """
                 w3 = _safe_write(
                     workspace_path,
-                    "db/migrations/003_stripe_idempotency_sketch.sql",
+                    "db/migrations/003_braintree_idempotency_sketch.sql",
                     sql_st,
+                    job_id=job.get("id"),
                 )
                 if w3:
                     out.append(w3)
@@ -1557,12 +1971,23 @@ async def handle_deploy(step: Dict, job: Dict, workspace_path: str, **kwargs) ->
     deploy_url = None
     if workspace_path:
         if key == "deploy.build":
-            docker = """# Generated by Auto-Runner — customize for your stack
+            # Determine the right start command from the workspace
+            _has_python = any(
+                p in (workspace_path or "")
+                for p in ("backend/main.py", "main.py", "app.py", "server.py")
+            ) or bool(job.get("goal", "").lower().find("api") >= 0 and
+                      "react" not in job.get("goal", "").lower())
+            _start_cmd = (
+                'CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]'
+                if _has_python
+                else 'CMD ["npm", "start"]'
+            )
+            docker = f"""# Generated by CrucibAI — review before production use
 FROM node:20-alpine AS web
 WORKDIR /app
 COPY . .
-# RUN npm ci && npm run build
-CMD ["echo", "configure CMD for your app"]
+RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+{_start_cmd}
 """
             w = _safe_write(workspace_path, "Dockerfile", docker)
             if w:
@@ -1734,10 +2159,14 @@ Auto-generated manifest — refine in continuation runs as the product hardens.
 - Migration or route **presence** alone does not prove tenancy isolation, payment idempotency, or auth enforcement — reference tests/smokes here when added.
 """
     rel = "proof/DELIVERY_CLASSIFICATION.md"
-    w = _safe_write(workspace_path, rel, body)
+    w = _safe_write(workspace_path, rel, body, job_id=job.get("id"))
     out = [rel] if w else []
     directive_rel = "proof/ELITE_EXECUTION_DIRECTIVE.md"
     if not _read_text(workspace_path, directive_rel):
+        # The elite execution directive is written by run_crew_for_goal, which is called by handle_crew_build.
+        # If it's not present, it means the crew build didn't happen or failed to write it.
+        # We should ensure it's written here if it's not already, to ensure proof is complete.
+        pass # This logic will be handled by run_crew_for_goal, which is called by handle_crew_build.
         directive = f"""# Elite Execution Directive
 
 This job must make every late-stage gate deterministic and evidence-backed.
@@ -1790,7 +2219,7 @@ STEP_HANDLERS = {
     "backend.models": handle_backend_route,
     "backend.routes": handle_backend_route,
     "backend.auth": handle_backend_route,
-    "backend.stripe": handle_backend_route,
+    "backend.braintree": handle_backend_route,
     "database.migration": handle_db_migration,
     "database.seed": handle_db_migration,
     "verification.compile": handle_verification_step,
@@ -1923,9 +2352,13 @@ async def execute_step(
         max_inner = max(0, min(max_inner, 5))
 
         vr: Dict[str, Any] = {}
+        retry_count = 0
+        max_retries = 8
         for inner in range(max_inner + 1):
             vr = await verify_step(verification_input, workspace_path, db_pool)
             _record_verifier_metrics(step_key, vr)
+            if job_id:
+                await runtime_state_adapter.append_job_event(job_id, "verification_result", vr)
             logger.info(
                 "executor: verify step_key=%s passed=%s score=%s inner_attempt=%s/%s",
                 step_key,
@@ -1958,6 +2391,9 @@ async def execute_step(
                 break
             issues_list = vr.get("issues") or []
             if not issues_list:
+                break
+            if retry_count >= max_retries:
+                logger.warning("executor: max_retries (%d) reached for step_key=%s, stopping repair loop", max_retries, step_key)
                 break
             st = {
                 **step,
@@ -2034,6 +2470,7 @@ async def execute_step(
                     )
             changed_paths = list(dict.fromkeys(changed_paths + repaired_output_files))
             if changed_paths:
+                retry_count += 1
                 maybe_commit_workspace_repairs(
                     workspace_path or "",
                     changed_paths,

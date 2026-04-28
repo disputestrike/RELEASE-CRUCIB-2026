@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from services.orchestration_service import (
+from ..services.orchestration_service import (
     estimate_orchestration_service,
     generate_public_plan_service,
     planner_project_state_service,
@@ -18,47 +18,45 @@ from services.orchestration_service import (
     update_last_build_state_service,
 )
 from pydantic import BaseModel
-
+from ..deps import get_user_credits
 logger = logging.getLogger(__name__)
+
+def _get_server_helpers():
+    """Lazy wrapper to avoid circular import with server.py."""
+    from ..server import _get_server_helpers as _ssh
+    return _ssh()
+
+
 router = APIRouter(prefix="/api", tags=["orchestrator"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_server_globals():
-    import server
+    # FIX: AGENT_DAG / LAST_BUILD_STATE / RECENT_AGENT_SELECTION_LOGS were
+    # never module-level attributes of server.py — accessing server.AGENT_DAG
+    # always raised AttributeError, crashing the workspace screen.
+    # AGENT_DAG now lives in agent_dag.py; the state containers are in server.py.
+    from ..agent_dag import AGENT_DAG as _dag
+    from .. import server as _srv
+    _last  = getattr(_srv, "LAST_BUILD_STATE", {})
+    _recnt = getattr(_srv, "RECENT_AGENT_SELECTION_LOGS", [])
+    return _dag, _last, _recnt
 
-    return (
-        server.AGENT_DAG,
-        server.LAST_BUILD_STATE,
-        server.RECENT_AGENT_SELECTION_LOGS,
-    )
 
 
-def _get_server_helpers():
-    from server import (
-        _assert_job_owner_match,
-        _project_workspace_path,
-        _resolve_job_project_id_for_user,
-        _user_credits,
-    )
 
-    return (
-        _user_credits,
-        _assert_job_owner_match,
-        _resolve_job_project_id_for_user,
-        _project_workspace_path,
-    )
+
 
 
 import asyncio as _asyncio
@@ -69,12 +67,12 @@ import sys as _sys
 
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
-    from orchestration import auto_runner as ar_mod
-    from orchestration import dag_engine
-    from orchestration import planner as planner_mod
-    from orchestration import runtime_state
+    from ..orchestration import auto_runner as ar_mod
+    from ..orchestration import dag_engine
+    from ..orchestration import planner as planner_mod
+    from ..orchestration import runtime_state
 
-    from proof import proof_service as ps_mod
+    from ..proof import proof_service as ps_mod
 
     return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
 
@@ -106,7 +104,7 @@ class CostEstimateRequest(BaseModel):
 
 
 try:
-    from server import BuildGoalRequest
+    from ..server import BuildGoalRequest
 except ImportError:
 
     class BuildGoalRequest(BaseModel):
@@ -114,10 +112,9 @@ except ImportError:
         mode: Optional[str] = "guided"
 
 
-def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
+async def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    _user_credits, _, _, _ = _get_server_helpers()
-    return planner_project_state_service(user, user_credits=_user_credits)
+    return await planner_project_state_service(user, user_credits=get_user_credits)
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
@@ -142,7 +139,7 @@ def _public_plan_summary(
 @router.get("/orchestrator/build-targets")
 async def list_build_targets():
     """Catalog of Auto-Runner execution targets for the workspace UI."""
-    from orchestration.build_targets import build_target_catalog
+    from ..orchestration.build_targets import build_target_catalog
 
     return {"success": True, "targets": build_target_catalog()}
 
@@ -270,7 +267,7 @@ async def public_build_plan(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
             update_last_build_state=_update_last_build_state,
         )
         return {"success": True, "plan": plan}
@@ -301,7 +298,7 @@ async def public_build_plan_summary(
             goal=goal,
             user=user,
             planner_mod=planner_mod,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
             update_last_build_state=_update_last_build_state,
         )
         return {"success": True, "plan": _public_plan_summary(plan)}
@@ -325,7 +322,7 @@ async def estimate_cost(
     Returns estimated_tokens, estimated_credits, cost_range.
     """
     try:
-        from orchestration.build_targets import normalize_build_target
+        from ..orchestration.build_targets import normalize_build_target
 
         _, _, planner_mod, _, _ = _get_orchestration()
         return await estimate_orchestration_service(
@@ -334,7 +331,7 @@ async def estimate_cost(
             user=user,
             planner_mod=planner_mod,
             normalize_build_target=normalize_build_target,
-            planner_project_state=_orchestrator_planner_project_state(user),
+            planner_project_state=await _orchestrator_planner_project_state(user),
         )
     except Exception as e:
         return {
@@ -364,14 +361,14 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         _project_workspace_path,
     ) = _get_server_helpers()
     try:
-        from orchestration.build_targets import (
+        from ..orchestration.build_targets import (
             build_target_meta,
             normalize_build_target,
         )
 
         runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
         try:
-            from db_pg import get_pg_pool
+            from ..db_pg import get_pg_pool
 
             pool = await get_pg_pool()
         except Exception:
@@ -379,8 +376,11 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         if pool:
             runtime_state.set_pool(pool)
 
-        effective_project_id = await _resolve_job_project_id_for_user(
-            body.project_id, user
+        # Resolve effective_project_id: use provided project_id, or fall back to user id, or generate one
+        effective_project_id = (
+            (body.project_id or "").strip()
+            or str((user or {}).get("id") or "")
+            or str(__import__("uuid").uuid4())
         )
 
         # Defensive FK guard: ensure a projects row exists before inserting into jobs.
@@ -417,7 +417,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
 
         # Generate plan
         plan = await planner_mod.generate_plan(
-            body.goal, project_state=_orchestrator_planner_project_state(user)
+            body.goal, project_state=await _orchestrator_planner_project_state(user)
         )
         _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
@@ -458,7 +458,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
                 logger.warning("Could not store build plan in DB: %s", e)
 
         # Persist plan steps as job_steps
-        from orchestration.dag_engine import build_dag_from_plan
+        from ..orchestration.dag_engine import build_dag_from_plan
 
         step_defs = build_dag_from_plan(plan)
         for idx, sd in enumerate(step_defs):
@@ -471,7 +471,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
                 order_index=idx,
             )
 
-        from orchestration.capability_notice import capability_notice_lines
+        from ..orchestration.capability_notice import capability_notice_lines
 
         btm = build_target_meta(bt)
         return {
@@ -503,7 +503,7 @@ async def orchestrator_runtime_health():
     Call before run-auto; run-auto also enforces this gate.
     """
     try:
-        from orchestration.runtime_health import (
+        from ..orchestration.runtime_health import (
             collect_runtime_health,
             collect_runtime_health_sync,
             extended_autorunner_preflight_issues,
@@ -528,9 +528,9 @@ async def orchestrator_runtime_health():
 async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
     """Runs after HTTP response so the client can open SSE; do not use ensure_future here."""
     try:
-        from db_pg import get_pg_pool
-        from orchestration import auto_runner as _orch_ar
-        from orchestration import runtime_state as _orch_rs
+        from ..db_pg import get_pg_pool
+        from ..orchestration import auto_runner as _orch_ar
+        from ..orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -540,7 +540,7 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
         ws = (workspace_path or "").strip()
         if ws:
             try:
-                from orchestration.elite_prompt_loader import (
+                from ..orchestration.elite_prompt_loader import (
                     elite_prompt_fingerprint,
                     load_elite_autonomous_prompt,
                     write_elite_directive_to_workspace,
@@ -599,9 +599,9 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
         try:
             import traceback
 
-            from db_pg import get_pg_pool as _gp
-            from orchestration import runtime_state as _ors
-            from orchestration.event_bus import publish as _pub
+            from ..db_pg import get_pg_pool as _gp
+            from ..orchestration import runtime_state as _ors
+            from ..orchestration.event_bus import publish as _pub
 
             pool = await _gp()
             _ors.set_pool(pool)
@@ -637,9 +637,9 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
 
 async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
     try:
-        from db_pg import get_pg_pool
-        from orchestration import auto_runner as _orch_ar
-        from orchestration import runtime_state as _orch_rs
+        from ..db_pg import get_pg_pool
+        from ..orchestration import auto_runner as _orch_ar
+        from ..orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -686,9 +686,9 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
         try:
             import traceback
 
-            from db_pg import get_pg_pool as _gp
-            from orchestration import runtime_state as _ors
-            from orchestration.event_bus import publish as _pub
+            from ..db_pg import get_pg_pool as _gp
+            from ..orchestration import runtime_state as _ors
+            from ..orchestration.event_bus import publish as _pub
 
             pool = await _gp()
             _ors.set_pool(pool)
@@ -740,12 +740,12 @@ async def run_auto(
         _project_workspace_path,
     ) = _get_server_helpers()
     try:
-        from orchestration.preflight_report import build_preflight_report
-        from orchestration.runtime_health import collect_runtime_health_sync
-        from orchestration.runtime_state import append_job_event
+        from ..orchestration.preflight_report import build_preflight_report
+        from ..orchestration.runtime_health import collect_runtime_health_sync
+        from ..orchestration.runtime_state import append_job_event
 
         runtime_state, _, _, _, _ = _get_orchestration()
-        from db_pg import get_pg_pool
+        from ..db_pg import get_pg_pool
 
         try:
             pool = await get_pg_pool()
@@ -775,7 +775,7 @@ async def run_auto(
         # Spec Guardian (Layer 1): record always; hard-block only when CRUCIBAI_SPEC_GUARD_MODE=strict
         import json as _sg_json
 
-        from orchestration.spec_guardian import (
+        from ..orchestration.spec_guardian import (
             evaluate_goal_against_runner,
             merge_plan_risk_flags_into_report,
         )
@@ -824,12 +824,19 @@ async def run_auto(
                 },
             )
 
+        # Must match preview_serve._get_project_id_for_job and workspace._assert_job_access:
+        # use project_id, else the job id (e.g. tsk_…), so writes land under
+        # WORKSPACE_ROOT/projects/{id} and the file explorer can find them.
         ws = ""
-        pid = job.get("project_id")
+        pid = (str(job.get("project_id") or "").strip() or str(job.get("id") or "").strip())
         if pid:
             root = _project_workspace_path(pid).resolve()
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)
+        else:
+            logger.warning(
+                "orchestrator/run-auto: no project_id or job id for workspace; executor will not write files"
+            )
 
         background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
 
@@ -856,7 +863,7 @@ async def list_orchestrator_build_jobs(
         return {"success": True, "jobs": []}
     try:
         runtime_state, _, _, _, _ = _get_orchestration()
-        from db_pg import get_pg_pool
+        from ..db_pg import get_pg_pool
 
         try:
             pool = await get_pg_pool()
@@ -865,7 +872,7 @@ async def list_orchestrator_build_jobs(
             pool = None
         if pool is not None:
             runtime_state.set_pool(pool)
-        from orchestration import runtime_state as orch_rs
+        from ..orchestration import runtime_state as orch_rs
 
         jobs = await orch_rs.list_jobs_for_user(user["id"], min(max(1, limit), 50))
         return {"success": True, "jobs": jobs}
@@ -879,7 +886,7 @@ async def get_plan_draft(job_id: str, user: dict = Depends(_get_auth())):
     """Return the draft plan for a job in 'planned' state.
     Used by UnifiedWorkspace to show the plan before run-auto is called."""
     try:
-        from db_pg import get_pg_pool
+        from ..db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             # Try build_plans table first
@@ -899,3 +906,75 @@ async def get_plan_draft(job_id: str, user: dict = Depends(_get_auth())):
     except Exception:
         pass
     return {"plan": None, "job_id": job_id}
+
+
+# ─── Benchmark endpoint (protected, no user session required) ────────────────
+BENCHMARK_SECRET = os.environ.get("BENCHMARK_SECRET", "crucibai_benchmark_2026_secret_key")
+
+
+class BenchmarkRunRequest(BaseModel):
+    goal: str
+    secret: str
+
+
+@router.post("/orchestrator/benchmark/run")
+async def run_benchmark_job(
+    body: BenchmarkRunRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Protected benchmark endpoint — runs a job without a user session.
+    Requires the BENCHMARK_SECRET env var (default: crucibai_benchmark_2026_secret_key).
+    """
+    if body.secret != BENCHMARK_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid benchmark secret")
+
+    try:
+        from ..services.job_service import create_job_service
+        from ..orchestration import planner as planner_mod
+        from ..orchestration import runtime_state
+        from ..db_pg import get_pg_pool
+
+        # Synthetic system user for benchmark runs
+        benchmark_user = {"id": "system-benchmark-user", "email": "benchmark@crucibai.internal", "role": "admin"}
+
+        # Build a minimal body-like object
+        class _BenchmarkBody:
+            goal = body.goal
+            project_id = "benchmark-" + body.goal[:20].replace(' ', '-').lower().replace('/', '-')
+            mode = "guided"
+            priority = "normal"
+            timeout = 3600
+
+        async def _pool_getter():
+            try:
+                return await get_pg_pool()
+            except Exception:
+                return None
+
+        result = await create_job_service(
+            body=_BenchmarkBody(),
+            user=benchmark_user,
+            runtime_state_getter=lambda: runtime_state,
+            pool_getter=_pool_getter,
+            generate_plan=planner_mod.generate_plan,
+        )
+
+        job = result.get("job") or result
+        job_id = job.get("id") or job.get("job_id")
+        project_id = job.get("project_id")
+
+        (_, _, _, _project_workspace_path) = _get_server_helpers()
+        workspace_path = _project_workspace_path(project_id)
+
+        background_tasks.add_task(_background_auto_runner_job, job_id, str(workspace_path))
+
+        return {
+            "success": True,
+            "job_id": job_id,
+            "project_id": project_id,
+            "status": "started",
+        }
+    except Exception as e:
+        logger.exception("orchestrator/benchmark/run error")
+        raise HTTPException(status_code=500, detail=str(e))

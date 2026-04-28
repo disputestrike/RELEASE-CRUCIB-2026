@@ -53,6 +53,19 @@ TARGET_KEYWORDS = {
         "corporate site",
         "showcase",
     ],
+    "mobile_expo": [
+        "mobile app",
+        "native app",
+        "expo",
+        "react native",
+        "react-native",
+        "ios app",
+        "android app",
+        "app store",
+        "google play",
+        "testflight",
+        "eas build",
+    ],
     "api_backend": [
         "api",
         "backend",
@@ -124,6 +137,8 @@ PATTERN_INDICATORS = [
     (r"next\.?js|nextjs|server\s+component|app\s+router|rsc|edge\s+function", "next_app_router"),
     # Static/Marketing
     (r"landing\s+page|marketing\s+site|static\s+site|brochure|portfolio|showcase", "static_site"),
+    # Mobile / Expo
+    (r"mobile\s+app|native\s+app|react\s+native|react-native|expo|ios\s+app|android\s+app|app\s+store|google\s+play|testflight|eas\s+build", "mobile_expo"),
     # API/Backend
     (r"api\s+only|backend\s+only|rest\s+api|fastapi|express|python\s+server|database", "api_backend"),
     # Agents/Automation
@@ -254,7 +269,7 @@ def ask_for_build_target(goal: str) -> dict:
                 "tagline": target["tagline"],
                 "description": f"{target['label']}: {target['tagline']}",
             }
-            for target_id in ["full_system_generator", "vite_react", "next_app_router", "static_site", "api_backend", "agent_workflow"]
+            for target_id in ["full_system_generator", "vite_react", "next_app_router", "static_site", "mobile_expo", "api_backend", "agent_workflow"]
         ],
     }
 

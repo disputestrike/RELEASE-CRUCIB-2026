@@ -10,7 +10,7 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from llm_router import router
+from .llm_router import router
 
 REAL_AGENT_NO_LLM_KEYS_DETAIL = (
     "CRUCIBAI_REAL_AGENT_ONLY is enabled but no LLM API keys are configured. "

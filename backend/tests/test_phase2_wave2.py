@@ -44,7 +44,7 @@ def _app_for(module_name: str, attr: str = "router") -> FastAPI:
 
     # Override auth deps so tests do not need a real token.
     try:
-        from server import get_current_user  # type: ignore
+        from backend.deps import get_current_user  # type: ignore
         app.dependency_overrides[get_current_user] = lambda: {"id": "test-user"}
     except Exception:
         pass
@@ -417,7 +417,7 @@ def test_cf19_phase_decide_calls_brain_layer():
     ctx = ExecutionContext(task_id="t-cf19", user_id="u-cf19",
                            conversation_id="s-cf19")
 
-    decision = asyncio.get_event_loop().run_until_complete(
+    decision = asyncio.run(
         engine._phase_decide(
             task_id="t-cf19",
             context=ctx,
@@ -450,7 +450,7 @@ def test_cf19_phase_decide_falls_back_when_brain_raises():
     ctx = ExecutionContext(task_id="t-cf19b", user_id="u",
                            conversation_id="s")
 
-    decision = asyncio.get_event_loop().run_until_complete(
+    decision = asyncio.run(
         engine._phase_decide(task_id="t-cf19b", context=ctx,
                              request="anything", step_id="s1")
     )

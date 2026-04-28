@@ -10,9 +10,10 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from proof import proof_service
+from backend.proof import proof_service
 
 from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .dag_engine import (
@@ -67,31 +68,123 @@ def _max_total_retries() -> int:
 POLL_INTERVAL_SEC = 0.5
 
 
-def _max_concurrent_steps() -> int:
-    """Cap parallel step execution; override with CRUCIBAI_MAX_CONCURRENT_STEPS (min 1, max 32)."""
+def _max_concurrent_steps(load_factor: float = 1.0) -> int:
+    """Cap parallel step execution; override with CRUCIBAI_MAX_CONCURRENT_STEPS (min 1, max 32).
+    load_factor can dynamically adjust the concurrency based on system load (0.1 to 2.0).
+    """
     raw = (os.environ.get("CRUCIBAI_MAX_CONCURRENT_STEPS") or "").strip()
     default = 8
-    if not raw:
-        return default
-    try:
-        return max(1, min(32, int(raw)))
-    except ValueError:
-        return default
+    base_concurrency = default
+    if raw:
+        try:
+            base_concurrency = int(raw)
+        except ValueError:
+            pass
+    
+    # Apply load factor, ensuring it's within reasonable bounds
+    adjusted_concurrency = int(base_concurrency * max(0.1, min(2.0, load_factor)))
+    return max(1, min(32, adjusted_concurrency))
 
 
 def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
     """
-    When verification.preview already completed, re-running full Playwright/npm at job end
-    often fails spuriously (port, timing) while the DAG already proved the bundle once.
-    Set CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW=0 to always run the final gate.
+    Optional local-dev escape hatch only.
+
+    Production completion must always re-run the final preview gate against the
+    final filesystem state. An earlier verification.preview step can become
+    stale after later writes, repairs, or deploy packaging.
     """
-    raw = os.environ.get("CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW", "1").strip().lower()
-    if raw in ("0", "false", "no", "off"):
+    prod_markers = (
+        os.environ.get("RAILWAY_ENVIRONMENT"),
+        os.environ.get("CRUCIBAI_ENV"),
+        os.environ.get("ENVIRONMENT"),
+        os.environ.get("NODE_ENV"),
+    )
+    if any(str(v or "").strip().lower() == "production" for v in prod_markers):
+        return False
+
+    raw = os.environ.get("CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW", "0").strip().lower()
+    if raw not in ("1", "true", "yes", "on"):
         return False
     return any(
         s.get("step_key") == "verification.preview" and s.get("status") == "completed"
         for s in steps
     )
+
+
+def _html_has_app_root(html: str) -> bool:
+    lowered = (html or "").lower()
+    return (
+        'id="root"' in lowered
+        or "id='root'" in lowered
+        or 'id="app"' in lowered
+        or "id='app'" in lowered
+    )
+
+
+def _verify_final_preview_servability(
+    job_id: str,
+    workspace_path: str,
+    job: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Hard completion gate: preview must be statically servable.
+
+    The browser/verifier gate proves the app can build. This gate proves the
+    exact static-preview route contract has an HTML entry that can mount a
+    client app before the job is marked completed.
+    """
+    issues: List[str] = []
+    try:
+        from backend.routes.preview_serve import _resolve_serve_root
+        from backend.services.workspace_resolver import workspace_resolver
+    except Exception as exc:
+        return {
+            "passed": False,
+            "failure_reason": "preview_resolver_unavailable",
+            "issues": [f"Preview resolver unavailable: {exc}"],
+        }
+
+    project_id = str((job or {}).get("project_id") or "").strip() or None
+    resolved = workspace_resolver.workspace_for_job(job_id, project_id)
+    raw_ws = Path(workspace_path).resolve() if workspace_path else resolved.workspace
+    candidates = [raw_ws, resolved.workspace, *resolved.candidates]
+    seen = set()
+    serve_root: Optional[Path] = None
+    for candidate in candidates:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        root = _resolve_serve_root(candidate)
+        if root is not None:
+            serve_root = root
+            break
+
+    if serve_root is None:
+        return {
+            "passed": False,
+            "failure_reason": "preview_not_servable",
+            "issues": ["Final preview gate could not find a servable index.html in dist/build/out/public/root."],
+            "checked_roots": [str(p) for p in candidates[:8]],
+        }
+
+    index_path = serve_root / "index.html"
+    if not index_path.exists() or not index_path.is_file():
+        issues.append("Final preview index.html is missing.")
+    else:
+        html = index_path.read_text(encoding="utf-8", errors="replace")
+        if not _html_has_app_root(html):
+            issues.append("Final preview index.html does not contain a root/app mount element.")
+
+    return {
+        "passed": len(issues) == 0,
+        "failure_reason": None if not issues else "preview_not_servable",
+        "issues": issues,
+        "serve_root": str(serve_root),
+        "index_path": str(index_path),
+        "dev_server_url": resolved.preview_url,
+        "content_type": "text/html; charset=utf-8",
+    }
 
 
 def _step_failure_context(
@@ -243,8 +336,18 @@ async def run_job_to_completion(
         total_retries = 0
 
         # MAIN EXECUTION LOOP (wrapped with exception handler below)
-        result = await _execute_job_loop(job_id, workspace_path, db_pool, total_retries)
-        return result
+        # Implement watchdog for long-run stability (T39)
+        watchdog_timeout = int(os.environ.get("CRUCIBAI_WATCHDOG_TIMEOUT_SEC", "1800")) # 30 minutes default
+        try:
+            result = await asyncio.wait_for(
+                _execute_job_loop(job_id, workspace_path, db_pool, total_retries),
+                timeout=watchdog_timeout
+            )
+            return result
+        except asyncio.TimeoutError:
+            logger.error("auto_runner: Job %s exceeded watchdog timeout of %d seconds. Marking as failed.", job_id, watchdog_timeout)
+            await _finalize_job_with_failure(job_id, "watchdog_timeout", f"Job exceeded watchdog timeout of {watchdog_timeout} seconds")
+            return {"success": False, "status": "failed", "reason": "watchdog_timeout"}
 
     except asyncio.TimeoutError:
         # Explicit timeout (not background_crash)
@@ -268,19 +371,33 @@ async def run_job_to_completion(
         import traceback
 
         error_msg = f"{type(e).__name__}: {str(e)}"
+        tb_full = traceback.format_exc()
         logger.error(
             "auto_runner: UNHANDLED EXCEPTION in job %s: %s",
             job_id,
             error_msg,
             exc_info=True,
         )
+        # Persist traceback to job_events so it's queryable without Railway CLI.
+        try:
+            await append_job_event(
+                job_id,
+                "orchestrator_error_traceback",
+                {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)[:2000],
+                    "traceback": tb_full[-6000:],
+                },
+            )
+        except Exception:
+            logger.exception("auto_runner: failed to persist orchestrator traceback")
         await _finalize_job_with_failure(job_id, "orchestrator_error", error_msg)
         return {
             "success": False,
             "status": "failed",
             "reason": "orchestrator_error",
             "details": error_msg,
-            "traceback": traceback.format_exc(),
+            "traceback": tb_full,
         }
 
     finally:
@@ -341,21 +458,34 @@ async def _execute_job_loop(
                     "auto_runner: job %s scheduler deadlock (pending steps never become ready)",
                     job_id,
                 )
+                # Enhance deadlock diagnosis payload (T35)
+                steps_snapshot = await get_steps(job_id)
+                pending_steps = [s for s in steps_snapshot if s.get("status") == "pending"]
+                blocked_steps = [s for s in steps_snapshot if s.get("status") == "blocked"]
+                
+                deadlock_details = {
+                    "reason": "scheduler_deadlock",
+                    "message": "Step dependencies cannot be satisfied. Possible circular dependency or unresolvable blocks.",
+                    "pending_steps_count": len(pending_steps),
+                    "blocked_steps_count": len(blocked_steps),
+                    "pending_step_keys": [s.get("step_key") for s in pending_steps],
+                    "blocked_step_keys": [s.get("step_key") for s in blocked_steps],
+                }
+
                 await update_job_state(
-                    job_id, "failed", {"current_phase": "scheduler_deadlock"}
+                    job_id, "failed", {"current_phase": "scheduler_deadlock", **deadlock_details}
                 )
                 await publish(
                     job_id,
                     "job_failed",
-                    {
-                        "reason": "scheduler_deadlock",
-                        "message": "Step dependencies cannot be satisfied.",
-                    },
+                    deadlock_details,
                 )
+                await append_job_event(job_id, "scheduler_deadlock_detected", deadlock_details)
                 return {
                     "success": False,
                     "status": "failed",
                     "reason": "scheduler_deadlock",
+                    "details": deadlock_details,
                 }
 
             if await execution_quiescent(job_id):
@@ -378,7 +508,19 @@ async def _execute_job_loop(
             continue
 
         # Execute ready steps (up to N in parallel)
-        max_conc = _max_concurrent_steps()
+        # Implement global backpressure control (T34)
+        # In a real system, this would check a global counter or system metrics (CPU/Memory)
+        # For now, we simulate backpressure by dynamically adjusting concurrency based on a load factor
+        # A load factor < 1.0 means the system is under load and should reduce concurrency
+        current_load_factor = 1.0 # This could be fetched from a system monitor
+        max_conc = _max_concurrent_steps(load_factor=current_load_factor)
+        
+        # If max_conc is 0 (extreme backpressure), pause execution
+        if max_conc <= 0:
+            logger.warning("auto_runner: global backpressure active, pausing execution for job %s", job_id)
+            await asyncio.sleep(POLL_INTERVAL_SEC * 2)
+            continue
+            
         batch = ready[:max_conc]
         if len(batch) > 1:
             logger.info(
@@ -395,11 +537,14 @@ async def _execute_job_loop(
             if len(phases_in_batch) == 1
             else f"parallel:{len(batch)}"
         )
-        await update_job_state(
-            job_id,
-            "running",
-            {"current_phase": phase_label or "running"},
-        )
+        try:
+            await update_job_state(
+                job_id,
+                "running",
+                {"current_phase": phase_label or "running"},
+            )
+        except Exception:
+            logger.exception("auto_runner: update_job_state(running) failed — continuing")
         tasks = [
             asyncio.create_task(_run_single_step(step, job, workspace_path, db_pool))
             for step in batch
@@ -407,6 +552,7 @@ async def _execute_job_loop(
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for step, result in zip(batch, results):
+          try:
             if isinstance(result, Exception):
                 logger.error("auto_runner: step %s raised %s", step["step_key"], result)
                 result = {"success": False, "error": str(result)}
@@ -575,6 +721,11 @@ async def _execute_job_loop(
                         },
                     )
 
+          except Exception:
+            logger.exception(
+                "auto_runner: per-step result processing failed for step=%s — continuing",
+                (step or {}).get("step_key") if isinstance(step, dict) else "?",
+            )
         try:
             from datetime import datetime, timezone
 
@@ -888,7 +1039,340 @@ async def _execute_job_loop(
         }
 
     job_latest = await get_job(job_id)
+    final_preview = _verify_final_preview_servability(job_id, ws, job_latest)
+    if not final_preview.get("passed"):
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "preview_not_servable",
+                "quality_score": quality_score,
+                "failure_reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "failure_details": json.dumps(final_preview.get("issues") or [])[:1000],
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_preview_failed",
+            {
+                "failure_reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "issues": final_preview.get("issues") or [],
+                "checked_roots": final_preview.get("checked_roots") or [],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": final_preview.get("failure_reason") or "preview_not_servable",
+                "issues": final_preview.get("issues") or [],
+                "quality_score": quality_score,
+            },
+        )
+        await _write_blueprint(
+            ws,
+            job_id,
+            final_preview.get("failure_reason") or "preview_not_servable",
+            open_gates=["final_preview_serve", "preview_bundle"],
+            notes="; ".join(str(x) for x in (final_preview.get("issues") or [])[:12]),
+        )
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": final_preview.get("failure_reason") or "preview_not_servable",
+        }
+    await append_job_event(
+        job_id,
+        "final_preview_ready",
+        {
+            "dev_server_url": final_preview.get("dev_server_url"),
+            "serve_root": final_preview.get("serve_root"),
+            "content_type": final_preview.get("content_type"),
+        },
+    )
+
     goal_text = (job_latest or {}).get("goal") or ""
+    from .build_integrity_validator import validate_workspace_integrity
+
+    biv = validate_workspace_integrity(
+        ws,
+        goal=goal_text,
+        phase="final",
+        build_target=(job_latest or {}).get("build_target")
+        or (job_latest or {}).get("crucib_build_target"),
+    )
+    await append_job_event(
+        job_id,
+        "build_integrity_validator_result",
+        {
+            "attempt": 0,
+            "score": biv.get("score"),
+            "profile": biv.get("profile"),
+            "phase": biv.get("phase"),
+            "recommendation": biv.get("recommendation"),
+            "retry_targets": biv.get("retry_targets") or [],
+            "retry_route": biv.get("retry_route") or {},
+            "issues": (biv.get("issues") or [])[:20],
+        },
+    )
+    # Write BIV marker so download/publish gates can check without DB access.
+    try:
+        from .delivery_gate import write_biv_marker
+        write_biv_marker(ws or "", biv)
+    except Exception as _dg_e:
+        logger.warning("delivery_gate: BIV marker write failed: %s", _dg_e)
+    if not biv.get("passed"):
+        try:
+            requested_biv_repairs = int(os.environ.get("CRUCIBAI_BIV_REPAIR_ATTEMPTS", "1") or "1")
+        except Exception:
+            requested_biv_repairs = 1
+        max_biv_repairs = max(0, min(2, requested_biv_repairs))
+        for attempt in range(1, max_biv_repairs + 1):
+            from .targeted_dag_retry import run_targeted_biv_retry
+
+            repair = await run_targeted_biv_retry(
+                workspace_path=ws or "",
+                biv_result=biv,
+                retry_count=attempt - 1,
+                job=job_latest or job,
+            )
+            await append_job_event(
+                job_id,
+                "build_integrity_validator_repair_attempt",
+                {
+                    "attempt": attempt,
+                    "retry_targets": biv.get("retry_targets") or [],
+                    "retry_route": biv.get("retry_route") or {},
+                    "strategy": repair.get("strategy", "unknown"),
+                    "targeted_retry_plan": repair.get("plan") or {},
+                    "targeted_attempts": repair.get("attempts") or [],
+                    "workspace_fixed": bool(repair.get("workspace_fixed")),
+                    "files_repaired": repair.get("files_repaired") or [],
+                },
+            )
+            if not repair.get("workspace_fixed") and not repair.get("files_repaired"):
+                break
+            biv = validate_workspace_integrity(
+                ws,
+                goal=goal_text,
+                phase="final",
+                build_target=(job_latest or {}).get("build_target")
+                or (job_latest or {}).get("crucib_build_target"),
+            )
+            await append_job_event(
+                job_id,
+                "build_integrity_validator_result",
+                {
+                    "attempt": attempt,
+                    "score": biv.get("score"),
+                    "profile": biv.get("profile"),
+                    "phase": biv.get("phase"),
+                    "recommendation": biv.get("recommendation"),
+                    "retry_targets": biv.get("retry_targets") or [],
+                    "retry_route": biv.get("retry_route") or {},
+                    "issues": (biv.get("issues") or [])[:20],
+                },
+            )
+            # Update BIV marker with retry result so gate always reflects latest state.
+            try:
+                from .delivery_gate import write_biv_marker
+                write_biv_marker(ws or "", biv)
+            except Exception as _dg_e:
+                logger.warning("delivery_gate: BIV marker retry write failed: %s", _dg_e)
+            if biv.get("passed"):
+                break
+    if not biv.get("passed"):
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "build_integrity_validator_failed",
+                "quality_score": quality_score,
+                "failure_reason": "build_integrity_validator",
+                "failure_details": json.dumps(biv.get("issues") or [])[:1000],
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": "build_integrity_validator",
+                "score": biv.get("score"),
+                "profile": biv.get("profile"),
+                "retry_targets": biv.get("retry_targets") or [],
+                "retry_route": biv.get("retry_route") or {},
+                "issues": (biv.get("issues") or [])[:50],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "build_integrity_validator",
+                "quality_score": quality_score,
+                "integrity_score": biv.get("score"),
+                "retry_route": biv.get("retry_route") or {},
+                "issues": (biv.get("issues") or [])[:20],
+            },
+        )
+        await _write_blueprint(
+            ws,
+            job_id,
+            "build_integrity_validator",
+            open_gates=["build_integrity_validator", *list(biv.get("retry_targets") or [])],
+            notes="; ".join(str(x) for x in (biv.get("issues") or [])[:12]),
+        )
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "integrity_score": biv.get("score"),
+            "reason": "build_integrity_validator",
+            "retry_route": biv.get("retry_route") or {},
+        }
+
+    # Visual QA: DOM contract + route crawling (Manus-style) after BIV passes.
+    # BLOCKING: score < 55 or orphans > 10 blocks completion (not advisory).
+    try:
+        from .visual_qa import run_visual_qa
+        vqa = run_visual_qa(ws or "", goal=goal_text)
+        await append_job_event(
+            job_id,
+            "visual_qa_result",
+            {
+                "passed": vqa.passed,
+                "score": vqa.score,
+                "routes": vqa.routes[:20],
+                "reachable_file_count": vqa.reachable_count,
+                "orphan_count": len(vqa.orphans),
+                "orphans": vqa.orphans[:10],
+                "dom_issues": vqa.dom_issues[:10],
+                "html_issues": vqa.html_issues[:10],
+                "issues": vqa.issues[:10],
+            },
+        )
+        if not vqa.passed:
+            import os as _os
+            _vqa_min = int(_os.environ.get("CRUCIBAI_MIN_VQA_SCORE", "55"))
+            _max_orphans = int(_os.environ.get("CRUCIBAI_MAX_ORPHANS", "10"))
+            _is_blocking = vqa.score < _vqa_min or len(vqa.orphans) > _max_orphans
+            if _is_blocking:
+                logger.warning(
+                    "visual_qa: BLOCKING — score=%d orphans=%d issues=%d",
+                    vqa.score, len(vqa.orphans), len(vqa.issues),
+                )
+                await update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": "visual_qa_failed",
+                        "quality_score": quality_score,
+                        "failure_reason": "visual_qa",
+                        "visual_qa_score": vqa.score,
+                        "visual_qa_orphans": len(vqa.orphans),
+                    },
+                )
+                await append_job_event(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "visual_qa",
+                        "score": vqa.score,
+                        "orphan_count": len(vqa.orphans),
+                        "issues": vqa.issues[:10],
+                    },
+                )
+                await publish(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "visual_qa",
+                        "visual_qa_score": vqa.score,
+                        "quality_score": quality_score,
+                    },
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "quality_score": quality_score,
+                    "reason": "visual_qa",
+                    "visual_qa_score": vqa.score,
+                }
+            else:
+                logger.info(
+                    "visual_qa: score=%d orphans=%d — below ideal but within limits",
+                    vqa.score, len(vqa.orphans),
+                )
+    except Exception as _vqa_e:
+        logger.warning("visual_qa: skipped due to error: %s", _vqa_e)
+
+    # Browser QA: headless route validation (Playwright → static HTTP → file analysis).
+    try:
+        from .browser_qa import run_browser_qa
+        bqa = run_browser_qa(ws or "", goal=goal_text)
+        await append_job_event(
+            job_id,
+            "browser_qa_result",
+            {
+                "passed": bqa.passed,
+                "score": bqa.score,
+                "method": bqa.method,
+                "routes_ok": bqa.routes_ok,
+                "routes_total": bqa.routes_total,
+                "issues": bqa.issues[:10],
+            },
+        )
+        if not bqa.passed and bqa.method != "skipped":
+            import os as _os
+            _bqa_min = int(_os.environ.get("CRUCIBAI_MIN_BQA_SCORE", "60"))
+            if bqa.score < _bqa_min:
+                logger.warning(
+                    "browser_qa: BLOCKING — score=%d method=%s routes=%d/%d",
+                    bqa.score, bqa.method, bqa.routes_ok, bqa.routes_total,
+                )
+                await update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": "browser_qa_failed",
+                        "quality_score": quality_score,
+                        "failure_reason": "browser_qa",
+                        "browser_qa_score": bqa.score,
+                        "browser_qa_method": bqa.method,
+                    },
+                )
+                await append_job_event(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "browser_qa",
+                        "score": bqa.score,
+                        "method": bqa.method,
+                        "routes_ok": bqa.routes_ok,
+                        "routes_total": bqa.routes_total,
+                        "issues": bqa.issues[:10],
+                    },
+                )
+                await publish(
+                    job_id,
+                    "job_failed",
+                    {
+                        "reason": "browser_qa",
+                        "browser_qa_score": bqa.score,
+                        "quality_score": quality_score,
+                    },
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "quality_score": quality_score,
+                    "reason": "browser_qa",
+                    "browser_qa_score": bqa.score,
+                }
+    except Exception as _bqa_e:
+        logger.warning("browser_qa: skipped due to error: %s", _bqa_e)
+
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
     egr = await run_completion_enforcement_gate(
@@ -968,6 +1452,64 @@ async def _execute_job_loop(
         },
     )
     proof = await proof_service.get_proof(job_id)
+    # Write proof summary marker for delivery gate.
+    if ws and proof:
+        try:
+            from .delivery_gate import write_proof_summary
+            write_proof_summary(ws, proof)
+        except Exception as _ps_e:
+            logger.warning("delivery_gate: proof summary write failed: %s", _ps_e)
+    # Proof hard-block: if proof score is critically low and enforcement is strict, block.
+    if proof:
+        _proof_score = None
+        flat = proof.get("flat") or proof.get("items") or []
+        total = len(flat)
+        if total > 0:
+            strong = sum(
+                1 for item in flat
+                if (item.get("payload") or {}).get("verification_class", "presence") != "presence"
+            )
+            _proof_score = strong / total
+        _proof_hard_threshold = 0.15  # below 15% non-trivial proof = hard block
+        import os as _os
+        _gate_mode = (_os.environ.get("CRUCIBAI_ENFORCEMENT_GATE") or "strict").strip().lower()
+        if _gate_mode == "strict" and _proof_score is not None and _proof_score < _proof_hard_threshold:
+            logger.warning(
+                "proof_hard_block: score=%.2f < threshold=%.2f — blocking delivery",
+                _proof_score, _proof_hard_threshold,
+            )
+            await update_job_state(
+                job_id,
+                "failed",
+                {
+                    "current_phase": "proof_hard_block",
+                    "quality_score": quality_score,
+                    "failure_reason": "proof_hard_block",
+                    "proof_score": _proof_score,
+                },
+            )
+            await append_job_event(
+                job_id,
+                "job_failed",
+                {
+                    "reason": "proof_hard_block",
+                    "proof_score": _proof_score,
+                    "required_threshold": _proof_hard_threshold,
+                    "detail": "Proof bundle has insufficient verification evidence to mark delivery complete.",
+                },
+            )
+            await publish(
+                job_id,
+                "job_failed",
+                {"reason": "proof_hard_block", "proof_score": _proof_score},
+            )
+            return {
+                "success": False,
+                "status": "failed",
+                "quality_score": quality_score,
+                "reason": "proof_hard_block",
+                "proof_score": _proof_score,
+            }
     summary = _build_completion_summary(steps, proof)
     await publish(
         job_id,

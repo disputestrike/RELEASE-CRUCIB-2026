@@ -45,11 +45,14 @@ CHECK_STRENGTH: Dict[str, str] = {
     "tenancy_smoke_skipped": "presence",
     "rbac_smoke_skipped": "presence",
     "stripe_replay_skipped": "presence",
+    "payment_webhook_replay_skipped": "presence",
     "tenancy_isolation_proven": "negative_test",
     "rbac_anonymous_blocked": "negative_test",
     "rbac_escalation_blocked": "negative_test",
     "stripe_webhook_idempotency_proven": "behavior_assertion",
+    "payment_webhook_idempotency_proven": "behavior_assertion",
     "stripe_idempotency_sql": "syntax",
+    "payment_webhook_idempotency_sql": "syntax",
     "cors_wildcard": "static_scan",
     "observability_pack_present": "presence",
     "multiregion_terraform_sketch_present": "presence",
@@ -131,7 +134,8 @@ def max_strength_rank_for_feature(
             generic_strong = True
         if (
             feat_id == "integration_behavior"
-            and check == "stripe_webhook_idempotency_proven"
+            and check
+            in ("stripe_webhook_idempotency_proven", "payment_webhook_idempotency_proven")
         ):
             generic_strong = True
 

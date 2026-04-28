@@ -1,0 +1,17 @@
+INFO:backend.routes.auth:Google OAuth Config - FRONTEND_URL: (use request host at redirect)
+INFO:backend.routes.auth:Google OAuth Config - GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID not set
+INFO:backend.routes.auth:Google OAuth Config - GOOGLE_CLIENT_SECRET: NOT SET
+INFO:backend.routes.auth:Google OAuth Config - GOOGLE_REDIRECT_URI: (derive from BACKEND_PUBLIC_URL or request)
+INFO:backend.routes.auth:GitHub OAuth Config - GITHUB_CLIENT_ID: not set
+INFO:backend.routes.auth:GitHub OAuth Config - GITHUB_CLIENT_SECRET: NOT SET
+WARNING:backend.server:Static directory not found or empty: /home/ubuntu/crucibai/backend/static. Static file serving will be disabled.
+INFO:     Started server process [28248]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+startup
+INFO:     127.0.0.1:44974 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [28248]

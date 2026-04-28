@@ -4,9 +4,13 @@
  * Pass: .env (and common secret patterns) are in .gitignore and not tracked by git.
  * Exit 0 = pass, 1 = fail.
  */
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const root = path.resolve(__dirname, '..');
 const gitignorePath = path.join(root, '.gitignore');

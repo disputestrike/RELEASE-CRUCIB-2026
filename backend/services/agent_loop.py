@@ -107,7 +107,7 @@ class AgentLoop:
 
     def _get_engine(self):
         if self._engine is None:
-            from services.runtime.runtime_engine import RuntimeEngine
+            from backend.services.runtime.runtime_engine import RuntimeEngine
             self._engine = RuntimeEngine()
         return self._engine
 

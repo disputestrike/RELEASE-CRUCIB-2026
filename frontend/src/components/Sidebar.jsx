@@ -228,6 +228,52 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const collapsed = sidebarOpen === false;
 
+  // Collapsed rail: portaled to body. Anchor like expanded footer: menu *above* the G button (drop-up), not top-aligned to mid-screen.
+  useLayoutEffect(() => {
+    if (!accountMenuOpen || !collapsed) {
+      setAccountMenuPortaledStyle(null);
+      return;
+    }
+    const el = collapsedAccountBtnRef.current;
+    if (!el) {
+      setAccountMenuPortaledStyle(null);
+      return;
+    }
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      const menuGuessW = 240;
+      const m = 8;
+      const gap = 6; // space between bottom of menu and top of G button (matches expanded margin feel)
+      let left = r.right + m;
+      if (left + menuGuessW > window.innerWidth - m) {
+        left = Math.max(m, r.left - menuGuessW - m);
+      }
+      // Bottom of menu = just above the avatar (y from viewport top) — same idea as .sidebar-account-menu { bottom: 100% } on the expanded footer
+      const menuBottomY = Math.max(m, r.top - gap);
+      const bottomPx = window.innerHeight - menuBottomY;
+      const maxSpaceAbove = menuBottomY - m;
+      const maxH = Math.min(420, maxSpaceAbove, window.innerHeight * 0.55);
+      setAccountMenuPortaledStyle({
+        position: 'fixed',
+        left: `${left}px`,
+        bottom: `${bottomPx}px`,
+        top: 'auto',
+        zIndex: 10050,
+        maxHeight: `${Math.max(120, maxH)}px`,
+        overflowY: 'auto',
+        margin: 0,
+        right: 'auto',
+      });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [accountMenuOpen, collapsed]);
+
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
     const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
@@ -257,7 +303,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         ) : (
           <>
             <TaskStatusIcon status={item.status} type={item.type} />
-            <span className="sidebar-task-label">{item.name}</span>
+            <span className="sidebar-task-label-wrap">
+              <span className="sidebar-task-label">{item.name}</span>
+              {isLocalTask && !item.jobId && item.type === 'build' && (
+                <span
+                  className="sidebar-task-norun"
+                  title="Build not started yet — open Workspace to run a plan."
+                >
+                  draft
+                </span>
+              )}
+            </span>
             <button
               type="button"
               className="sidebar-task-menu-btn"
@@ -455,20 +511,75 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         )}
       </div>
 
-      {/* Delete confirmation — over right pane */}
-      {deleteConfirmTask && (
-        <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
-          <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <p className="sidebar-delete-title">Delete &quot;{deleteConfirmTask.name}&quot;?</p>
-            <div className="sidebar-delete-actions">
-              <button type="button" onClick={() => setDeleteConfirmTask(null)}>Cancel</button>
-              <button type="button" className="danger" onClick={handleDeleteConfirm}>
-                Delete
-              </button>
+      {/* Delete confirmation — portaled to body so .sidebar overflow/transform never traps it in the left rail */}
+      {deleteConfirmTask &&
+        createPortal(
+          <div
+            className="sidebar-delete-overlay"
+            onClick={() => setDeleteConfirmTask(null)}
+            role="presentation"
+          >
+            <div
+              className="sidebar-delete-modal"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="sidebar-delete-confirm-title"
+            >
+              <p className="sidebar-delete-title" id="sidebar-delete-confirm-title">
+                Delete &quot;{deleteConfirmTask.name}&quot;?
+              </p>
+              <div className="sidebar-delete-actions">
+                <button type="button" onClick={() => setDeleteConfirmTask(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="danger" onClick={handleDeleteConfirm}>
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
+
+      {/* Collapsed sidebar: account menu portaled to body (see useLayoutEffect) — avoids overflow clip on narrow rail */}
+      {collapsed &&
+        accountMenuOpen &&
+        accountMenuPortaledStyle &&
+        createPortal(
+          <div
+            ref={accountMenuDropdownRef}
+            className="sidebar-account-menu sidebar-account-menu--portaled"
+            style={accountMenuPortaledStyle}
+            role="menu"
+          >
+            <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Settings size={16} /> Settings
+            </Link>
+            <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <LayoutGrid size={16} /> Engine room
+            </Link>
+            <Link to="/app/billing" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Coins size={16} /> Manage billing
+            </Link>
+            <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}>
+              <Zap size={16} /> Upgrade plan
+            </Link>
+            <div className="sidebar-account-menu-divider" />
+            <button
+              type="button"
+              className="sidebar-account-menu-logout"
+              role="menuitem"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                onLogout?.();
+              }}
+            >
+              <LogOut size={16} /> Log out
+            </button>
+          </div>,
+          document.body
+        )}
 
       {/* Token Balance */}
       <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">

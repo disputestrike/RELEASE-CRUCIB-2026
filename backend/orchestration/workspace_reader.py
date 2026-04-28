@@ -91,13 +91,52 @@ def list_workspace_files(workspace_path: str) -> List[str]:
     return files
 
 
-def detect_prose_in_file(content: str) -> Optional[str]:
-    """Return the prose line if file starts with prose, else None."""
+def detect_prose_in_file(content: str, file_ext: str = "") -> Optional[str]:
+    """Return the prose line if file starts with prose, else None.
+
+    Handles additional patterns:
+    - JSON/dict content in JSX/JS/TS files: starts with '{"text":' or '{"files":'
+    - Markdown in code files: starts with '# ' or '**'
+    - Package.json fragments in JSX files: contains '"name":' on first few lines
+    """
     if not content:
         return None
-    first_line = content.strip().split("\n")[0].strip().lower()
-    if any(first_line.startswith(p) for p in PROSE_PREFIXES):
-        return content.strip().split("\n")[0][:120]
+    first_line = content.strip().split("\n")[0].strip()
+    first_lower = first_line.lower()
+
+    # Standard prose prefixes
+    if any(first_lower.startswith(p) for p in PROSE_PREFIXES):
+        return first_line[:120]
+
+    # JSON/dict content written into a code file (e.g. {"text": "I am the agent..."})
+    # This is the #1 cause of esbuild failures — agents returning JSON instead of code
+    js_exts = {".jsx", ".tsx", ".js", ".ts", ".mjs", ".cjs"}
+    py_exts = {".py"}
+    ext = (file_ext or "").lower()
+    if ext in js_exts:
+        # JSON object as first char — definitely not valid JS/JSX
+        if first_line.startswith('{"') or first_line.startswith("{'"): 
+            return first_line[:120]
+        # Markdown heading or bold in a code file
+        if first_line.startswith('# ') or first_line.startswith('**'):
+            return first_line[:120]
+        # Package.json fragment in JSX: "name": "something" on line 1
+        import re as _re
+        if _re.match(r'^["\s]*"name"\s*:', first_line):
+            return first_line[:120]
+        # Plain English sentence (no JS tokens) — e.g. "I am the Data Visualization Agent"
+        if (
+            len(first_line) > 20
+            and not any(c in first_line for c in ('(', '{', ';', '=', '=>', 'import', 'export', 'const', 'let', 'var', 'function', 'class', '//'))
+            and first_lower[0].isalpha()
+            and ' ' in first_lower
+        ):
+            return first_line[:120]
+    if ext in py_exts:
+        # JSON object as first line in a Python file
+        if first_line.startswith('{"') or first_line.startswith("{'"): 
+            return first_line[:120]
+
     return None
 
 
@@ -109,7 +148,7 @@ def check_jsx_syntax(content: str) -> List[str]:
         return issues
 
     # Prose preamble
-    prose = detect_prose_in_file(content)
+    prose = detect_prose_in_file(content, ".jsx")
     if prose:
         issues.append(f"File starts with prose: {prose!r}")
 
@@ -135,7 +174,7 @@ def check_python_syntax(content: str) -> List[str]:
         issues.append("File is empty")
         return issues
 
-    prose = detect_prose_in_file(content)
+    prose = detect_prose_in_file(content, ".py")
     if prose:
         issues.append(f"File starts with prose: {prose!r}")
         return issues
@@ -306,7 +345,7 @@ def diagnose_workspace(
         content = read_workspace_file(workspace_path, rel)
         if not content:
             continue
-        prose = detect_prose_in_file(content)
+        prose = detect_prose_in_file(content, ext)
         if prose:
             findings.append(
                 {

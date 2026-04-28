@@ -21,7 +21,7 @@ const CATEGORIES = [
 
 const FALLBACK_PATTERNS = [
   { id: 'auth-jwt', name: 'JWT Authentication', desc: 'Login, signup, token refresh, protected routes.', category: 'auth', usage_count: 1250, tokens_saved: 45000 },
-  { id: 'stripe-checkout', name: 'Stripe Checkout Flow', desc: 'Pricing cards, checkout session, webhook handling.', category: 'payments', usage_count: 890, tokens_saved: 60000 },
+  { id: 'braintree-checkout', name: 'Braintree Checkout Flow', desc: 'Pricing cards, checkout session, webhook handling.', category: 'payments', usage_count: 890, tokens_saved: 60000 },
   { id: 'crud-api', name: 'RESTful CRUD API', desc: 'Create, read, update, delete with validation.', category: 'backend', usage_count: 2100, tokens_saved: 35000 },
   { id: 'responsive-dashboard', name: 'Responsive Dashboard', desc: 'Sidebar, stats, charts, mobile-first layout.', category: 'frontend', usage_count: 1560, tokens_saved: 80000 },
   { id: 'social-oauth', name: 'Social OAuth (Google/GitHub)', desc: 'OAuth flow, profile sync, session handling.', category: 'auth', usage_count: 780, tokens_saved: 55000 },

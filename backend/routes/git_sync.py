@@ -16,25 +16,25 @@ router = APIRouter(prefix="/api", tags=["git_sync"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
 
 async def _get_task(task_id, user):
-    from server import _get_task_for_user
+    from ..server import _get_task_for_user
 
     return await _get_task_for_user(task_id, user)
 

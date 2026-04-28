@@ -24,19 +24,19 @@ const PROMPT_SETS = {
     'Build a fitness tracker with daily goals and progress charts',
   ],
   ecommerce: [
-    'Build an e-commerce store with product catalog, cart, and Stripe checkout',
+    'Build an e-commerce store with product catalog, cart, and Braintree checkout',
     'Create a marketplace with seller dashboard and buyer reviews',
     'Build a subscription box shop with recurring billing',
   ],
   saas: [
-    'Build a SaaS MVP with auth, Stripe billing, and user dashboard',
+    'Build a SaaS MVP with auth, Braintree billing, and user dashboard',
     'Create a multi-tenant SaaS with team workspaces and role-based access',
     'Build an AI-powered writing tool with subscription tiers',
   ],
   default: [
     'Build a full-stack web app with user auth and a dashboard',
     'Create an AI chatbot with a custom knowledge base',
-    'Build an e-commerce store with cart and Stripe checkout',
+    'Build an e-commerce store with cart and Braintree checkout',
   ],
 };
 

@@ -161,7 +161,10 @@ class HookBus:
         # Bridge to existing event bus for backward compatibility. If the bus
         # import fails at module-load, we still run the direct callbacks above.
         try:
-            from services.events import event_bus as _bus
+            try:
+                from services.events import event_bus as _bus
+            except ImportError:
+                from backend.services.events import event_bus as _bus
 
             _bus.emit(f"hook.{phase}", {k: v for k, v in data.items() if k != "_hook_phase"})
         except Exception:  # noqa: BLE001

@@ -449,9 +449,9 @@ const AuthPage = () => {
           {/* Benefits */}
           <div className="space-y-5 mb-12">
             {[
-              { text: 'Plan-first architecture — no black boxes', check: true },
-              { text: 'Full transparency into every agent decision', check: true },
-              { text: 'Web, mobile, and automation — one platform', check: true },
+              { text: 'Plan-first architecture with Build Integrity gates', check: true },
+              { text: 'AgentMonitor events, logs, and proof artifacts', check: true },
+              { text: 'Web, Expo mobile artifacts, and guarded automation bridge', check: true },
               { text: '100 free credits, no credit card required', check: true },
             ].map((item, i) => (
               <motion.div

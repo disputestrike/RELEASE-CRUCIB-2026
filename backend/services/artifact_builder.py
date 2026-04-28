@@ -105,7 +105,7 @@ class ArtifactBuilder:
         # Optionally render PDF or slides
         if render_pdf:
             try:
-                from services.pdf_renderer import pdf_renderer
+                from backend.services.pdf_renderer import pdf_renderer
                 pdf_path = await pdf_renderer.render(
                     content=content if isinstance(content, str) else json.dumps(content, indent=2),
                     title=title,
@@ -119,7 +119,7 @@ class ArtifactBuilder:
 
         if render_slides:
             try:
-                from services.slides_renderer import slides_renderer
+                from backend.services.slides_renderer import slides_renderer
                 slides_path = await slides_renderer.render(
                     content=content,
                     title=title,

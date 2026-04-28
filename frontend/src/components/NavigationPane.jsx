@@ -11,7 +11,7 @@ const NAV = [
 ];
 
 const TEMPLATES = [
-  { id: 'saas',   label: 'SaaS Starter',   desc: 'Auth + DB + Stripe' },
+  { id: 'saas',   label: 'SaaS Starter',   desc: 'Auth + DB + Braintree' },
   { id: 'store',  label: 'Store Starter',  desc: 'Cart + Checkout' },
   { id: 'mobile', label: 'Mobile Starter', desc: 'Expo + React Native' },
   { id: 'api',    label: 'API Backend',    desc: 'REST + Auth' },

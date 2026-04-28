@@ -7,7 +7,9 @@ import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
+import OurProjectsPage from '../pages/OurProjectsPage';
 import PublicNav from '../components/PublicNav';
+import axios from 'axios';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -15,16 +17,16 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../App', () => ({
+jest.mock('../authContext', () => ({
   useAuth: () => ({ user: null, token: null }),
-  API: '/api',
 }));
 
-jest.mock('axios', () => ({ get: () => Promise.resolve({ data: {} }) }));
+jest.mock('axios', () => ({ get: jest.fn(() => Promise.resolve({ data: {} })) }));
 
 describe('Nav and pages — link and click-through verification', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    axios.get.mockResolvedValue({ data: {} });
   });
 
   const requiredNavLinkPaths = ['/features', '/pricing', '/our-projects', '/blog'];
@@ -105,7 +107,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(src).toMatch(/to="\/our-projects"/);
     expect(src).toMatch(/to="\/blog"/);
     expect(src).toMatch(/One AI\. Two superpowers/);
-    expect(src).toMatch(/No black boxes/);
+    expect(src).toMatch(/Claims map to artifacts/);
     expect(src).toMatch(/Monday to Friday\. One platform/);
   });
 

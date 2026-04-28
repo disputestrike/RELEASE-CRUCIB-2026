@@ -5,10 +5,44 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+try:
+    from backend.agent_dag import AGENT_DAG, build_dynamic_dag
+except ImportError:
+    try:
+        from agent_dag import AGENT_DAG, build_dynamic_dag
+    except ImportError:
+        AGENT_DAG = {}
+        def build_dynamic_dag(*a, **kw): return {}
+try:
+    from backend.agents.schemas import IntentSchema
+except ImportError:
+    try:
+        from agents.schemas import IntentSchema
+    except ImportError:
+        IntentSchema = None
 
-from project_state import WORKSPACE_ROOT
-from services.events import event_bus
-from services.runtime.task_manager import task_manager
+def _ws_root():
+    """Look up WORKSPACE_ROOT dynamically so stubs applied at test module level are respected."""
+    import sys as _sys
+    _ps = _sys.modules.get("backend.project_state")
+    if _ps is not None:
+        val = getattr(_ps, "WORKSPACE_ROOT", None)
+        if val is not None:
+            return Path(val)
+    try:
+        from backend.project_state import WORKSPACE_ROOT as _WR
+        return Path(_WR)
+    except Exception:
+        return Path("/tmp/crucibai_ws")
+
+# Keep WORKSPACE_ROOT as a module attribute for backward compat (code that uses it directly)
+# but runtime_state internal methods will use _ws_root() for dynamic resolution.
+try:
+    from backend.project_state import WORKSPACE_ROOT
+except Exception:
+    WORKSPACE_ROOT = Path("/tmp/crucibai_ws")
+from backend.services.events import event_bus
+from backend.services.runtime.task_manager import task_manager
 
 
 class RuntimeStateAdapter:
@@ -45,6 +79,7 @@ class RuntimeStateAdapter:
         project_id: str,
         mode: str,
         goal: str,
+        intent_schema: Optional[IntentSchema] = None,
         user_id: Optional[str],
     ) -> Dict[str, Any]:
         task = task_manager.create_task(
@@ -55,11 +90,14 @@ class RuntimeStateAdapter:
                 "goal": goal,
                 "user_id": user_id,
                 "source": "runtime_state.create_job",
+                "intent_schema": intent_schema.model_dump() if intent_schema else None,
             },
+            intent_schema=intent_schema,
         )
         job = self._job_view(task)
         await self.ensure_job_fk_prerequisites(project_id, user_id)
         await self._upsert_job_row(job)
+        await self._create_steps_from_dag(job["id"], project_id, user_id, intent_schema)
         return job
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
@@ -98,6 +136,11 @@ class RuntimeStateAdapter:
         job = self._job_view(task)
         await self._upsert_job_row(job, extra or {})
         await self.append_job_event(job_id, "job_status_changed", {"status": status, **(extra or {})})
+
+        if status == "complete":
+            proof_data = await self._collect_proof_data(job_id, job)
+            await self.save_proof_json(job_id, proof_data)
+
         return job
 
     async def create_step(
@@ -231,6 +274,16 @@ class RuntimeStateAdapter:
         rows = rows[-max(1, int(limit)) :]
         return [dict(r) for r in rows]
 
+    def _job_dir(self, job_id: str) -> Path:
+        # Assuming job_id is unique enough to create a subdirectory under WORKSPACE_ROOT
+        return Path(WORKSPACE_ROOT) / "jobs" / job_id
+
+    async def save_proof_json(self, job_id: str, proof_data: Dict[str, Any]) -> None:
+        job_dir = self._job_dir(job_id)
+        job_dir.mkdir(parents=True, exist_ok=True)
+        proof_path = job_dir / "proof.json"
+        proof_path.write_text(json.dumps(proof_data, indent=2), encoding="utf-8")
+
     async def save_checkpoint(self, job_id: str, checkpoint_key: str, data: Dict[str, Any]) -> None:
         cps = self._load_checkpoints(job_id)
         cps[str(checkpoint_key)] = {
@@ -245,6 +298,65 @@ class RuntimeStateAdapter:
         if not row:
             return None
         return row.get("data")
+
+    async def _create_steps_from_dag(
+        self, job_id: str, project_id: str, user_id: Optional[str], intent_schema: Optional[IntentSchema]
+    ) -> None:
+        if not intent_schema:
+            return
+
+        dynamic_dag = build_dynamic_dag(intent_schema)
+        
+        # Create steps based on the dynamic DAG
+        order_index = 0
+        for agent_name, agent_info in dynamic_dag.items():
+            await self.create_step(
+                job_id=job_id,
+                step_key=agent_name,
+                agent_name=agent_name,
+                phase="orchestration", # All dynamic DAG steps are part of orchestration phase
+                depends_on=agent_info.get("depends_on", []),
+                order_index=order_index,
+            )
+            order_index += 1
+
+    async def _collect_proof_data(self, job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
+        # Gather all information for proof.json
+        proof = {
+            "job_id": job_id,
+            "prompt": job.get("goal"),
+            "intent_schema": job.get("metadata", {}).get("intent_schema"),
+            "dag_structure": build_dynamic_dag(IntentSchema(**job.get("metadata", {}).get("intent_schema"))),
+            "steps": await self.get_steps(job_id),
+            "files_changed": [],  # To be populated by file_writer events
+            "tests_run": [],  # To be populated by test_runner events
+            "verification_results": [],  # To be populated by verification events
+            "errors": [],  # To be populated by error events
+            "repair_attempts": [],  # To be populated by repair events
+            "timestamps": {
+                "created_at": job.get("created_at"),
+                "updated_at": job.get("updated_at"),
+                "completed_at": time.time(),
+            },
+        }
+
+        # Populate dynamic fields from events
+        events = await self.get_job_events(job_id)
+        for event in events:
+            event_type = event.get("event_type")
+            payload = json.loads(event.get("payload_json", "{}"))
+            if event_type == "file_written":
+                proof["files_changed"].append(payload)
+            elif event_type == "test_run":
+                proof["tests_run"].append(payload)
+            elif event_type == "verification_result":
+                proof["verification_results"].append(payload)
+            elif event_type == "error":
+                proof["errors"].append(payload)
+            elif event_type == "repair_attempt":
+                proof["repair_attempts"].append(payload)
+
+        return proof
 
     def _job_view(self, task: Dict[str, Any]) -> Dict[str, Any]:
         meta = task.get("metadata") or {}
@@ -262,7 +374,7 @@ class RuntimeStateAdapter:
 
     def _list_projects(self) -> List[str]:
         out: List[str] = []
-        for child in WORKSPACE_ROOT.iterdir():
+        for child in _ws_root().iterdir():
             if not child.is_dir():
                 continue
             rt = child / "runtime_tasks"
@@ -272,7 +384,7 @@ class RuntimeStateAdapter:
 
     def _find_project_for_job(self, job_id: str) -> Optional[str]:
         for project_id in self._list_projects():
-            candidate = WORKSPACE_ROOT / project_id / "runtime_tasks" / f"{job_id}.json"
+            candidate = _ws_root() / project_id / "runtime_tasks" / f"{job_id}.json"
             if candidate.exists():
                 return project_id
         return None
@@ -363,6 +475,7 @@ class RuntimeStateAdapter:
 
 
 runtime_state = RuntimeStateAdapter()
+runtime_state_adapter = runtime_state  # Alias for backward compatibility
 
 
 def set_pool(pool: Any) -> None:

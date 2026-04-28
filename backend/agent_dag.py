@@ -212,7 +212,7 @@ OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
     "Session Agent": "Session. Storage, expiry.",
     "OAuth Provider Agent": "OAuth. Google/GitHub.",
     "2FA Agent": "2FA. TOTP, backup codes.",
-    "Stripe Subscription Agent": "Stripe. Plans, metering.",
+    "Stripe Subscription Agent": "Stripe subscriptions, plans, metering.",
     "Invoice Agent": "Invoice. PDF generation.",
     "CDN Agent": "CDN. Static, cache headers.",
     "SSR Agent": "SSR. Next.js hints.",
@@ -284,8 +284,40 @@ def get_system_prompt_for_agent(agent_name: str) -> str:
     if agent_name not in AGENT_DAG:
         return ""
     if _use_token_optimized() and agent_name in OPTIMIZED_SYSTEM_PROMPTS:
-        return OPTIMIZED_SYSTEM_PROMPTS[agent_name]
-    return AGENT_DAG[agent_name].get("system_prompt", "")
+        prompt = OPTIMIZED_SYSTEM_PROMPTS[agent_name]
+    else:
+        prompt = AGENT_DAG[agent_name].get("system_prompt", "")
+    return _with_code_generation_standard(agent_name, prompt)
+
+
+_CODE_STANDARD_AGENTS = {
+    "Planner",
+    "Stack Selector",
+    "Frontend Generation",
+    "Backend Generation",
+    "Database Agent",
+    "API Integration",
+    "Test Generation",
+    "Deployment Agent",
+    "Documentation Agent",
+    "Code Review Agent",
+    "UX Auditor",
+    "Design System Agent",
+    "Component Library Agent",
+    "Table Agent",
+    "Form Builder Agent",
+    "Workflow Agent",
+    "Approval Flow Agent",
+}
+
+
+def _with_code_generation_standard(agent_name: str, prompt: str) -> str:
+    """Attach the senior codebase standard to agents that influence generated code."""
+    if agent_name not in _CODE_STANDARD_AGENTS:
+        return prompt
+    if "CRUCIBAI CODEBASE STANDARD" in prompt:
+        return prompt
+    return f"{prompt}\n\n{CODE_GENERATION_AGENT_APPENDIX}"
 
 
 def topological_sort(dag: Dict[str, Dict[str, Any]]) -> List[str]:
@@ -348,3 +380,25 @@ def build_context_from_previous_agents(
                 snippet += "\n... (truncated)"
             parts.append(f"--- Output from {agent_name} ---\n{snippet}")
     return "\n\n".join(parts)
+
+
+def build_dynamic_dag(intent_schema: IntentSchema) -> Dict[str, Dict[str, Any]]:
+    dynamic_dag = {}
+    required_agents = set(intent_schema.required_tools)
+
+    # Add core agents that are always needed or are dependencies of required agents
+    core_agents = {"Planner", "Requirements Clarifier", "Stack Selector"}
+    required_agents.update(core_agents)
+
+    # Recursively add dependencies
+    q = deque(list(required_agents))
+    while q:
+        agent_name = q.popleft()
+        if agent_name not in AGENT_DAG:
+            continue
+        if agent_name not in dynamic_dag:
+            dynamic_dag[agent_name] = AGENT_DAG[agent_name]
+            for dep in AGENT_DAG[agent_name].get("depends_on", []):
+                if dep not in dynamic_dag:
+                    q.append(dep)
+    return dynamic_dag

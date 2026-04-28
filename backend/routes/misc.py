@@ -21,36 +21,36 @@ router = APIRouter(prefix="/api", tags=["misc"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_authenticated_or_api_user():
-    from server import get_authenticated_or_api_user
+    from ..server import get_authenticated_or_api_user
 
     return get_authenticated_or_api_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
 
 def _get_llm_helpers():
-    from server import (
+    from backend.server import (
         _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
     )
-    from services.runtime.runtime_engine import runtime_engine
+    from backend.services.runtime.runtime_engine import runtime_engine
 
     async def _runtime_call_llm_with_fallback(**kwargs):
         session_id = kwargs.get("session_id") or str(uuid.uuid4())
@@ -82,7 +82,7 @@ def _get_llm_helpers():
 
 
 try:
-    from server import (
+    from ..server import (
         ContactSubmission,
         DocumentProcess,
         EnterpriseContact,
@@ -92,7 +92,7 @@ try:
         GenerateDocsBody,
         GenerateFaqSchemaBody,
         GenerateReadmeBody,
-        InjectStripeBody,
+        InjectPaymentBody,
         OptimizeBody,
         ProjectEnvBody,
         QualityGateBody,
@@ -108,7 +108,7 @@ except ImportError:
     pass
 
 try:
-    from server import Permission, require_permission
+    from ..server import Permission, require_permission
 except ImportError:
     require_permission = lambda p: lambda user: user
 
@@ -434,7 +434,7 @@ async def analyze_file(
         get_workspace_api_keys,
         _effective_api_keys,
     ) = _get_llm_helpers()
-    from server import ANTHROPIC_API_KEY, ANTHROPIC_HAIKU_MODEL
+    from backend.server import ANTHROPIC_API_KEY, ANTHROPIC_HAIKU_MODEL
 
     try:
         user_keys = await get_workspace_api_keys(user)
@@ -526,8 +526,27 @@ Generated with CrucibAI.
 
 
 @router.post("/export/zip")
-async def export_zip(data: ExportFilesBody):
-    """Export project files as a ZIP download."""
+async def export_zip(data: ExportFilesBody, draft: bool = False):
+    """Export project files as a ZIP download.
+
+    Runs the BIV delivery gate when a workspace_path is provided in data.
+    Pass ?draft=true to skip the proof score check (explicit draft export).
+    """
+    # Gate check if a workspace path is supplied via data or headers
+    _workspace_path = getattr(data, "workspace_path", None) or ""
+    if _workspace_path:
+        try:
+            from backend.orchestration.delivery_gate import run_download_gate
+            import logging as _logging
+            _gate = run_download_gate(_workspace_path, draft=draft)
+            if not _gate.passed:
+                from fastapi import HTTPException as _HTTPException
+                raise _HTTPException(status_code=_gate.status, detail=_gate.detail)
+        except Exception as _gate_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "export_zip gate check failed (allowing): %s", _gate_err
+            )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, content in data.files.items():
@@ -748,7 +767,7 @@ async def create_example_from_project(body: dict, user: dict = Depends(_get_auth
 async def fork_example(name: str, user: dict = Depends(_get_auth())):
     """Create a new project from an example (copy generated code)."""
     db = _get_db()
-    from server import (
+    from backend.server import (
         CREDITS_PER_TOKEN,
         _ensure_credit_balance,
         _tokens_to_credits,
@@ -806,8 +825,8 @@ async def get_patterns(user: dict = Depends(_get_optional_user())):
             "tokens_saved": 45000,
         },
         {
-            "id": "stripe-checkout",
-            "name": "Stripe Checkout Flow",
+            "id": "braintree-checkout",
+            "name": "Braintree Checkout Flow",
             "category": "payments",
             "usage_count": 890,
             "tokens_saved": 60000,
@@ -864,7 +883,7 @@ async def get_patterns(user: dict = Depends(_get_optional_user())):
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(_get_auth())):
     db = _get_db()
-    from server import CREDITS_PER_TOKEN, MAX_USER_PROJECTS_DASHBOARD, _user_credits
+    from backend.server import CREDITS_PER_TOKEN, MAX_USER_PROJECTS_DASHBOARD, _user_credits
 
     projects = await db.projects.find({"user_id": user["id"]}).to_list(
         MAX_USER_PROJECTS_DASHBOARD
@@ -947,9 +966,9 @@ PROMPT_TEMPLATES = [
         "category": "marketing",
     },
     {
-        "id": "stripe-saas",
-        "name": "Stripe subscription SaaS",
-        "prompt": "Build a SaaS landing page with pricing cards and Stripe Checkout integration for subscription. React and Tailwind.",
+        "id": "braintree-saas",
+        "name": "Braintree subscription SaaS",
+        "prompt": "Build a SaaS landing page with pricing cards and Braintree checkout integration for subscription payments. React and Tailwind.",
         "category": "app",
     },
     {
@@ -1022,7 +1041,7 @@ async def get_saved_prompts(user: dict = Depends(_get_auth())):
 @router.post("/ai/quality-gate")
 async def quality_gate(data: QualityGateBody):
     """Run code quality score on code or multi-file output. No auth required for UI feedback."""
-    from server import score_generated_code
+    from backend.server import score_generated_code
 
     frontend_code = data.code or ""
     if not frontend_code and data.files:
@@ -1119,14 +1138,14 @@ async def suggest_next(
     return {"suggestions": ["Add loading state", "Add tests", "Deploy"]}
 
 
-# ==================== INJECT STRIPE / ENV / SHARE ====================
+# ==================== INJECT PAYMENTS / ENV / SHARE ====================
 
 
-@router.post("/ai/inject-stripe")
-async def inject_stripe(
-    data: InjectStripeBody, user: dict = Depends(_get_authenticated_or_api_user())
+@router.post("/ai/inject-braintree")
+async def inject_braintree(
+    data: InjectPaymentBody, user: dict = Depends(_get_authenticated_or_api_user())
 ):
-    """Inject Stripe Checkout or subscription into React code. Uses your Settings keys when set."""
+    """Inject a Braintree checkout client into React code. Uses workspace model keys when set."""
     (
         _call_llm_with_fallback,
         _get_model_chain,
@@ -1135,8 +1154,21 @@ async def inject_stripe(
     ) = _get_llm_helpers()
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
-    model_chain = _get_model_chain("auto", "stripe", effective_keys=effective)
-    prompt = f"Add Stripe Checkout to this React code. Target: {data.target}. Use @stripe/react-stripe-js or Stripe.js. Add a checkout button and handle success. Use env var STRIPE_PUBLISHABLE_KEY. Return ONLY the full updated code.\n\n```\n{data.code[:8000]}\n```"
+    model_chain = _get_model_chain("auto", "braintree", effective_keys=effective)
+    prompt = f"""Add a Braintree Drop-in checkout flow to this React code.
+Target: {data.target}.
+
+Requirements:
+- Use the public Braintree Drop-in script or an npm-ready Braintree Drop-in integration.
+- Fetch a client token from /api/payments/braintree/client-token.
+- Submit payment_method_nonce to /api/payments/braintree/checkout with the selected plan or amount.
+- Do not use Stripe packages, Stripe.js, STRIPE_* env vars, or fake checkout URLs.
+- If server credentials are missing, render a clear disabled state that says Braintree credentials are required.
+- Return ONLY the full updated React code. No markdown.
+
+```jsx
+{data.code[:8000]}
+```"""
     response, _ = await _call_llm_with_fallback(
         message=prompt,
         system_message="Output only valid React code. No markdown.",
@@ -1154,6 +1186,21 @@ async def inject_stripe(
         .strip()
     )
     return {"code": code or data.code}
+
+
+@router.post("/ai/inject-stripe")
+async def inject_stripe_removed(
+    data: InjectPaymentBody, user: dict = Depends(_get_authenticated_or_api_user())
+):
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "error": "stripe_injector_removed",
+            "replacement": "/api/ai/inject-braintree",
+            "status_endpoint": "/api/payments/braintree/status",
+            "message": "CrucibAI payment generation now targets Braintree.",
+        },
+    )
 
 
 @router.post("/ai/generate-readme")
@@ -1523,7 +1570,7 @@ async def design_from_url(
     url: str = Form(...), user: dict = Depends(_get_authenticated_or_api_user())
 ):
     """Fetch image from URL and run image-to-code."""
-    from server import ANTHROPIC_HAIKU_MODEL
+    from backend.server import ANTHROPIC_HAIKU_MODEL
 
     try:
         import httpx
@@ -1697,7 +1744,7 @@ async def health_llm(
     available_credits: int = Query(0, ge=0),
 ):
     """Provider readiness probe. Reports key presence/selection only; never returns secrets."""
-    from server import build_provider_readiness
+    from backend.server import build_provider_readiness
 
     return build_provider_readiness(
         prompt=prompt,

@@ -88,7 +88,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
       const status = err.response?.status;
       const detail = err.response?.data?.detail || err.message;
       if (status === 402) {
-        notify('Add your token in Settings → Deploy for one-click deploy.', 'error');
+        notify('Add your token in Settings -> Deploy to enable configured provider deployment.', 'error');
         navigate('/app/settings', { state: { openTab: 'deploy' } });
       } else {
         notify(detail || `Deploy to ${provider} failed`, 'error');
@@ -129,7 +129,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
         className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <Download className="w-4 h-4 shrink-0" />
-        {loading ? 'Preparing…' : 'Download Deploy ZIP'}
+        {loading ? 'Preparing…' : 'Download ZIP'}
       </button>
       <button
         type="button"
@@ -138,7 +138,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
         className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <ExternalLink className="w-4 h-4 shrink-0" />
-        {deploying === 'vercel' ? 'Deploying…' : 'One-click Deploy to Vercel'}
+        {deploying === 'vercel' ? 'Deploying…' : 'Deploy to Vercel'}
       </button>
       <button
         type="button"
@@ -147,7 +147,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
         className="flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-white/10 rounded-lg disabled:opacity-60"
       >
         <ExternalLink className="w-4 h-4 shrink-0" />
-        {deploying === 'netlify' ? 'Deploying…' : 'One-click Deploy to Netlify'}
+        {deploying === 'netlify' ? 'Deploying…' : 'Deploy to Netlify'}
       </button>
       <button
         type="button"
@@ -201,7 +201,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <Download className="w-4 h-4" />
-            {loading ? 'Preparing…' : 'Download Deploy ZIP'}
+            {loading ? 'Preparing…' : 'Download ZIP'}
           </button>
           <button
             type="button"
@@ -210,7 +210,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
-            {deploying === 'vercel' ? 'Deploying…' : 'One-click Vercel'}
+            {deploying === 'vercel' ? 'Deploying…' : 'Deploy to Vercel'}
           </button>
           <button
             type="button"
@@ -219,7 +219,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
-            {deploying === 'netlify' ? 'Deploying…' : 'One-click Netlify'}
+            {deploying === 'netlify' ? 'Deploying…' : 'Deploy to Netlify'}
           </button>
           <button
             type="button"

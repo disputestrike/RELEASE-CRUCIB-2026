@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from services.skills.skill_registry import SkillDef, resolve_skill
+from .skill_registry import SkillDef, resolve_skill
 
 
 def detect_skill(user_text: str) -> Optional[SkillDef]:

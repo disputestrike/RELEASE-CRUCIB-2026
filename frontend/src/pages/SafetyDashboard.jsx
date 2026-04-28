@@ -40,7 +40,7 @@ export default function SafetyDashboard() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 mb-1">Safety Dashboard</h1>
-          <p className="text-gray-500 text-sm">Automated red-team testing. Verify your AI builds are safe, unbiased, and production-ready.</p>
+          <p className="text-gray-500 text-sm">Automated safety checks and reports. Treat builds as ready only when the relevant proof gates pass.</p>
         </div>
         <button onClick={runAll}
           className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition">

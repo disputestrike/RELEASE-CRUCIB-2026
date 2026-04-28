@@ -469,6 +469,9 @@
 .dashboard-chat-start-building-btn:hover {
   background: #fff;
 }
+[data-theme='dark'] .dashboard-chat-start-building-btn:hover {
+  background: var(--theme-surface2, #3f3f46);
+}
 
 /* Copy / Edit / Share — below each bubble; spacing between message blocks unchanged */
 .dashboard-chat-actions {
@@ -778,6 +781,9 @@
 
 .dashboard-modal-submit:hover {
   background: #fff;
+}
+[data-theme='dark'] .dashboard-modal-submit:hover {
+  background: var(--theme-surface2, #3f3f46);
 }
 
 .dashboard-modal-submit:disabled {

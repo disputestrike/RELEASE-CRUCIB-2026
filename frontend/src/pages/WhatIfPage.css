@@ -1,0 +1,466 @@
+.simulation-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+.simulation-hero {
+  padding: 4px 0 18px;
+}
+
+.simulation-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.simulation-hero h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.simulation-hero p {
+  margin: 0;
+  max-width: 780px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sim-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.sim-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sim-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sim-panel-aside {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.simulation-prompt,
+.simulation-assumptions {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #111827;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.simulation-prompt:focus,
+.simulation-assumptions:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.simulation-assumptions {
+  margin-top: 10px;
+}
+
+.simulation-presets,
+.simulation-attachments,
+.simulation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.simulation-presets button,
+.simulation-chips span,
+.simulation-attachments span {
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.simulation-presets button {
+  cursor: pointer;
+}
+
+.simulation-presets button:hover {
+  border-color: #34d399;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.simulation-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.36fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.simulation-input-tools {
+  margin-top: 10px;
+  max-width: 260px;
+}
+
+.simulation-depth {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.simulation-depth legend {
+  grid-column: 1 / -1;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.simulation-depth button {
+  text-align: left;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.simulation-depth button.active {
+  border-color: #059669;
+  background: #ecfdf5;
+}
+
+.simulation-depth button strong,
+.simulation-depth button span {
+  display: block;
+}
+
+.simulation-depth button strong {
+  color: #111827;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.simulation-depth button span {
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.simulation-controls label {
+  display: block;
+}
+
+.simulation-controls span {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.simulation-controls input[type="range"] {
+  width: 100%;
+  accent-color: #059669;
+}
+
+.simulation-file input {
+  width: 100%;
+  font-size: 12px;
+}
+
+.simulation-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.simulation-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: #111827;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.simulation-run:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.spin {
+  animation: sim-spin 1s linear infinite;
+}
+
+@keyframes sim-spin {
+  to { transform: rotate(360deg); }
+}
+
+.simulation-error,
+.simulation-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.simulation-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.simulation-grid.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.simulation-grid div,
+.simulation-trust-grid div {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.simulation-grid span,
+.simulation-trust-grid span {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.simulation-grid strong,
+.simulation-trust-grid strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.simulation-interpretation {
+  margin: 12px 0 0;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.simulation-evidence-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.simulation-evidence-layout h3,
+.simulation-report h3,
+.simulation-report h4,
+.simulation-outcome h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.simulation-source,
+.simulation-gap,
+.simulation-belief {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  background: #fff;
+  font-size: 12px;
+  color: #374151;
+}
+
+.simulation-source strong {
+  display: block;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.simulation-source span {
+  color: #6b7280;
+}
+
+.simulation-agent-grid,
+.simulation-outcomes,
+.simulation-population-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.simulation-agent,
+.simulation-outcome,
+.simulation-population,
+.simulation-round {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 11px;
+  background: #fff;
+}
+
+.simulation-agent-head,
+.simulation-outcome-head,
+.simulation-round-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.simulation-agent-head strong,
+.simulation-outcome-head strong,
+.simulation-round-head strong {
+  font-size: 13px;
+}
+
+.simulation-agent-head span,
+.simulation-outcome-head span,
+.simulation-round-head span {
+  color: #047857;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.simulation-agent p,
+.simulation-outcome p,
+.simulation-round p,
+.simulation-report p {
+  margin: 0 0 8px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.simulation-meter {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 7px;
+}
+
+.simulation-meter i {
+  display: block;
+  height: 100%;
+  background: #059669;
+}
+
+.simulation-agent footer {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.simulation-population footer {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.simulation-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.simulation-belief {
+  background: #f9fafb;
+}
+
+.simulation-outcome em {
+  display: block;
+  font-style: normal;
+  color: #374151;
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.simulation-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.simulation-report ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 13px;
+}
+
+.simulation-replay {
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 12px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
+@media (max-width: 920px) {
+  .simulation-grid.four,
+  .simulation-agent-grid,
+  .simulation-outcomes,
+  .simulation-population-grid,
+  .simulation-trust-grid,
+  .simulation-evidence-layout,
+  .simulation-controls,
+  .simulation-depth {
+    grid-template-columns: 1fr;
+  }
+}

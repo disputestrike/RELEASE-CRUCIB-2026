@@ -44,6 +44,8 @@ def parse_test_results_file(workspace_path: str) -> List[str]:
         "tenancy",
         "auth",
         "stripe",
+        "braintree",
+        "payment",
         "webhook",
         "approval",
         "isolation",

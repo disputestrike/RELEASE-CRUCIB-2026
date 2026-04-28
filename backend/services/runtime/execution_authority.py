@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List
 
-from services.runtime.execution_context import (
+from .execution_context import (
     current_project_id,
     current_skill_hint,
     current_task_id,

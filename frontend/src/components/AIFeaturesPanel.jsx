@@ -67,7 +67,7 @@ export default function AIFeaturesPanel() {
   return (
     <div className="p-6 max-w-2xl">
       <h2 className="text-lg font-medium text-[#1A1A1A] mb-2">AI Features</h2>
-      <p className="text-sm text-[#666] mb-4">Generate tests, run security scan, or optimize code. Uses your API keys from Settings when set.</p>
+      <p className="text-sm text-[#666] mb-4">Generate tests, run baseline security checks, or optimize code. Uses your API keys from Settings when set.</p>
       <div className="flex gap-2 mb-3 border-b border-gray-200">
         {SECTIONS.map((s) => (
           <button

@@ -4,12 +4,14 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Optional
 
 
-def planner_project_state_service(user: Optional[dict], *, user_credits: Callable[[dict], int]) -> Dict[str, Any]:
+async def planner_project_state_service(user: Optional[dict], *, user_credits: Callable[[dict], int]) -> Dict[str, Any]:
     env_vars: Dict[str, str] = {}
     import os
     for key in (
-        "STRIPE_SECRET_KEY",
-        "STRIPE_PUBLISHABLE_KEY",
+        "BRAINTREE_MERCHANT_ID",
+        "BRAINTREE_PUBLIC_KEY",
+        "BRAINTREE_PRIVATE_KEY",
+        "BRAINTREE_ENVIRONMENT",
         "ANTHROPIC_API_KEY",
         "CEREBRAS_API_KEY",
         "LLAMA_API_KEY",
@@ -29,7 +31,7 @@ def planner_project_state_service(user: Optional[dict], *, user_credits: Callabl
     if user:
         out["billing"] = {
             "plan": (user.get("plan") or "free"),
-            "credits": user_credits(user),
+            "credits": await user_credits(user),
         }
     return out
 

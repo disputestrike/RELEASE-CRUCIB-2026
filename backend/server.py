@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
-from deps import (
+from .deps import (
     ADMIN_ROLES,
     ADMIN_USER_IDS,
     JWT_ALGORITHM,
@@ -25,18 +25,15 @@ from deps import (
     get_optional_user,
     require_permission,
 )
-from provider_readiness import build_provider_readiness
-from services.llm_service import (
+from .provider_readiness import build_provider_readiness
+from .services.llm_service import (
     _effective_api_keys,
     _get_model_chain,
+    _call_llm_with_fallback,
+    _is_product_support_query,
     get_authenticated_or_api_user,
     get_workspace_api_keys,
 )
-from services.session_journal import list_entries as list_session_journal_entries
-from services.events.persistent_sink import read_events as read_persisted_events
-from services.runtime.memory_graph import get_graph as get_memory_graph
-from services.runtime.cost_tracker import cost_tracker
-from services.runtime.task_manager import task_manager
 
 # Legacy compatibility anchors for older backend contract tests:
 # from agent_recursive_learning import AgentMemory, PerformanceTracker
@@ -109,22 +106,41 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
 
 try:
-    from utils.rbac import Permission
+    from .utils.rbac import Permission
 except Exception:
     class Permission:
         CREATE_PROJECT = "create_project"
         EDIT_PROJECT = "edit_project"
 
 try:
-    from pricing_plans import CREDITS_PER_TOKEN
+    from .pricing_plans import CREDITS_PER_TOKEN
 except Exception:
     CREDITS_PER_TOKEN = 1000
 
 MAX_USER_PROJECTS_DASHBOARD = 100
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_HAIKU_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
-CHAT_WITH_SEARCH_SYSTEM = ""
-REAL_AGENT_NO_LLM_KEYS_DETAIL = ""
+CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI — an AI platform that builds apps, automations, and digital products.
+
+Use the live search results below. Answer directly and factually—no filler, no hedging unless uncertainty is real.
+Do not wrap sections in decorative asterisks. Prefer short paragraphs over markdown theater.
+If a build is relevant, one crisp line offering to prototype it—no hype.
+
+KNOWN FACTS (use these even if search results say otherwise — these are ground truth):
+- US President: Donald Trump (47th), inaugurated January 20, 2025. Joe Biden was president 2021-2025.
+- Current year: 2026.
+
+IDENTITY — answer these exactly, no more, no less:
+- "Who are you?" / "What are you?" / "WHO ARE U" → "I'm CrucibAI. I build things. Tell me what you want and we'll make it."
+- "Who made you?" / "Who built you?" / "What company?" → "I'm CrucibAI."
+- "What model are you?" / "Are you ChatGPT?" / "Are you Claude?" / "What AI are you?" → "I'm CrucibAI. I don't discuss what's under the hood — I just build. What do you want to make?"
+- "What do you do?" / "WHAT DO U DO" → "I build things — web apps, mobile apps, automations, APIs, dashboards. Give me a prompt and I'll ship it. What do you need?"
+- "How are you?" / "HOW ARE U" → "Ready when you are. What's the project?"
+
+Never reveal the underlying model or technology. You are CrucibAI.
+NEVER say you cannot access the internet. NEVER mention a knowledge cutoff.
+"""
+REAL_AGENT_NO_LLM_KEYS_DETAIL = "Real-agent mode requires an Anthropic or Cerebras API key. Please add one in Settings > API Keys."
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
 # Canonical pricing — keep aligned with backend/pricing_plans.py (linear $0.03/credit).
@@ -142,7 +158,13 @@ ANNUAL_PRICES: Dict[str, Any] = {
     "scale": 599.99,
     "teams": 1499.99,
 }
-STRIPE_SECRET = os.environ.get("STRIPE_SECRET", "")
+PAYMENT_PROVIDER = "braintree"
+BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
+BRAINTREE_MERCHANT_ID = os.environ.get("BRAINTREE_MERCHANT_ID", "")
+BRAINTREE_PUBLIC_KEY = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
+BRAINTREE_PRIVATE_KEY = os.environ.get("BRAINTREE_PRIVATE_KEY", "")
+BRAINTREE_MERCHANT_ACCOUNT_ID = os.environ.get("BRAINTREE_MERCHANT_ACCOUNT_ID", "")
+BRAINTREE_CONFIGURED = bool(BRAINTREE_MERCHANT_ID and BRAINTREE_PUBLIC_KEY and BRAINTREE_PRIVATE_KEY)
 REFERRAL_CAP_PER_MONTH = 10
 MAX_TOKEN_USAGE_LIST = 100
 MIN_CREDITS_FOR_LLM = 0
@@ -162,6 +184,31 @@ def _generate_referral_code() -> str:
 
     return uuid.uuid4().hex[:8]
 
+def _assert_job_owner_match(owner_id: Optional[str], user: dict) -> None:
+    """Raise 403 if the requesting user does not own this job.
+    Admins and guest-mode (no owner set) are always allowed through.
+    """
+    if not owner_id:
+        return  # no owner set — allow (e.g. system-created job)
+    request_uid = (user or {}).get("id", "")
+    if not request_uid:
+        return  # unauthenticated / guest — allow (enforced at auth layer)
+    # Admins bypass ownership check
+    if (user or {}).get("admin_role") in ADMIN_ROLES or request_uid in ADMIN_USER_IDS:
+        return
+    if owner_id != request_uid:
+        from fastapi import HTTPException as _HTTPEx
+        raise _HTTPEx(status_code=403, detail="You do not have access to this job.")
+
+
+def _get_server_helpers():
+    return (
+        _user_credits,
+        _assert_job_owner_match,   # FIX: was _ensure_credit_balance — wrong function,
+        _resolve_job_project_id_for_user,  # wrong signature → TypeError on every run-auto call
+        _project_workspace_path,
+    )
+
 
 def _idempotency_key_from_request(request) -> Optional[str]:
     key = (
@@ -177,12 +224,117 @@ def _idempotency_key_from_request(request) -> Optional[str]:
 async def _call_llm_with_fallback(*args, **kwargs):
     """Delegate to services.llm_service; keep a safe compatibility fallback."""
     try:
-        from services.llm_service import _call_llm_with_fallback as _llm_call
+        from .services.llm_service import _call_llm_with_fallback as _llm_call
 
         return await _llm_call(*args, **kwargs)
     except (ImportError, ModuleNotFoundError) as exc:
         logger.warning("llm_service unavailable; using compatibility fallback: %s", exc)
-        return ("compat-llm-response", "compat/model")
+        return ({"text": "I'm having trouble connecting to the AI service right now. Please try again in a moment.", "tokens_used": 0}, "compat/model")
+
+
+def _is_product_support_query(prompt: str) -> Optional[str]:
+    """Delegate to services.llm_service."""
+    try:
+        from .services.llm_service import _is_product_support_query as _support_check
+
+        return _support_check(prompt)
+    except (ImportError, ModuleNotFoundError):
+        return None
+
+
+async def _call_llm_with_fallback_streaming(*args, **kwargs):
+    """Streaming wrapper: calls _call_llm_with_fallback and yields the full
+    response as a single chunk so the streaming endpoint always gets
+    (chunk: str, model: str, tokens: int) tuples.
+    Falls back gracefully if the LLM service is unavailable.
+    """
+    try:
+        response, model_used = await _call_llm_with_fallback(*args, **kwargs)
+        text = response.get("text", "") if isinstance(response, dict) else str(response)
+        tokens = response.get("tokens_used", 0) if isinstance(response, dict) else 0
+        yield text, model_used, tokens
+    except Exception as exc:
+        logger.warning("_call_llm_with_fallback_streaming error: %s", exc)
+        yield "I'm having trouble connecting to the AI service right now. Please try again in a moment.", "compat/model", 0
+
+
+def _is_conversational_message(message: str) -> bool:
+    """Detect if a message is purely conversational (questions, chat, greetings)
+    vs a build/create/deploy/automate intent that should route through the
+    orchestration engine.
+
+    Returns True  -> skip ClarificationAgent, go straight to LLM chat.
+    Returns False -> run ClarificationAgent to check for build/agent intent.
+
+    Aligned with the frontend Dashboard.jsx BUILD_KEYWORDS / AGENT_KEYWORDS
+    regex patterns so both layers agree on routing.
+    Design rule: when in doubt, treat as conversational.
+    """
+    import re
+    m = message.lower().strip()
+    flat = re.sub(r'[\r\n]+', ' ', m)  # collapse newlines
+
+    # ── 1. Definite chat patterns (mirrors CHAT_ONLY_PATTERNS in Dashboard.jsx)
+    chat_only = [
+        r'^(hi|hello|hey|howdy|yo|sup|greetings?|good\s*(morning|afternoon|evening)|hi\s+there|hey\s+there|what\'?s\s*up)\s*[!.?]*$',
+        r'^(thanks?|thank\s*you|thx|ok|okay|sure|yes|no|nope|yep|yeah)\s*[!.?]*$',
+        r'^(how\s+are\s+you|what\'?s\s+going\s+on|how\s+is\s+it\s+going)\s*[!.?]*$',
+        r'^(bye|goodbye|see\s*ya|later)\s*[!.?]*$',
+    ]
+    for pat in chat_only:
+        if re.match(pat, m, re.IGNORECASE):
+            return True
+
+    # ── 2. Very short messages are always conversational
+    if len(m) < 8:
+        return True
+
+    # ── 3. Agent / automation keywords (mirrors AGENT_KEYWORDS in Dashboard.jsx)
+    agent_pattern = r'\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow|pipeline)\b'
+    if re.search(agent_pattern, flat, re.IGNORECASE):
+        return False
+
+    # ── 4. Build keywords — verb + software target
+    #    Mirrors BUILD_KEYWORDS regex from Dashboard.jsx
+    build_verbs = r'\b(build|building|create|creating|make|making|develop|developing|design|designing|generate|generating|produce|producing|code|scaffold|scaffolding|implement|implementing|launch|launching|deploy|deploying|set\s+up|setup|bootstrap|write|configure|spin\s+up|spin\s+up)\b'
+    build_targets = r'\b(app|application|website|web\s*app|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product|service|microservice|database|schema|bot|chatbot|portal|system|interface|ui|ux|component|module|library|package|plugin|extension|script|cli|sdk|integration|webhook|endpoint|server|client|mobile\s*app|ios\s*app|android\s*app|chrome\s*extension|vs\s*code\s*extension|npm\s*package|rest\s*api|graphql\s*api|crud\s*app|full\s*stack|fullstack|e-commerce|ecommerce|store|shop|marketplace|crm|erp|cms|blog|portfolio|admin\s*panel|admin\s*dashboard|analytics\s*dashboard|monitoring\s*tool|devops\s*pipeline|ci\s*cd|docker|container|kubernetes|k8s|auth\s*system|payment\s*system|notification\s*system|email\s*system|search\s*engine|recommendation\s*engine|ml\s*model|ai\s*model|neural\s*network|data\s*pipeline|etl|scraper|crawler|infrastructure|environment|cluster|deployment)\b'
+    if re.search(build_verbs, flat, re.IGNORECASE) and re.search(build_targets, flat, re.IGNORECASE):
+        return False
+
+    # ── 5. Loose build match (verb alone with clear software context)
+    #    Mirrors BUILD_KEYWORDS_LOOSE from Dashboard.jsx
+    loose_verbs = r'\b(build|create|make|develop|generate)\b'
+    loose_targets = r'\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend|mobile|ios|android)\b'
+    if re.search(loose_verbs, flat, re.IGNORECASE) and re.search(loose_targets, flat, re.IGNORECASE):
+        return False
+
+    # ── 6. Long technical briefs (mirrors looksLikeBuildSpec in Dashboard.jsx)
+    if len(flat) >= 160:
+        tech_signals = [
+            'react native', 'ios', 'android', 'expo', 'jest', 'playwright',
+            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'braintree',
+            'postgres', 'mongodb', 'tailwind', 'fastapi', 'next.js', 'vite',
+            'kubernetes', 'docker', 'offline', 'multi-tenant', 'saas',
+            'dashboard', 'crm', 'oauth', 'jwt', 'websocket', 'redis',
+            'elasticsearch', 'celery', 'rabbitmq', 'kafka',
+        ]
+        hits = sum(1 for s in tech_signals if s in flat)
+        if hits >= 2:
+            return False
+
+    # ── 7. Explicit intent phrases ("I want you to build", "go ahead and create", etc.)
+    explicit_phrases = [
+        r'i\s+(want|need)\s+(you\s+to|u\s+to)\s+(build|create|make|develop|generate|code|write)',
+        r'(go\s+ahead\s+and|just|please)\s+(build|create|make|develop|generate|code|write)',
+        r"(you\s+decide|figure\s+it\s+out|don'?t\s+ask|just\s+do\s+it)",
+        r'(can\s+you|could\s+you|would\s+you)\s+(build|create|make|develop|generate|code|write)',
+    ]
+    for pat in explicit_phrases:
+        if re.search(pat, flat, re.IGNORECASE):
+            return False
+
+    # ── 8. Everything else is conversational — let the LLM handle it
+    return True
 
 
 REAL_AGENT_NAMES: set[str] = set()
@@ -208,6 +360,516 @@ async def _init_agent_learning(*_args, **_kwargs):
     return None
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  AGENTIC LOOP — observe → act → inspect → revise (replaces one-shot LLM)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#  Architecture:  competitor analysis showed every high-quality coding agent
+#  (Claude Code, Replit, Lovable) runs a while(True) loop where the model
+#  can call file/run/search tools mid-generation and decides its own exit
+#  condition via stop_reason == "end_turn".  CrucibAI previously made one
+#  LLM call per agent step and returned.  This section replaces that pattern.
+#
+#  Concurrency:   read-only tools (read_file, list_files, search_files) run
+#  in parallel (asyncio.gather, up to 10 concurrent). Write tools
+#  (write_file, edit_file, run_command) run serially to avoid races.
+#
+#  Safety caps:   20 turns max; tool errors are reported to the model (not
+#  raised), so the model can retry or skip gracefully.
+# ─────────────────────────────────────────────────────────────────────────
+
+# Read-only tools that are safe to execute concurrently
+_READONLY_TOOLS: frozenset = frozenset({"read_file", "list_files", "search_files"})
+
+# Agents that benefit from extended thinking before they write.
+# These are the agents whose mistakes are most expensive downstream:
+#   • Planners write the architecture every other agent follows
+#   • Architecture agents define component contracts
+#   • Security agents must catch subtle vulnerabilities
+# Thinking is ONLY activated when the Anthropic model supports it
+# (claude-3-7-sonnet and later).  Cerebras / fallback models skip it silently.
+_THINKING_AGENTS: frozenset = frozenset({
+    # Planning & architecture
+    "Planner",
+    "Architecture Agent",
+    "Technical Architecture",
+    "System Architecture",
+    "Database Schema",
+    "API Design",
+    # Security — subtle issues require deep reasoning
+    "Security Agent",
+    "Security Audit",
+    "Security Review",
+    # Complex multi-file generators that must reason about the whole workspace
+    "Backend Generation",
+    "Frontend Generation",
+    "Integration Agent",
+    "Full Stack Generator",
+    # Quality gates that need to reason, not just scan
+    "UX Auditor",
+    "Code Review Agent",
+    "Test Strategy Agent",
+})
+
+# Models that support extended thinking (must be claude-3-7-sonnet or later)
+_THINKING_CAPABLE_MODELS: tuple = (
+    "claude-3-7-sonnet",
+    "claude-sonnet-4",
+    "claude-opus-4",
+)
+
+# Thinking token budget.  High enough that the model can reason through
+# a non-trivial codebase; low enough to stay within cost budget.
+_THINKING_BUDGET_TOKENS: int = 8000
+
+# Anthropic tool_use definitions exposed to every agent
+WORKSPACE_TOOLS_FOR_AGENTS: list = [
+    {
+        "name": "read_file",
+        "description": (
+            "Read a file from the project workspace. "
+            "Use this to inspect existing code before writing or editing."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Relative path within the project workspace (e.g. src/App.jsx).",
+                },
+            },
+        },
+    },
+    {
+        "name": "write_file",
+        "description": (
+            "Write content to a file in the project workspace. "
+            "Creates the file and any parent directories if they do not exist. "
+            "Overwrites the file completely — include ALL content."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path", "content"],
+            "properties": {
+                "path": {"type": "string", "description": "Relative path (e.g. src/components/Button.jsx)."},
+                "content": {"type": "string", "description": "Complete file content to write."},
+            },
+        },
+    },
+    {
+        "name": "edit_file",
+        "description": (
+            "Perform an exact string replacement inside an existing file. "
+            "old_text must match verbatim (including whitespace and indentation). "
+            "Replaces only the FIRST occurrence."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["path", "old_text", "new_text"],
+            "properties": {
+                "path": {"type": "string", "description": "Relative path of the file to edit."},
+                "old_text": {"type": "string", "description": "Exact text to find and replace."},
+                "new_text": {"type": "string", "description": "Replacement text."},
+            },
+        },
+    },
+    {
+        "name": "list_files",
+        "description": "List files and directories in the project workspace.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Subdirectory to list (default: workspace root).",
+                },
+                "pattern": {
+                    "type": "string",
+                    "description": "Optional glob pattern to filter (e.g. '*.py', 'src/**/*.jsx').",
+                },
+            },
+        },
+    },
+    {
+        "name": "run_command",
+        "description": (
+            "Run an allowlisted command in the project workspace. "
+            "Allowed prefixes: pytest, npm test, npm run test, npx jest, "
+            "npx eslint, npm audit, python -m bandit, wc -l, find . "
+            "Use this to verify code compiles / tests pass."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["command"],
+            "properties": {
+                "command": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Command as array of strings (e.g. ['npm', 'test']).",
+                },
+                "cwd": {
+                    "type": "string",
+                    "description": "Working directory relative to workspace root.",
+                },
+            },
+        },
+    },
+    {
+        "name": "search_files",
+        "description": (
+            "Search for a regex pattern across files in the project workspace. "
+            "Returns matching lines with file names and line numbers."
+        ),
+        "input_schema": {
+            "type": "object",
+            "required": ["pattern"],
+            "properties": {
+                "pattern": {"type": "string", "description": "Regex pattern to search for."},
+                "path": {
+                    "type": "string",
+                    "description": "Subdirectory to search within (default: entire workspace).",
+                },
+                "file_pattern": {
+                    "type": "string",
+                    "description": "Glob filter for filenames (e.g. '*.py', '*.{ts,tsx}').",
+                },
+            },
+        },
+    },
+]
+
+
+def _execute_workspace_tool_sync(
+    tool_name: str,
+    inputs: Dict[str, Any],
+    project_id: str,
+    workspace_path: str,
+) -> Dict[str, Any]:
+    """
+    Execute a single workspace tool via runtime_engine.execute_tool_for_task.
+    All real I/O is delegated through the single-brain runtime authority chain.
+    edit_file is synthesised via read → replace → write.
+    search_files uses subprocess grep (not in execute_tool natively).
+    """
+    import subprocess
+    from backend.services.runtime.runtime_engine import runtime_engine as _re
+
+    task_id = f"agent-loop-{project_id}"
+
+    def _run_tool(tool_name_inner: str, params: dict) -> dict:
+        return _re.execute_tool_for_task(
+            project_id=project_id,
+            task_id=task_id,
+            tool_name=tool_name_inner,
+            params={**params, "task_id": task_id},
+        )
+
+    if tool_name == "read_file":
+        return _run_tool("file", {
+            "action": "read",
+            "path": inputs.get("path", ""),
+        })
+
+    if tool_name == "write_file":
+        return _run_tool("file", {
+            "action": "write",
+            "path": inputs.get("path", ""),
+            "content": inputs.get("content", ""),
+        })
+
+    if tool_name == "edit_file":
+        path = inputs.get("path", "")
+        old_text = inputs.get("old_text", "")
+        new_text = inputs.get("new_text", "")
+        read_result = _run_tool("file", {"action": "read", "path": path})
+        if not read_result.get("success"):
+            return {
+                "success": False,
+                "output": f"Could not read {path}: {read_result.get('error', '')}",
+                "error": "read_failed",
+            }
+        current = read_result.get("output", "")
+        if old_text not in current:
+            # Try a looser match (strip trailing whitespace per line)
+            stripped_old = "\n".join(l.rstrip() for l in old_text.splitlines())
+            stripped_cur = "\n".join(l.rstrip() for l in current.splitlines())
+            if stripped_old in stripped_cur:
+                current = stripped_cur
+                old_text = stripped_old
+            else:
+                return {
+                    "success": False,
+                    "output": (
+                        f"edit_file: old_text not found verbatim in {path}. "
+                        "Use read_file first to get the exact text."
+                    ),
+                    "error": "edit_miss",
+                }
+        updated = current.replace(old_text, new_text, 1)
+        return _run_tool("file", {"action": "write", "path": path, "content": updated})
+
+    if tool_name == "list_files":
+        return _run_tool("file", {
+            "action": "list",
+            "path": inputs.get("path", ""),
+            "pattern": inputs.get("pattern", ""),
+        })
+
+    if tool_name == "run_command":
+        return _run_tool("run", {
+            "command": inputs.get("command", []),
+            "cwd": inputs.get("cwd", ""),
+        })
+
+        if tool_name == "search_files":
+            try:
+                from backend.project_state import WORKSPACE_ROOT
+                ws_root = Path(WORKSPACE_ROOT) / project_id.replace("/", "_").replace("\\", "_")
+                sub_path = (inputs.get("path") or "").lstrip("/\\")
+                search_root = (ws_root / sub_path) if sub_path else ws_root
+                if not search_root.exists():
+                    search_root = ws_root
+                pattern = inputs.get("pattern", ".")
+                file_pat = inputs.get("file_pattern", "")
+                cmd = ["grep", "-rn", "--max-count=20"]
+                if file_pat:
+                    cmd += [f"--include={file_pat}"]
+                cmd += [pattern, str(search_root)]
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                out = proc.stdout.strip()[:6000] or "(no matches)"
+                return {"success": True, "output": out}
+            except Exception as exc:
+                return {"success": False, "output": "", "error": str(exc)}
+
+    return {"success": False, "output": f"Unknown tool: {tool_name}", "error": "unknown_tool"}
+
+
+async def _execute_workspace_tool_async(
+    tool_name: str,
+    inputs: Dict[str, Any],
+    project_id: str,
+    workspace_path: str,
+) -> Dict[str, Any]:
+    """Async shim: runs the sync tool executor in a thread pool so we can await it."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        _execute_workspace_tool_sync,
+        tool_name,
+        inputs,
+        project_id,
+        workspace_path,
+    )
+
+
+async def _call_llm_with_tools_loop(
+    *,
+    message: str,
+    system_message: str,
+    project_id: str,
+    workspace_path: str,
+    api_key: str,
+    model: str,
+    agent_name: str = "",
+    max_turns: int = 20,
+    use_thinking: bool = False,
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Full agentic loop: while(stop_reason != "end_turn") → execute tools → feed results back.
+
+    Returns (final_text_output, metadata_dict).
+
+    Concurrency model (mirrors Claude Code toolOrchestration.ts):
+      • read-only tools  →  asyncio.gather (up to 10 concurrent)
+      • write / run tools  →  serial (preserves file-system consistency)
+
+    Adaptive thinking (mirrors Claude Code thinkingConfig: { type: 'adaptive' }):
+      • Enabled when use_thinking=True AND the model supports it
+      • Inserts a private reasoning block before the first tool-use or output
+      • Only Anthropic models claude-3-7-sonnet+ support this; others skip silently
+      • Thinking blocks from the response are preserved in the message history
+        so the model retains its reasoning across tool calls
+    """
+    import httpx
+    from backend.anthropic_models import normalize_anthropic_model, ANTHROPIC_HAIKU_MODEL
+
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
+    logger = logging.getLogger(__name__)
+
+    messages: List[Dict[str, Any]] = [{"role": "user", "content": message}]
+    files_written: List[str] = []
+    turns = 0
+    final_text = ""
+
+    while turns < max_turns:
+        turns += 1
+
+        # ── Call Anthropic with workspace tools ──────────────────────────
+        # Determine whether to activate extended thinking this turn.
+        # Rules:
+        #   • Only turn 1 (the model thinks before acting, not between retries)
+        #   • Only when the caller requested thinking AND the model supports it
+        #   • Thinking blocks must be passed back in subsequent turns so the
+        #     model keeps its reasoning context across tool calls
+        _model_lower = model.lower()
+        _thinking_this_turn = (
+            use_thinking
+            and turns == 1
+            and any(_model_lower.startswith(m) for m in _THINKING_CAPABLE_MODELS)
+        )
+        _req_max_tokens = (
+            _THINKING_BUDGET_TOKENS + 8096  # thinking + output budget
+            if _thinking_this_turn
+            else 8096
+        )
+        _req_body: Dict[str, Any] = {
+            "model": model,
+            "max_tokens": _req_max_tokens,
+            "system": system_message,
+            "messages": messages,
+            "tools": WORKSPACE_TOOLS_FOR_AGENTS,
+        }
+        if _thinking_this_turn:
+            # Extended thinking: model gets a private scratchpad before acting.
+            # betas header enables the feature on older API versions.
+            _req_body["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": _THINKING_BUDGET_TOKENS,
+            }
+            logger.info("[agent_loop] %s turn 1: extended thinking enabled (budget=%d)",
+                        agent_name, _THINKING_BUDGET_TOKENS)
+
+        try:
+            async with httpx.AsyncClient(timeout=180) as client:
+                _headers = {
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                }
+                if _thinking_this_turn:
+                    _headers["anthropic-beta"] = "interleaved-thinking-2025-05-14"
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers=_headers,
+                    json=_req_body,
+                )
+        except Exception as exc:
+            logger.error("[agent_loop] %s turn %d: HTTP error: %s", agent_name, turns, exc)
+            break
+
+        if resp.status_code != 200:
+            logger.error(
+                "[agent_loop] %s turn %d: Anthropic %s: %s",
+                agent_name, turns, resp.status_code, resp.text[:300],
+            )
+            break
+
+        data = resp.json()
+        stop_reason = data.get("stop_reason", "end_turn")
+        content_blocks = data.get("content", [])
+
+        # Accumulate any text the model produced this turn
+        for block in content_blocks:
+            if isinstance(block, dict) and block.get("type") == "text":
+                final_text = block.get("text", "")
+
+        # Append assistant turn to history
+        messages.append({"role": "assistant", "content": content_blocks})
+
+        if stop_reason == "end_turn":
+            logger.info("[agent_loop] %s done after %d turn(s)", agent_name, turns)
+            break
+
+        if stop_reason != "tool_use":
+            logger.warning("[agent_loop] %s unexpected stop_reason=%s", agent_name, stop_reason)
+            break
+
+        # ── Partition tool calls ────────────────────────────────────────
+        tool_calls = [b for b in content_blocks if isinstance(b, dict) and b.get("type") == "tool_use"]
+        if not tool_calls:
+            break
+
+        read_calls  = [tc for tc in tool_calls if tc.get("name") in _READONLY_TOOLS]
+        write_calls = [tc for tc in tool_calls if tc.get("name") not in _READONLY_TOOLS]
+
+        tool_results: List[Dict[str, Any]] = []
+
+        # ── Read-only: run concurrently (up to 10) ──────────────────────
+        if read_calls:
+            semaphore = asyncio.Semaphore(10)
+
+            async def _run_read(tc: Dict[str, Any]) -> Dict[str, Any]:
+                async with semaphore:
+                    return await _execute_workspace_tool_async(
+                        tc.get("name", ""),
+                        tc.get("input", {}),
+                        project_id,
+                        workspace_path,
+                    )
+
+            read_results = await asyncio.gather(
+                *[_run_read(tc) for tc in read_calls],
+                return_exceptions=True,
+            )
+            for tc, res in zip(read_calls, read_results):
+                if isinstance(res, Exception):
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tc["id"],
+                        "content": f"Error: {res}",
+                        "is_error": True,
+                    })
+                else:
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tc["id"],
+                        "content": str(res.get("output", "")) if res.get("success") else f"Error: {res.get('error', 'unknown')}",
+                        **({"is_error": True} if not res.get("success") else {}),
+                    })
+                logger.debug("[agent_loop] %s read tool=%s ok=%s", agent_name, tc.get("name"), not isinstance(res, Exception))
+
+        # ── Write / run: serial to preserve workspace consistency ────────
+        for tc in write_calls:
+            name = tc.get("name", "")
+            inputs = tc.get("input", {})
+            try:
+                res = await _execute_workspace_tool_async(name, inputs, project_id, workspace_path)
+                if name in ("write_file", "edit_file"):
+                    p = inputs.get("path", "")
+                    if p and p not in files_written:
+                        files_written.append(p)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tc["id"],
+                    "content": str(res.get("output", "ok")) if res.get("success") else f"Error: {res.get('error', 'failed')}",
+                    **({"is_error": True} if not res.get("success") else {}),
+                })
+                logger.info("[agent_loop] %s write tool=%s path=%s ok=%s", agent_name, name, inputs.get("path",""), res.get("success"))
+            except Exception as exc:
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tc["id"],
+                    "content": f"Error: {exc}",
+                    "is_error": True,
+                })
+
+        # ── Feed results back for next turn ─────────────────────────────
+        messages.append({"role": "user", "content": tool_results})
+
+    else:
+        logger.warning("[agent_loop] %s hit max_turns=%d — forcing end_turn", agent_name, max_turns)
+
+    metadata = {
+        "turns": turns,
+        "files_written": files_written,
+        "model": model,
+    }
+    return final_text, metadata
+
+
+# ─── end of agentic loop helpers ───────────────────────────────────────────
+
 async def _run_single_agent_with_context(
     *,
     project_id: str,
@@ -218,15 +880,140 @@ async def _run_single_agent_with_context(
     effective: dict,
     model_chain: list[dict],
     build_kind: str = "fullstack",
+    workspace_path: str = "",
 ):
-    output, _meta = await _call_llm_with_fallback(
-        message=project_prompt,
-        system_message=f"{agent_name} execution",
-        session_id=f"{project_id}:{agent_name}",
-        model_chain=model_chain,
-        api_keys=effective,
-        agent_name=agent_name,
+    # ── Build context for this agent ────────────────────────────────────────
+    # Priority 1: structured build memory (goal, stack, schema, routes, files)
+    # Priority 2: raw prior-agent outputs (truncated, for agents that need code)
+    # ─────────────────────────────────────────────────────────────────────────
+    memory_summary = ""
+    if workspace_path:
+        try:
+            from backend.orchestration.build_memory import get_memory_summary
+            memory_summary = get_memory_summary(workspace_path)
+        except Exception as _bm_err:
+            import logging as _logging
+            _logging.getLogger(__name__).warning("build_memory get_summary failed: %s", _bm_err)
+
+    # Build raw context block from prior agents' outputs (kept as supplement)
+    # Use 8000 chars per agent so code context is not truncated.
+    context_block = ""
+    if previous_outputs:
+        parts = []
+        for prior_agent, prior_result in previous_outputs.items():
+            prior_text = ""
+            if isinstance(prior_result, dict):
+                prior_text = str(prior_result.get("output") or prior_result.get("result") or "")
+            elif isinstance(prior_result, str):
+                prior_text = prior_result
+            if prior_text.strip():
+                parts.append(f"### {prior_agent}\n{prior_text[:8000]}")
+        if parts:
+            context_block = (
+                "\n\n---\n## Context from prior agents\n"
+                + "\n\n".join(parts)
+                + "\n---\n"
+            )
+
+    # Inject the goal as a reminder at the top of the prompt so agents never
+    # forget what they are building when context is long.
+    goal_reminder = f"## GOAL\n{project_prompt}\n\n## YOUR TASK\n"
+
+    # Compose enriched prompt: goal + structured memory (if available) + raw context
+    if memory_summary:
+        enriched_prompt = goal_reminder + project_prompt + "\n\n" + memory_summary + context_block
+    else:
+        enriched_prompt = goal_reminder + project_prompt + context_block
+    # Use the AGENT_DAG system_prompt so each agent gets its full code-writing
+    # instructions (e.g. "Output ONLY complete JSX code") instead of the bare
+    # "Frontend Generation execution" stub that caused agents to return prose.
+    try:
+        from backend.agent_dag import AGENT_DAG as _AGENT_DAG
+        _dag_entry = _AGENT_DAG.get(agent_name, {})
+        _dag_system_prompt = (_dag_entry.get("system_prompt") or "").strip()
+    except Exception:
+        _dag_system_prompt = ""
+    # Inject design system + payment default rules for code-generating agents
+    _DESIGN_PAYMENT_AGENTS = {
+        "Frontend Generation", "Design Agent", "Backend Generation",
+        "Integration Agent", "API Integration", "Deployment Agent",
+    }
+    _UX_AUDIT_AGENTS = {"UX Auditor"}
+    try:
+        from backend.prompts.loader import (
+            load_design_system_injection,
+            load_payment_default_injection,
+        )
+        _design_inject = load_design_system_injection()
+        _payment_inject = load_payment_default_injection()
+    except Exception:
+        _design_inject = ""
+        _payment_inject = ""
+
+    if agent_name in _DESIGN_PAYMENT_AGENTS and (_design_inject or _payment_inject):
+        _injection_parts = []
+        if _design_inject:
+            _injection_parts.append(f"## DESIGN SYSTEM REQUIREMENTS (MANDATORY)\n\n{_design_inject.strip()}")
+        if _payment_inject:
+            _injection_parts.append(f"## PAYMENT INTEGRATION REQUIREMENTS (MANDATORY)\n\n{_payment_inject.strip()}")
+        _injection_block = "\n\n---\n\n".join(_injection_parts)
+        _dag_system_prompt = f"{_injection_block}\n\n---\n\n{_dag_system_prompt}" if _dag_system_prompt else _injection_block
+
+    if agent_name in _UX_AUDIT_AGENTS:
+        _ux_grounding = (
+            "\n\nCRITICAL AUDIT RULE: Before scoring ANYTHING, you MUST:\n"
+            "1. Read the generated source files explicitly listed in your context.\n"
+            "2. Reference actual file paths (e.g. src/pages/Dashboard.jsx) in your audit.\n"
+            "3. NEVER write 'I\'ll assume', 'based on the specification', or 'since no frontend code'. "
+            "These phrases mean your audit is fictional and it WILL be rejected by the Build Integrity Validator.\n"
+            "4. If you cannot see actual code, write: AUDIT BLOCKED: Required files not available. Score: INVALID.\n"
+            "Your score must reference specific line numbers in specific files."
+        )
+        _dag_system_prompt = (_dag_system_prompt or "") + _ux_grounding
+
+    system_message = _dag_system_prompt or (
+        f"You are {agent_name}. Output ONLY production-ready code. "
+        "No prose, no markdown explanation. Start your response with the first line of code."
     )
+    # ── Agentic loop: try tool-using Anthropic loop first, fall back to
+    #    legacy one-shot if no Anthropic key is available.
+    _anthropic_key = (effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY", "")
+    _primary_model = next(
+        (c.get("model") for c in (model_chain or []) if c.get("provider") == "anthropic"),
+        None,
+    )
+
+    if _anthropic_key and _primary_model:
+        # Adaptive thinking: enabled for agents where deep pre-reasoning matters.
+        # Mirrors Claude Code's thinkingConfig: { type: 'adaptive' }.
+        _use_thinking = agent_name in _THINKING_AGENTS
+        # Full observe-act-inspect-revise loop
+        output, _loop_meta = await _call_llm_with_tools_loop(
+            message=enriched_prompt,
+            system_message=system_message,
+            project_id=project_id,
+            workspace_path=workspace_path or "",
+            api_key=_anthropic_key,
+            model=_primary_model,
+            agent_name=agent_name,
+            max_turns=20,
+            use_thinking=_use_thinking,
+        )
+        _files_written = _loop_meta.get("files_written", [])
+        _turns = _loop_meta.get("turns", 1)
+    else:
+        # Fallback: legacy one-shot (no Anthropic key in chain)
+        output, _meta_fb = await _call_llm_with_fallback(
+            message=enriched_prompt,
+            system_message=system_message,
+            session_id=f"{project_id}:{agent_name}",
+            model_chain=model_chain,
+            api_keys=effective,
+            agent_name=agent_name,
+        )
+        _files_written = []
+        _turns = 1
+
     result = {
         "status": "completed",
         "output": output,
@@ -236,6 +1023,8 @@ async def _run_single_agent_with_context(
         "project_id": project_id,
         "user_id": user_id,
         "build_kind": build_kind,
+        "files_written": _files_written,
+        "loop_turns": _turns,
     }
     return await run_real_post_step(agent_name, project_id, previous_outputs, result)
 
@@ -270,7 +1059,7 @@ def _enrich_job_public_urls(job: dict[str, Any]) -> dict[str, Any]:
 
 async def _lookup_job(job_id: str):
     try:
-        runtime_state = __import__("orchestration.runtime_state", fromlist=["get_job"])
+        runtime_state = __import__("backend.orchestration.runtime_state", fromlist=["get_job"])
         return await runtime_state.get_job(job_id)
     except Exception:
         return None
@@ -354,7 +1143,7 @@ class SuggestNextBody(BaseModel):
     last_prompt: Optional[str] = None
 
 
-class InjectStripeBody(BaseModel):
+class InjectPaymentBody(BaseModel):
     model_config = _model_config()
     code: str = ""
     target: Optional[str] = "checkout"
@@ -405,34 +1194,601 @@ class OptimizeBody(BaseModel):
 class ShareCreateBody(BaseModel):
     model_config = _model_config()
     project_id: str = ""
-    read_only: bool = True
+    read_only: bool = False
+    expires_at: Optional[datetime] = None
 
 
-class GenerateContentRequest(BaseModel):
+class ShareReadBody(BaseModel):
     model_config = _model_config()
-    prompt: str
-    format: Optional[str] = None
+    share_id: str = ""
 
 
-class RuntimeWhatIfBody(BaseModel):
+class ShareRevokeBody(BaseModel):
     model_config = _model_config()
-    scenario: str = Field(..., min_length=3, max_length=4000)
-    population_size: int = Field(default=24, ge=3, le=256)
-    rounds: int = Field(default=3, ge=1, le=8)
-    agent_roles: List[str] = Field(default_factory=list)
-    priors: Dict[str, float] = Field(default_factory=dict)
+    share_id: str = ""
 
 
-class RuntimeBenchmarkRunBody(BaseModel):
+class ShareUpdateBody(BaseModel):
     model_config = _model_config()
-    suite_path: Optional[str] = None
-    max_runs: int = Field(default=10, ge=1, le=100)
-    execute_live: bool = False
-    output_subdir: Optional[str] = None
+    share_id: str = ""
+    read_only: Optional[bool] = None
+    expires_at: Optional[datetime] = None
 
 
-db = None
-audit_logger = None
+class ProjectStateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    state: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectListBody(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = MAX_USER_PROJECTS_DASHBOARD
+    offset: int = 0
+
+
+class ProjectDeleteBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectCreateBody(BaseModel):
+    model_config = _model_config()
+    project_name: str = ""
+    project_type: str = ""
+    description: str = ""
+    project_id: Optional[str] = None
+
+
+class ProjectUpdateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    project_name: Optional[str] = None
+    project_type: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ProjectRenameBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_name: str = ""
+
+
+class ProjectForkBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_name: str = ""
+
+
+class ProjectArchiveBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectUnarchiveBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectPinBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectUnpinBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectSetPublicBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_public: bool = False
+
+
+class ProjectSetPrivateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectSetFeaturedBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_featured: bool = False
+
+
+class ProjectSetTemplateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_template: bool = False
+
+
+class ProjectSetOwnerBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: str = ""
+
+
+class ProjectAddCollaboratorBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    user_id: str = ""
+    role: str = "viewer"
+
+
+class ProjectRemoveCollaboratorBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    user_id: str = ""
+
+
+class ProjectTransferBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: str = ""
+
+
+class ProjectTransferAcceptBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferRejectBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferCancelBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferListBody(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ProjectTransferReadBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferDeleteBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferUpdateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ProjectTransferSetPublicBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_public: bool = False
+
+
+class ProjectTransferSetPrivateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferSetFeaturedBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_featured: bool = False
+
+
+class ProjectTransferSetTemplateBody(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    is_template: bool = False
+
+
+class ProjectTransferSetOwner(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: str = ""
+
+
+class ProjectTransferAddCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    user_id: str = ""
+    role: str = "viewer"
+
+
+class ProjectTransferRemoveCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    user_id: str = ""
+
+
+class ProjectTransferTransfer(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: str = ""
+
+
+class ProjectTransferTransferAccept(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferTransferReject(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferTransferCancel(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferTransferList(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ProjectTransferTransferRead(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferTransferDelete(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+
+
+class ProjectTransferTransferUpdate(BaseModel):
+    model_config = _model_config()
+    project_id: str = ""
+    new_owner_id: Optional[str] = None
+    status: Optional[str] = None
+
+
+class User(BaseModel):
+    model_config = _model_config()
+    id: str
+    email: EmailStr
+    is_admin: bool = False
+    credit_balance: int = 0
+    referral_code: Optional[str] = None
+    referred_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class UserUpdate(BaseModel):
+    model_config = _model_config()
+    email: Optional[EmailStr] = None
+    is_admin: Optional[bool] = None
+    credit_balance: Optional[int] = None
+    referral_code: Optional[str] = None
+    referred_by: Optional[str] = None
+
+
+class UserCreate(BaseModel):
+    model_config = _model_config()
+    email: EmailStr
+    password: str
+    is_admin: bool = False
+    credit_balance: int = 0
+    referral_code: Optional[str] = None
+    referred_by: Optional[str] = None
+
+
+class Token(BaseModel):
+    model_config = _model_config()
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    model_config = _model_config()
+    email: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    model_config = _model_config()
+    email: EmailStr
+    password: str
+
+
+class PasswordResetRequest(BaseModel):
+    model_config = _model_config()
+    email: EmailStr
+
+
+class PasswordReset(BaseModel):
+    model_config = _model_config()
+    token: str
+    new_password: str
+
+
+class EmailVerificationRequest(BaseModel):
+    model_config = _model_config()
+    email: EmailStr
+
+
+class EmailVerification(BaseModel):
+    model_config = _model_config()
+    token: str
+
+
+class GuestLoginResponse(BaseModel):
+    model_config = _model_config()
+    user_id: str
+    access_token: str
+    token_type: str
+
+
+class RefreshTokenRequest(BaseModel):
+    model_config = _model_config()
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
+    model_config = _model_config()
+    access_token: str
+    token_type: str
+
+
+class Project(BaseModel):
+    model_config = _model_config()
+    id: str
+    name: str
+    type: str
+    description: str
+    user_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ProjectCreate(BaseModel):
+    model_config = _model_config()
+    project_name: str
+    project_type: str
+    description: str
+    id: Optional[str] = None
+
+
+class ProjectUpdate(BaseModel):
+    model_config = _model_config()
+    project_name: Optional[str] = None
+    project_type: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ProjectDelete(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectList(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ProjectRead(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectRename(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_name: str
+
+
+class ProjectFork(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_name: str
+
+
+class ProjectArchive(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectUnarchive(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectPin(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectUnpin(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectSetPublic(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_public: bool = False
+
+
+class ProjectSetPrivate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectSetFeatured(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_featured: bool = False
+
+
+class ProjectSetTemplate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_template: bool = False
+
+
+class ProjectSetOwner(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: str
+
+
+class ProjectAddCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    user_id: str
+    role: str = "viewer"
+
+
+class ProjectRemoveCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    user_id: str
+
+
+class ProjectTransfer(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: str
+
+
+class ProjectTransferAccept(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferReject(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferCancel(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferList(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ProjectTransferRead(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferDelete(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferUpdate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ProjectTransferSetPublic(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_public: bool = False
+
+
+class ProjectTransferSetPrivate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferSetFeatured(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_featured: bool = False
+
+
+class ProjectTransferSetTemplate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    is_template: bool = False
+
+
+class ProjectTransferSetOwner(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: str
+
+
+class ProjectTransferAddCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    user_id: str
+    role: str = "viewer"
+
+
+class ProjectTransferRemoveCollaborator(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    user_id: str
+
+
+class ProjectTransferTransfer(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: str
+
+
+class ProjectTransferTransferAccept(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferTransferReject(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferTransferCancel(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferTransferList(BaseModel):
+    model_config = _model_config()
+    user_id: Optional[str] = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ProjectTransferTransferRead(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferTransferDelete(BaseModel):
+    model_config = _model_config()
+    project_id: str
+
+
+class ProjectTransferTransferUpdate(BaseModel):
+    model_config = _model_config()
+    project_id: str
+    new_owner_id: Optional[str] = None
+    status: Optional[str] = None
 
 
 class _FakeDb:
@@ -609,39 +1965,25 @@ async def lifespan(_app: FastAPI):
         return
     # ── Normal startup ────────────────────────────────────────────────────────
     try:
-        from db_pg import ensure_all_tables, get_db
-        from deps import init as init_deps
-
-        if os.environ.get("DATABASE_URL", "").strip():
-            db = await get_db()
-            await ensure_all_tables()
-            init_deps(db=db, audit_logger=audit_logger)
-            logger.info("Database initialized for FastAPI server")
-        else:
-            init_deps(db=None, audit_logger=audit_logger)
-            logger.info("DATABASE_URL not set; starting in liveness-only mode")
-    except Exception as exc:
-        from deps import init as init_deps
-
-        db = None
-        init_deps(db=None, audit_logger=audit_logger)
-        logger.warning("Server startup continued without database: %s", exc)
-    yield
+        from .services.migration_runner import run_migrations_idempotent
+        await run_migrations_idempotent()
+        logger.info("Startup migrations complete.")
+    except Exception as _mig_err:
+        logger.warning("Startup migration failed (non-fatal): %s", _mig_err)
     try:
-        from db_pg import close_pg_pool
+        from .db_pg import ensure_all_tables
+        await ensure_all_tables()
+        logger.info("ensure_all_tables complete.")
+    except Exception as _tbl_err:
+        logger.warning("ensure_all_tables failed (non-fatal): %s", _tbl_err)
+    yield
+    # shutdown
+    logger.info("shutdown")
 
-        await close_pg_pool()
-    except Exception:
-        pass
 
+app = FastAPI(lifespan=lifespan)
 
-app = FastAPI(title="CrucibAI Platform", lifespan=lifespan)
-
-NO_CACHE_HEADERS = {
-    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-    "Pragma": "no-cache",
-    "Expires": "0",
-}
+api_router = __import__('fastapi').APIRouter()  # optional-auth public catalog routes
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -662,15 +2004,12 @@ cors_origins = [
     for origin in os.environ.get("CORS_ORIGINS", os.environ.get("FRONTEND_URL", "")).split(",")
     if origin.strip()
 ]
-cors_allow_credentials = bool(cors_origins)
-if not cors_origins:
-    logger.warning(
-        "CORS_ORIGINS/FRONTEND_URL not set; using wildcard origins with credentials disabled. "
-        "Set CORS_ORIGINS for authenticated browser flows."
-    )
+cors_origins: List[str] = CORS_ALLOW_ORIGINS
+cors_allow_credentials: bool = True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins or ["*"],
+    allow_origins=cors_origins,
     allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -799,6 +2138,217 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("adapter.routes.spawn", "router", True),
 ]
 
+@app.get("/health")
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+@app.get("/api/v1/health")
+async def health_check_v1():
+    return {"status": "ok", "version": "v1", "timestamp": str(datetime.now())}
+
+
+@app.get("/api/")
+async def api_root():
+    return {
+        "message": "CrucibAI API",
+        "status": "healthy",
+        "simulation": "reality_engine",
+    }
+
+
+@app.get("/api/release/version")
+async def release_version():
+    return {
+        "status": "healthy",
+        "release_contract": "simulation_reality_engine_v2",
+        "simulation_route": "/api/simulations",
+        "simulation_page": "/app/what-if",
+        "frontend_source": "fresh_build_required",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+
+class BenchmarkRunRequest(BaseModel):
+    goal: str
+    secret: str
+
+@app.get("/api/v1/benchmark-run")
+async def run_benchmark_job_direct_get():
+    return {"status": "benchmark endpoint exists"}
+
+@app.post("/api/v1/benchmark-run")
+async def run_benchmark_job_direct(
+    body: BenchmarkRunRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    Direct benchmark endpoint in server.py.
+    """
+    BENCHMARK_SECRET = os.environ.get("BENCHMARK_SECRET", "crucibai_benchmark_2026_secret_key")
+    if body.secret != BENCHMARK_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid benchmark secret")
+        
+    try:
+        from .services.runtime.task_manager import task_manager
+        from .routes.orchestrator import _background_auto_runner_job
+        
+        # Create job with a system user ID
+        job = await task_manager.create_task(
+            goal=body.goal,
+            user_id="system-benchmark-user",
+            mode="guided"
+        )
+        
+        job_id = job["id"]
+        project_id = job.get("project_id")
+        workspace_path = _project_workspace_path(project_id)
+        
+        # Start background execution
+        background_tasks.add_task(_background_auto_runner_job, job_id, str(workspace_path))
+        
+        return {
+            "success": True, 
+            "job_id": job_id, 
+            "project_id": project_id,
+            "status": "started"
+        }
+        
+    except Exception as e:
+        logger.exception("benchmark/run direct error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.get("/api/llm-config")
+async def llm_config(user: User = Depends(get_authenticated_or_api_user)):
+    user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    anthropic_ready = bool(effective.get("anthropic") or effective.get("ANTHROPIC_API_KEY"))
+    cerebras_ready = bool(effective.get("cerebras") or effective.get("CEREBRAS_API_KEY"))
+    return {
+        "anthropic_model": ANTHROPIC_HAIKU_MODEL,
+        "anthropic_api_key": anthropic_ready,
+        "cerebras_api_key": cerebras_ready,
+        "chat_with_search_system": CHAT_WITH_SEARCH_SYSTEM,
+        "real_agent_no_llm_keys_detail": REAL_AGENT_NO_LLM_KEYS_DETAIL,
+        "has_any_llm_api_key": bool(effective),
+        "has_anthropic_api_key": anthropic_ready,
+        "has_cerebras_api_key": cerebras_ready,
+        "providers": {
+            "anthropic": {"configured": anthropic_ready, "model": ANTHROPIC_HAIKU_MODEL},
+            "cerebras": {"configured": cerebras_ready},
+        },
+    }
+
+
+@app.get("/api/llm-models")
+async def llm_models(user: User = Depends(get_authenticated_or_api_user)):
+    return await _get_model_chain(user)
+
+
+@app.get("/api/api-keys")
+async def api_keys(user: User = Depends(get_current_user)):
+    return await get_workspace_api_keys(user)
+
+
+@app.get("/api/session-journal")
+async def session_journal(user: User = Depends(get_current_user)):
+    return await list_session_journal_entries(user.id)
+
+
+@app.get("/api/events")
+async def events(user: User = Depends(get_current_user)):
+    return await read_persisted_events(user.id)
+
+
+@app.get("/api/memory-graph")
+async def memory_graph(user: User = Depends(get_current_user)):
+    return await get_memory_graph(user.id)
+
+
+@app.get("/api/cost-tracker")
+async def cost_tracker_endpoint(user: User = Depends(get_current_user)):
+    return await cost_tracker.get_costs(user.id)
+
+
+@app.get("/api/provider-readiness")
+async def provider_readiness_endpoint(user: User = Depends(get_current_user)):
+    return build_provider_readiness(
+        user_tier="admin" if getattr(user, "is_admin", False) else "free",
+        available_credits=int(getattr(user, "credit_balance", 0) or 0),
+    )
+
+
+@app.get("/api/health/llm")
+async def llm_health_check():
+    readiness = build_provider_readiness()
+    return {
+        "status": readiness.get("status", "not_configured"),
+        "ok": readiness.get("status") == "ready",
+        "live_invocation": readiness.get("live_invocation"),
+        "secret_values_included": False,
+        "warnings": readiness.get("warnings") or [],
+        "providers": readiness.get("providers") or {},
+    }
+
+
+# Dynamically load all routers from the routes directory.
+# This keeps the server file clean and modular.
+_ALL_ROUTES: List[Tuple[str, str, bool]] = [
+    ("backend.routes.auth", "auth_router", False),
+    ("backend.routes.runtime", "router", False),
+    ("backend.routes.simulations", "router", False),
+    ("backend.routes.projects", "projects_router", False),
+    ("backend.routes.project_memory", "router", False),
+    ("backend.routes.automation", "router", False),
+    ("backend.routes.community", "router", False),
+    ("backend.routes.voice_input", "router", False),
+    ("backend.routes.crucib_workspace_adapter", "router", False),
+    ("backend.routes.crucib_ws_events", "router", False),
+    ("backend.routes.deploy", "router", False),
+    ("backend.routes.ecosystem", "router", False),
+    ("backend.routes.ai", "router", False),
+    ("backend.routes.images", "router", False),
+    ("backend.routes.migration", "router", False),
+    ("backend.routes.git_sync", "router", False),
+    ("backend.routes.ide", "router", True),
+    ("backend.routes.mobile", "mobile_router", True),
+    ("backend.routes.monitoring", "router", False),
+    ("backend.routes.doctor", "router", False),
+    ("backend.routes.capabilities", "router", False),
+    ("backend.routes.trust", "router", False),
+    ("backend.routes.knowledge", "router", False),
+    ("backend.routes.connectors", "router", False),
+    ("backend.routes.braintree_payments", "router", False),
+    ("backend.routes.cost_hook", "router", False),
+    ("backend.routes.skills", "router", False),
+    ("backend.routes.terminal", "router", False),
+    ("backend.routes.tokens", "router", False),
+    ("backend.routes.vibecoding", "router", False),
+    ("backend.routes.worktrees", "router", False),
+    ("backend.routes.artifacts", "router", False),
+    ("backend.routes.approvals", "router", False),
+    ("backend.routes.chat_react", "router", False),
+    ("backend.routes.agentic_loop", "router", False),
+    ("backend.routes.compat", "router", False),
+    ("backend.routes.compact_command", "router", False),
+    ("backend.routes.orchestrator", "router", False),
+    ("backend.routes.jobs", "router", False),
+    ("backend.routes.workspace", "router", False),
+    ("backend.routes.preview_serve", "router", False),
+    ("backend.adapter.routes.preview", "router", True),
+    ("backend.adapter.routes.deploy", "router", True),
+    ("backend.adapter.routes.trust", "router", True),
+    ("backend.adapter.routes.automation", "router", True),
+    ("backend.adapter.routes.files", "router", True),
+    ("backend.adapter.routes.spawn", "router", True),
+]
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
 
 for _module_name, _attr_name, _optional in _ALL_ROUTES:
@@ -810,32 +2360,22 @@ for _module_name, _attr_name, _optional in _ALL_ROUTES:
             {
                 "module": _module_name,
                 "attr": _attr_name,
-                "optional": _optional,
-                "loaded": True,
-                "prefix": getattr(_router, "prefix", ""),
-                "error": None,
+                "status": "loaded",
             }
         )
-        logger.debug("Registered router: %s", _module_name)
-    except Exception as _exc:
+    except Exception as e:
         ROUTE_REGISTRATION_REPORT.append(
             {
                 "module": _module_name,
                 "attr": _attr_name,
-                "optional": _optional,
-                "loaded": False,
-                "prefix": None,
-                "error": str(_exc),
+                "status": "failed",
+                "error": str(e),
             }
         )
-        if _optional:
-            logger.warning("Skipping optional router %s: %s", _module_name, _exc)
-        elif STRICT_ROUTE_LOADING:
+        if not _optional:
             raise RuntimeError(
-                f"Required router failed to load: {_module_name}.{_attr_name}: {_exc}"
-            ) from _exc
-        else:
-            logger.error("Required router failed to load (strict disabled): %s: %s", _module_name, _exc)
+                f"Required router failed to load: {_module_name}.{_attr_name}: {e}"
+            ) from e
 
 _loaded_routes = sum(1 for _r in ROUTE_REGISTRATION_REPORT if _r["loaded"])
 _failed_required_routes = [
@@ -901,47 +2441,30 @@ async def templates_optional_inventory(_user: dict = Depends(get_optional_user))
 
 def _is_admin_user(user: dict) -> bool:
     if not user:
-        return False
-    uid = str(user.get("id") or "")
-    admin_role = str(user.get("admin_role") or "")
-    roles = {str(r) for r in (user.get("roles") or [])}
-    return uid in ADMIN_USER_IDS or admin_role in ADMIN_ROLES or bool(roles & ADMIN_ROLES)
+        return {"prompts": [], "total": 0}
+    return {"prompts": [], "total": 0, "user_id": user.get("id")}
 
 
-def _frontend_asset_fingerprint(manifest_path: Path) -> Optional[str]:
-    if not manifest_path.exists():
-        return None
-    try:
-        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-        files = payload.get("files") or {}
-        return str(files.get("main.js") or "") or None
-    except Exception:
-        return None
+@api_router.get("/agents/activity")
+async def get_agents_activity(user: dict = Depends(get_optional_user)):
+    """Return agent activity feed. Anonymous returns empty; authenticated returns own activity."""
+    if not user:
+        return {"activity": [], "total": 0}
+    return {"activity": [], "total": 0, "user_id": user.get("id")}
 
 
-@app.get("/api/debug/routes", include_in_schema=False)
-async def debug_routes(user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    if not _is_admin_user(user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return {
-        "strict_route_loading": STRICT_ROUTE_LOADING,
-        "registered": ROUTE_REGISTRATION_REPORT,
-        "loaded_count": _loaded_routes,
-        "failed_required_count": len(_failed_required_routes),
-        "failed_required": _failed_required_routes,
-        "registered_paths": sorted({route.path for route in app.routes}),
-    }
+@api_router.get("/orchestrator/build-jobs")
+async def list_build_jobs(user: dict = Depends(get_optional_user)):
+    """List build jobs. Anonymous returns empty; authenticated lists own jobs."""
+    if not user:
+        return {"jobs": [], "total": 0}
+    return {"jobs": [], "total": 0, "user_id": user.get("id")}
 
 
-@app.get("/api/debug/routes/health", include_in_schema=False)
-async def debug_routes_health(user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    if not _is_admin_user(user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return {
-        "ok": len(_failed_required_routes) == 0,
-        "failed_required_count": len(_failed_required_routes),
-        "strict_route_loading": STRICT_ROUTE_LOADING,
-    }
+# ── Project progress websocket ────────────────────────────────────────────────
+@app.websocket("/api/projects/{project_id}/progress")
+async def websocket_project_progress(websocket: WebSocket, project_id: str):
+    """Real-time project build progress stream.
 
 
 @app.get("/api/debug/frontend-build", include_in_schema=False)
@@ -1412,7 +2935,14 @@ async def websocket_project_progress(websocket: WebSocket, project_id: str):
             pass
 
 
+app.include_router(api_router)
+
 # Add security and performance middleware
+@app.get("/api/admin/route-report")
+async def route_report(user: User = Depends(require_permission(Permission.CREATE_PROJECT))):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return ROUTE_REGISTRATION_REPORT
 
 
 @app.get("/api/dev-preview/{project_id}", include_in_schema=False)
@@ -1476,165 +3006,58 @@ async def spa_fallback(full_path: str) -> Response:
     return JSONResponse({"message": "CrucibAI Platform API", "status": "healthy"})
 
 
-@app.head("/api/health", include_in_schema=False)
-async def health_head() -> Response:
-    return Response(status_code=200)
 
-
-@app.get("/api/healthz", include_in_schema=False)
-async def healthz() -> dict[str, str]:
-    return {"status": "healthy"}
-
-
-@app.get("/__routes", include_in_schema=False)
-async def route_inventory() -> dict[str, Any]:
-    return {
-        "routes": sorted({route.path for route in app.routes}),
-        "count": len(app.routes),
-    }
-
-
-# =============================================================================
-# CF31 — Shims for v28 orchestrator/jobs/ai routes.
-# These symbols are imported by routes/orchestrator.py and routes/ai.py
-# via `from server import ...`. They are deliberately small and honest so
-# that production route behavior is safe even before the full v28
-# orchestration backend is ported.
-# =============================================================================
-
-# --- Module globals expected by the ported orchestrator ---------------------
-AGENT_DAG: Dict[str, Dict[str, Any]] = {}
-
-LAST_BUILD_STATE: Dict[str, Any] = {
-    "selected_agents": [],
-    "selected_agent_count": 0,
-    "phase_count": 0,
-    "orchestration_mode": "unknown",
-    "selection_explanation": {},
-    "controller_summary": {},
-}
-
-RECENT_AGENT_SELECTION_LOGS: List[str] = []
-
-
-# --- Job ownership helpers --------------------------------------------------
-def _assert_job_owner_match(owner_id: Optional[str], user: Optional[dict]) -> None:
-    """Stateful job access requires an authenticated owner match."""
-    if not owner_id:
-        raise HTTPException(status_code=403, detail="Job owner required")
-    uid = user.get("id") if user else None
-    if not uid or uid != owner_id:
-        raise HTTPException(status_code=403, detail="Not your job")
-
-
-async def _resolve_job_project_id_for_user(project_id: Optional[str], user: dict) -> str:
-    """Resolve a job project_id to a workspace this user can access.
-
-    Current rules (intentionally conservative until full project access model
-    is re-ported from v28): allow the user's own workspace or an explicit
-    project_id that matches the user id. Any other project_id is 404.
-    """
-    pid = (project_id or "").strip()
-    if not pid:
-        return user["id"]
-    if pid == user.get("id"):
-        return pid
-    # Future: multi-project workspace access check goes here.
-    raise HTTPException(status_code=404, detail="Project not found")
-
-
-# --- Build goal request (pydantic model) ------------------------------------
-class BuildGoalRequest(BaseModel):
-    goal: str
-    mode: Optional[str] = "guided"
-    build_target: Optional[str] = None
-    project_id: Optional[str] = None
-
-
-# --- Build-kind classifier (stub) -------------------------------------------
-def _stub_detect_build_kind(goal: str) -> str:
-    """Lightweight heuristic to classify build goals. Used by /api/ai/build/* routes."""
-    g = (goal or "").lower()
-    if any(k in g for k in ("mobile app", "ios app", "android app", "react native", "expo", "flutter")):
-        return "mobile"
-    if any(k in g for k in ("api ", "backend", "rest api", "graphql", "microservice")):
-        return "api_backend"
-    if any(k in g for k in ("landing page", "static site", "marketing site", "portfolio")):
-        return "static_site"
-    if any(k in g for k in ("agent", "workflow", "automation", "pipeline")):
-        return "agent_workflow"
-    if any(k in g for k in ("next", "next.js", "nextjs", "app router")):
-        return "next_app_router"
-    return "vite_react"
-
-
-# --- Re-exports for content policy + dev stub + llm helpers ------------------
-try:
-    from content_policy import screen_user_content  # noqa: F401
-except Exception:
-    def screen_user_content(text: str) -> Optional[str]:
+async def _resolve_job_project_id_for_user(job_id: str, user_id: str) -> Optional[str]:
+    job = await _lookup_job(job_id)
+    if not job:
         return None
-
-try:
-    from dev_stub_llm import (  # noqa: F401
-        REAL_AGENT_NO_LLM_KEYS_DETAIL,
-        chat_llm_available,
-        is_real_agent_only,
-        stub_build_enabled,
-        stub_multifile_markdown,
-    )
-except Exception:
-    REAL_AGENT_NO_LLM_KEYS_DETAIL = ""
-
-    def chat_llm_available(effective_keys: Optional[Dict[str, Any]] = None) -> bool:
-        _ = effective_keys
-        return False
-
-    def is_real_agent_only() -> bool:
-        return False
-
-    def stub_build_enabled() -> bool:
-        return False
-
-    def stub_multifile_markdown(prompt: str, build_kind: Optional[str] = None) -> str:
-        return ""
-
-
-def _tokens_to_credits(tokens: int) -> int:
+    project_id = job.get("project_id")
+    if not project_id:
+        return None
+    # Verify user has access to this project
     try:
-        value = int(tokens or 0)
+        from . import deps
+        db = await deps.get_db()
+        project = await db.projects.find_one({
+            "_id": project_id,
+            "user_id": user_id,
+        })
+        if project:
+            return project_id
     except Exception:
-        value = 0
-    return max(1, value // max(1, int(CREDITS_PER_TOKEN or 1000)))
+        pass
+    return None
+
+def _asgi_static_http_only(static_asgi):
+    """Wrap StaticFiles so WebSocket handshakes never hit Starlette's assert scope['type']=='http'."""
+    async def app(scope, receive, send):
+        if scope["type"] == "websocket":
+            from starlette.websockets import WebSocket
+
+            ws = WebSocket(scope, receive, send)
+            await ws.close(code=1000)
+            return
+        if scope["type"] != "http":
+            return
+        await static_asgi(scope, receive, send)
+
+    return app
 
 
-def _merge_prior_turns_into_message(
-    message: str, prior_turns: Optional[List[Dict[str, Any]]] = None
-) -> str:
-    base = (message or "").strip()
-    turns = prior_turns or []
-    if not turns:
-        return base
-    lines: List[str] = []
-    for turn in turns[-8:]:
-        role = str((turn or {}).get("role") or "user").strip() or "user"
-        content = str(
-            (turn or {}).get("content")
-            or (turn or {}).get("message")
-            or (turn or {}).get("text")
-            or ""
-        ).strip()
-        if content:
-            lines.append(f"{role}: {content}")
-    if base:
-        lines.append(f"user: {base}")
-    return "\n".join(lines).strip()
-
-
-def _is_conversational_message(message: str) -> bool:
-    m = (message or "").lower()
-    return len(m.split()) <= 12 and not any(
-        k in m for k in ("build", "create", "generate", "implement", "code", "deploy")
+# Serve static files from the 'static' directory
+if STATIC_DIR.exists() and any(STATIC_DIR.iterdir()):
+    _static_files = StaticFiles(directory=str(STATIC_DIR), html=True)
+    app.mount("/", _asgi_static_http_only(_static_files), name="static")
+    @app.exception_handler(404)
+    async def not_found_handler(request, exc):
+        path = getattr(getattr(request, "url", None), "path", "")
+        if path.startswith("/api/"):
+            detail = getattr(exc, "detail", "Not Found")
+            return JSONResponse(status_code=404, content={"detail": detail})
+        return FileResponse(str(STATIC_DIR / "index.html"))
+else:
+    logger.warning(
+        f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
     )
 
 

@@ -239,12 +239,12 @@ const OurProjectsPage = () => {
     { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },
     { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our 100+ specialized agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
     { q: 'How do I make changes?', a: 'Just ask in the chat. Say "make it dark mode", "add a sidebar", or "change the colors" and we update the code instantly.' },
-    { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. We give you the files; you deploy to Vercel, Netlify, or any host. You own the code.' },
+    { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. Deployable web projects include build scripts and guidance. One-click deployment is only promised where the configured provider target is available and the validator passes.' },
     { q: 'Is my data secure?', a: 'Yes. We use industry-standard practices. Your API keys stay in your environment; we don’t store them. See our Privacy and Terms for details.' },
     { q: 'Do I own what I create?', a: 'Yes. All applications and code you generate belong to you. Use, modify, or sell them however you like.' },
     { q: 'What are the limitations?', a: 'Complex multi-page apps may need multiple iterations. Very large codebases are subject to model context limits. Offline use is not supported. We recommend verifying critical logic and running your own tests.' },
     { q: 'What’s next for CrucibAI?', a: 'We’re expanding API access for developers, adding more structured outputs (README, API docs, FAQ schema), and improving Swarm and Thinking modes. See our roadmap in the footer.' },
-    { q: 'Enterprise & compliance?', a: "We're working toward SOC 2 and enterprise-grade compliance. For Enterprise or custom plans, contact sales@crucibai.com." }
+    { q: 'Enterprise & compliance?', a: "We're working toward SOC 2 and enterprise compliance controls. For Enterprise or custom plans, contact sales@crucibai.com for the current evidence and deployment options." }
   ];
 
   const faqsExtra = [
@@ -258,7 +258,7 @@ const OurProjectsPage = () => {
     { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
-    { q: 'Can I build mobile apps?', a: 'Currently we focus on web apps (React). Mobile and PWA support are on the roadmap.' },
+    { q: 'Can I build mobile apps?', a: 'Yes, through an Expo/React Native track that produces expo-mobile/ source, app.json, eas.json, screens, scripts, and mobile integrity proof. App Store and Google Play submission still require your developer credentials, signing, EAS build, and store metadata validation.' },
     { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
     { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 100+ specialized agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
   ];
@@ -267,7 +267,7 @@ const OurProjectsPage = () => {
   const whereItems = [
     { title: 'Web app', desc: 'Use CrucibAI in your browser. Describe your idea on the landing page or open the workspace to build, iterate, and export. No setup required.' },
     { title: 'API', desc: 'Integrate via API for prompt → plan and prompt → code. Billing by token usage.' },
-    { title: 'Export & deploy', desc: 'Download your project as a ZIP or push to GitHub. Deploy to Vercel, Netlify, or any host. You own the code and can customize anything.' }
+    { title: 'Export & deploy', desc: 'Download your project as a ZIP or push to GitHub. Deployable projects include build scripts and guidance; provider deploys are configuration-dependent. You own the code and can customize anything.' }
   ];
 
   const comparisonData = {
@@ -280,16 +280,16 @@ const OurProjectsPage = () => {
   };
   const comparisonLabels = [
     { key: 'buildWeb', label: 'Build web apps' },
-    { key: 'buildMobile', label: 'Build mobile apps' },
+    { key: 'buildMobile', label: 'Expo mobile artifacts' },
     { key: 'runAutomations', label: 'Run automations' },
     { key: 'sameAI', label: 'Same AI for apps + automations' },
-    { key: 'importCode', label: 'Import existing code' },
+    { key: 'importCode', label: 'Import doctor / existing code' },
     { key: 'ideExtensions', label: 'IDE extensions' },
     { key: 'realtimeMonitor', label: 'Real-time agent monitor' },
     { key: 'planBeforeBuild', label: 'Plan shown before build' },
     { key: 'approvalWorkflows', label: 'Approval workflows' },
-    { key: 'qualityScore', label: 'Quality score per build' },
-    { key: 'appStorePack', label: 'App Store submission pack' },
+    { key: 'qualityScore', label: 'Build Integrity score' },
+    { key: 'appStorePack', label: 'Store submission automation' },
     { key: 'pricePer100', label: 'Price per 100 credits' }
   ];
 
@@ -311,7 +311,7 @@ const OurProjectsPage = () => {
             )}
             <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
-          <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="sm:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -320,7 +320,7 @@ const OurProjectsPage = () => {
       {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto sm:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
               <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
@@ -346,10 +346,10 @@ const OurProjectsPage = () => {
             Agentic · 100+ specialized agents · High success rate · Full transparency
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
-            Describe it now. Ship it today.
+            Describe it now. Build with proof.
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-kimi-muted mb-12 max-w-2xl mx-auto leading-relaxed">
-            The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
+            The same AI path that builds your app can also run inside gated automations. Web apps, Expo mobile starters, and automations — one platform, one proof-gated handoff.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate('/app/workspace')} className="glass-kimi-btn px-6 py-3 text-gray-900 font-medium rounded-xl transition">
@@ -566,13 +566,13 @@ const OurProjectsPage = () => {
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Automate</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
-                The same AI runs inside your automations. Daily digest. Lead follow-up. Content refresh. Describe what you want in one sentence — we create the agent. Schedule it, webhook it, chain the steps.
+                Automations can call the build system through the guarded run_agent bridge. Schedules, webhooks, and chained steps are configuration-dependent and must pass their own validator checks.
               </p>
             </div>
           </div>
-          <p className="text-center text-sm font-medium text-kimi-text mb-2">run_agent — the bridge competitors can&apos;t copy</p>
+          <p className="text-center text-sm font-medium text-kimi-text mb-2">run_agent — the guarded bridge between builds and automations</p>
           <p className="text-center text-sm text-kimi-muted">
-            N8N and Zapier automate. They don&apos;t build apps. Lovable and Bolt build apps. They don&apos;t automate. CrucibAI does both — with the same AI, in the same platform.
+            N8N and Zapier automate. Lovable and Bolt build apps. CrucibAI connects those motions through one proof-gated workspace.
           </p>
         </div>
       </section>
@@ -580,10 +580,10 @@ const OurProjectsPage = () => {
       {/* Watch It Work — AgentMonitor */}
       <section className="py-20 px-6 bg-kimi-bg-elevated/50">
         <div className="max-w-4xl mx-auto">
-          <span className="text-xs uppercase tracking-wider text-kimi-muted">Full Transparency</span>
-          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">No black boxes. Watch every agent work.</h2>
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Evidence</span>
+          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Claims map to artifacts.</h2>
           <p className="text-kimi-muted text-center mb-10 max-w-2xl mx-auto">
-            While competitors show you a spinner and hope for the best, CrucibAI shows you everything. Every agent, every phase, every decision — in real time. When the build is done, you have a quality score, a full audit trail, and code you own.
+            CrucibAI exposes job events, proof files, validator results, build output, and available agent telemetry. Complete per-agent cost accounting is still not claimable until the evidence matrix says it is.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 mb-10">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -591,16 +591,16 @@ const OurProjectsPage = () => {
               <p className="text-sm text-kimi-muted">See exactly which of the 100+ agents is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h4 className="font-semibold text-kimi-text mb-2">Quality score</h4>
-              <p className="text-sm text-kimi-muted">Every build gets scored 0–100 across frontend, backend, tests, security, and deployment. You see the score before you ship.</p>
+              <h4 className="font-semibold text-kimi-text mb-2">Build Integrity score</h4>
+              <p className="text-sm text-kimi-muted">The tested BIV score is 0-100 across architecture, design, completeness, runtime validity, integration, and deployability.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h4 className="font-semibold text-kimi-text mb-2">Phase retry</h4>
-              <p className="text-sm text-kimi-muted">If a phase falls below quality threshold, we flag it and retry automatically. Self-healing builds, visible to you the entire time.</p>
+              <h4 className="font-semibold text-kimi-text mb-2">Bounded repair</h4>
+              <p className="text-sm text-kimi-muted">Final BIV failure can trigger a bounded repair attempt and rerun. Full DAG node-level retry is still listed as partial.</p>
             </div>
           </div>
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 flex items-center justify-center min-h-[280px]">
-            <p className="text-kimi-muted text-center text-sm">AgentMonitor — real-time agent status, phase progress, token usage, and quality score. <br /><span className="text-xs">Screenshot placeholder — add image when ready.</span></p>
+            <p className="text-kimi-muted text-center text-sm">AgentMonitor — available job events, phase progress, token fields, and Build Integrity score. <br /><span className="text-xs">Screenshot placeholder — add image when ready.</span></p>
           </div>
         </div>
       </section>
@@ -629,14 +629,14 @@ const OurProjectsPage = () => {
               <span className="text-kimi-accent font-mono shrink-0">Thursday</span>
               <div>
                 <h4 className="font-semibold text-kimi-text mb-1">Automate</h4>
-                <p className="text-sm text-kimi-muted">The same AI creates your automations. Daily lead digest to Slack. Email follow-up sequence. Content refresh agent. Describe each one in plain language. We create the agent, wire the steps, set the schedule.</p>
+                <p className="text-sm text-kimi-muted">Automations use the guarded run_agent bridge when configured. Schedules, webhooks, and chained steps are proof-gated by their workflow profile.</p>
               </div>
             </div>
             <div className="flex gap-4">
               <span className="text-kimi-accent font-mono shrink-0">Friday</span>
               <div>
                 <h4 className="font-semibold text-kimi-text mb-1">Ship</h4>
-                <p className="text-sm text-kimi-muted">Export to ZIP. Push to GitHub. Deploy to Vercel or Netlify in one click. Your app is live. Your automations are running. You have the copy for your ads. You run them — we built the stack.</p>
+                <p className="text-sm text-kimi-muted">Export to ZIP. Push to GitHub. Deploy through configured providers only after proof gates pass. You own the generated stack and proof bundle.</p>
               </div>
             </div>
           </div>
@@ -683,12 +683,12 @@ const OurProjectsPage = () => {
           </p>
           <div className="grid sm:grid-cols-3 gap-6">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h4 className="font-semibold text-kimi-text mb-2">Paste, ZIP, or Git</h4>
-              <p className="text-sm text-kimi-muted">Any existing project. Any state. We import it, organize it, and open it in the workspace ready to continue.</p>
+              <h4 className="font-semibold text-kimi-text mb-2">ZIP and workspace import</h4>
+              <p className="text-sm text-kimi-muted">ZIP safety and reconstructed workspace facts are validated before the code enters the normal build pipeline.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
-              <h4 className="font-semibold text-kimi-text mb-2">Security scan on import</h4>
-              <p className="text-sm text-kimi-muted">We run a security check the moment your code arrives. Secrets in client code, auth on API, CORS configuration — you see the checklist before you build another line.</p>
+              <h4 className="font-semibold text-kimi-text mb-2">Baseline security checks</h4>
+              <p className="text-sm text-kimi-muted">BIV blocks likely client-exposed secrets. Full CORS/auth/tenancy import security proof remains part of the security doctor roadmap.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Keep building with AI</h4>
@@ -712,11 +712,11 @@ const OurProjectsPage = () => {
             {[
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Real-time data, admin controls, export to PDF and Excel.', cta: 'Build a dashboard' },
               { title: 'Landing Pages', desc: 'Hero, features, waitlist, and pricing sections. Design-to-code from a screenshot. Live in 30 minutes.', cta: 'Start a landing page' },
-              { title: 'Mobile Apps', desc: 'iOS and Android with Expo. Production-ready. App Store submission pack with step-by-step guides for App Store and Google Play.', cta: 'Build a mobile app' },
-              { title: 'E‑Commerce & Checkout', desc: 'Product catalog, cart, checkout, payments. Inject Stripe in one command. Full automation from product list to order confirmation.', cta: 'Build a store' },
+              { title: 'Mobile Apps (Expo)', desc: 'Generate an Expo/React Native starter with app metadata, EAS config, screens, and scripts. The Build Integrity Validator must prove mobile entry points and packaging artifacts before the build is complete.', cta: 'Plan a mobile build' },
+              { title: 'E‑Commerce & Checkout', desc: 'Product catalog, cart, checkout, payments. Inject Braintree in one command. Full automation from product list to order confirmation.', cta: 'Build a store' },
               { title: 'Automations & Agents', desc: 'Daily digest. Lead follow-up. Content pipeline. Webhook handlers. Describe it — we create it. Schedule or trigger by webhook.', cta: 'Create an agent' },
               { title: 'Internal Tools', desc: 'Admin tables, forms, approval workflows, CRUD. Step chaining between actions. Agentic: ship in hours, not months.', cta: 'Build an internal tool' },
-              { title: 'SaaS Products', desc: 'Full-stack SaaS with auth, Stripe subscriptions, user dashboard, and admin panel. Import the Auth + SaaS pattern and build from there.', cta: 'Start a SaaS' },
+              { title: 'SaaS Products', desc: 'Full-stack SaaS with auth, Braintree subscriptions, user dashboard, and admin panel. Import the Auth + SaaS pattern and build from there.', cta: 'Start a SaaS' },
               { title: 'Docs, Slides & Sheets', desc: 'Generate README, API docs, FAQ schema, presentations, and CSV data — directly from your project or from a prompt.', cta: 'Generate documents' }
             ].map((item, i) => (
               <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
@@ -733,7 +733,7 @@ const OurProjectsPage = () => {
       <section id="how" className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Under the hood</span>
-          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Plan-first. Agent-powered. Fully transparent.</h2>
+          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Plan-first. Agent-powered. Evidence-backed.</h2>
           <div className="grid md:grid-cols-2 gap-8">
             {[
               { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
@@ -758,18 +758,25 @@ const OurProjectsPage = () => {
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">See What CrucibAI Built</h2>
           <p className="text-kimi-muted mb-8">Real apps from our 100+ specialized agents. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
-            {liveExamples.length > 0 ? liveExamples.map((ex) => (
-              <div key={ex.name} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
+            {liveExamples.length > 0 ? liveExamples.map((ex, index) => {
+              const exampleName = typeof ex?.name === 'string' && ex.name.trim()
+                ? ex.name.trim()
+                : `Example ${index + 1}`;
+              const examplePrompt = typeof ex?.prompt === 'string' && ex.prompt.trim()
+                ? ex.prompt.trim()
+                : 'Generated app example';
+              return (
+              <div key={ex?.id || ex?.slug || exampleName} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-gray-50">
                     <FileCode className="w-5 h-5 text-kimi-accent" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-kimi-text">{ex.name.replace(/-/g, ' ')}</h3>
-                    <p className="text-xs text-kimi-muted line-clamp-2">{ex.prompt?.slice(0, 70)}…</p>
+                    <h3 className="font-semibold text-kimi-text">{exampleName.replace(/-/g, ' ')}</h3>
+                    <p className="text-xs text-kimi-muted line-clamp-2">{examplePrompt.slice(0, 70)}…</p>
                   </div>
                 </div>
-                {ex.quality_metrics?.overall_score != null && (
+                {ex?.quality_metrics?.overall_score != null && (
                   <p className="text-xs text-kimi-muted mb-3">Quality score: {ex.quality_metrics.overall_score}/100</p>
                 )}
                 <button
@@ -780,7 +787,8 @@ const OurProjectsPage = () => {
                   {user ? 'View all examples & fork' : 'Sign in to fork'}
                 </button>
               </div>
-            )) : (
+              );
+            }) : (
               <>
                 {['Todo app with auth & CRUD', 'Blog platform with comments', 'E-commerce store with cart'].map((label, i) => (
                   <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -812,7 +820,7 @@ const OurProjectsPage = () => {
         <div className="max-w-3xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Access</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-8">Where Can You Use CrucibAI?</h2>
-          <p className="text-kimi-muted mb-8">Use CrucibAI in the browser, export your code, and deploy anywhere.</p>
+          <p className="text-kimi-muted mb-8">Use CrucibAI in the browser, export your code, and deploy through configured provider targets or your own host.</p>
           <div className="space-y-0 border border-gray-200 rounded-xl overflow-hidden">
             {whereItems.map((item, i) => (
               <div key={i} className="border-b border-gray-200 last:border-0">
@@ -898,15 +906,15 @@ const OurProjectsPage = () => {
           <div className="flex flex-wrap justify-center gap-8 text-sm">
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
-              <span className="text-kimi-text">188 tests passing</span>
+              <span className="text-kimi-text">Validator-tested builds</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
-              <span className="text-kimi-text">Security-first</span>
+              <span className="text-kimi-text">Client-secret scan in BIV</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
-              <span className="text-kimi-text">GDPR & CCPA compliant</span>
+              <span className="text-kimi-text">Privacy and compliance controls in progress</span>
             </div>
           </div>
           <p className="mt-6 text-xs text-kimi-muted"><Link to="/security" className="hover:text-kimi-text transition">Security & Trust →</Link></p>
@@ -927,8 +935,8 @@ const OurProjectsPage = () => {
             </div>
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">Faster</h3>
-              <p className="text-sm text-kimi-muted mb-3">Parallel DAG: many agents run per phase. No artificial delay. Self-heal retries tests and security once if needed.</p>
-              <p className="text-xs text-kimi-accent font-medium">CrucibAI → parallel, no fake latency, self-heal</p>
+              <p className="text-sm text-kimi-muted mb-3">Parallel DAG execution is supported where the runtime selects it. Final BIV failures can trigger bounded repair and rerun.</p>
+              <p className="text-xs text-kimi-accent font-medium">CrucibAI → proof-gated phases, bounded repair</p>
             </div>
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">More helpful for everyone</h3>
@@ -944,7 +952,7 @@ const OurProjectsPage = () => {
         <div className="max-w-4xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Use cases</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6">How is CrucibAI Used in Real-World Applications?</h2>
-          <p className="text-kimi-muted mb-8">Startups, internal tools, agencies, and educators use CrucibAI to go from idea to shipped app faster.</p>
+          <p className="text-kimi-muted mb-8">Startups, internal tools, agencies, and educators use CrucibAI to go from idea to exportable, proof-gated artifacts faster.</p>
           <ul className="grid sm:grid-cols-2 gap-4 text-kimi-body text-kimi-muted">
             {['Startups: MVPs and landing pages in minutes', 'Internal tools: admin dashboards, reports, forms', 'Agencies: client demos and prototypes', 'Education: teaching app design and prototyping'].map((item, i) => (
               <li key={i} className="flex items-center gap-2"><span className="text-kimi-accent">•</span> {item}</li>
@@ -1013,7 +1021,7 @@ const OurProjectsPage = () => {
       <section className="py-24 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable.</h2>
-          <p className="text-kimi-muted mb-8">Describe what you want to build now. Ship it today.</p>
+          <p className="text-kimi-muted mb-8">Describe what you want to build now. Export only after the proof gates pass.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
               Make It Inevitable

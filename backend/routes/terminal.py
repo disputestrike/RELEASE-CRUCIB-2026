@@ -15,37 +15,37 @@ router = APIRouter(prefix="/api", tags=["terminal"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
 
 def _get_admin_roles():
-    import server
+    from .. import server
 
     return server.ADMIN_ROLES
 
 
 def _get_admin_user_ids():
-    import server
+    from .. import server
 
     return server.ADMIN_USER_IDS
 
 
 async def _resolve_ws(project_id, user):
-    from server import _resolve_project_workspace_path_for_user
+    from ..server import _resolve_project_workspace_path_for_user
 
     return await _resolve_project_workspace_path_for_user(project_id, user)
 
@@ -88,7 +88,7 @@ async def terminal_create(
     """Create a terminal session for an authenticated project workspace."""
     if not _terminal_execution_allowed(user):
         raise HTTPException(status_code=403, detail="Terminal execution is disabled")
-    from terminal_integration import terminal_manager
+    from ..terminal_integration import terminal_manager
 
     if os.environ.get("DISABLE_CSRF_FOR_TEST") == "1":
         path = project_path or "."
@@ -124,7 +124,7 @@ async def terminal_execute(
     session_id: str, body: TerminalExecuteRequest, user: dict = Depends(_get_auth())
 ):
     """Execute command in the session's project path. Full implementation — runs real shell command."""
-    from terminal_integration import terminal_manager
+    from ..terminal_integration import terminal_manager
 
     if not _terminal_execution_allowed(user):
         raise HTTPException(status_code=403, detail="Terminal execution is disabled")
@@ -141,7 +141,7 @@ async def terminal_execute(
 
 @router.delete("/terminal/{session_id}")
 async def terminal_close(session_id: str, user: dict = Depends(_get_auth())):
-    from terminal_integration import terminal_manager
+    from ..terminal_integration import terminal_manager
 
     try:
         closed = await terminal_manager.close_terminal(session_id, user_id=user["id"])
@@ -157,7 +157,7 @@ async def terminal_audit(
     limit: int = Query(50, ge=1, le=100), user: dict = Depends(_get_auth())
 ):
     """Return the current user's terminal command audit trail."""
-    from terminal_integration import terminal_manager
+    from ..terminal_integration import terminal_manager
 
     return {
         "events": terminal_manager.audit_events_for_user(user["id"], limit=limit),

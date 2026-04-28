@@ -145,6 +145,14 @@
   line-height: 1.4;
 }
 
+.uw-build-identity-sub {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
 .uw-build-identity-meta {
   display: flex;
   flex-wrap: wrap;
@@ -439,6 +447,10 @@
 
 .uw-root .arp-center-pane-composer .uw-user-chat {
   margin-bottom: 4px;
+  max-height: min(18vh, 180px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 [data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {

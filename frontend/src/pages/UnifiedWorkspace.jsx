@@ -33,6 +33,7 @@ import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
+import WorkspaceLiveControl from '../components/AutoRunner/WorkspaceLiveControl';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
@@ -55,11 +56,18 @@ import {
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from '../workspace/workspaceLiveUi';
+import {
+  bindWorkspaceSearchParams,
+  stableTaskIdForJob,
+  taskEntryFromJob,
+  taskStatusFromJobStatus,
+} from '../workspace/workspaceTaskBinding';
+import { failureStepFromLatestFailure } from '../workspace/workspaceFailureUtils';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
 
-const RIGHT_ORDER = ['preview', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
+const RIGHT_ORDER = ['preview', 'live', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
 
 function sanitizePane(raw) {
   const pane = String(raw || '').trim().toLowerCase();
@@ -76,6 +84,38 @@ function formatCoachReply(guidance) {
   return lines.join('\n\n').trim();
 }
 
+/** E6: map `workspace_transcript` events (user + steer `assistant`) → chat rows. Orchestrator `brain_guidance` still mapped separately. */
+function jobTranscriptLinesFromEvents(events, jobId) {
+  if (!Array.isArray(events) || !jobId) return [];
+  const rows = [];
+  for (const ev of events) {
+    const t = ev?.type || ev?.event_type;
+    if (t !== 'workspace_transcript') continue;
+    const p = ev.payload && typeof ev.payload === 'object' ? ev.payload : {};
+    const role = p.role === 'assistant' ? 'assistant' : 'user';
+    const text = String(p.text || p.body || '').trim();
+    if (!text) continue;
+    const created = ev.created_at;
+    let ts = Date.now();
+    if (typeof created === 'number') {
+      ts = created < 1e12 ? created * 1000 : created;
+    } else if (created) {
+      const d = new Date(created);
+      if (!Number.isNaN(d.getTime())) ts = d.getTime();
+    }
+    rows.push({
+      id: ev.id || `wt_${rows.length}_${ts}`,
+      body: text,
+      role,
+      jobId,
+      pendingBind: false,
+      ts,
+    });
+  }
+  rows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return rows;
+}
+
 export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -84,7 +124,7 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask, tasks } = useTaskStore();
+  const { updateTask, upsertTask, addTask, removeTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
   /** Same-tick handoff goal when router state + session can race with the autostart effect. */
@@ -94,6 +134,8 @@ export default function UnifiedWorkspace() {
   const workspaceAutostartDoneRef = useRef(false);
   /** Open Preview once per job when a run is in motion (does not fight tab changes on re-render). */
   const autoPreviewOnceForJobRef = useRef(null);
+  /** E6: one-shot rehydrate of user lines from `workspace_transcript` after GET /events. */
+  const transcriptRebuiltForJobRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -177,6 +219,7 @@ export default function UnifiedWorkspace() {
   const [buildTargetMeta, setBuildTargetMeta] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [jobId, setJobId] = useState(null);
+  const [activeWorkspaceSession, setActiveWorkspaceSession] = useState(null);
   const [stage, setStage] = useState('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -186,6 +229,8 @@ export default function UnifiedWorkspace() {
   const [userChatMessages, setUserChatMessages] = useState([]);
   const [activePane, setActivePane] = useState(() => sanitizePane(searchParams.get('panel')));
   const [failedStep, setFailedStep] = useState(null);
+  const [failureCalloutDismissed, setFailureCalloutDismissed] = useState(false);
+  const failureRefreshOnceRef = useRef(null);
   useEffect(() => {
     if (!API) return;
     axios
@@ -206,6 +251,53 @@ export default function UnifiedWorkspace() {
       setBuildTargetMeta(row);
     }
   }, [plan, buildTargets]);
+
+  useEffect(() => {
+    if (!token || !API) return undefined;
+    const resolverJobId = jobIdFromUrl || jobId || '';
+    const hasResolverInput = Boolean(resolverJobId || taskIdFromUrl || projectIdFromUrl);
+    if (!hasResolverInput) {
+      setActiveWorkspaceSession(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (resolverJobId) params.set('jobId', resolverJobId);
+    if (taskIdFromUrl) params.set('taskId', taskIdFromUrl);
+    if (projectIdFromUrl) params.set('projectId', projectIdFromUrl);
+
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/workspace/session/resolve?${params.toString()}`, { headers, timeout: 15000 })
+      .then((r) => {
+        if (cancelled) return;
+        const session = r.data?.session;
+        if (!session || typeof session !== 'object') return;
+        setActiveWorkspaceSession(session);
+        const canonicalJobId = session.jobId || '';
+        const canonicalTaskId = session.taskId || (canonicalJobId ? stableTaskIdForJob(canonicalJobId) : '');
+        if (canonicalJobId && canonicalJobId !== jobId) setJobId(canonicalJobId);
+        setSearchParams(
+          (prev) => {
+            const next = bindWorkspaceSearchParams(prev, {
+              jobId: canonicalJobId || null,
+              taskId: canonicalTaskId || taskIdFromUrl || null,
+              projectId: session.projectId || projectIdFromUrl || null,
+            });
+            return next.toString() === prev.toString() ? prev : next;
+          },
+          { replace: true },
+        );
+      })
+      .catch(() => {
+        if (!cancelled && !resolverJobId) setActiveWorkspaceSession(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, jobIdFromUrl, taskIdFromUrl, projectIdFromUrl, jobId, setSearchParams]);
 
   useEffect(() => {
     if (!jobIdFromUrl || !token || !API) return;
@@ -231,7 +323,7 @@ export default function UnifiedWorkspace() {
         const st = j.status;
         if (st === 'planned') {
           try {
-            const pr = await axios.get(`${API}/jobs/${jobIdFromUrl}/plan-draft`, { headers });
+            const pr = await axios.get(`${API}/jobs/${jobIdFromUrl}/plan-draft`, { headers, timeout: 15000 });
             if (pr.data?.plan) setPlan(pr.data.plan);
           } catch {
             setPlan(null);
@@ -256,7 +348,49 @@ export default function UnifiedWorkspace() {
   const [wsPaths, setWsPaths] = useState([]);
   const [wsListLoading, setWsListLoading] = useState(false);
   const [wsFileCache, setWsFileCache] = useState({});
+
+  // ── Job-switch state reset ──────────────────────────────────────────────────
+  // When the user clicks a different job in the sidebar, jobIdFromUrl changes.
+  // Without this reset, the old job's stage/messages/plan stay visible while the
+  // new job loads, making the UI appear frozen or showing stale data.
+  const prevJobIdFromUrlRef = useRef(null);
+  const mdOnlyPreviewInjectedRef = useRef('');
+  useEffect(() => {
+    if (!jobIdFromUrl) return;
+    if (prevJobIdFromUrlRef.current === jobIdFromUrl) return;
+    const isFirstLoad = prevJobIdFromUrlRef.current === null;
+    prevJobIdFromUrlRef.current = jobIdFromUrl;
+    if (isFirstLoad) return; // don't reset on initial page load
+    // Clear all job-specific state so the new job hydrates cleanly
+    setGoal('');
+    setPlan(null);
+    setCapabilityNotice([]);
+    setEstimate(null);
+    setStage('input');
+    setLoading(false);
+    setError(null);
+    setErrorRaw(null);
+    setUserChatMessages([]);
+    setFailedStep(null);
+    setFailureCalloutDismissed(false);
+    failureRefreshOnceRef.current = null;
+    setActiveWsPath('');
+    setWsPaths([]);
+    setWsFileCache((prev) => {
+      Object.values(prev).forEach((e) => {
+        if (e?.blobUrl) { try { URL.revokeObjectURL(e.blobUrl); } catch (_) {} }
+      });
+      return {};
+    });
+    // Reset autostart guards so the new job can trigger its own autostart if needed
+    workspaceAutostartDoneRef.current = false;
+    autoPreviewOnceForJobRef.current = null;
+    transcriptRebuiltForJobRef.current = null;
+    mdOnlyPreviewInjectedRef.current = '';
+  }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
+  /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
+  const sandpackWorkspaceFetchKeyRef = useRef('');
 
   const sandpackMergeFiles = useMemo(() => {
     const base = { ...DEFAULT_FILES, ...files };
@@ -276,22 +410,61 @@ export default function UnifiedWorkspace() {
   const sandpackDeps = useMemo(() => computeSandpackDeps(sandpackMergeFiles), [sandpackMergeFiles]);
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
-  const effectiveJobId = jobIdFromUrl || jobId;
+  const sessionJobId = activeWorkspaceSession?.jobId || null;
+  const sessionProjectId = activeWorkspaceSession?.projectId || null;
+  const sessionTaskId = activeWorkspaceSession?.taskId || null;
+
+  const effectiveJobId = sessionJobId || jobIdFromUrl || jobId;
+
+  useEffect(() => {
+    transcriptRebuiltForJobRef.current = null;
+  }, [effectiveJobId]);
+
   const { job, latestFailure, milestoneBatch, repairQueueLen, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
     effectiveJobId,
     token,
   );
 
-  const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
+  const effectiveProjectId = job?.project_id || sessionProjectId || projectIdFromUrl || null;
 
-  const appendUserChat = useCallback((body) => {
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const jidAt = jobId || jobIdFromUrl || null;
-    setUserChatMessages((prev) => [...prev, { id, body, jobId: jidAt, pendingBind: !jidAt, ts: Date.now() }]);
-  }, [jobId, jobIdFromUrl]);
+  const persistTranscriptLine = useCallback(
+    (role, body) => {
+      const r = role === 'assistant' ? 'assistant' : 'user';
+      const t = (body || '').trim();
+      if (!t || !token || !API) return;
+      const jid = effectiveJobId;
+      if (!jid) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      void axios
+        .post(
+          `${API}/jobs/${encodeURIComponent(jid)}/transcript`,
+          { role: r, body: t },
+          { headers, timeout: 15000 },
+        )
+        .catch(() => {});
+    },
+    [token, API, effectiveJobId],
+  );
+
+  const appendUserChat = useCallback(
+    (body) => {
+      const id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const jidAt = effectiveJobId || null;
+      // Dedup: if the very last user message has the same body+jobId, skip —
+      // this eliminates the duplicate-initial-prompt bug on first run.
+      setUserChatMessages((prev) => {
+        const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
+        const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+        if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
+        persistTranscriptLine('user', body);
+        return [...prev, msg];
+      });
+    },
+    [effectiveJobId, persistTranscriptLine],
+  );
 
   const clearBuildError = useCallback(() => {
     setError(null);
@@ -335,14 +508,47 @@ export default function UnifiedWorkspace() {
   }, [effectiveJobId]);
 
   useEffect(() => {
-    if (!taskIdFromUrl || !effectiveJobId) return;
+    const activeTaskId = sessionTaskId || taskIdFromUrl;
+    if (!activeTaskId || !effectiveJobId) return;
     const patch = { jobId: effectiveJobId };
-    const st = job?.status;
-    if (st === 'completed') patch.status = 'completed';
-    else if (st === 'failed' || st === 'cancelled') patch.status = 'failed';
-    else if (st) patch.status = 'running';
-    updateTask(taskIdFromUrl, patch);
-  }, [taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
+    if (job?.status) patch.status = taskStatusFromJobStatus(job.status);
+    updateTask(activeTaskId, patch);
+  }, [sessionTaskId, taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
+
+  const taskJobBindingRef = useRef('');
+  useEffect(() => {
+    if (!effectiveJobId || !job) return;
+    const existingByTask = taskIdFromUrl ? tasks.find((t) => t.id === taskIdFromUrl) : null;
+    const existingByJob = tasks.find((t) => t.jobId === effectiveJobId);
+    const bindingTaskId = sessionTaskId || taskIdFromUrl || existingByJob?.id || stableTaskIdForJob(effectiveJobId);
+    const entry = taskEntryFromJob({
+      job,
+      jobId: effectiveJobId,
+      taskId: bindingTaskId,
+      existingTask: existingByTask || existingByJob,
+      fallbackPrompt: buildDisplayTitle,
+    });
+    if (!entry?.id) return;
+    const key = `${entry.id}|${entry.jobId}|${entry.status}|${entry.prompt}|${job?.project_id || ''}`;
+    if (taskJobBindingRef.current !== key) {
+      taskJobBindingRef.current = key;
+      upsertTask(entry);
+    }
+    if (sessionTaskId && taskIdFromUrl && taskIdFromUrl !== sessionTaskId) {
+      const oldTask = tasks.find((t) => t.id === taskIdFromUrl);
+      if (oldTask && (!oldTask.jobId || oldTask.jobId === effectiveJobId)) removeTask(taskIdFromUrl);
+    }
+    if (!taskIdFromUrl || taskIdFromUrl !== entry.id) {
+      setSearchParams(
+        (prev) => bindWorkspaceSearchParams(prev, {
+          jobId: effectiveJobId,
+          taskId: entry.id,
+          projectId: job?.project_id || sessionProjectId || projectIdFromUrl || null,
+        }),
+        { replace: true },
+      );
+    }
+  }, [effectiveJobId, job, sessionTaskId, sessionProjectId, taskIdFromUrl, tasks, upsertTask, removeTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
@@ -373,6 +579,37 @@ export default function UnifiedWorkspace() {
     completedWorkspaceBumpRef.current = effectiveJobId;
     setWorkspacePullKey((k) => k + 1);
   }, [job?.status, effectiveJobId]);
+
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API) return undefined;
+    const active = isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }) || job?.status === 'blocked';
+    if (!active) return undefined;
+    let cancelled = false;
+    let lastFingerprint = '';
+    const headers = { Authorization: `Bearer ${token}` };
+    const pollManifest = async () => {
+      try {
+        const res = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/manifest`, {
+          headers,
+          timeout: 12000,
+        });
+        if (cancelled) return;
+        const fingerprint = String(res.data?.fingerprint || '');
+        if (fingerprint && fingerprint !== lastFingerprint) {
+          lastFingerprint = fingerprint;
+          setWorkspacePullKey((k) => k + 1);
+        }
+      } catch {
+        /* workspace may not exist yet while the run is booting */
+      }
+    };
+    void pollManifest();
+    const id = setInterval(pollManifest, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [effectiveJobId, token, API, job?.status, stage]);
 
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
@@ -455,6 +692,96 @@ export default function UnifiedWorkspace() {
     };
   }, [effectiveProjectId, effectiveJobId, token, workspacePullKey, API]);
 
+  // Sandpack only merges `files` + opened-file cache; without bulk fetch, preview stays blank
+  // while Explorer lists paths. Pull text bodies for packable files after each list refresh.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API || !wsPaths.length) return;
+    const candidates = wsPaths
+      .filter(
+        (p) =>
+          /\.(jsx?|tsx?|css|html?|json)$/i.test(p) &&
+          !/node_modules|(\.(test|spec)\.[jt]sx?)$/i.test(p),
+      )
+      .slice(0, 60);
+    if (!candidates.length) return;
+    const key = `${effectiveJobId}\0${workspacePullKey}\0${[...candidates].sort().join('\n')}`;
+    if (sandpackWorkspaceFetchKeyRef.current === key) return;
+    sandpackWorkspaceFetchKeyRef.current = key;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    (async () => {
+      const patch = {};
+      await Promise.all(
+        candidates.map(async (rel) => {
+          try {
+            const r = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file`, {
+              params: { path: rel },
+              headers,
+              timeout: 25000,
+            });
+            const text = r.data?.content ?? '';
+            const slash = rel.startsWith('/') ? rel : `/${rel}`;
+            patch[slash] = { code: text };
+          } catch {
+            /* ignore per-file */
+          }
+        }),
+      );
+      if (cancelled || !Object.keys(patch).length) return;
+      setFiles((prev) => ({ ...prev, ...patch }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveJobId, token, API, wsPaths, workspacePullKey]);
+
+  // When the run only produced markdown (e.g. deploy/PUBLISH.md), Sandpack would stay empty; inject a
+  // small reader so Preview shows the doc instead of a white panel.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API || !wsPaths.length) return;
+    const hasPackable = wsPaths.some(
+      (p) =>
+        /\.(jsx?|tsx?|css|json|html?)$/i.test(p) && !/\.md$/i.test(p),
+    );
+    if (hasPackable) return;
+    const mds = wsPaths.filter((p) => /\.md$/i.test(p));
+    if (!mds.length) return;
+    const prefer = mds.find((p) => /(^|\/)PUBLISH\.md$/i.test(p)) || mds[0];
+    const injKey = `${effectiveJobId}|${prefer}|${workspacePullKey}`;
+    if (mdOnlyPreviewInjectedRef.current === injKey) return;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    (async () => {
+      try {
+        const r = await axios.get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/file`, {
+          params: { path: prefer },
+          headers,
+          timeout: 20000,
+        });
+        const text = r.data?.content ?? '';
+        if (cancelled) return;
+        if (typeof btoa === 'undefined') return;
+        const b64 = btoa(unescape(encodeURIComponent(text)));
+        const appCode = `import React, { useMemo } from 'react';
+export default function App() {
+  const body = useMemo(() => {
+    try { return decodeURIComponent(escape(atob('${b64}'))); } catch (e) { return 'Could not decode document.'; }
+  }, []);
+  return (
+    <div style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif', padding: 16, fontSize: 14, lineHeight: 1.5, color: '#e2e8f0', background: '#0f172a', minHeight: '100vh', whiteSpace: 'pre-wrap' }}>{body}</div>
+  );
+}`;
+        mdOnlyPreviewInjectedRef.current = injKey;
+        setFiles((prev) => ({ ...prev, '/src/App.jsx': { code: appCode } }));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveJobId, token, API, wsPaths, workspacePullKey]);
+
   const traceByPath = useMemo(() => buildTraceIndexFromEvents(events, steps), [events, steps]);
 
   const loadWorkspaceFileBody = useCallback(
@@ -501,7 +828,7 @@ export default function UnifiedWorkspace() {
         return;
       }
       try {
-        const r = await axios.get(textBase, { params: { path: key }, headers });
+        const r = await axios.get(textBase, { params: { path: key }, headers, timeout: 15000 });
         const text = r.data?.content ?? '';
         const pathReturned = normalizeWorkspacePath(r.data?.path || key);
         const md = pathReturned.endsWith('.md') || key.endsWith('.md');
@@ -577,32 +904,109 @@ export default function UnifiedWorkspace() {
     return () => clearTimeout(id);
   }, [events]);
 
-  // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
-  const lastBrainEventIdRef = useRef(null);
+  // E4: pull file list when steps start or files are written (orchestrator may have new paths)
   useEffect(() => {
     if (!events.length) return;
     const last = events[events.length - 1];
     const t = last?.type || last?.event_type;
-    if (t !== 'brain_guidance') return;
-    // dedupe — only push if this is a new event
-    const evId = last?.id || last?.event_id || JSON.stringify(last).slice(0, 80);
-    if (lastBrainEventIdRef.current === evId) return;
-    lastBrainEventIdRef.current = evId;
-    // parse payload
-    const p = last?.payload && typeof last.payload === 'object'
-      ? last.payload
-      : (() => { try { return JSON.parse(last?.payload_json || '{}'); } catch { return {}; } })();
-    const headline = p?.headline || '';
-    const summary = p?.summary || '';
-    const body = [headline, summary].filter(Boolean).join(' — ');
-    if (!body.trim()) return;
-    const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `brain_${Date.now()}`;
-    setUserChatMessages((prev) => [
-      ...prev,
-      { id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: Date.now() },
-    ]);
+    if (!['step_started', 'file_written', 'file_write', 'workspace_files_updated'].includes(t)) return undefined;
+    const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 450);
+    return () => clearTimeout(id);
+  }, [events]);
+
+  // E6: rehydrate user lines from `workspace_transcript` before brain_guidance adds assistant text.
+  useEffect(() => {
+    if (!effectiveJobId || !token || !API) return;
+    if (transcriptRebuiltForJobRef.current === effectiveJobId) return;
+    let cancelled = false;
+    const applyMessages = (fromJob) => {
+      if (cancelled || !fromJob.length) return;
+      setUserChatMessages((prev) => {
+        if (prev.length > 0) {
+          const onlyHydrate = prev.every((m) => String(m.id || '').startsWith('hydrate-'));
+          if (!onlyHydrate) {
+            transcriptRebuiltForJobRef.current = effectiveJobId;
+            return prev;
+          }
+        }
+        transcriptRebuiltForJobRef.current = effectiveJobId;
+        return fromJob;
+      });
+    };
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/transcript`, { headers, timeout: 12000 })
+      .then((res) => {
+        const rows = Array.isArray(res.data?.messages) ? res.data.messages : [];
+        const fromApi = rows
+          .map((m) => ({
+            id: m.id || `${m.role || 'user'}_${m.ts || m.created_at || Date.now()}`,
+            body: m.body || m.text || '',
+            role: m.role || 'user',
+            jobId: effectiveJobId,
+            pendingBind: false,
+            ts: m.ts ? Number(m.ts) * 1000 : (m.created_at ? new Date(m.created_at).getTime() : Date.now()),
+          }))
+          .filter((m) => m.body);
+        if (fromApi.length) {
+          applyMessages(fromApi);
+          return;
+        }
+        const fromEvents = jobTranscriptLinesFromEvents(events, effectiveJobId);
+        if (fromEvents.length) applyMessages(fromEvents);
+        else transcriptRebuiltForJobRef.current = effectiveJobId;
+      })
+      .catch(() => {
+        const hasT = events.some((e) => (e?.type || e?.event_type) === 'workspace_transcript');
+        if (!hasT || cancelled) return;
+        applyMessages(jobTranscriptLinesFromEvents(events, effectiveJobId));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [API, events, effectiveJobId, token]);
+
+  // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
+  // PERSISTENCE FIX: Process ALL brain_guidance events (not just the last) so that
+  // navigating back to a workspace restores the full conversation history.
+  const processedBrainEventIdsRef = useRef(new Set());
+  useEffect(() => {
+    // Reset processed set when job changes
+    processedBrainEventIdsRef.current = new Set();
+  }, [effectiveJobId]);
+  useEffect(() => {
+    if (!events.length) return;
+    const brainEvents = events.filter((e) => {
+      const t = e?.type || e?.event_type;
+      return t === 'brain_guidance';
+    });
+    if (!brainEvents.length) return;
+    const newMessages = [];
+    for (const ev of brainEvents) {
+      const evId = ev?.id || ev?.event_id || JSON.stringify(ev).slice(0, 80);
+      if (processedBrainEventIdsRef.current.has(evId)) continue;
+      processedBrainEventIdsRef.current.add(evId);
+      const p = ev?.payload && typeof ev.payload === 'object'
+        ? ev.payload
+        : (() => { try { return JSON.parse(ev?.payload_json || '{}'); } catch { return {}; } })();
+      const headline = p?.headline || '';
+      const summary = p?.summary || '';
+      const body = [headline, summary].filter(Boolean).join(' — ');
+      if (!body.trim()) continue;
+      const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `brain_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      newMessages.push({ id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: ev?.created_at ? new Date(ev.created_at).getTime() : Date.now() });
+    }
+    if (newMessages.length > 0) {
+      setUserChatMessages((prev) => {
+        // Dedupe by body+role to avoid duplicates on re-render
+        const existingKeys = new Set(prev.map((m) => `${m.role}:${m.body}`));
+        const toAdd = newMessages.filter((m) => !existingKeys.has(`${m.role}:${m.body}`));
+        if (!toAdd.length) return prev;
+        return [...prev, ...toAdd].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      });
+    }
   }, [events, effectiveJobId]);
 
   const prevJobStatusRef = useRef(null);
@@ -627,7 +1031,7 @@ export default function UnifiedWorkspace() {
     setZipBusy(true);
     try {
       const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip?profile=handoff`,
+        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/workspace/download`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) {
@@ -638,7 +1042,7 @@ export default function UnifiedWorkspace() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${effectiveJobId}-handoff.zip`;
+      a.download = `crucibai-job-${effectiveJobId}-code.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -659,7 +1063,7 @@ export default function UnifiedWorkspace() {
   const sendInFlightRef = useRef(false);
 
   const handleApprove = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) {
       setError('No job to run — generate a plan first (or open a valid job link).');
       setErrorRaw(null);
@@ -670,7 +1074,7 @@ export default function UnifiedWorkspace() {
     clearBuildError();
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers });
+      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers, timeout: 15000 });
     } catch (e) {
       const d = e.response?.data?.detail;
       let msg = 'Failed to start job.';
@@ -707,7 +1111,7 @@ export default function UnifiedWorkspace() {
       const pid = (projectIdFromUrl || '').trim();
       if (pid) planBody.project_id = pid;
       try {
-        const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers });
+        const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers, timeout: 30000 });
         const newJid = res.data.job_id;
         setPlan(res.data.plan);
         setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
@@ -718,17 +1122,54 @@ export default function UnifiedWorkspace() {
         if (res.data.build_target) setBuildTarget(res.data.build_target);
         setEstimate(res.data.estimate);
         setJobId(newJid);
+        const namePreview = (trimmed || '').slice(0, 120) || 'Build';
+        let createdTaskId = null;
+        const canonicalTaskId = taskIdFromUrl || stableTaskIdForJob(newJid);
+        const canonicalProjectId = res.data.project_id || projectIdFromUrl || null;
+        if (taskIdFromUrl) {
+          const prev = tasks.find((t) => t.id === taskIdFromUrl);
+          // Keep the first build title in History; do not rename the row to every follow-up message.
+          const displayName = prev?.name && String(prev.name).trim() ? prev.name : namePreview;
+          updateTask(taskIdFromUrl, {
+            jobId: newJid,
+            name: displayName,
+            prompt: trimmed,
+            status: 'running',
+          });
+        } else {
+          createdTaskId = addTask({
+            id: canonicalTaskId,
+            name: namePreview,
+            prompt: trimmed,
+            status: 'running',
+            type: 'build',
+            jobId: newJid,
+            createdAt: Date.now(),
+            ...(canonicalProjectId ? { linkedProjectId: canonicalProjectId } : {}),
+          });
+        }
+        setActiveWorkspaceSession({
+          sessionId: `job:${newJid}`,
+          taskId: taskIdFromUrl || canonicalTaskId,
+          jobId: newJid,
+          projectId: canonicalProjectId,
+          status: 'planned',
+          goal: trimmed,
+          threadId: `job:${newJid}`,
+        });
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
             if (newJid) next.set('jobId', newJid);
+            if (taskIdFromUrl || createdTaskId || canonicalTaskId) next.set('taskId', taskIdFromUrl || createdTaskId || canonicalTaskId);
+            if (canonicalProjectId) next.set('projectId', canonicalProjectId);
             return next;
           },
           { replace: true },
         );
 
         try {
-          await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers });
+          await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers, timeout: 15000 });
           setStage('running');
         } catch (e) {
           const d = e.response?.data?.detail;
@@ -753,7 +1194,7 @@ export default function UnifiedWorkspace() {
         sendInFlightRef.current = false;
       }
     },
-    [API, token, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
+    [API, token, buildTargets, projectIdFromUrl, taskIdFromUrl, tasks, addTask, updateTask, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -764,7 +1205,7 @@ export default function UnifiedWorkspace() {
     if (!goal.trim() || authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
-    const activeJobId = jobId || jobIdFromUrl;
+    const activeJobId = effectiveJobId;
 
     const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
     /** Steer+resume whenever the job is terminal/blocked or steps failed (do not require quiescent workers — UI can lag). */
@@ -788,7 +1229,7 @@ export default function UnifiedWorkspace() {
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: true },
-          { headers },
+          { headers, timeout: 15000 },
         );
         clearBuildError();
         const coachText = formatCoachReply(res.data?.guidance);
@@ -808,6 +1249,7 @@ export default function UnifiedWorkspace() {
               ts: Date.now(),
             },
           ]);
+          persistTranscriptLine('assistant', coachText);
         }
         setStage('running');
         refresh();
@@ -849,7 +1291,7 @@ export default function UnifiedWorkspace() {
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: false },
-          { headers },
+          { headers, timeout: 15000 },
         );
         clearBuildError();
         const coachText = formatCoachReply(res.data?.guidance);
@@ -858,17 +1300,80 @@ export default function UnifiedWorkspace() {
             typeof crypto !== 'undefined' && crypto.randomUUID
               ? crypto.randomUUID()
               : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => [
-            ...prev,
-            {
+          setUserChatMessages((prev) => {
+            const msg = {
               id: aid,
               body: coachText,
               role: 'assistant',
               jobId: activeJobId,
               pendingBind: false,
               ts: Date.now(),
-            },
+            };
+            const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+            if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
+            persistTranscriptLine('assistant', coachText);
+            return [...prev, msg];
+          });
+        }
+        refresh();
+      } catch (e) {
+        setGoal(submitted);
+        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not send message.');
+      } finally {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
+      return;
+    }
+
+    // Job exists but is not in a "live" phase (e.g. completed): sending from composer must not
+    // POST /orchestrator/plan again — that spawns a second job and duplicates History rows (same as Codex/Cursor: one run thread).
+    if (activeJobId) {
+      appendUserChat(submitted);
+      setGoal('');
+      clearBuildError();
+      sendInFlightRef.current = true;
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const res = await axios.post(
+          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
+          { message: submitted, resume: false },
+          { headers, timeout: 15000 },
+        );
+        clearBuildError();
+        const coachText = formatCoachReply(res.data?.guidance);
+        if (coachText) {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_coach_${Date.now()}`;
+          setUserChatMessages((prev) => {
+            const msg = {
+              id: aid,
+              body: coachText,
+              role: 'assistant',
+              jobId: activeJobId,
+              pendingBind: false,
+              ts: Date.now(),
+            };
+            const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+            if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
+            persistTranscriptLine('assistant', coachText);
+            return [...prev, msg];
+          });
+        } else {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_ack_${Date.now()}`;
+          const body =
+            'Saved on this run. Use + New in the sidebar to start a separate build; your follow-up stays in this thread.';
+          setUserChatMessages((prev) => [
+            ...prev,
+            { id: aid, body, role: 'assistant', jobId: activeJobId, ts: Date.now() },
           ]);
+          persistTranscriptLine('assistant', body);
         }
         refresh();
       } catch (e) {
@@ -921,6 +1426,12 @@ export default function UnifiedWorkspace() {
     if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
+    if (effectiveJobId) {
+      try {
+        sessionStorage.removeItem('crucibai_autostart_goal');
+      } catch (_) { void 0; }
+      return;
+    }
 
     const urlParams = new URLSearchParams(locSearch);
     const autoStartUrl = urlParams.get('autoStart') === '1';
@@ -980,57 +1491,69 @@ export default function UnifiedWorkspace() {
         /* runNewPlanAndAuto surfaces errors via applyBuildError */
       }
     })();
-  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
+  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams, effectiveJobId]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
+  // PERSISTENCE FIX: When navigating back via sidebar (?taskId=... but no jobId),
+  // restore the jobId from the task store so the workspace rehydrates the full job state.
   useEffect(() => {
-    if (!taskIdFromUrl) {
-      taskPromptHydratedForIdRef.current = null;
+    if (!taskIdFromUrl || jobIdFromUrl) return;
+    const task = tasks.find((t) => t.id === taskIdFromUrl);
+    if (!task) return;
+    // If the task has a stored jobId (set when build was started), restore it to URL
+    if (task.jobId) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('jobId', task.jobId);
+          return next;
+        },
+        { replace: true },
+      );
       return;
     }
-    if (jobIdFromUrl) return;
+    // No jobId stored — task is pending (never started). Show the prompt in composer.
     if (taskPromptHydratedForIdRef.current === taskIdFromUrl) return;
-    const task = tasks.find((t) => t.id === taskIdFromUrl);
-    if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
+    if (!task?.prompt?.trim() || task.type !== 'build') return;
     try {
       if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
     } catch (_) { void 0; }
     if (goal.trim() || userChatMessages.length > 0) return;
     taskPromptHydratedForIdRef.current = taskIdFromUrl;
     setGoal(String(task.prompt).trim());
-  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length]);
+  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length, setSearchParams]);
 
   const handleCancel = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/cancel`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/cancel`, {}, { headers, timeout: 10000 });
     } catch (_) {
       /* ignore */
     }
   };
 
   const handleResume = async () => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers, timeout: 10000 });
     } catch (_) {
       /* ignore */
     }
   };
 
   const handleRetryStep = async (step) => {
-    const jid = jobId || jobIdFromUrl;
+    const jid = effectiveJobId;
     if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers });
+      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers, timeout: 15000 });
       setFailedStep(null);
       if (job?.status === 'failed') {
-        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers });
+        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers, timeout: 15000 });
         setStage('running');
       }
       refresh();
@@ -1047,10 +1570,12 @@ export default function UnifiedWorkspace() {
     setBuildTargetMeta(null);
     setEstimate(null);
     setJobId(null);
+    setActiveWorkspaceSession(null);
     setStage('input');
     clearBuildError();
     setUserChatMessages([]);
     setFailedStep(null);
+    transcriptRebuiltForJobRef.current = null;
     setActiveWsPath('');
     setWsPaths([]);
     setWsFileCache((prev) => {
@@ -1119,7 +1644,50 @@ export default function UnifiedWorkspace() {
     setActivePane(visibleRightPanes[0] || 'preview');
   }, [visibleRightPanes, activePane]);
 
-  const failureStep = failedStep || latestFailedStep;
+  // Re-hydrate data-bearing panes when the user switches into them — prevents
+  // empty Proof/Failure/Timeline/Preview tabs when tab was switched mid-stream.
+  useEffect(() => {
+    if (!effectiveJobId) return;
+    if (activePane === 'proof') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'failure') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'timeline') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'preview') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+      try { setWorkspacePullKey((k) => k + 1); } catch (_) { /* ignore */ }
+    }
+  }, [activePane, effectiveJobId, refresh]);
+
+  const checkpointFailureStep = useMemo(
+    () => failureStepFromLatestFailure(latestFailure),
+    [latestFailure],
+  );
+  const failureStep = failedStep || latestFailedStep || checkpointFailureStep;
+
+  useEffect(() => {
+    if (job?.status !== 'failed' || !effectiveJobId) return;
+    if (failureRefreshOnceRef.current === effectiveJobId) return;
+    failureRefreshOnceRef.current = effectiveJobId;
+    try {
+      refresh?.();
+    } catch (_) {
+      /* ignore */
+    }
+  }, [job?.status, effectiveJobId, refresh]);
+
+  const showFailureCallout = useMemo(() => {
+    if (job?.status !== 'failed' || failureCalloutDismissed) return false;
+    if (activePane === 'failure') return false;
+    const hasLatest =
+      latestFailure &&
+      typeof latestFailure === 'object' &&
+      (Boolean(latestFailure.error_message) ||
+        (Array.isArray(latestFailure.issues) && latestFailure.issues.length > 0) ||
+        Boolean(latestFailure.step_key));
+    return Boolean(failureStep || hasLatest);
+  }, [job?.status, failureCalloutDismissed, activePane, failureStep, latestFailure]);
 
   const previewBlockedDetail = useMemo(() => {
     const fromStep = failureStep?.error_message || failureStep?.step_key;
@@ -1141,12 +1709,15 @@ export default function UnifiedWorkspace() {
     stage,
     isCompleted,
   });
+  // Do not default to /published/{jobId}/ when the job has no real publish URL. That value made
+  // PreviewPanel use an empty iframe, skipped GET /jobs/.../dev-preview, and hid Sandpack.
   const previewUrl =
     job?.dev_server_url ||
     job?.preview_url ||
     job?.published_url ||
     job?.deploy_url ||
-    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
+    activeWorkspaceSession?.previewStatus?.url ||
+    null;
 
   const proofItemCount = useMemo(() => {
     if (!proof) return 0;
@@ -1223,7 +1794,7 @@ export default function UnifiedWorkspace() {
               repairQueueLen={repairQueueLen}
               steps={steps}
             />
-            {stage === 'input' && (
+            {(stage === 'input' || effectiveJobId) && (
               <WorkspaceActivityFeed
                 stage={stage}
                 plan={plan}
@@ -1306,6 +1877,34 @@ export default function UnifiedWorkspace() {
                 ) : null}
               </div>
             ) : null}
+            {showFailureCallout && (
+              <div className="uw-failure-callout" role="status">
+                <div className="uw-failure-callout-text">
+                  <strong>Run failed</strong>
+                  {previewBlockedDetail ? (
+                    <span className="uw-failure-callout-detail">
+                      {String(previewBlockedDetail).slice(0, 200)}
+                      {String(previewBlockedDetail).length > 200 ? '…' : ''}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="uw-failure-callout-actions">
+                  <button
+                    type="button"
+                    className="arp-topbar-btn"
+                    onClick={() => {
+                      setActivePane('failure');
+                      setRightCollapsed(false);
+                    }}
+                  >
+                    Open Failure
+                  </button>
+                  <button type="button" className="arp-topbar-btn uw-failure-callout-dismiss" onClick={() => setFailureCalloutDismissed(true)}>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             <WorkspaceStatusDock
               jobId={effectiveJobId}
               job={job}
@@ -1461,6 +2060,34 @@ export default function UnifiedWorkspace() {
                     filesReadyKey={filesReadyKey}
                     sandpackIsFallback={sandpackIsFallback}
                     blockedDetail={previewBlockedDetail}
+                    jobId={effectiveJobId}
+                    token={token}
+                    apiBase={API}
+                    jobStatus={job?.status}
+                  />
+                )}
+                {activePane === 'live' && (
+                  <WorkspaceLiveControl
+                    job={job}
+                    stage={stage}
+                    steps={steps}
+                    events={events}
+                    proof={proof}
+                    previewStatus={previewStatus}
+                    previewUrl={previewUrl}
+                    hasSandpack={Boolean(sandpackFiles && Object.keys(sandpackFiles).length > 0)}
+                    workspacePathCount={wsPaths.length}
+                    latestFailure={latestFailure}
+                    blockedDetail={previewBlockedDetail}
+                    connectionMode={connectionMode}
+                    isConnected={isConnected}
+                    proofItemCount={proofItemCount}
+                    activeAgentCount={activeAgentCount}
+                    healthLatencyMs={healthMs}
+                    onOpenPreview={() => setActivePane('preview')}
+                    onOpenProof={() => setActivePane('proof')}
+                    onOpenCode={() => setActivePane('code')}
+                    onOpenFailure={() => setActivePane('failure')}
                   />
                 )}
                 {activePane === 'timeline' && (
@@ -1526,11 +2153,11 @@ export default function UnifiedWorkspace() {
                           className="arp-topbar-btn"
                           style={{ fontSize: 11 }}
                           disabled={zipBusy}
-                          title="Handoff ZIP (omits outputs/). Append ?profile=full to the export URL for the complete tree."
+                          title="Download all generated code and workspace files as a ZIP."
                           onClick={handleDownloadWorkspaceZip}
                         >
                           <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                          {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
+                          {zipBusy ? 'Downloading...' : 'Download Code'}
                         </button>
                       ) : null}
                       <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>

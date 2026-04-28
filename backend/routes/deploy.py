@@ -42,15 +42,30 @@ class DeployValidateRequest(BaseModel):
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
 
-def _get_db():
-    from server import db
+def _get_optional_user():
+    from ..deps import get_optional_user
 
-    return db
+    return get_optional_user
+
+
+def _get_db():
+    try:
+        from ..deps import get_db
+
+        return get_db()
+    except Exception:
+        return None
+
+
+def _user_id(user: Any) -> str:
+    if isinstance(user, dict):
+        return str(user.get("id") or user.get("user_id") or "guest")
+    return str(getattr(user, "id", None) or getattr(user, "user_id", None) or "guest")
 
 
 # ── Deploy token management ───────────────────────────────────────────────────
@@ -60,7 +75,15 @@ def _get_db():
 async def get_deploy_tokens_status(user: dict = Depends(_get_auth())):
     """Return whether user has each deploy token set (no secret values returned)."""
     db = _get_db()
-    u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
+    if db is None:
+        return {
+            "has_vercel": False,
+            "has_netlify": False,
+            "has_github": False,
+            "has_railway": False,
+            "status": "ready_without_persistence",
+        }
+    u = await db.users.find_one({"id": _user_id(user)}, {"deploy_tokens": 1})
     dt = (u or {}).get("deploy_tokens") or {}
     return {
         "has_vercel": bool(dt.get("vercel")),
@@ -76,6 +99,8 @@ async def update_deploy_tokens(
 ):
     """Persist deploy tokens for one-click Vercel/Netlify/Railway. Only updates provided keys."""
     db = _get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Deploy token persistence is not ready")
     update: dict = {}
     if data.vercel is not None:
         update["deploy_tokens.vercel"] = data.vercel.strip() or None
@@ -87,8 +112,28 @@ async def update_deploy_tokens(
         update["deploy_tokens.railway"] = data.railway.strip() or None
     if not update:
         return {"ok": True}
-    await db.users.update_one({"id": user["id"]}, {"$set": update})
+    await db.users.update_one({"id": _user_id(user)}, {"$set": update})
     return {"ok": True}
+
+
+@router.get("/deploy/targets")
+async def deploy_targets(user: dict = Depends(_get_optional_user())):
+    """List deploy target readiness honestly for the settings/deploy UI."""
+    token_status = (
+        await get_deploy_tokens_status(user)
+        if user
+        else {"has_railway": False, "has_vercel": False, "has_netlify": False, "has_github": False}
+    )
+    return {
+        "targets": [
+            {"id": "railway", "name": "Railway", "status": "requires_config", "configured": bool(token_status.get("has_railway"))},
+            {"id": "vercel", "name": "Vercel", "status": "requires_config", "configured": bool(token_status.get("has_vercel"))},
+            {"id": "netlify", "name": "Netlify", "status": "requires_config", "configured": bool(token_status.get("has_netlify"))},
+            {"id": "github", "name": "GitHub", "status": "requires_config", "configured": bool(token_status.get("has_github"))},
+            {"id": "download_zip", "name": "Download ZIP", "status": "available", "configured": True},
+        ],
+        "note": "Hosted deploy targets require user-provided credentials; ZIP export remains available when workspace files exist.",
+    }
 
 
 # ── Deploy validation ─────────────────────────────────────────────────────────
@@ -97,7 +142,7 @@ async def update_deploy_tokens(
 @router.post("/deploy/validate")
 async def deploy_validate(body: DeployValidateRequest):
     """Validate a set of project files against platform-specific deploy rules."""
-    from validate_deployment import validate_deployment
+    from ..validate_deployment import validate_deployment
 
     result = validate_deployment(body.platform, body.files, body.config)
     return {

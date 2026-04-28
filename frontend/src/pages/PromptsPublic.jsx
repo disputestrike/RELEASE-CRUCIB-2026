@@ -14,7 +14,7 @@ const FALLBACK_PROMPTS = [
   { id: 'ecommerce', name: 'E-commerce with cart', prompt: 'Build a modern e-commerce product list with add-to-cart, cart sidebar, and checkout button. Use React and Tailwind.', category: 'app' },
   { id: 'auth-dashboard', name: 'Auth + Dashboard', prompt: 'Create a login page and a dashboard with sidebar navigation. Use React, Tailwind, and local state for auth.', category: 'app' },
   { id: 'landing-waitlist', name: 'Landing + waitlist', prompt: 'Build a landing page with hero, features section, and email waitlist signup. React and Tailwind.', category: 'marketing' },
-  { id: 'stripe-saas', name: 'Stripe subscription SaaS', prompt: 'Build a SaaS landing page with pricing cards and Stripe Checkout integration for subscription. React and Tailwind.', category: 'app' },
+  { id: 'Braintree-saas', name: 'Braintree subscription SaaS', prompt: 'Build a SaaS landing page with pricing cards and Braintree Checkout integration for subscription. React and Tailwind.', category: 'app' },
   { id: 'todo', name: 'Task manager', prompt: 'Create a task manager with add, complete, delete, and filter by status. React and Tailwind.', category: 'app' },
   { id: 'ai-chatbot', name: 'AI Chatbot UI', prompt: 'Build a ChatGPT-style chat interface with message bubbles, streaming text, code blocks, and a prompt input. React and Tailwind.', category: 'ai' },
   { id: 'kanban-board', name: 'Kanban Board', prompt: 'Create a Trello-style kanban board with columns (To Do, In Progress, Done), draggable cards, and add/edit tasks. React and Tailwind.', category: 'app' },
@@ -68,7 +68,7 @@ export default function PromptsPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Proven copy</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Prompt Library</h1>
-          <p className="text-zinc-500">Proven prompts for every use case — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and build. Sign up to try them one-click in the workspace.</p>
+          <p className="text-zinc-500">Prompt patterns for common use cases — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and run them through the workspace proof gates.</p>
         </motion.div>
 
         <div className="space-y-6">

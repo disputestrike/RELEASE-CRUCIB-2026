@@ -15,7 +15,7 @@ Pricing baseline aligned with backend validation tests:
 
 What users build per plan (marketing copy basis):
   50 credits  = 1 landing page
-  100 credits = 1 full app (React + FastAPI + DB + auth + Stripe payments)
+  100 credits = 1 full app (React + FastAPI + DB + auth + Braintree payments)
   150 credits = 1 mobile app (Expo + App Store + Play Store submission guide)
 """
 # 1 credit = 1000 tokens
@@ -31,6 +31,10 @@ CREDIT_PLANS = {
 }
 ADDONS = {}  # Slider only (100–10000 at $0.06). No fixed add-ons.
 ANNUAL_PRICES = {"builder": 149.99, "pro": 299.99, "scale": 599.99, "teams": 1499.99}
+CUSTOM_CREDIT_MIN = 100
+CUSTOM_CREDIT_MAX = 10000
+CUSTOM_CREDIT_STEP = 100
+CUSTOM_CREDIT_PRICE = 0.03
 
 TOKEN_BUNDLES = {}
 for k, v in CREDIT_PLANS.items():

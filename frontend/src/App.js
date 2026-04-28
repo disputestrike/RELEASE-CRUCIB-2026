@@ -62,6 +62,7 @@ import Dmca from "./pages/Dmca";
 import Cookies from "./pages/Cookies";
 import About from "./pages/About";
 import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 import Enterprise from "./pages/Enterprise";
 import Features from "./pages/Features";
 import TemplatesPublic from "./pages/TemplatesPublic";
@@ -82,6 +83,7 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
+import WhatIfPage from "./pages/WhatIfPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import MonitoringDashboard from "./pages/MonitoringDashboard";
 import VibeCodePage from "./pages/VibeCodePage";
@@ -369,6 +371,8 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/our-projects" element={<OurProjectsPage />} />
+          <Route path="/projects" element={<OurProjectsPage />} />
+          <Route path="/project" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
           <Route path="/builder" element={<Builder />} />
@@ -382,6 +386,8 @@ function App() {
           <Route path="/cookies" element={<Cookies />} />
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/billing" element={<Navigate to="/app/billing" replace />} />
+          <Route path="/account/billing" element={<Navigate to="/app/account/billing" replace />} />
           <Route path="/enterprise" element={<Enterprise />} />
           <Route path="/features" element={<Features />} />
           <Route path="/templates" element={<TemplatesPublic />} />
@@ -405,6 +411,8 @@ function App() {
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
+            <Route path="billing" element={<Billing />} />
+            <Route path="account/billing" element={<Billing />} />
             <Route path="exports" element={<ExportCenter />} />
             <Route path="patterns" element={<PatternLibrary />} />
             <Route path="templates" element={<TemplatesGallery />} />
@@ -416,6 +424,7 @@ function App() {
             <Route path="examples" element={<ExamplesGallery />} />
             <Route path="generate" element={<GenerateContent />} />
             <Route path="agents" element={<AgentsPage />} />
+            <Route path="what-if" element={<WhatIfPage />} />
             <Route path="agents/:id" element={<AgentsPage />} />
             <Route path="settings" element={<Settings />} />
             <Route path="audit-log" element={<AuditLog />} />

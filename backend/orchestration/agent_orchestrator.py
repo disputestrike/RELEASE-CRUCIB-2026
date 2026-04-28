@@ -246,11 +246,15 @@ def _select_crew(goal: str) -> Crew:
     return architect_crew(goal)
 
 
+import time
+from backend.orchestration.runtime_state import runtime_state_adapter
+
 async def run_crew_for_goal(
     goal: str,
     workspace_path: str,
     *,
     system_prompt: Optional[str] = None,
+    job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run a crew for the goal and write artifacts under workspace_path.
@@ -272,6 +276,8 @@ async def run_crew_for_goal(
 
     written: List[str] = []
 
+    
+
     def _write(rel: str, body: str) -> None:
         full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
         root = os.path.normpath(workspace_path)
@@ -281,10 +287,13 @@ async def run_crew_for_goal(
         with open(full, "w", encoding="utf-8") as fh:
             fh.write(body)
         written.append(rel.replace("\\", "/"))
+        if job_id:
+            # Emit a file_written event
+            runtime_state_adapter.append_job_event(job_id, "file_written", {"path": rel.replace("\\", "/"), "content_length": len(body), "timestamp": time.time()})
 
     arch = (ctx.get("architecture") or "").strip()
     if arch:
-        _write("docs/CREW_ARCHITECTURE.md", arch)
+        _write("docs/CREW_ARCHITECTURE.md", arch, job_id=job_id)
 
     schema = (ctx.get("schema") or "").strip()
     if schema:
@@ -293,11 +302,11 @@ async def run_crew_for_goal(
             + schema
             + "\n"
         )
-        _write("db/migrations/000_crew_schema.sql", sql)
+        _write("db/migrations/000_crew_schema.sql", sql, job_id=job_id)
 
     openapi = (ctx.get("openapi") or "").strip()
     if openapi:
-        _write("docs/CREW_OPENAPI_SKETCH.md", openapi)
+        _write("docs/CREW_OPENAPI_SKETCH.md", openapi, job_id=job_id)
 
     sp = (kick_inputs.get("system_prompt") or "").strip()
     if sp:
@@ -312,7 +321,7 @@ async def run_crew_for_goal(
                 f"SHA256 prefix: `{fp}`\n\n"
                 "---\n\n" + excerpt
             )
-            _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body)
+            _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body, job_id=job_id)
         except Exception as exc:
             logger.warning(
                 "crew: could not write proof/ELITE_EXECUTION_DIRECTIVE.md: %s", exc

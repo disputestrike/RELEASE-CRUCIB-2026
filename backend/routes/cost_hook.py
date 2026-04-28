@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.services.cost_governance import cost_governance_payload, estimate_cost
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cost", tags=["cost"])
@@ -45,6 +47,14 @@ class TurnCostResponse(BaseModel):
     usd: float
     total_run_usd: float
     recorded_at: str
+
+
+class CostEstimateRequest(BaseModel):
+    action: str = Field(..., min_length=1, max_length=80)
+    plan: str = Field(default="free", min_length=1, max_length=40)
+    depth: Optional[str] = Field(default=None, max_length=40)
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
 
 
 def _compute_usd(model: str, tin: int, tout: int) -> float:
@@ -98,3 +108,24 @@ def totals():
 @router.get("/pricing")
 def pricing():
     return {"pricing_per_million_tokens": PRICING}
+
+
+@router.get("/governance")
+def governance():
+    """Return approved plan pricing, action budgets, depth caps, and routing policy."""
+    return cost_governance_payload()
+
+
+@router.post("/estimate")
+def estimate(body: CostEstimateRequest):
+    """Estimate credits/USD and approval need before expensive actions run."""
+    try:
+        return estimate_cost(
+            action=body.action,
+            plan=body.plan,
+            depth=body.depth,
+            input_tokens=body.input_tokens,
+            output_tokens=body.output_tokens,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

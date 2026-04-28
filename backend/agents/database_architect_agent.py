@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+from backend.anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -265,7 +265,9 @@ class DatabaseArchitectAgent:
 
     def __init__(self, llm_client):
         self.llm = llm_client
-        self.model = normalize_anthropic_model(ANTHROPIC_SONNET_MODEL)
+        import os as _os
+        # Use Cerebras as primary; Anthropic Sonnet only if CEREBRAS_API_KEY not set
+        self.model = "cerebras" if _os.getenv("CEREBRAS_API_KEY") else normalize_anthropic_model(ANTHROPIC_SONNET_MODEL)
 
     async def execute(self, context: Dict) -> Dict:
         """

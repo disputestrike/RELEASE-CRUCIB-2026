@@ -101,7 +101,7 @@ async def merge_worktree(req: WorktreeMergeRequest):
     
     if req.target_job_id:
         try:
-            from server import WORKSPACE_ROOT
+            from backend.server import WORKSPACE_ROOT
             dst = os.path.join(str(WORKSPACE_ROOT), req.target_job_id)
             os.makedirs(dst, exist_ok=True)
             for root, dirs, filenames in os.walk(src):

@@ -12,7 +12,7 @@ const FALLBACK_TEMPLATES = [
   { id: 'dashboard', name: 'Dashboard', description: 'Sidebar + stats cards + chart placeholder', prompt: 'Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.' },
   { id: 'blog', name: 'Blog', description: 'Blog layout with posts list and post detail', prompt: 'Build a blog with a list of posts and a post detail view. React and Tailwind.' },
   { id: 'saas-shell', name: 'SaaS shell', description: 'Auth shell with nav and settings', prompt: 'Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.' },
-  { id: 'ecommerce', name: 'E-Commerce Store', description: 'Product grid, cart, checkout flow with Stripe', prompt: 'Build an e-commerce store with product listing, cart, and checkout. React and Tailwind.' },
+  { id: 'ecommerce', name: 'E-Commerce Store', description: 'Product grid, cart, checkout flow with Braintree', prompt: 'Build an e-commerce store with product listing, cart, and checkout. React and Tailwind.' },
   { id: 'portfolio', name: 'Portfolio', description: 'Personal portfolio with projects, about, and contact', prompt: 'Create a personal portfolio site with hero, projects grid, about section, and contact form. React and Tailwind.' },
   { id: 'landing-page', name: 'Landing Page', description: 'Marketing landing page with hero, features, pricing, CTA', prompt: 'Build a marketing landing page with hero section, features grid, pricing table, and CTA. React and Tailwind.' },
   { id: 'crm', name: 'CRM Dashboard', description: 'Customer management with contacts, deals, pipeline', prompt: 'Create a CRM dashboard with contacts list, deals pipeline, and activity feed. React and Tailwind.' },
@@ -45,7 +45,7 @@ export default function TemplatesPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Quick start</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Templates</h1>
-          <p className="text-gray-500">Start from proven app templates — dashboards, blogs, SaaS shells, e-commerce, and more. One click to customize and ship. Sign up free to use any template in the workspace.</p>
+          <p className="text-gray-500">Start from app templates — dashboards, blogs, SaaS shells, e-commerce, and more. Customize in the workspace, then export or deploy only after the relevant proof gates pass.</p>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
