@@ -1,5 +1,6 @@
 import json
 
+from backend.orchestration.enterprise_command_pack import enterprise_command_intent
 from backend.orchestration.generated_app_template import build_frontend_file_set
 from backend.orchestration.preview_gate import (
     _detect_saas_product_intent,
@@ -15,6 +16,27 @@ SAAS_GOAL = (
 
 def _combined(files):
     return "\n".join(files.values()).lower()
+
+
+HELIOS_LIKE_GOAL = """
+Build Helios Operations Cloud — multi-tenant B2B SaaS with CRM, quote workflow,
+compliance, audit trail, background workers, integrations, analytics dashboards,
+and React + TypeScript SPA plus FastAPI backend.
+"""
+
+
+def test_enterprise_helios_goal_prefers_manus_parity_for_saas_gate():
+    """Regulated-enterprise prompts used to return the thinner enterprise pack UI and fail preview."""
+    job = {"goal": HELIOS_LIKE_GOAL.strip()}
+    assert enterprise_command_intent(job) is True
+
+    files = dict(build_frontend_file_set(job))
+    assert "src/components/MarketingNav.jsx" in files
+    assert "src/components/DashboardLayout.jsx" in files
+    assert "src/pages/AnalyticsPage.jsx" in files
+    combined = _combined(files)
+    issues, _proof = _verify_saas_product_contract(files, combined)
+    assert issues == []
 
 
 def test_saas_ui_goal_uses_manus_parity_template():

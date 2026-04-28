@@ -894,10 +894,19 @@ describe('feature module', () => {
 
 def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
     """(relative_path, utf-8 content)."""
+    target = normalize_build_target(job.get("build_target"))
+
     if enterprise_command_intent(job) and not job.get("preview_contract_only"):
+        # Regulated-enterprise goals (Helios, multi-tenant CRM, compliance stacks, …) used to
+        # take priority and return the thinner enterprise_command pack UI. Preview verification
+        # still applies `_verify_saas_product_intent` whenever file paths look SaaS-shaped, and
+        # that gate expects the Manus-parity shell (MarketingNav, pages, tokens, charts).
+        # When both enterprise + SaaS UI intent are present, prefer Manus parity so
+        # verification.preview can pass; backend/DB assets still come from enterprise agents.
+        if target != "mobile_expo" and is_saas_ui_goal(job, target):
+            return build_manus_parity_frontend_file_set(job, target)
         return build_enterprise_frontend_file_set(job)
 
-    target = normalize_build_target(job.get("build_target"))
     if target != "mobile_expo" and is_saas_ui_goal(job, target):
         return build_manus_parity_frontend_file_set(job, target)
 
