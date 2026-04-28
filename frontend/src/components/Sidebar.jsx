@@ -21,6 +21,26 @@ import {
 import Logo from './Logo';
 import './Sidebar.css';
 
+const DISMISSED_PROJECT_IDS_KEY = 'crucibai_sidebar_dismissed_project_ids';
+
+function readDismissedProjectIds() {
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_PROJECT_IDS_KEY);
+    const a = raw ? JSON.parse(raw) : [];
+    return Array.isArray(a) ? a.slice(0, 400).map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistDismissedProjectIds(ids) {
+  try {
+    sessionStorage.setItem(DISMISSED_PROJECT_IDS_KEY, JSON.stringify(ids.slice(-400)));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 /**
  * Sidebar — minimal primary nav (Manus-style density).
  * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
@@ -71,7 +91,7 @@ export const Sidebar = ({
   const collapsedAccountBtnRef = React.useRef(null);
   const accountMenuDropdownRef = React.useRef(null);
   const [accountMenuPortaledStyle, setAccountMenuPortaledStyle] = useState(null);
-  const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
+  const [dismissedProjectIds, setDismissedProjectIds] = useState(readDismissedProjectIds);
   const { token } = useAuth();
 
   // Close account menu on outside click (expanded footer, collapsed strip, or portaled menu)
@@ -145,9 +165,23 @@ export const Sidebar = ({
     });
   }, []);
 
+  const dismissedProjectSet = useMemo(() => new Set(dismissedProjectIds), [dismissedProjectIds]);
+
+  const dismissProjectFromSidebar = useCallback((projectId) => {
+    if (!projectId) return;
+    setDismissedProjectIds((prev) => {
+      if (prev.includes(projectId)) return prev;
+      const next = [...prev, projectId].slice(-400);
+      persistDismissedProjectIds(next);
+      return next;
+    });
+  }, []);
+
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for ordering
   const listItems = useMemo(() => {
-    const fromProjects = (projects || []).map(p => ({
+    const fromProjects = (projects || [])
+      .filter((p) => p && !dismissedProjectSet.has(p.id))
+      .map(p => ({
       id: p.id,
       name: p.name || p.requirements?.prompt?.slice(0, 80) || 'Project',
       status: p.status || 'pending',
@@ -170,7 +204,7 @@ export const Sidebar = ({
       runId: t.runId || null,
     }));
     return [...fromProjects, ...fromStore];
-  }, [projects, storeTasks, propTasks]);
+  }, [projects, storeTasks, propTasks, dismissedProjectSet]);
 
   const filteredListItems = useMemo(() => {
     if (!searchQuery) return listItems.slice(0, 50);
@@ -269,6 +303,23 @@ export const Sidebar = ({
     });
   }, [storeTasks, removeTask]);
 
+  const finalizeHideProjectFromRecent = useCallback((projectItem) => {
+    if (!projectItem?.id || !projectItem.isProject) return;
+    dismissProjectFromSidebar(projectItem.id);
+    clearPinnedAndLinkedTasksAfterProjectRemoval(projectItem.id);
+    onProjectsRefresh?.();
+    if (workspaceProjectId === projectItem.id) {
+      navigate('/app', { replace: true, state: { newAgent: true } });
+    }
+    setDeleteConfirmTask(null);
+  }, [
+    workspaceProjectId,
+    navigate,
+    onProjectsRefresh,
+    dismissProjectFromSidebar,
+    clearPinnedAndLinkedTasksAfterProjectRemoval,
+  ]);
+
   const handleDeleteConfirm = async () => {
     const item = deleteConfirmTask;
     if (!item || deleteBusy) return;
@@ -314,10 +365,25 @@ export const Sidebar = ({
       }
       setDeleteConfirmTask(null);
     } catch (e) {
-      const msg = e?.response?.status === 401 || e?.response?.status === 403
-        ? 'You must be signed in to delete this project.'
-        : 'Could not delete. Try again or check your connection.';
-      window.alert(msg);
+      const status = e?.response?.status;
+      const rawDetail = e?.response?.data?.detail ?? e?.response?.data?.message;
+      const detail = typeof rawDetail === 'string' ? rawDetail.trim() : '';
+      if (item.isProject) {
+        if (status === 404) {
+          finalizeHideProjectFromRecent(item);
+          return;
+        }
+        if (status === 401 || status === 403) {
+          window.alert('You must be signed in to delete this project.');
+          return;
+        }
+        window.alert(
+          detail
+            || `Could not delete this project (${status || 'error'}).`,
+        );
+        return;
+      }
+      window.alert(detail || 'Could not remove. Try again.');
     } finally {
       setDeleteBusy(false);
     }
@@ -889,6 +955,17 @@ export const Sidebar = ({
                 <button type="button" disabled={deleteBusy} onClick={() => setDeleteConfirmTask(null)}>
                   Cancel
                 </button>
+                {deleteConfirmTask.isProject && (
+                  <button
+                    type="button"
+                    className="sidebar-delete-hide-recent"
+                    disabled={deleteBusy}
+                    title="Does not touch the server—only hides this project from Recent in this browser"
+                    onClick={() => finalizeHideProjectFromRecent(deleteConfirmTask)}
+                  >
+                    Hide from Recent only
+                  </button>
+                )}
                 <button type="button" className="danger" disabled={deleteBusy} onClick={handleDeleteConfirm}>
                   {deleteBusy ? 'Working…' : deleteConfirmTask.isProject ? 'Delete project' : 'Remove'}
                 </button>

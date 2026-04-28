@@ -706,11 +706,24 @@
 
 .sidebar-delete-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
 }
 
-.sidebar-delete-actions button {
+.sidebar-delete-actions button.sidebar-delete-hide-recent {
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: transparent !important;
+  font-weight: 500;
+  font-size: 13px !important;
+}
+.sidebar-delete-actions button.sidebar-delete-hide-recent:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+[data-theme="light"] .sidebar-delete-actions button.sidebar-delete-hide-recent {
+  border-color: #d4d4d8 !important;
+  color: #404040 !important;
+}
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 14px;
