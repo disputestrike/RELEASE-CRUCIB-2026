@@ -1786,11 +1786,6 @@ export default function App() {
           </div>
 
           <div className="arp-center-pane-scroll">
-            {(effectiveJobId || effectiveProjectId) && (
-              <div className="uw-build-identity" aria-label="Active build">
-                <div className="uw-build-identity-title">{buildDisplayTitle}</div>
-              </div>
-            )}
             <BrainGuidancePanel
               jobId={effectiveJobId}
               workspaceStage={stage}

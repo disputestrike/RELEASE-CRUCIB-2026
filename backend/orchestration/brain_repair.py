@@ -183,6 +183,20 @@ async def run_full_brain_repair(
         ("verification.", "implementation.")
     )
     allow_llm = retry_count >= 1 or verify_or_impl
+
+    recent_traces: List[str] = []
+    if jid and allow_llm:
+        try:
+            from .context_digest import last_error_traces
+            from .runtime_state import get_job_events
+
+            ev_rows = await get_job_events(jid, limit=200)
+            recent_traces = last_error_traces(ev_rows, limit=3)
+            if recent_traces:
+                logger.info("brain: injecting %d error trace(s) into LLM repair", len(recent_traces))
+        except Exception as e:
+            logger.warning("brain: could not load job_events for repair traces: %s", e)
+
     if (
         allow_llm
         and critical_unfixed
@@ -201,6 +215,7 @@ async def run_full_brain_repair(
                 rel_path=rel_path,
                 error_message=error_message,
                 diagnosis=diagnosis,
+                recent_traces=recent_traces if recent_traces else None,
             )
             llm_repairs.append(llm_result)
             if llm_result.get("fixed"):

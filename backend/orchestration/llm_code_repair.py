@@ -171,6 +171,8 @@ async def repair_file_with_llm(
     rel_path: str,
     error_message: str,
     diagnosis: Optional[Dict[str, Any]] = None,
+    *,
+    recent_traces: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Read a broken file, ask Claude to fix it, write it back.
@@ -214,11 +216,21 @@ async def repair_file_with_llm(
             for f in relevant:
                 context += f"  - {f.get('check')}: {', '.join(f.get('issues', []))}\n"
 
+    traces_block = ""
+    if recent_traces:
+        lines = []
+        for line in recent_traces:
+            s = str(line).strip()
+            if s:
+                lines.append(f"  • {s[:500]}")
+        if lines:
+            traces_block = "\nRecent failures from job log (newest first):\n" + "\n".join(lines) + "\n"
+
     system_prompt = REPAIR_PROMPTS.get(language, REPAIR_PROMPTS["general"])
     user_prompt = f"""File: {rel_path}
 Language: {language}
 Error: {error_message[:600]}
-{context}
+{context}{traces_block}
 Broken file content:
 {broken_content[:8000]}
 

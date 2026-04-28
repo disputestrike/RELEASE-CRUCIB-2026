@@ -22,13 +22,25 @@ def last_error_traces(
     for ev in reversed(events or []):
         if len(out) >= limit:
             break
-        t = str(ev.get("type") or ev.get("event_type") or "").lower()
-        pl = ev.get("payload") or ev.get("data") or {}
-        if isinstance(pl, str):
+        t = str(ev.get("event_type") or ev.get("type") or "").lower()
+        pl_raw = ev.get("payload")
+        if isinstance(pl_raw, dict) and pl_raw:
+            pl = dict(pl_raw)
+        elif isinstance(ev.get("data"), dict):
+            pl = dict(ev["data"])  # type: ignore[arg-type]
+        elif isinstance(ev.get("payload_json"), str):
             try:
-                pl = json.loads(pl)
+                lj = json.loads(ev["payload_json"])  # runtime_state.append_job_event store
+                pl = lj if isinstance(lj, dict) else {}
             except Exception:
                 pl = {}
+        elif isinstance(pl_raw, str):
+            try:
+                pl = json.loads(pl_raw)
+            except Exception:
+                pl = {}
+        else:
+            pl = {}
         if not isinstance(pl, dict):
             pl = {}
         if "error" in t or "fail" in t or "exception" in t or pl.get("error"):
