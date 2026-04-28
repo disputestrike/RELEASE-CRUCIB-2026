@@ -661,6 +661,88 @@ async def _call_anthropic_direct(
         return output.strip()
 
 
+async def _call_anthropic_messages_with_tools(
+    *,
+    api_key: str,
+    model: str,
+    system_message: str,
+    messages: List[Dict[str, Any]],
+    tools: List[Dict[str, Any]],
+    max_tokens: int = 8192,
+) -> Dict[str, Any]:
+    """Single Claude Messages API turn with tools (HTTP).
+
+    Returns normalized dict for ``runtime_engine.run_agent_loop``::
+
+        ``stop_reason``: ``end_turn`` | ``tool_use`` | ``max_tokens`` | ...
+        ``content``: list of ``{"type":"text"|"tool_use", ...}`` blocks
+        ``usage``: optional usage payload from API
+
+    Raises on HTTP/API errors so callers can fall back.
+    """
+    key = (api_key or "").strip()
+    if not key:
+        raise ValueError("ANTHROPIC_API_KEY not set")
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
+    payload: Dict[str, Any] = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_message,
+        "messages": messages,
+        "tools": tools,
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=180,
+        )
+    if response.status_code != 200:
+        err_body = response.text[:800]
+        logger.warning(
+            "Anthropic tools API error %s: %s", response.status_code, err_body
+        )
+        try:
+            err_json = response.json()
+            err_msg = (err_json.get("error") or {}).get("message", err_body)
+        except Exception:
+            err_msg = err_body
+        raise Exception(f"Anthropic API returned {response.status_code}: {err_msg[:400]}")
+
+    data = response.json()
+    raw_blocks = data.get("content") or []
+    normalized: List[Dict[str, Any]] = []
+    for block in raw_blocks:
+        btype = block.get("type")
+        if btype == "text":
+            normalized.append({"type": "text", "text": block.get("text") or ""})
+        elif btype == "tool_use":
+            normalized.append(
+                {
+                    "type": "tool_use",
+                    "id": block.get("id"),
+                    "name": block.get("name") or "",
+                    "input": block.get("input") if isinstance(block.get("input"), dict) else {},
+                }
+            )
+        else:
+            normalized.append(block)
+
+    stop_reason = data.get("stop_reason") or "end_turn"
+    out: Dict[str, Any] = {
+        "stop_reason": stop_reason,
+        "content": normalized,
+    }
+    usage = data.get("usage")
+    if isinstance(usage, dict):
+        out["usage"] = usage
+    return out
+
+
 async def _call_llm_with_fallback(
     message: str,
     system_message: str,
@@ -872,6 +954,7 @@ __all__ = [
     "_call_llama_direct",
     "_call_cerebras_direct",
     "_call_anthropic_direct",
+    "_call_anthropic_messages_with_tools",
     "_call_llm_with_fallback",
     # Constants
     "SKILL_TRIGGERS",

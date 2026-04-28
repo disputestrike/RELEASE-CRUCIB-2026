@@ -747,6 +747,32 @@ async def _init_agent_learning(*_args, **_kwargs):
     return None
 
 
+def _anthropic_api_key_for_agent_loop(effective: Optional[dict]) -> str:
+    return (
+        ((effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY") or "")
+        .strip()
+    )
+
+
+def _anthropic_model_from_chain(model_chain: list) -> str:
+    """Pick Claude model ID from swarm/router chain when present."""
+    try:
+        from .anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+    except ImportError:
+        from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+
+    for entry in model_chain or []:
+        if isinstance(entry, dict) and entry.get("provider") == "anthropic":
+            return normalize_anthropic_model(
+                entry.get("model"), default=ANTHROPIC_HAIKU_MODEL
+            )
+        if isinstance(entry, (list, tuple)) and len(entry) >= 3:
+            _name, mid, provider = entry[0], entry[1], entry[2]
+            if provider == "anthropic" and mid:
+                return normalize_anthropic_model(mid, default=ANTHROPIC_HAIKU_MODEL)
+    return normalize_anthropic_model(None, default=ANTHROPIC_HAIKU_MODEL)
+
+
 async def _run_single_agent_with_context(
     *,
     project_id: str,
@@ -852,24 +878,111 @@ async def _run_single_agent_with_context(
         f"You are {agent_name}. Output ONLY production-ready code. "
         "No prose, no markdown explanation. Start your response with the first line of code."
     )
-    output, _meta = await _call_llm_with_fallback(
-        message=enriched_prompt,
-        system_message=system_message,
-        session_id=f"{project_id}:{agent_name}",
-        model_chain=model_chain,
-        api_keys=effective,
-        agent_name=agent_name,
-    )
+
+    workspace_fs = (workspace_path or "").strip()
+    anthropic_key = _anthropic_api_key_for_agent_loop(effective)
+    use_workspace_tool_loop = bool(workspace_fs) and bool(anthropic_key)
+    output: Any = ""
+    _meta: Any = {}
+    completed_anthropic_tool_loop = False
+
+    if use_workspace_tool_loop:
+        try:
+            from .orchestration.runtime_engine import (
+                MAX_LOOP_ITERATIONS,
+                extract_final_assistant_text,
+                run_agent_loop,
+            )
+            from .services.llm_service import _call_anthropic_messages_with_tools
+        except ImportError:
+            from backend.orchestration.runtime_engine import (
+                MAX_LOOP_ITERATIONS,
+                extract_final_assistant_text,
+                run_agent_loop,
+            )
+            from backend.services.llm_service import _call_anthropic_messages_with_tools
+
+        anthropic_model = _anthropic_model_from_chain(model_chain)
+
+        async def _call_llm_turn(messages, system, tools, thinking=None):
+            return await _call_anthropic_messages_with_tools(
+                api_key=anthropic_key,
+                model=anthropic_model,
+                system_message=system,
+                messages=messages,
+                tools=tools,
+                max_tokens=8192,
+            )
+
+        try:
+            loop_out = await run_agent_loop(
+                agent_name=agent_name,
+                system_prompt=system_message,
+                user_message=enriched_prompt,
+                workspace_path=workspace_fs,
+                call_llm=_call_llm_turn,
+                max_iterations=MAX_LOOP_ITERATIONS,
+            )
+            final_text = extract_final_assistant_text(loop_out.get("messages") or [])
+            output = (
+                final_text.strip()
+                if final_text.strip()
+                else "[agent completed tool loop with no assistant text]"
+            )
+            _meta = {
+                "model": f"anthropic_tool_loop/{anthropic_model}",
+                "tool_loop": True,
+                "iterations": loop_out.get("iterations"),
+                "files_written": loop_out.get("files_written"),
+                "elapsed_seconds": loop_out.get("elapsed_seconds"),
+            }
+            completed_anthropic_tool_loop = True
+        except Exception as exc:
+            logger.warning(
+                "workspace tool loop failed for %s — falling back to single-shot LLM: %s",
+                agent_name,
+                exc,
+            )
+            output, _meta = await _call_llm_with_fallback(
+                message=enriched_prompt,
+                system_message=system_message,
+                session_id=f"{project_id}:{agent_name}",
+                model_chain=model_chain,
+                api_keys=effective,
+                agent_name=agent_name,
+            )
+    else:
+        if workspace_fs and not anthropic_key:
+            logger.warning(
+                "workspace path set but no Anthropic API key — agent %s uses single-shot "
+                "(tool loop requires ANTHROPIC_API_KEY)",
+                agent_name,
+            )
+        output, _meta = await _call_llm_with_fallback(
+            message=enriched_prompt,
+            system_message=system_message,
+            session_id=f"{project_id}:{agent_name}",
+            model_chain=model_chain,
+            api_keys=effective,
+            agent_name=agent_name,
+        )
+
+    est_tokens = max(100, len(str(output or "")) // 4)
     result = {
         "status": "completed",
         "output": output,
         "result": output,
-        "tokens_used": 100,
+        "tokens_used": est_tokens,
         "agent": agent_name,
         "project_id": project_id,
         "user_id": user_id,
         "build_kind": build_kind,
     }
+    if completed_anthropic_tool_loop:
+        result["tool_loop"] = True
+        if isinstance(_meta, dict):
+            result["tool_loop_iterations"] = _meta.get("iterations")
+            result["tool_loop_files_written"] = _meta.get("files_written")
     return await run_real_post_step(agent_name, project_id, previous_outputs, result)
 
 

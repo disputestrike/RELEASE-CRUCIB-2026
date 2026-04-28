@@ -261,6 +261,14 @@ async def run_agent_loop(
             )
             break
 
+        if stop_reason == "max_tokens":
+            logger.warning(
+                "runtime_engine: agent=%s hit max_tokens at iter %d — stopping",
+                agent_name,
+                iterations,
+            )
+            break
+
         if stop_reason == "tool_use":
             tool_uses = [b for b in content_blocks if b.get("type") == "tool_use"]
             if not tool_uses:
@@ -294,6 +302,24 @@ async def run_agent_loop(
         "elapsed_seconds": round(time.time() - start_time, 2),
         "messages": messages,
     }
+
+
+def extract_final_assistant_text(messages: List[Dict[str, Any]]) -> str:
+    """Concatenate text blocks from the last assistant message (tool-loop transcripts)."""
+    for msg in reversed(messages):
+        if msg.get("role") != "assistant":
+            continue
+        content = msg.get("content")
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            parts = [
+                (b.get("text") or "").strip()
+                for b in content
+                if b.get("type") == "text"
+            ]
+            return " ".join(parts).strip()
+    return ""
 
 
 # ─── Task status helpers (FIX 16) ─────────────────────────────────────────────
