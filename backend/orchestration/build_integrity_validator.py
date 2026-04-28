@@ -256,9 +256,18 @@ def _find_client_exposed_secrets(files: Mapping[str, str], *, max_items: int = 8
 
 
 def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -> str:
+    # Use goal-only text for intent detection — scanning file contents causes
+    # false positives (e.g. any file mentioning "app.json" triggers "mobile").
     text = (goal or "").lower()
-    if files:
-        text += "\n" + _combined(files)
+    file_paths = " ".join(files.keys()).lower() if files else ""
+
+    # Web escape hatch: if vite.config or index.html exist as file keys,
+    # this is definitely a web/SaaS build — classify before mobile check.
+    if files and any(k in file_paths for k in ("vite.config", "index.html", "src/app.jsx", "src/app.tsx")):
+        if _has_any_text(text, ("saas", "dashboard", "analytics", "pricing")):
+            return "saas_ui"
+        return "web"
+
     if re.search(
         r"\b(?:expo|react native|react-native|mobile app|app store|eas\.json|app\.json|ios|android)\b",
         text,

@@ -133,21 +133,30 @@ def _extract_artifact_from_llm_output(
             if match:
                 code = match.group(1).strip()
                 if code:
-                    # Reject if it looks like Python
-                    first_line = code.split('\n')[0].lower()
-                    if first_line.startswith(('import ', 'from ')):
-                        # Python import detected
-                        logger.debug("Python syntax detected in JS file, skipping this block")
+                    # Reject garbage: markdown headings, file path prefixes, Python imports
+                    first_line = code.split('\n')[0].strip()
+                    fl_lower = first_line.lower()
+                    is_garbage = (
+                        first_line.startswith(('####', '###', '##', '# ', '`'))
+                        or fl_lower.startswith(('import ', 'from ', 'server/', 'src/', 'backend/', 'frontend/'))
+                        or (len(first_line) > 0 and first_line[0].isalpha() and ': ' in first_line and not first_line.startswith(('const ', 'let ', 'var ', 'function ', 'export ', 'import ', 'class ', 'type ', 'interface ')))
+                    )
+                    if is_garbage:
+                        logger.debug("Garbage detected in JS artifact, skipping fence block: %r", first_line[:60])
                         continue
                     logger.info("Code extracted from fence: %d chars", len(code))
                     return code
         
         # If no code fence, check if response looks like code
         cleaned = llm_response.strip()
-        if cleaned and not cleaned.startswith(("Here", "The", "This", "I've", "Based", "Sure")):
-            # Make sure it doesn't look like Python
-            first_line = cleaned.split('\n')[0].lower()
-            if not first_line.startswith(('import ', 'from ')):
+        if cleaned and not cleaned.startswith(("Here", "The", "This", "I've", "Based", "Sure", "#", "`")):
+            first_line = cleaned.split('\n')[0].strip()
+            fl_lower = first_line.lower()
+            is_garbage = (
+                first_line.startswith(('####', '###', '##', '`'))
+                or fl_lower.startswith(('import ', 'from ', 'server/', 'src/', 'backend/'))
+            )
+            if not is_garbage:
                 logger.info("Code extracted from prose: %d chars", len(cleaned))
                 return cleaned
         
@@ -205,6 +214,7 @@ def _extract_artifact_from_llm_output(
 from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
 from backend.agent_resilience import get_criticality
 
+from .executor import _safe_write, _strip_prose_preamble
 from .agent_selection_logic import (
     BASE_AGENTS,
     build_full_phases_from_dag,
@@ -762,11 +772,9 @@ async def run_swarm_agent_step(
                 )
                 
                 if extracted:
-                    artifact_full = os.path.join(workspace_path, artifact_rel_path)
-                    os.makedirs(os.path.dirname(artifact_full), exist_ok=True)
-                    try:
-                        with open(artifact_full, "w", encoding="utf-8") as f:
-                            f.write(extracted)
+                    # Route through _safe_write so all language/garbage guards apply
+                    written = _safe_write(workspace_path, artifact_rel_path, extracted)
+                    if written:
                         if artifact_rel_path not in changed_files:
                             changed_files.append(artifact_rel_path)
                         logger.info(
@@ -775,9 +783,11 @@ async def run_swarm_agent_step(
                             artifact_rel_path,
                             len(extracted),
                         )
-                    except OSError as e:
+                    else:
                         logger.warning(
-                            "failed to write artifact %s: %s", artifact_rel_path, e
+                            "materialize_agent_artifact_REJECTED: agent=%s path=%s — garbage/prose content blocked by _safe_write",
+                            agent_name,
+                            artifact_rel_path,
                         )
                 else:
                     logger.warning(
