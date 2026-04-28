@@ -30,15 +30,16 @@ def test_phase2_optional_auth_route_inventory_has_no_unclassified_action_routes(
 
 
 def test_phase2_websocket_project_progress_requires_token_and_project_owner():
-    """Project-progress websocket must reject unauthenticated and cross-tenant subscribers."""
-    text = (REPO_ROOT / "backend" / "server.py").read_text(encoding="utf-8")
-    start = text.index("async def websocket_project_progress")
-    end = text.index("# Add security and performance middleware", start)
-    block = text[start:end]
+    """Workspace WebSocket (/ws/events): token + jwt + tenant/job ownership enforced."""
+    text = (
+        Path(__file__).resolve().parents[1] / "routes" / "crucib_ws_events.py"
+    ).read_text(encoding="utf-8")
+    start = text.index("async def workspace_events_ws")
+    block = text[start : start + 2200]
     assert 'websocket.query_params.get("token")' in block
     assert "await websocket.close(code=1008)" in block
     assert "jwt.decode" in block
-    assert '{"id": project_id, "user_id": user["id"]}' in block
+    assert "_assert_job_owner_match" in block
 
 
 def test_phase2_blueprint_optional_auth_only_allows_write_only_analytics():

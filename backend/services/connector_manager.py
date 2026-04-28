@@ -11,7 +11,8 @@ Supported connectors:
   • Railway – deployments via Railway API
   • Vercel  – deployments via Vercel API
   • Slack   – messages via webhooks
-  • Braintree – billing readiness and payment configuration
+  • Braintree — billing readiness and payment configuration
+  • Stripe — Stripe API readiness when STRIPE_SECRET_KEY is set
 
 Design:
   • Each connector is stateless; credentials pulled from env at call time.
@@ -252,6 +253,27 @@ class BraintreeConnector(ConnectorBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Stripe connector (readiness parity with Braintree; server routes may use Stripe)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class StripeConnector(ConnectorBase):
+    name = "stripe"
+
+    def __init__(self) -> None:
+        self._secret_key = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+
+    def is_available(self) -> bool:
+        return bool(self._secret_key)
+
+    def status(self) -> Dict[str, Any]:
+        return {
+            "configured": self.is_available(),
+            "required_config": ["STRIPE_SECRET_KEY"],
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ConnectorManager
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -260,7 +282,14 @@ class ConnectorManager:
 
     def __init__(self) -> None:
         self._registry: Dict[str, ConnectorBase] = {}
-        for cls in [GitHubConnector, RailwayConnector, VercelConnector, SlackConnector, BraintreeConnector]:
+        for cls in [
+            GitHubConnector,
+            RailwayConnector,
+            VercelConnector,
+            SlackConnector,
+            StripeConnector,
+            BraintreeConnector,
+        ]:
             instance = cls()
             self._registry[instance.name] = instance
 

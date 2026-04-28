@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from backend import server
-from services.runtime.task_manager import task_manager
-from services.runtime.memory_graph import add_node
-from services.runtime.cost_tracker import cost_tracker
+from backend.services.runtime.task_manager import task_manager
+from backend.services.runtime.memory_graph import add_node
+from backend.services.runtime.cost_tracker import cost_tracker
 
 
 async def test_debug_routes_require_admin(app_client, auth_headers, monkeypatch):

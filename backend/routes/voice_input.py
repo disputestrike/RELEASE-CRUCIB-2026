@@ -115,16 +115,23 @@ async def transcribe(
             logger.warning("whisper STT error: %s", exc)
 
     if text is None:
-        # No provider wired (or the call failed). Tell the client explicitly
-        # so the UI can show an actionable error instead of a placeholder.
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Speech-to-text is not configured. Set OPENAI_API_KEY in the "
-                "backend environment (used for Whisper) or wire another STT "
-                "provider in backend/routes/voice_input.py."
-            ),
-        )
+        test_mode = os.environ.get("CRUCIBAI_VOICE_TEST_MODE", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if test_mode:
+            text = f"[voice test mode {size} bytes]"
+            provider = "voice-test-mode"
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Speech-to-text is not configured. Set OPENAI_API_KEY in the "
+                    "backend environment (used for Whisper) or wire another STT "
+                    "provider in backend/routes/voice_input.py."
+                ),
+            )
 
     _TRANSCRIPTS[transcript_id] = {
         "transcript_id": transcript_id,

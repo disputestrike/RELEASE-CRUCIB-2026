@@ -15,7 +15,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = ROOT / "proof" / "phase2_security"
 
-ROUTE_RE = re.compile(r"@(api_router|agents_router|projects_router|auth_router|tools_router)\.(get|post|put|patch|delete)\(\"([^\"]+)\"")
+ROUTE_RE = re.compile(
+    r"@(api_router|agents_router|projects_router|auth_router|tools_router|router)\.(get|post|put|patch|delete|websocket)\(\"([^\"]+)\""
+)
 APP_ROUTE_RE = re.compile(r"@app\.(get|post|put|patch|delete|websocket)\(\"([^\"]+)\"")
 FUNC_RE = re.compile(r"async def ([a-zA-Z0-9_]+)\(")
 
@@ -125,6 +127,13 @@ def build_report() -> dict[str, Any]:
     optional_entries = []
     optional_entries.extend(
         audit_file(ROOT / "backend" / "server.py", ("Depends(get_optional_user)",), "server.py")
+    )
+    optional_entries.extend(
+        audit_file(
+            ROOT / "backend" / "routes" / "misc.py",
+            ("Depends(get_optional_user)", "Depends(_get_optional_user())"),
+            "server.py",
+        )
     )
     optional_entries.extend(
         audit_file(ROOT / "backend" / "modules_blueprint.py", ("Depends(_resolve_optional_user)",), "modules_blueprint.py")

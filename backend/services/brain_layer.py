@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 from typing import Any, Callable, Dict, List, Optional
 
 from backend.agents.registry import AgentRegistry
@@ -13,11 +12,6 @@ from backend.services.runtime.task_manager import task_manager
 from backend.services.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
-
-
-def _event_bus():
-    legacy_events = sys.modules.get("services.events")
-    return getattr(legacy_events, "event_bus", event_bus)
 
 
 class BrainLayer:
@@ -131,7 +125,7 @@ class BrainLayer:
 
         if self.runtime_engine is None:
             assessment = self.assess_request(session, user_message)
-            bus = _event_bus()
+            bus = event_bus
             bus.emit("brain.assessed", {"project_id": project_id, "task_id": task_id, **assessment})
             bus.emit("brain.execution.started", {"project_id": project_id, "task_id": task_id})
             results: Dict[str, Any] = {}

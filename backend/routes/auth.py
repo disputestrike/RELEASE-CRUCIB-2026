@@ -628,10 +628,19 @@ async def export_audit_logs(
 
 
 @auth_router.post("/users/me/delete")
-async def delete_account(
-    body: DeleteAccountBody, user: dict = Depends(get_current_user)
-):
+async def delete_account(request: Request, user: dict = Depends(get_current_user)):
     """Permanently delete the current user's account and all associated data. Requires password confirmation."""
+    raw: dict[str, Any] = {}
+    try:
+        jd = await request.json()
+        if isinstance(jd, dict):
+            raw = jd
+    except Exception:
+        raw = {}
+    try:
+        body = DeleteAccountBody.model_validate(raw if raw else {})
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
     return await delete_account_service(body=body, user=user, db=await get_db(), verify_password=verify_password)
 
 

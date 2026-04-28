@@ -114,10 +114,10 @@ async def asset_providers(user: dict = Depends(_get_optional_user())):
 
 @router.get("/computer-use/actions")
 async def computer_use_actions(user: dict = Depends(_get_optional_user())):
-    """Safe computer-use action contract backed by a governed Playwright runner."""
+    """Safe computer-use action catalog. Execution stays disabled until worker + policy gates go live."""
     return {
-        "execution_status": "available",
-        "note": "Governed browser runner is available for safe actions. Click/type require explicit allow_interaction policy.",
+        "execution_status": "disabled",
+        "note": "Contract lists allowable actions for future governed execution; sandbox execution remains disabled.",
         "actions": list_computer_use_actions(),
     }
 
@@ -142,13 +142,13 @@ async def validate_workflow(body: WorkflowValidateRequest, user: dict = Depends(
 
 @router.post("/computer-use/queue/validate")
 async def validate_computer_use_queue(body: ComputerUseQueueRequest, user: dict = Depends(_get_optional_user())):
-    """Validate see/click/type-style actions without executing them."""
+    """Validate see/click/type-style actions without executing them (foundation: execution gated off)."""
     known = {row["action"]: row for row in list_computer_use_actions()}
     queue_id = f"cuq_{uuid.uuid4().hex}"
     now = _now_iso()
     actor = _actor_id(user)
     queue = []
-    blockers = []
+    blockers: List[Dict[str, Any]] = []
     for idx, action in enumerate(body.actions):
         name = str(action.get("action") or "").strip().lower()
         contract = known.get(name)
@@ -169,12 +169,14 @@ async def validate_computer_use_queue(body: ComputerUseQueueRequest, user: dict 
         queue.append(item)
         if not contract:
             blockers.append({"index": idx, "action": item["action"], "reason": "unknown_action"})
+        else:
+            blockers.append({"index": idx, "reason": "computer_use_execution_disabled"})
     task_doc = {
         "id": queue_id,
         "user_id": actor,
         "status": "validated",
-        "execution_status": "validated",
-        "can_execute_now": not blockers,
+        "execution_status": "disabled",
+        "can_execute_now": False,
         "actions": queue,
         "blockers": blockers,
         "created_at": now,
@@ -183,7 +185,7 @@ async def validate_computer_use_queue(body: ComputerUseQueueRequest, user: dict 
             {
                 "event": "computer_use_queue_validated",
                 "timestamp": now,
-                "status": "validated",
+                "status": "disabled",
             }
         ],
     }
@@ -209,13 +211,13 @@ async def validate_computer_use_queue(body: ComputerUseQueueRequest, user: dict 
             "resource_id": queue_id,
             "status": "validated",
             "created_at": now,
-            "metadata": {"action_count": len(queue), "executed": False, "can_execute_now": not blockers},
+            "metadata": {"action_count": len(queue), "executed": False, "can_execute_now": False},
         },
     )
     return {
         "queue_id": queue_id,
-        "execution_status": "validated",
-        "can_execute_now": True,
+        "execution_status": "disabled",
+        "can_execute_now": False,
         "queue": queue,
         "blockers": blockers,
         "persisted": {

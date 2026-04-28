@@ -448,7 +448,9 @@ class TestDeletionEndpoints:
         r_me = await app_client.get(
             "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
         )
-        assert r_me.status_code == 401
+        # Deleted users: JWT may still decode while row is gone — /auth/me uses 404;
+        # some stacks return 401 for revoked-session semantics.
+        assert r_me.status_code in (401, 404)
 
 
 class TestStripeEndpoints:

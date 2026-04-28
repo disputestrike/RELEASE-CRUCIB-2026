@@ -55,8 +55,13 @@ async def test_brain_layer_emits_execution_events(monkeypatch):
         emitted.append((event_type, payload or {}))
 
     from services import events as events_module
+    try:
+        from backend.services import events as backend_events
+    except ImportError:
+        backend_events = events_module
 
     monkeypatch.setattr(events_module.event_bus, "emit", _emit)
+    monkeypatch.setattr(backend_events.event_bus, "emit", _emit)
 
     brain = BrainLayer()
 

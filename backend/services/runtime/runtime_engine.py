@@ -305,19 +305,70 @@ class RuntimeEngine:
     async def _phase_decide(
         self,
         *,
-        session: ConversationSession,
-        task_id: str,
+        session: Optional[ConversationSession] = None,
+        task_id: str = "",
         context: ExecutionContext,
-        step_id: str,
-        message: str,
-        mode: Optional[str],
-        allowed_phases: Optional[List[str]],
+        step_id: str = "",
+        message: str = "",
+        mode: Optional[str] = None,
+        allowed_phases: Optional[List[str]] = None,
+        request: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Brain decides next step; callers may pass ``message`` or legacy ``request``."""
+        user_message = request if request is not None else message
+        if not user_message:
+            user_message = message or ""
+
+        if session is None:
+            sid = getattr(context, "conversation_id", None) or task_id or "session"
+            session = ConversationSession(
+                session_id=str(sid),
+                user_id=str(context.user_id or ""),
+            )
+
+        bf = self._brain_factory
+        planner: Any = None
+        try:
+            planner = bf(runtime_engine=self)
+        except TypeError:
+            try:
+                planner = bf()
+            except Exception:
+                planner = None
+
+        if planner is None:
+            return {
+                "action": "default",
+                "skill": "default",
+                "continue": False,
+                "spawn": False,
+                "raw": {},
+            }
+
+        try:
+            decide = getattr(planner, "decide", None)
+            if not callable(decide):
+                raise TypeError("planner missing decide()")
+            raw = decide(session, user_message)
+            if not isinstance(raw, dict):
+                raw = {}
+        except Exception:
+            return {
+                "action": "default",
+                "skill": "default",
+                "continue": False,
+                "spawn": False,
+                "confidence": 0.0,
+                "raw": {},
+            }
+
         return {
-            "action": "default",
-            "skill": "default",
-            "continue": False,
-            "spawn": False,
+            "action": raw.get("action") if raw.get("action") is not None else "default",
+            "skill": raw.get("skill") if raw.get("skill") is not None else "default",
+            "confidence": raw.get("confidence", 0.0),
+            "continue": bool(raw.get("continue", False)),
+            "spawn": bool(raw.get("spawn", False)),
+            "raw": raw,
         }
 
     async def _phase_resolve_skill(

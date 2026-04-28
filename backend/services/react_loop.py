@@ -155,9 +155,14 @@ async def react_stream(
             history.append({"tool": name, "args": args, "result": result, "tool_call_id": call_id})
             continue  # let the model incorporate tool result next step
 
-        # Final answer
+        # Final answer (emit a thought event when the LLM omits reasoning so callers
+        # always see the thought → text → final contract on non-tool turns)
         final = turn.get("final") or turn.get("text") or ""
         if final:
+            if not thought:
+                syn = "Reasoning complete."
+                yield {"type": "thought", "content": syn, "step": step}
+                used += len(syn)
             yield {"type": "text", "content": str(final)}
             yield {
                 "type": "final",

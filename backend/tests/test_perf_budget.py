@@ -69,7 +69,8 @@ def _measure_sequential(client: TestClient, path: str, n: int = 50) -> List[floa
 
 # ── /api/onboard/metrics — p95 < 500 ms ──────────────────────────────────────
 
-def test_onboard_metrics_p95_under_500ms():
+def test_onboard_metrics_p95_under_500ms(monkeypatch):
+    monkeypatch.setenv("CRUCIB_TEST_SQLITE", "1")
     app = _app_for("routes.onboard")
     client = TestClient(app)
 

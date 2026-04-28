@@ -48,6 +48,10 @@ async def _get_db():
     We never raise — the route should degrade to an in-memory response so
     demos/CI without Postgres can still exercise the API.
     """
+    import os
+
+    if os.environ.get("CRUCIB_TEST_SQLITE") == "1":
+        return None
     try:
         from backend.db_pg import get_db  # type: ignore
         return await get_db()

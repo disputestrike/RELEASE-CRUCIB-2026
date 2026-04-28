@@ -621,8 +621,10 @@ def _safe_write(base: str, rel: str, content: str, job_id: Optional[str] = None)
     if not full.startswith(root):
         logger.warning("executor: rejected path escape %s", rel)
         return None
+    issues_before = detect_write_time_violations(rel, content)
     content = _strip_prose_preamble(content, rel)
-    poll = detect_write_time_violations(rel, content)
+    issues_after = detect_write_time_violations(rel, content)
+    poll = list(dict.fromkeys(issues_before + issues_after))
     if poll:
         for msg in poll[:6]:
             logger.warning("executor: REJECTED write %s — %s", rel, msg)

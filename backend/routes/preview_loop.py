@@ -89,7 +89,10 @@ async def preview_loop_capabilities():
         "ui_feedback_mapper": False,
     }
     try:
-        from backend.services.preview_session import preview_session_service  # noqa
+        try:
+            from services.preview_session import preview_session_service  # noqa: F401
+        except ImportError:
+            from backend.services.preview_session import preview_session_service  # noqa: F401
         caps["preview_session"] = True
     except Exception as exc:
         caps["preview_session_error"] = str(exc)
@@ -121,9 +124,14 @@ async def run_preview_loop(
     started = time.time()
 
     try:
-        from backend.services.preview_session import preview_session_service
-        from backend.services.operator_runner import operator_runner
-        from backend.services.ui_feedback_mapper import ui_feedback_mapper
+        try:
+            from services.preview_session import preview_session_service
+            from services.operator_runner import operator_runner
+            from services.ui_feedback_mapper import ui_feedback_mapper
+        except ImportError:
+            from backend.services.preview_session import preview_session_service
+            from backend.services.operator_runner import operator_runner
+            from backend.services.ui_feedback_mapper import ui_feedback_mapper
     except Exception as exc:
         raise HTTPException(status_code=503,
                             detail=f"preview-loop subservice import failed: {exc}")

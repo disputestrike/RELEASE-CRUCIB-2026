@@ -212,13 +212,13 @@ async def runtime_inspect(
 ):
     """Per-user runtime snapshot aligned with checkpoint/debug inspectors (tasks, costs, graph)."""
     try:
-        from services.runtime.cost_tracker import cost_tracker
-        from services.runtime.memory_graph import get_graph
-        from services.runtime.task_manager import task_manager as _tm
-    except ImportError:
         from backend.services.runtime.cost_tracker import cost_tracker
         from backend.services.runtime.memory_graph import get_graph
         from backend.services.runtime.task_manager import task_manager as _tm
+    except ImportError:
+        from services.runtime.cost_tracker import cost_tracker
+        from services.runtime.memory_graph import get_graph
+        from services.runtime.task_manager import task_manager as _tm
 
     uid = str((user or {}).get("id") or "guest")
     project_id = f"runtime-{uid}"

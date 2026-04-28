@@ -158,14 +158,23 @@ class HookBus:
                 self._record_error(err)
                 logger.warning("hook callback %s failed on %s: %s", name, phase, exc)
 
-        # Bridge to existing event bus for backward compatibility. If the bus
-        # import fails at module-load, we still run the direct callbacks above.
-        try:
-            from backend.services.events import event_bus as _bus
-
-            _bus.emit(f"hook.{phase}", {k: v for k, v in data.items() if k != "_hook_phase"})
-        except Exception:  # noqa: BLE001
-            pass
+        # Bridge to existing event bus for backward compat. Prefer services.events first
+        # so tests that subscribe on services.events see the emission; dedupe singletons.
+        bridge_payload = {k: v for k, v in data.items() if k != "_hook_phase"}
+        event_type = f"hook.{phase}"
+        buses_seen: List[Any] = []
+        for mod_name in ("services.events", "backend.services.events"):
+            try:
+                m = __import__(mod_name, fromlist=["event_bus"])
+                b = getattr(m, "event_bus", None)
+                if b is None:
+                    continue
+                if any(b is x for x in buses_seen):
+                    continue
+                buses_seen.append(b)
+                b.emit(event_type, bridge_payload)
+            except Exception:  # noqa: BLE001 — best-effort
+                continue
 
     # ── Introspection (primarily for tests) ─────────────────────────────────
     def _record_error(self, err: HookError) -> None:

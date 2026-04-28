@@ -70,6 +70,8 @@ def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
         "subscription",
         "team",
         "dashboard",
+        "home",
+        "shell",
     )
     # Require at least 4 of the SaaS-specific page/route paths to exist
     return sum(1 for marker in path_markers if marker in rel_joined) >= 4

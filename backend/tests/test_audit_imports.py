@@ -73,12 +73,25 @@ def test_commit_push_pr_queue():
 
 
 # ── voice ──────────────────────────────────────────────────────────────
-def test_voice_transcribe_and_keyterms():
-    c = _client("routes.voice_input")
+def test_voice_transcribe_and_keyterms(monkeypatch):
+    import importlib
+
+    from backend.deps import get_current_user
+
+    monkeypatch.setenv("CRUCIBAI_VOICE_TEST_MODE", "1")
+
+    mod = importlib.import_module("routes.voice_input")
+    app = FastAPI()
+    app.include_router(mod.router)
+    app.dependency_overrides[get_current_user] = lambda: {"id": "audit-voice"}
+
+    c = TestClient(app)
     audio = io.BytesIO(b"\x00" * 2048)
-    r = c.post("/api/voice/transcribe",
-               files={"audio": ("clip.wav", audio, "audio/wav")},
-               data={"session_id": "s1", "language": "en"})
+    r = c.post(
+        "/api/voice/transcribe",
+        files={"audio": ("clip.wav", audio, "audio/wav")},
+        data={"session_id": "s1", "language": "en"},
+    )
     assert r.status_code == 200, r.text
     tid = r.json()["transcript_id"]
     assert c.get(f"/api/voice/transcript/{tid}").status_code == 200

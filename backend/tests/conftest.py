@@ -545,7 +545,26 @@ def mock_metrics():
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip @pytest.mark.postgres_only tests when CRUCIB_TEST_SQLITE=1."""
+    """Skip @pytest.mark.postgres_only tests when CRUCIB_TEST_SQLITE=1.
+
+    Also run flaky auth/runtime inspection tests earlier (shared singleton stores).
+    """
+
+    preferred_substrings = (
+        "tests/test_security.py",
+        "tests/test_runtime_product_endpoints.py",
+        "tests/test_debug_endpoints_authz.py",
+    )
+
+    def _prio(item):
+        nid = getattr(item, "nodeid", "").replace("\\", "/")
+        for i, s in enumerate(preferred_substrings):
+            if s in nid:
+                return i
+        return len(preferred_substrings)
+
+    items[:] = [it for _, it in sorted(enumerate(items), key=lambda e: (_prio(e[1]), e[0]))]
+
     if os.environ.get("CRUCIB_TEST_SQLITE", "").strip() != "1":
         return
     skip_pg = pytest.mark.skip(reason="postgres_only — skipped under CRUCIB_TEST_SQLITE=1")

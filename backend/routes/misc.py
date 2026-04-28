@@ -312,10 +312,21 @@ async def rag_query(
 
 
 @router.post("/search")
-async def hybrid_search(
-    data: SearchQuery, user: dict = Depends(_get_authenticated_or_api_user())
-):
+async def hybrid_search(request: Request, user: dict = Depends(_get_authenticated_or_api_user())):
     """Hybrid search: AI-enhanced results. Uses your Settings keys when set."""
+    from ..server import SearchQuery
+
+    raw: dict[str, Any] = {}
+    try:
+        jd = await request.json()
+        if isinstance(jd, dict):
+            raw = jd
+    except Exception:
+        raw = {}
+    try:
+        data = SearchQuery.model_validate(raw if raw else {})
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
     (
         _call_llm_with_fallback,
         _get_model_chain,
