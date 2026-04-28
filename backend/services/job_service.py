@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
 from ..services.runtime.execution_authority import build_runtime_native_step_defs
 from ..services.runtime_contract import require_canonical_db
+
+_logger = logging.getLogger(__name__)
 
 
 async def create_job_service(
@@ -106,15 +109,42 @@ async def get_job_service(
     user: dict,
     resolve_job: Callable[[str, dict], Awaitable[dict]],
     runtime_state_getter: Callable[[], Any],
+    pool_getter: Optional[Callable[[], Awaitable[Any]]] = None,
 ):
     job = await resolve_job(job_id, user)
     latest_failure = None
+    controller_progress = None
     try:
         rs = runtime_state_getter()
         latest_failure = await rs.load_checkpoint(job_id, "latest_failure")
     except Exception:
         latest_failure = None
-    return {"success": True, "job": job, "latest_failure": latest_failure}
+
+    if pool_getter is not None:
+        try:
+            rs = runtime_state_getter()
+            pool = await pool_getter()
+            if pool is not None:
+                rs.set_pool(pool)
+                steps = await rs.get_steps(job_id)
+                events = await rs.get_job_events(job_id, limit=120)
+                from ..orchestration.controller_brain import build_live_job_progress
+
+                controller_progress = build_live_job_progress(
+                    job=job,
+                    steps=steps or [],
+                    events=events or [],
+                )
+        except Exception:
+            _logger.warning("get_job_service: controller_progress unavailable", exc_info=True)
+    out: Dict[str, Any] = {
+        "success": True,
+        "job": job,
+        "latest_failure": latest_failure,
+    }
+    if controller_progress is not None:
+        out["controller_progress"] = controller_progress
+    return out
 
 
 async def get_job_checkpoint_service(

@@ -312,6 +312,7 @@ async def get_job(
             user=user,
             resolve_job=_resolve_job,
             runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
         )
     except HTTPException:
         raise
