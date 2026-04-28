@@ -240,7 +240,7 @@ const LandingPage = () => {
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
+          <motion.h1 initial={{ y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
           </motion.h1>
           <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#a3a3a3] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all max-w-[720px] mx-auto">
