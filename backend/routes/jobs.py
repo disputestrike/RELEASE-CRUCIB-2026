@@ -24,6 +24,7 @@ from ..services.job_service import (
     list_jobs_service,
     update_job_service,
 )
+from ..services.job_runtime_service import retry_step_service
 from ..services.job_event_service import (
     get_job_steps_service,
     get_job_events_service,
@@ -552,6 +553,29 @@ async def cancel_job(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/retry-step/{step_id}")
+async def retry_job_step(
+    job_id: str,
+    step_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Mark a failed/blocked step as pending so the runner can execute it again."""
+    try:
+        return await retry_step_service(
+            job_id=job_id,
+            step_id=step_id,
+            user=user,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+            assert_owner=_assert_owner,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("POST /api/jobs/%s/retry-step/%s error", job_id, step_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 

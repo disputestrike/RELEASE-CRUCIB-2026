@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
@@ -15,6 +15,7 @@ import QualityScore from '../components/QualityScore';
 
 const AgentMonitor = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { token } = useAuth();
   
   const [project, setProject] = useState(null);
@@ -45,6 +46,7 @@ const AgentMonitor = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      let skipLoadingDrop = false;
       try {
         const [projectRes, agentsRes, logsRes, phasesRes] = await Promise.all([
           axios.get(`${API}/projects/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -91,8 +93,14 @@ const AgentMonitor = () => {
         }
       } catch (e) {
         console.error(e);
+        const status = e?.response?.status;
+        if (status === 404 && id) {
+          skipLoadingDrop = true;
+          navigate(`/app/workspace?projectId=${encodeURIComponent(id)}`, { replace: true });
+          return;
+        }
       } finally {
-        setLoading(false);
+        if (!skipLoadingDrop) setLoading(false);
       }
     };
 
@@ -104,7 +112,7 @@ const AgentMonitor = () => {
     }
     
     return () => clearInterval(interval);
-  }, [id, token, polling]);
+  }, [id, token, polling, navigate]);
 
   useEffect(() => {
     if (!project?.id || !token) return;

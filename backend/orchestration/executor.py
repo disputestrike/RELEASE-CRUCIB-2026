@@ -461,6 +461,14 @@ _PROSE_STRIP_PREFIXES = (
     "note that",
     "in this",
     "we have",
+    "perfect",
+    "great",
+    "excellent",
+    "okay",
+    "understand",
+    "wow",
+    "thanks",
+    "**",
     # Markdown/manifest headings that should never appear at top of code files
     "# ",
     "## ",
@@ -512,11 +520,47 @@ _LANGUAGE_HINTS = {
     ".yml": {"yaml", "yml"},
 }
 
+_JS_FAMILY_EXT = frozenset({".js", ".jsx", ".ts", ".tsx"})
+# First line of real JS/TS/JSX module or script (not conversational LLM filler)
+_JS_TS_CODE_START = re.compile(
+    r"^\s*("
+    r"#!|/\*|//|"
+    r"'use strict'|\"use strict\"|"
+    r"import\s|export\s|function\s|class\s|const\s|let\s|var\s|"
+    r"type\s|interface\s|enum\s|declare\s|namespace\s|"
+    r"module\.exports|exports\.|<)"
+)
+
 
 def _strip_fence_lines(content: str) -> str:
     return "\n".join(
         line for line in content.splitlines() if not _FENCE_ONLY_RE.match(line)
     )
+
+
+def _strip_js_family_leading_prose(content: str, rel: str) -> str:
+    """Drop leading lines that are clearly not JS/TS/JSX (LLM chat pasted as a file)."""
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in _JS_FAMILY_EXT:
+        return content
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        if _JS_TS_CODE_START.match(line):
+            body = "\n".join(lines[i:])
+            if i > 0:
+                logger.warning(
+                    "executor: dropped %d leading prose lines from %s",
+                    i,
+                    rel,
+                )
+            return body
+    logger.warning(
+        "executor: JS/TS file %s had no code-like first line after preamble strip",
+        rel,
+    )
+    return ""
 
 
 def _extract_best_fenced_block(content: str, rel: str) -> str:
@@ -559,7 +603,11 @@ def _strip_prose_preamble(content: str, rel: str) -> str:
                 "executor: stripped prose preamble line from %s: %r", rel, line[:80]
             )
             continue
-        return "\n".join(lines[i:])
+        content = "\n".join(lines[i:])
+        break
+    else:
+        content = ""
+    content = _strip_js_family_leading_prose(content, rel)
     return content
 
 
@@ -668,6 +716,19 @@ def _template_file_map(job: Dict[str, Any]) -> Dict[str, str]:
     return {rel: content for rel, content in build_frontend_file_set(preview_job)}
 
 
+def _preview_template_body(
+    rel: str, primary: Dict[str, str], job: Dict[str, Any]
+) -> Optional[str]:
+    """Resolve template text for preview contract paths (Manus parity sets may omit keys)."""
+    if rel in primary:
+        return primary[rel]
+    fb_job = dict(job or {})
+    fb_job["build_target"] = "vite_react"
+    fb_job["preview_contract_only"] = True
+    fb = _template_file_map(fb_job)
+    return fb.get(rel)
+
+
 def _merge_package_dependencies(
     existing_text: Optional[str], fallback_text: str
 ) -> str:
@@ -713,9 +774,10 @@ def _ensure_preview_contract_files(
 
     package_rel = "package.json"
     package_text = _read_text(workspace_path, package_rel)
-    merged_package = _merge_package_dependencies(
-        package_text, template_map[package_rel]
-    )
+    pkg_tpl = _preview_template_body(package_rel, template_map, job)
+    if pkg_tpl is None:
+        pkg_tpl = '{"name":"crucibai-generated-app","version":"0.1.0","private":true,"type":"module"}'
+    merged_package = _merge_package_dependencies(package_text, pkg_tpl)
     if merged_package != (package_text or ""):
         if _safe_write(workspace_path, package_rel, merged_package):
             written.append(package_rel)
@@ -737,14 +799,23 @@ def _ensure_preview_contract_files(
         "src/index.js",
     ]
     for rel in required_paths:
-        if not _read_text(workspace_path, rel):
-            if _safe_write(workspace_path, rel, template_map[rel]):
-                written.append(rel)
+        if _read_text(workspace_path, rel):
+            continue
+        body = _preview_template_body(rel, template_map, job)
+        if body is None:
+            logger.warning(
+                "executor: missing preview template for required path %s — skipping overlay",
+                rel,
+            )
+            continue
+        if _safe_write(workspace_path, rel, body):
+            written.append(rel)
 
     if not _read_text(workspace_path, "src/App.jsx") and not _read_text(
         workspace_path, "src/App.js"
     ):
-        if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
+        app_tpl = _preview_template_body("src/App.jsx", template_map, job)
+        if app_tpl and _safe_write(workspace_path, "src/App.jsx", app_tpl):
             written.append("src/App.jsx")
 
     # Next.js App Router track (parallel to root Vite) — P2 open item: Next-specific preview templates.

@@ -4,7 +4,8 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
-  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight, ChevronDown,
+  MessageCircle, Zap, LogOut, ChevronRight, ChevronDown,
+  Layers,
   LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, Shield,
@@ -16,7 +17,7 @@ import './Sidebar.css';
 /**
  * Sidebar — minimal primary nav (Manus-style density).
  * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
- * History: only when there is at least one task or project.
+ * Recent builds: one rail per engagement — outcome (including failures) stays inside Workspace, not as a separate “failed” affordance here.
  * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
@@ -100,6 +101,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
       ? searchParams.get('taskId')
       : null;
+  const workspaceProjectId =
+    location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
+      ? searchParams.get('projectId')
+      : null;
+  const workspaceJobId =
+    location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
+      ? searchParams.get('jobId')
+      : null;
 
   const togglePin = React.useCallback((id) => {
     setPinnedIds((prev) => {
@@ -113,7 +122,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     });
   }, []);
 
-  // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for History grouping
+  // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for Recent builds grouping
   const listItems = useMemo(() => {
     const fromProjects = (projects || []).map(p => ({
       id: p.id,
@@ -144,12 +153,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     return listItems.filter(item => item.name?.toLowerCase().includes(q)).slice(0, 50);
   }, [listItems, searchQuery]);
 
-  /** Pinned → Active → Failed → Recent (Today / Earlier) — compliance: meaningful task history */
+  /** Pinned → Active → Recent (Today / Earlier). Failed builds stay in-thread under Workspace — no separate “Failed” bucket on the rail. */
   const historyBuckets = useMemo(() => {
     const pinSet = new Set(pinnedIds);
     const pinned = [];
     const active = [];
-    const failed = [];
     const pool = [];
     const now = Date.now();
     for (const item of filteredListItems) {
@@ -160,10 +168,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       const st = String(item.status || '').toLowerCase();
       if (st === 'running' || st === 'queued') {
         active.push(item);
-        continue;
-      }
-      if (st === 'failed') {
-        failed.push(item);
         continue;
       }
       pool.push(item);
@@ -183,11 +187,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       if (ts >= todayStart) today.push(item);
       else earlier.push(item);
     });
-    return { pinned, active, failed, today, earlier };
+    return { pinned, active, today, earlier };
   }, [filteredListItems, pinnedIds]);
 
   const openTask = (item) => {
-    if (item.isProject) navigate(`/app/projects/${item.id}`);
+    if (item.isProject) {
+      navigate(`/app/workspace?projectId=${encodeURIComponent(item.id)}`);
+      return;
+    }
     else if (item.type === 'chat' || item.type === 'query') {
       navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
@@ -199,7 +206,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   };
 
   const openInNewTab = (item) => {
-    if (item.isProject) window.open(`${window.location.origin}/app/projects/${item.id}`, '_blank');
+    if (item.isProject) window.open(`${window.location.origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`, '_blank');
     else if (item.type === 'chat' || item.type === 'query') {
       window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
@@ -239,7 +246,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const handleShare = (item) => {
     const origin = window.location.origin;
     let url;
-    if (item.isProject) url = `${origin}/app/projects/${item.id}`;
+    if (item.isProject) url = `${origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`;
     else if (item.type === 'chat' || item.type === 'query') {
       const qs = new URLSearchParams({ chatTaskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -333,15 +340,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     if (type === 'chat' || type === 'query') return <MessageCircle size={14} className="sidebar-item-icon status-chat" />;
     if (type === 'agent') return <Zap size={14} className="sidebar-item-icon status-agent" />;
     if (type === 'build') {
-      if (status === 'completed') return <CheckCircle size={14} className="sidebar-item-icon status-completed" />;
-      if (status === 'running') return <Clock size={14} className="sidebar-item-icon status-running" />;
-      if (status === 'failed') return <AlertCircle size={14} className="sidebar-item-icon status-failed" />;
-      return <Clock size={14} className="sidebar-item-icon status-pending" />;
+      if (status === 'running' || status === 'queued') return <Clock size={14} className="sidebar-item-icon status-running" />;
+      return <Layers size={14} className="sidebar-item-icon status-build-terminal" aria-hidden />;
     }
+    if (status === 'running' || status === 'queued') return <Clock size={14} className="sidebar-item-icon status-running" />;
     if (status === 'completed') return <CheckCircle size={14} className="sidebar-item-icon status-completed" />;
-    if (status === 'running') return <Clock size={14} className="sidebar-item-icon status-running" />;
-    if (status === 'failed') return <AlertCircle size={14} className="sidebar-item-icon status-failed" />;
-    return <Clock size={14} className="sidebar-item-icon status-pending" />;
+    return <Layers size={14} className="sidebar-item-icon status-build-terminal" aria-hidden />;
   };
 
   const collapsed = sidebarOpen === false;
@@ -397,7 +401,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
-    const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
+    const jobMatches = Boolean(item.jobId && workspaceJobId && item.jobId === workspaceJobId);
+    const isSelected = item.isProject
+      ? Boolean(workspaceProjectId && workspaceProjectId === item.id)
+      : (currentTaskId === item.id || jobMatches || (!isLocalTask && isActive(`/app/projects/${item.id}`)));
     const isEditing = renameTaskId === item.id;
     const showMenu = menuTaskId === item.id;
     return (
@@ -589,7 +596,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Search" aria-label="Search">
             <Search size={20} />
           </button>
-          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="History" aria-label="History">
+          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Recent builds" aria-label="Recent builds">
             <History size={20} />
           </button>
         </div>
@@ -741,16 +748,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </nav>
 
-      {/* History — only when there is at least one task or project */}
+      {/* Recent builds — only when there is at least one task or project */}
       {listItems.length > 0 && (
       <div className="sidebar-section sidebar-section-tasks">
         <div className="sidebar-section-header">
-          <h3 className="sidebar-section-title">History</h3>
+          <h3 className="sidebar-section-title">Recent builds</h3>
         </div>
         <div className="sidebar-section-items sidebar-section-items-scroll">
           {(historyBuckets.pinned.length > 0
             || historyBuckets.active.length > 0
-            || historyBuckets.failed.length > 0
             || historyBuckets.today.length > 0
             || historyBuckets.earlier.length > 0) ? (
             <>
@@ -764,12 +770,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 <>
                   <div className="sidebar-history-group-label">Active</div>
                   {historyBuckets.active.map((item) => renderHistoryRow(item))}
-                </>
-              )}
-              {historyBuckets.failed.length > 0 && (
-                <>
-                  <div className="sidebar-history-group-label">Failed</div>
-                  {historyBuckets.failed.map((item) => renderHistoryRow(item))}
                 </>
               )}
               {historyBuckets.today.length > 0 && (
