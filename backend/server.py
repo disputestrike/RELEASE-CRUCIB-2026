@@ -2335,6 +2335,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.artifacts", "router", False),
     ("backend.routes.approvals", "router", False),
     ("backend.routes.chat_react", "router", False),
+    ("backend.routes.agentic_loop", "router", False),
     ("backend.routes.compat", "router", False),
     ("backend.routes.compact_command", "router", False),
     ("backend.routes.orchestrator", "router", False),
