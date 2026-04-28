@@ -20,13 +20,15 @@ FROM python:3.11.0-slim
 WORKDIR /app
 
 # Cache-bust: force rebuild - timestamp: 2026-03-04-1937
-RUN echo "Build: 2026-03-04"
+RUN echo "Build: 2026-04-28-crash-fix"
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
-COPY backend/ ./
+# Copy backend as a package so 'from backend.xxx import' and 'uvicorn backend.server:app' both work
+COPY backend/ ./backend/
 RUN echo "Backend files copied"
-COPY --from=frontend /app/build ./static
+# Frontend build goes into backend/static so ROOT_DIR/static resolves correctly
+COPY --from=frontend /app/build ./backend/static
 RUN echo "Frontend static files copied"
 
 ENV PORT=8000
@@ -35,5 +37,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-ENV PYTHONPATH=/app:/app/backend
+ENV PYTHONPATH=/app
 CMD ["sh", "-c", "uvicorn backend.server:app --host 0.0.0.0 --port ${PORT:-8000}"]
