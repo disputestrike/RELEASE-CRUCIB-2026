@@ -28,7 +28,33 @@ def build_outcomes(
     style = classification.output_style
     now = now_iso()
 
-    if style == "forecast":
+    if style == "research_roadmap":
+        base = max(0.12, min(0.82, avg))
+        templates = [
+            (
+                "State of science & pragmatic ceiling",
+                base,
+                "There is rarely a single universal cure modality—prioritize subtype specificity, combinability, delivery physics, immune context, trial fitness.",
+            ),
+            (
+                "Most leverageable modality bucket",
+                min(0.9, base + 0.12),
+                "Immuno + targeted kinase + cellular therapy ladders compete by tumor context; map each hypothesis to RCT-grade evidence ladders.",
+            ),
+            (
+                "Blockers & failure modes",
+                max(0.08, base - 0.18),
+                "Resistance, heterogeneity, accrual drag, surrogate endpoint traps, payer friction, equitable access—articulate falsifiers tied to instrumentation.",
+            ),
+            (
+                "Next assays / trials worth funding",
+                max(0.1, base - 0.05),
+                "Design orthogonal readouts bridging bench → translational surrogate → OS where feasible; cite registry IDs when connectors deliver them.",
+            ),
+        ]
+        probability_key = "likelihood"
+
+    elif style == "forecast":
         base = max(0.03, min(0.85, avg))
         templates = [
             ("Base case", base, "Most likely path given current evidence and gaps."),
@@ -79,8 +105,29 @@ def build_outcomes(
 
 
 def build_recommendation(classification: ScenarioClassification, outcomes: List[Dict[str, Any]]) -> Dict[str, Any]:
-    base = next((o for o in outcomes if o["label"] == "Base case"), outcomes[0] if outcomes else {})
+    base = next((o for o in outcomes if isinstance(o.get("label"), str) and o["label"].startswith("Base")), outcomes[0] if outcomes else {})
+    if classification.output_style == "research_roadmap" or classification.scenario_type == "research_discovery":
+        base = outcomes[0] if outcomes else {}
     likelihood = base.get("probability", base.get("likelihood", 0.0))
+    if classification.output_style == "research_roadmap" or classification.scenario_type == "research_discovery":
+        return {
+            "type": "research_roadmap",
+            "summary": (
+                "Synthesize peer-review-class signals, subtype constraints, regulatory ceilings, "
+                "and ethically bounded trial paths—never a fictitious unified cure percentage."
+            ),
+            "recommendation": (
+                "Iterate evidence ladders (PubMed / trial registries / FDA labeling) until tractable modalities map to actionable experiments."
+            ),
+            "recommendation_strength": likelihood,
+        }
+    if classification.scenario_type == "short_horizon_forecast":
+        return {
+            "type": "evidence_gated_market_scan",
+            "summary": "Directional stock views require authoritative tape and catalyst calendars—absent adapters, withhold picks.",
+            "recommendation": "Wire timestamps, filings calendars, liquidity context, consensus deltas; otherwise treat as watchlist scaffolding only.",
+            "recommendation_strength": likelihood,
+        }
     if classification.scenario_type == "forecast":
         return {
             "type": "forecast",

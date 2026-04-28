@@ -105,6 +105,8 @@ async def test_runtime_what_if_compatibility_uses_reality_engine(app_client):
     assert payload["classification"]["scenario_type"] == "forecast"
     assert payload["engine"] == "Reality Engine V1"
     assert payload["population_model"]["method"] == "core_agents_plus_synthetic_population"
+    assert isinstance(payload.get("simulation_pulse"), list)
+    assert len(payload["simulation_pulse"]) >= 1
     assert payload["final_verdict"]["contract"].startswith("Every run resolves")
     app.dependency_overrides.pop(dep, None)
 
@@ -177,4 +179,60 @@ async def test_simulation_contract_covers_research_qa_scenarios(app_client):
         assert payload["trust_score"]["formula"] == "0.25Q + 0.15F + 0.15C + 0.15T + 0.10D + 0.10K + 0.10(1-P)"
         assert payload["report"]["replay_metadata"]["replay_scope"] == "core-agent transcript plus aggregated population cohorts"
         assert payload["report"]["evidence_summary"]["evidence_policy"]["output_contract"]
+    app.dependency_overrides.pop(dep, None)
+
+
+async def test_cancer_cure_prompt_routes_biomedical_research_discovery(app_client):
+    app, dep = _install_fake_auth()
+    create = await app_client.post(
+        "/api/simulations",
+        json={"prompt": "How do we cure cancer?"},
+        timeout=10,
+    )
+    assert create.status_code == 200
+    simulation_id = create.json()["simulation"]["id"]
+    run = await app_client.post(
+        "/api/simulations/run",
+        json={
+            "simulation_id": simulation_id,
+            "prompt": "How do we cure cancer?",
+            "depth": "fast",
+            "use_live_evidence": False,
+            "agent_count": 6,
+            "rounds": 3,
+        },
+        timeout=20,
+    )
+    assert run.status_code == 200
+    payload = run.json()
+    assert payload["classification"]["domain"] == "biomedical"
+    assert payload["classification"]["scenario_type"] == "research_discovery"
+    assert payload["classification"]["output_style"] == "research_roadmap"
+    roles = [a["role"] for a in payload["agents"]]
+    assert any("Oncology" in r for r in roles)
+    assert all("Scenario Analyst" not in r for r in roles)
+    assert payload["recommendation"]["type"] == "research_roadmap"
+    assert "State of science" in payload["outcomes"][0]["label"]
+    app.dependency_overrides.pop(dep, None)
+
+
+async def test_stock_short_horizon_recommendation_is_evidence_gated_scan(app_client):
+    app, dep = _install_fake_auth()
+    create = await app_client.post(
+        "/api/simulations",
+        json={"prompt": "What stock will go up the most next week?"},
+        timeout=10,
+    )
+    assert create.status_code == 200
+    simulation_id = create.json()["simulation"]["id"]
+    run = await app_client.post(
+        "/api/simulations/run",
+        json={"simulation_id": simulation_id, "prompt": "What stock will go up the most next week?", "depth": "fast", "use_live_evidence": False},
+        timeout=20,
+    )
+    assert run.status_code == 200
+    payload = run.json()
+    assert payload["classification"]["domain"] == "finance"
+    assert payload["classification"]["scenario_type"] == "short_horizon_forecast"
+    assert payload["recommendation"]["type"] == "evidence_gated_market_scan"
     app.dependency_overrides.pop(dep, None)

@@ -47,6 +47,12 @@ DOMAIN_COHORTS = {
         ("market observers", 0.02, "adaptation incentives"),
         ("risk monitors", -0.08, "instability and second-order effects"),
     ],
+    "biomedical": [
+        ("clinical teams prioritizing safety & equipoise", 0.03, "toxicity-informed adoption"),
+        ("patients navigating access & recurrence risk", -0.04, "real-world adherence"),
+        ("payers scrutinizing comparative effectiveness", -0.05, "budget and coverage guardrails"),
+        ("discovery scientists pursuing translational deltas", 0.05, "mechanistic upside"),
+    ],
 }
 
 

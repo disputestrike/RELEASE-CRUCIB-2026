@@ -36,9 +36,34 @@ def _terminal_verdict(
 
 
 def _next_best_action(verdict: str, classification: ScenarioClassification, missing: List[str]) -> str:
+    def _gap_preview(raw: Any) -> str:
+        if isinstance(raw, dict):
+            return str(raw.get("claim_text") or raw.get("detail") or raw)[:220]
+        return str(raw)[:220]
+
     if verdict == "Insufficient Evidence":
         needed = missing[0] if missing else "the highest-quality missing source"
+        if classification.domain == "biomedical":
+            return (
+                f"Bench this until PubMed/registry/FDA-tier connectors substantiate competing modalities; "
+                f"first gap to close: {_gap_preview(needed)}."
+            )
+        if classification.scenario_type == "short_horizon_forecast":
+            return (
+                "Acquire authoritative tape timestamps plus earnings/catalyst calendars before directional trade language; "
+                f"nearest missing layer: {_gap_preview(needed)}."
+            )
         return f"Collect or connect {needed} before treating this as decision-grade."
+
+    if classification.scenario_type == "research_discovery":
+        return (
+            "Queue structured literature + trial-registry pulls (Europe PMC/AACT parity) "
+            "and map subtype-specific equipoise—not headline cure percentages—to the next assays."
+        )
+    if classification.scenario_type == "short_horizon_forecast":
+        return (
+            "Continuously ingest live quotations, imbalances, filings, EPS dates, consensus deltas—rerun once connectors satisfy timestamp parity."
+        )
     if classification.scenario_type == "forecast":
         return "Track the watch triggers and rerun when fresh evidence changes."
     if classification.domain == "engineering":

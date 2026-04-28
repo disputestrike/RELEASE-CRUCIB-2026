@@ -37,6 +37,18 @@ DOMAIN_AGENTS = {
         ("Operations Agent", "deploy, observability, and incident risk", 0.38, "ops"),
         ("Compliance Agent", "policy and audit constraints", 0.35, "compliance"),
     ],
+    "biomedical": [
+        ("Translational Oncology Lead", "subtype-specific modality selection and equipoise", 0.44, "balanced"),
+        ("Cancer Cell & Microenvironment Biologist", "tumor heterogeneity and resistance pathways", 0.41, "data_first"),
+        ("Clinical Trial Designer", "arm structure, powering, surrogate endpoints vs OS", 0.42, "skeptical"),
+        ("Immunotherapy Research Scientist", "checkpoint biology, combos, CRS/toxicity tradeoffs", 0.45, "balanced"),
+        ("Genomics & Precision Medicine Analyst", "biomarkers, assay limits, lineage tracing", 0.43, "data_first"),
+        ("Drug Discovery & MEDCHEM Translator", "tractability from target to modality", 0.4, "skeptical"),
+        ("Epidemiologist — Population Signals", "incidence shifts, competing risks, secular trends", 0.39, "cautious"),
+        ("FDA / Regulatory Pathway Analyst", "IND/BLA precedent, PDUFA anatomy, labeling constraints", 0.41, "compliance"),
+        ("Translational Pharmacology Scientist", "exposure-response, dosing windows, adherence", 0.42, "balanced"),
+        ("Clinical Ethics / Equity Advisor", "access, equipoise beyond trials, stewardship", 0.38, "cautious"),
+    ],
     "finance": [
         ("Macro Analyst", "macro signals and rates", 0.42, "macro"),
         ("Market Structure Analyst", "liquidity and positioning", 0.40, "market"),
@@ -56,6 +68,7 @@ DOMAIN_AGENTS = {
 }
 
 FALLBACK_AGENTS = [
+    # Last resort personas only — prefer DOMAIN_AGENTS[domain]; router should seldom land here alone.
     ("Scenario Analyst", "problem framing and interpretation", 0.45, "balanced"),
     ("Evidence Analyst", "available facts and missing data", 0.40, "data_first"),
     ("Risk Analyst", "downside and uncertainty", 0.35, "risk"),

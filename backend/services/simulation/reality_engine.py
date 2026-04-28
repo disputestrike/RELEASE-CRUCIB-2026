@@ -9,6 +9,7 @@ from .domain_policy import build_evidence_policy
 from .evidence_engine import build_evidence
 from .outcome_engine import build_outcomes, build_recommendation
 from .population_engine import build_population_model
+from .pulse_events import build_simulation_pulse
 from .report_builder import build_report
 from .repository import new_id, now_iso, repository
 from .trust_engine import build_trust_score
@@ -252,6 +253,20 @@ class RealityEngine:
             },
         )
 
+        pulse_feed = build_simulation_pulse(
+            classification=classification,
+            debate=debate,
+            population_model=population_model,
+            evidence_summary=evidence,
+        )
+        for pulse_item in pulse_feed:
+            await self._event(
+                simulation_id=simulation_id,
+                run_id=run_id,
+                event_type="simulation.pulse",
+                payload=pulse_item,
+            )
+
         outcomes = build_outcomes(
             simulation_id=simulation_id,
             run_id=run_id,
@@ -323,6 +338,7 @@ class RealityEngine:
             "trust_score": trust,
             "final_verdict": final_verdict,
             "report": report,
+            "simulation_pulse": pulse_feed,
             "completed_at": now_iso(),
             "updated_at": now_iso(),
         }
@@ -372,6 +388,7 @@ class RealityEngine:
             "final_verdict": final_verdict,
             "trust_score": trust,
             "report": report,
+            "simulation_pulse": pulse_feed,
             "engine": "Reality Engine V1",
         }
 

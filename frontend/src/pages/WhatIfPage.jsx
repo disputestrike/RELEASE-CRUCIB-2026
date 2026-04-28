@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -13,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   Telescope,
+  Zap,
   Users,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -162,23 +163,35 @@ function PopulationDotsCanvas({ clusters, seedKey }) {
     return out.slice(0, totalDots);
   }, [clusters, seedKey]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const canvas = ref.current;
-    if (!canvas) return;
+    if (!canvas || !dots.length) return undefined;
     const ctx = canvas.getContext('2d');
-    if (!ctx || !dots.length) return;
+    if (!ctx) return undefined;
     const w = canvas.width;
     const h = canvas.height;
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 0, w, h);
-    dots.forEach((d) => {
-      ctx.beginPath();
-      ctx.fillStyle = d.col;
-      ctx.globalAlpha = 0.85;
-      ctx.arc((d.x / 100) * w, (d.y / 100) * h, 2.1, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.globalAlpha = 1;
+    let raf = 0;
+    let t = 0;
+    const loop = () => {
+      t += 0.01;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+      dots.forEach((d, ji) => {
+        const sway = Math.sin(t + ji * 0.04) * 0.95;
+        const swayY = Math.cos(t * 0.93 + ji * 0.035) * 0.85;
+        const nx = Math.max(0, Math.min(100, d.x + sway));
+        const ny = Math.max(0, Math.min(100, d.y + swayY));
+        ctx.beginPath();
+        ctx.fillStyle = d.col;
+        ctx.globalAlpha = 0.85;
+        ctx.arc((nx / 100) * w, (ny / 100) * h, 2.1, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, [dots]);
 
   return <canvas ref={ref} width={720} height={300} className="sim-live-world-canvas" role="img" aria-label="Sample population stance visualization" />;
@@ -387,6 +400,7 @@ export default function WhatIfPage() {
   const evidencePolicyNested = report?.evidence_summary?.evidence_policy;
   const evidencePolicy = evidencePolicyNested || result?.trust_score?.evidence_policy || {};
   const replayEvents = Array.isArray(result?.replay_events) ? result.replay_events : [];
+  const simulationPulse = Array.isArray(result?.simulation_pulse) ? result.simulation_pulse : [];
   const repExploreFor = Array.isArray(report.strongest_evidence_for) ? report.strongest_evidence_for : [];
   const repExploreAgainst = Array.isArray(report.strongest_evidence_against) ? report.strongest_evidence_against : [];
   const repWhatChange = Array.isArray(report.what_would_change_the_outcome) ? report.what_would_change_the_outcome : [];
@@ -634,6 +648,28 @@ export default function WhatIfPage() {
               </div>
             ))}
           </Panel>
+
+          {simulationPulse.length > 0 && (
+            <Panel title="Simulation pulse" icon={Zap} aside={`${simulationPulse.length} beats · derived from debate + cohorts`}>
+              <p className="simulation-interpretation sim-pulse-lede">
+                What actually moved inside this run—each row is mechanically tied to arena messages or population clustering, not a generic narration block.
+              </p>
+              <ul className="simulation-pulse-feed" aria-label="Simulation pulse beats">
+                {simulationPulse.map((pulse, idx) => (
+                  <li key={`pulse_${pulse.kind || 'k'}_${idx}`} className="simulation-pulse-row" style={{ animationDelay: `${idx * 0.06}s` }}>
+                    <span className="pulse-emoji" aria-hidden>{pulse.emoji || '·'}</span>
+                    <div>
+                      <strong className="pulse-title">{pulse.title || pulse.kind}</strong>
+                      <p className="pulse-body">{pulse.body}</p>
+                      {pulse.cause ? (
+                        <footer className="pulse-cause">Why this line exists: {pulse.cause}</footer>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
 
           <Panel title="Live World View" icon={RadioTower} aside={`${populationModel.population_size ? Number(populationModel.population_size).toLocaleString() : '—'} modeled perspectives · sampled visualization`}>
             <p className="simulation-interpretation">

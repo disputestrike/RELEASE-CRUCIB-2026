@@ -2,6 +2,18 @@
  * Maps GET /api/simulations/:id/runs/:runId detail payload into the same shape used by POST /simulations/run.
  */
 
+function simulationPulseFromDetails(details) {
+  const run = details.run || {};
+  if (Array.isArray(run.simulation_pulse) && run.simulation_pulse.length) {
+    return run.simulation_pulse;
+  }
+  const replay = Array.isArray(details.replay_events) ? details.replay_events : [];
+  const fromReplay = replay
+    .filter((e) => (e.event_type || '') === 'simulation.pulse')
+    .map((e) => e.event_payload || {});
+  return fromReplay.length ? fromReplay : [];
+}
+
 function firstTrust(details) {
   const run = details.run || {};
   if (run.trust_score && typeof run.trust_score === 'object') return run.trust_score;
@@ -80,5 +92,6 @@ export function hydrateSimulationDetail(details) {
     run,
     replay_events: Array.isArray(details.replay_events) ? details.replay_events : [],
     events: Array.isArray(details.events) ? details.events : [],
+    simulation_pulse: simulationPulseFromDetails(details),
   };
 }

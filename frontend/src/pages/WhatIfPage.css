@@ -644,6 +644,68 @@ button.simulation-secondary:disabled {
   line-height: 1.45;
 }
 
+.sim-pulse-lede {
+  margin-bottom: 12px !important;
+}
+
+.simulation-pulse-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+}
+
+.simulation-pulse-row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.06), rgba(248, 250, 252, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  animation: simPulseRowIn 0.48s ease-out both;
+}
+
+@keyframes simPulseRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pulse-emoji {
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.pulse-title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.pulse-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.42;
+  color: #374151;
+}
+
+.pulse-cause {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.38;
+}
+
 @media (max-width: 920px) {
   .simulation-grid.four,
   .simulation-grid.two,

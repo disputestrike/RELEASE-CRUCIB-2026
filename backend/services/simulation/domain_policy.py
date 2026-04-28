@@ -114,6 +114,24 @@ DOMAIN_POLICIES: Dict[str, Dict[str, Any]] = {
         "official_required_for_strong_verdict": False,
         "verdict_style": "reaction_segments",
     },
+    "biomedical": {
+        "required_evidence_classes": [
+            "PeerMed/PubMed-class primary biomedical literature abstracts or full texts",
+            "ClinicalTrials.gov or equivalent registry coverage for modality + indication",
+            "FDA labeling or openFDA event signals when clinically relevant",
+            "guideline excerpts (ASCO/NCCN/ESMO) referencing standard-of-care deltas",
+            "survival/confidence intervals from RCTs vs RWE when juxtaposed",
+        ],
+        "preferred_connectors": [
+            "PubMed / NIH / Europe PMC connectors",
+            "ClinicalTrials.gov API",
+            "openFDA (drugs/events)",
+            "targeted Tavily biomedical search",
+        ],
+        "minimum_coverage": 0.68,
+        "official_required_for_strong_verdict": True,
+        "verdict_style": "uncertainty_first",
+    },
     "general": {
         "required_evidence_classes": [
             "user assumptions",
@@ -136,6 +154,7 @@ def build_evidence_policy(classification: ScenarioClassification, prompt: str) -
         "sports",
         "finance",
         "politics",
+        "biomedical",
     }
     required = list(domain_policy["required_evidence_classes"])
     for item in classification.required_evidence:
