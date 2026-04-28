@@ -647,19 +647,30 @@ async def get_project_deploy_files(
 @router.get("/jobs/{job_id}/export/full.zip")
 async def download_job_workspace_zip(
     job_id: str,
+    draft: bool = Query(False, description="Skip integrity gates for interim exports"),
     user: dict = Depends(_get_auth()),
 ):
     """
     Download the complete job workspace as a ZIP file.
     This is the proof/handoff bundle — everything the AI built.
+
+    Completed jobs must pass the same delivery gates as job completion (BIV marker,
+    artifact reconciliation, live-proof separation). Use ``?draft=true`` only for
+    in-progress debugging exports.
     """
     import io
     import zipfile
     from fastapi.responses import StreamingResponse
 
+    from ..orchestration import runtime_state as _runtime_state
+    from ..orchestration.delivery_gate import assert_workspace_download_allowed
+
     workspace = await _assert_job_access(job_id, user)
     if not workspace.exists():
         raise HTTPException(status_code=404, detail="Workspace not found or empty")
+
+    job_row = await _runtime_state.get_job(job_id)
+    assert_workspace_download_allowed(str(workspace), job_row, draft=draft)
 
     # Build ZIP in memory
     buf = io.BytesIO()

@@ -21,6 +21,11 @@ def _install_published_job(
 
     root = server._project_workspace_path(project_id)
     (root / "dist" / "assets").mkdir(parents=True, exist_ok=True)
+    (root / ".crucibai").mkdir(exist_ok=True)
+    (root / ".crucibai" / "biv_final.json").write_text(
+        '{"passed":true,"score":95,"profile":"saas_ui","issues":[]}',
+        encoding="utf-8",
+    )
 
     async def fake_get_job(requested_job_id: str):
         if requested_job_id != job_id:

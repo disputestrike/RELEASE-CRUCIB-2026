@@ -266,6 +266,12 @@ def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -
     if files and any(k in file_paths for k in ("vite.config", "index.html", "src/app.jsx", "src/app.tsx")):
         if _has_any_text(text, ("saas", "dashboard", "analytics", "pricing")):
             return "saas_ui"
+        # Marketing / public-site goals must stay `web_site` (no mandatory SPA router wiring)
+        if _has_any_text(text, ("website", "marketing site", "portfolio", "e-commerce", "ecommerce", "storefront", "landing page")) and not _has_any_text(
+            text,
+            ("saas", "dashboard", "analytics", "settings", "team page", "product ui", "subscription"),
+        ):
+            return "web_site"
         return "web"
 
     if re.search(

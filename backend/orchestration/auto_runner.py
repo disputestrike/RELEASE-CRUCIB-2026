@@ -1220,6 +1220,10 @@ async def _execute_job_loop(
             "retry_route": biv.get("retry_route") or {},
         }
 
+    from .delivery_gate import write_biv_marker
+
+    write_biv_marker(ws or "", biv)
+
     from .enforcement.enforcement_engine import run_completion_enforcement_gate
 
     egr = await run_completion_enforcement_gate(
@@ -1272,6 +1276,68 @@ async def _execute_job_loop(
             "quality_score": quality_score,
             "reason": "critical_enforcement_block",
         }
+
+    # Optional: headless browser QA + visual gate (set CRUCIBAI_BROWSER_QA_BLOCK=1 to fail job)
+    try:
+        from .browser_qa import run_browser_qa
+        from .delivery_gate import check_visual_qa_gate
+
+        bqa = await run_browser_qa(ws or "")
+        issues = bqa.get("issues") or []
+        orphan_count = sum(1 for x in issues if "orphan" in str(x).lower())
+        vqa = check_visual_qa_gate(
+            {"score": int(bqa.get("score") or 0), "orphan_count": orphan_count}
+        )
+        await append_job_event(
+            job_id,
+            "browser_qa_result",
+            {
+                "passed": bool(bqa.get("passed")),
+                "score": bqa.get("score"),
+                "skipped": bool(bqa.get("skipped")),
+                "visual_qa_passed": bool(vqa.get("passed")),
+            },
+        )
+        _block = os.environ.get("CRUCIBAI_BROWSER_QA_BLOCK", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if _block and not bqa.get("skipped") and not vqa.get("passed"):
+            await update_job_state(
+                job_id,
+                "failed",
+                {
+                    "current_phase": "browser_qa_block",
+                    "quality_score": quality_score,
+                    "failure_reason": "browser_qa",
+                },
+            )
+            await append_job_event(
+                job_id,
+                "job_failed",
+                {"reason": "browser_qa", "issues": vqa.get("issues") or []},
+            )
+            await publish(
+                job_id,
+                "job_failed",
+                {"reason": "browser_qa", "quality_score": quality_score},
+            )
+            await _write_blueprint(
+                ws,
+                job_id,
+                "browser_qa",
+                open_gates=["browser_qa", "visual_qa"],
+                notes="; ".join(str(x) for x in (vqa.get("issues") or [])[:12]),
+            )
+            return {
+                "success": False,
+                "status": "failed",
+                "quality_score": quality_score,
+                "reason": "browser_qa",
+            }
+    except Exception as _bqa_exc:
+        logger.warning("browser_qa pipeline skipped: %s", _bqa_exc)
 
     try:
         from .workspace_assembly import seal_completed_job_workspace

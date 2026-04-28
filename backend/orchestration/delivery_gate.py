@@ -206,3 +206,143 @@ def check_visual_qa_gate(vqa_result: Dict[str, Any]) -> Dict[str, Any]:
         "orphan_count": orphans,
         "failure_reason": "visual_qa" if not passed else None,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Unified export/publish gates — must match completion pipeline (synthesis rule)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _env_gate_enabled(env_key: str, default: bool = True) -> bool:
+    raw = os.environ.get(env_key, "")
+    if not str(raw).strip():
+        return default
+    return str(raw).strip().lower() not in ("0", "false", "no", "off")
+
+
+def assert_workspace_download_allowed(
+    workspace_path: str,
+    job: Optional[Dict[str, Any]],
+    *,
+    draft: bool = False,
+) -> None:
+    """Raise HTTPException if ZIP export must not proceed.
+
+    Set CRUCIBAI_DOWNLOAD_GATE=0 to bypass (legacy/tests).
+    ``?draft=true`` skips integrity gates for interim downloads.
+    """
+    from fastapi import HTTPException
+
+    if not _env_gate_enabled("CRUCIBAI_DOWNLOAD_GATE", True):
+        return
+    if draft:
+        return
+
+    status = str((job or {}).get("status") or "").lower()
+    if status not in {"completed", "success", "done"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Workspace export requires a completed job. Pass ?draft=true for interim bundles.",
+        )
+
+    passed, marker = check_biv_marker(workspace_path)
+    try:
+        min_score = int(os.environ.get("CRUCIBAI_MIN_BIV_SCORE") or "0")
+    except ValueError:
+        min_score = 0
+
+    score_ok = bool(passed and marker and int(marker.get("score") or 0) >= min_score)
+    if not score_ok:
+        goal = str((job or {}).get("goal") or "")
+        bt = (job or {}).get("build_target") or (job or {}).get("crucib_build_target")
+        from backend.orchestration.build_integrity_validator import validate_workspace_integrity
+
+        biv = validate_workspace_integrity(
+            str(workspace_path),
+            goal=goal,
+            phase="final",
+            build_target=bt,
+        )
+        if not biv.get("passed") or int(biv.get("score") or 0) < min_score:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "gate": "build_integrity_validator",
+                    "issues": (biv.get("issues") or [])[:40],
+                    "score": biv.get("score"),
+                },
+            )
+        write_biv_marker(str(workspace_path), biv)
+
+    rec = check_artifact_reconciliation(workspace_path)
+    if not rec.get("passed"):
+        raise HTTPException(
+            status_code=422,
+            detail={"gate": "artifact_reconciliation", "issues": rec.get("issues")},
+        )
+
+    live = check_live_proof_separation(workspace_path)
+    if not live.get("passed"):
+        raise HTTPException(
+            status_code=422,
+            detail={"gate": "live_proof_separation", "issues": live.get("issues")},
+        )
+
+
+def assert_workspace_publish_allowed(workspace_path: str, job: Optional[Dict[str, Any]]) -> None:
+    """Raise HTTPException if `/published/{job_id}` must not serve artifacts.
+
+    Same integrity stack as download (BIV marker or fresh BIV, reconciliation, live-proof).
+    Set CRUCIBAI_PUBLISH_GATE=0 to bypass.
+    """
+    from fastapi import HTTPException
+
+    if not _env_gate_enabled("CRUCIBAI_PUBLISH_GATE", True):
+        return
+
+    status = str((job or {}).get("status") or "").lower()
+    if status in {"failed", "blocked", "cancelled", "canceled", "error"}:
+        raise HTTPException(status_code=404, detail="Published app not found")
+
+    passed, marker = check_biv_marker(workspace_path)
+    try:
+        min_score = int(os.environ.get("CRUCIBAI_MIN_BIV_SCORE") or "0")
+    except ValueError:
+        min_score = 0
+
+    score_ok = bool(passed and marker and int(marker.get("score") or 0) >= min_score)
+    if not score_ok:
+        goal = str((job or {}).get("goal") or "")
+        bt = (job or {}).get("build_target") or (job or {}).get("crucib_build_target")
+        from backend.orchestration.build_integrity_validator import validate_workspace_integrity
+
+        biv = validate_workspace_integrity(
+            str(workspace_path),
+            goal=goal,
+            phase="final",
+            build_target=bt,
+        )
+        if not biv.get("passed") or int(biv.get("score") or 0) < min_score:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "gate": "build_integrity_validator",
+                    "issues": (biv.get("issues") or [])[:40],
+                    "score": biv.get("score"),
+                },
+            )
+        write_biv_marker(str(workspace_path), biv)
+
+    rec = check_artifact_reconciliation(workspace_path)
+    if not rec.get("passed"):
+        raise HTTPException(
+            status_code=422,
+            detail={"gate": "artifact_reconciliation", "issues": rec.get("issues")},
+        )
+
+    live = check_live_proof_separation(workspace_path)
+    if not live.get("passed"):
+        raise HTTPException(
+            status_code=422,
+            detail={"gate": "live_proof_separation", "issues": live.get("issues")},
+        )

@@ -1,3 +1,4 @@
+import importlib
 import io
 import shutil
 import uuid
@@ -18,6 +19,8 @@ async def _read_streaming_response(response):
 async def test_job_workspace_download_zip_preserves_code_tree(monkeypatch):
     from backend.routes import workspace
 
+    rs = importlib.import_module("backend.orchestration.runtime_state")
+
     scratch = Path(".tmp_workspace_download_tests") / uuid.uuid4().hex
     root = scratch / "generated"
     try:
@@ -26,15 +29,35 @@ async def test_job_workspace_download_zip_preserves_code_tree(monkeypatch):
         (root / "package.json").write_text('{"scripts":{"build":"vite build"}}', encoding="utf-8")
         (root / "node_modules" / "skip-me").mkdir(parents=True)
         (root / "node_modules" / "skip-me" / "index.js").write_text("huge", encoding="utf-8")
+        (root / ".crucibai").mkdir(parents=True)
+        (root / ".crucibai" / "biv_final.json").write_text(
+            '{"passed":true,"score":90,"profile":"saas_ui","issues":[]}',
+            encoding="utf-8",
+        )
 
         async def fake_assert_job_access(job_id, user):
             assert job_id == "job-download-1"
             assert user == {"id": "user-1"}
             return root
 
-        monkeypatch.setattr(workspace, "_assert_job_access", fake_assert_job_access)
+        async def fake_get_job(jid):
+            if jid != "job-download-1":
+                return None
+            return {
+                "id": jid,
+                "status": "completed",
+                "goal": "Build a test SaaS UI",
+                "project_id": "project-download-1",
+            }
 
-        response = await workspace.download_job_workspace_zip("job-download-1", user={"id": "user-1"})
+        monkeypatch.setattr(workspace, "_assert_job_access", fake_assert_job_access)
+        monkeypatch.setattr(rs, "get_job", fake_get_job)
+
+        response = await workspace.download_job_workspace_zip(
+            "job-download-1",
+            draft=False,
+            user={"id": "user-1"},
+        )
         payload = await _read_streaming_response(response)
 
         with zipfile.ZipFile(io.BytesIO(payload)) as zf:

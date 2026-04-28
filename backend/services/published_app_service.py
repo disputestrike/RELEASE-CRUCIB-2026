@@ -128,6 +128,15 @@ async def serve_published_app_response(
     if not project_id:
         raise HTTPException(status_code=404, detail="Published app has no workspace")
 
+    ws_base = project_workspace_path(project_id).resolve()
+    try:
+        ws_base.relative_to(workspace_root.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Published app path outside workspace")
+    from backend.orchestration.delivery_gate import assert_workspace_publish_allowed
+
+    assert_workspace_publish_allowed(str(ws_base), job)
+
     root = job_dist_root(project_id, project_workspace_path, workspace_root)
     if root is None:
         raise HTTPException(status_code=400, detail="Published app path outside workspace")

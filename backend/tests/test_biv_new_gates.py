@@ -89,10 +89,10 @@ def test_manifest_overwrite_suspected():
         src = Path(tmp) / "src"
         src.mkdir()
         # Write a tiny file (31 bytes) where manifest claims 10503
-        (src / "App.jsx").write_text("#### `server/tsconfig.json` ✓\n")  # 31 bytes
+        (src / "App.jsx").write_text("#### `server/tsconfig.json` OK\n", encoding="utf-8")  # tiny vs manifest
         manifest = {"files": [{"path": "src/App.jsx", "approx_bytes": 10503}]}
-        (meta / "merge_map.json").write_text(json.dumps(manifest))
-        files = {"src/App.jsx": "#### `server/tsconfig.json` ✓\n"}
+        (meta / "merge_map.json").write_text(json.dumps(manifest), encoding="utf-8")
+        files = {"src/App.jsx": "#### `server/tsconfig.json` OK\n"}
         result = _check_manifest_vs_disk(tmp, files)
         assert any("MANIFEST_OVERWRITE_SUSPECTED" in r for r in result), f"Got: {result}"
 
