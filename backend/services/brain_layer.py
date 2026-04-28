@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 from backend.agents.registry import AgentRegistry
 from backend.services.conversation_manager import ConversationSession, ContextEnricher
 from backend.services.events import event_bus
+from backend.services.runtime.task_manager import task_manager
 from backend.services.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
@@ -142,16 +143,52 @@ class BrainLayer:
                 runner = getattr(agent, "run", None)
                 if not callable(runner):
                     continue
-                run_result = runner({"session": session, "message": user_message, "project_id": project_id})
+                run_result = runner(
+                    {
+                        "session": session,
+                        "message": user_message,
+                        "user_prompt": user_message,
+                        "project_id": project_id,
+                        "task_id": task_id,
+                        "session_context": {
+                            "session_id": getattr(session, "session_id", None) or getattr(session, "id", None),
+                        },
+                    }
+                )
                 if hasattr(run_result, "__await__"):
                     run_result = await run_result
                 results[name] = run_result
+                if task_id and project_id:
+                    st = task_manager.get_task(project_id, task_id)
+                    if st and str(st.get("status") or "") == "killed":
+                        agent_outputs_list = [{"agent": k, "result": v} for k, v in results.items()]
+                        bus.emit(
+                            "brain.execution.completed",
+                            {"project_id": project_id, "task_id": task_id, "agents": list(results), "cancelled": True},
+                        )
+                        return {
+                            "status": "execution_cancelled",
+                            "intent": assessment.get("intent"),
+                            "selected_agents": assessment.get("selected_agents") or [],
+                            "agent_outputs": agent_outputs_list,
+                            "execution": {
+                                "success": False,
+                                "result": results,
+                                "agent_outputs": agent_outputs_list,
+                            },
+                        }
             bus.emit("brain.execution.completed", {"project_id": project_id, "task_id": task_id, "agents": list(results)})
+            agent_outputs_list = [{"agent": k, "result": v} for k, v in results.items()]
             return {
                 "status": "executed",
                 "intent": assessment.get("intent"),
                 "selected_agents": assessment.get("selected_agents") or [],
-                "execution": {"success": True, "result": results},
+                "agent_outputs": agent_outputs_list,
+                "execution": {
+                    "success": True,
+                    "result": results,
+                    "agent_outputs": agent_outputs_list,
+                },
             }
 
         if task_id:

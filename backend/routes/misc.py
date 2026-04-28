@@ -13,7 +13,7 @@ import zipfile
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -1279,20 +1279,39 @@ async def get_workspace_env(user: dict = Depends(_get_optional_user())):
     return {"env": {}}
 
 
-@router.post("/workspace/env")
-async def set_workspace_env(data: ProjectEnvBody, user: dict = Depends(_get_auth())):
-    # API keys are now managed server-side only. This endpoint is deprecated.
-    # Users cannot set API keys anymore - they are configured in the server environment.
+@router.post("/workspace/env", dependencies=[Depends(_get_auth())])
+async def set_workspace_env(request: Request):
+    """Deprecated: keys are managed server-side. Accept JSON body validated as ProjectEnvBody."""
+    from ..server import ProjectEnvBody
+
+    raw = {}
+    try:
+        raw = await request.json()
+    except Exception:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=422, detail="Expected JSON object")
+    try:
+        ProjectEnvBody.model_validate(raw if raw else {})
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
     return {"ok": True}
 
 
 @router.post("/share/create")
-async def share_create(
-    data: ShareCreateBody,
-    user: dict = Depends(
-        require_permission(Permission.EDIT_PROJECT if Permission else None)
-    ),
-):
+async def share_create(request: Request, user: dict = Depends(_get_auth())):
+    """Create a share token (uses Request body … future annotations-safe)."""
+    from ..server import ShareCreateBody
+
+    raw: dict[str, Any] = {}
+    try:
+        jd = await request.json()
+        if isinstance(jd, dict):
+            raw = jd
+    except Exception:
+        raw = {}
+    data = ShareCreateBody.model_validate(raw if raw else {})
+
     db = _get_db()
     project = await db.projects.find_one({"id": data.project_id, "user_id": user["id"]})
     if not project:

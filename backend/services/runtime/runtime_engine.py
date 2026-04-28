@@ -32,7 +32,6 @@ except ImportError:  # pragma: no cover
 from backend.services.policy.permission_engine import evaluate_tool_call
 from backend.services.runtime.context_manager import runtime_context_manager
 from backend.services.runtime.cost_tracker import cost_tracker
-from backend.services.runtime.execution_authority import runtime_authority_snapshot
 from backend.services.runtime.execution_context import runtime_execution_scope
 from backend.services.runtime.memory_graph import add_edge as memory_add_edge
 from backend.services.runtime.memory_graph import add_node as memory_add_node
@@ -232,6 +231,8 @@ class RuntimeEngine:
         agents = planner._get_agent_instances() if hasattr(planner, "_get_agent_instances") else {}
         child = agents.get(agent_name)
         merged = dict(context or {})
+        base_ws = os.environ.get("CRUCIB_ARTIFACT_ROOT", "").strip() or None
+        workspace_dir = base_ws or f"/tmp/crucib_spawn/{project_id}"
         merged.update(
             {
                 "spawn_depth": depth,
@@ -239,9 +240,14 @@ class RuntimeEngine:
                 "project_id": project_id,
                 "task_id": task_id,
                 "delegated_spawn": True,
+                "subagent": True,
+                "workspace_dir": workspace_dir,
             }
         )
-        base_ws = os.environ.get("CRUCIB_ARTIFACT_ROOT", "").strip() or None
+        event_bus.emit(
+            "spawn.started",
+            {"agent_name": agent_name, "project_id": project_id, "task_id": task_id},
+        )
 
         if child is not None:
             run = getattr(child, "run", None)
@@ -251,12 +257,20 @@ class RuntimeEngine:
                     result = await raw
                 else:
                     result = raw
-                return {"success": True, "result": result, "workspace": base_ws}
+                event_bus.emit(
+                    "spawn.completed",
+                    {"agent_name": agent_name, "project_id": project_id, "task_id": task_id},
+                )
+                return {"success": True, "result": result, "workspace": workspace_dir}
 
+        event_bus.emit(
+            "spawn.completed",
+            {"agent_name": agent_name, "project_id": project_id, "task_id": task_id, "skipped": True},
+        )
         return {
             "success": True,
             "result": {"text": f"[spawned:{agent_name} — no runnable agent instance]", **merged},
-            "workspace": base_ws,
+            "workspace": workspace_dir,
         }
 
     async def start_task(
@@ -855,7 +869,6 @@ class RuntimeEngine:
         session_id = (conversation_id or f"runtime-{task_id}").strip()
         project_id = (project_id_override or f"runtime-{user_id}").strip()
 
-        runtime_authority_snapshot.set_current_snapshot(project_id)
         session = ConversationSession(session_id=session_id, user_id=user_id)
 
         task = task_manager.create_task(
@@ -881,74 +894,75 @@ class RuntimeEngine:
         )
 
         try:
-            try:
-                planner = self._brain_factory(runtime_engine=self)
-            except TypeError:
-                planner = self._brain_factory()
+            with runtime_execution_scope(project_id=project_id, task_id=effective_task_id):
+                try:
+                    planner = self._brain_factory(runtime_engine=self)
+                except TypeError:
+                    planner = self._brain_factory()
 
-            brain_result = await self.run_task_loop(
-                session=session,
-                project_id=project_id,
-                task_id=effective_task_id,
-                user_message=request,
-                progress_callback=progress_callback,
-                mode=mode,
-                allowed_phases=allowed_phases,
-                planner=planner,
-            )
-
-            status = brain_result.get("status")
-            if status == "execution_cancelled":
-                task_manager.kill_task(project_id, effective_task_id, reason="cancelled_by_runtime")
-            elif status == "execution_failed":
-                task_manager.fail_task(
-                    project_id,
-                    effective_task_id,
-                    error=str((brain_result.get("execution") or {}).get("error") or "execution_failed"),
+                brain_result = await self.run_task_loop(
+                    session=session,
+                    project_id=project_id,
+                    task_id=effective_task_id,
+                    user_message=request,
+                    progress_callback=progress_callback,
+                    mode=mode,
+                    allowed_phases=allowed_phases,
+                    planner=planner,
                 )
-            else:
-                task_manager.complete_task(
-                    project_id,
-                    effective_task_id,
-                    metadata={
-                        "intent": brain_result.get("intent"),
-                        "selected_agents": brain_result.get("selected_agents", []),
+
+                status = brain_result.get("status")
+                if status == "execution_cancelled":
+                    task_manager.kill_task(project_id, effective_task_id, reason="cancelled_by_runtime")
+                elif status == "execution_failed":
+                    task_manager.fail_task(
+                        project_id,
+                        effective_task_id,
+                        error=str((brain_result.get("execution") or {}).get("error") or "execution_failed"),
+                    )
+                else:
+                    task_manager.complete_task(
+                        project_id,
+                        effective_task_id,
+                        metadata={
+                            "intent": brain_result.get("intent"),
+                            "selected_agents": brain_result.get("selected_agents", []),
+                        },
+                    )
+
+                current_task = task_manager.get_task(project_id, effective_task_id)
+
+                if memory_store is not None and brain_result.get("status") not in (
+                    "execution_failed",
+                    "execution_cancelled",
+                ):
+                    try:
+                        from backend.db_pg import get_db as _get_db_for_wb
+
+                        _db_wb = await _get_db_for_wb()
+                        wb_content = json.dumps(brain_result.get("execution", {}).get("result", {}))
+                        if wb_content and len(wb_content) < 100_000:
+                            await memory_store.write_memory(
+                                user_id=user_id,
+                                scope=MemoryScope.PROJECT,
+                                key=f"project_result_{project_id}",
+                                value=wb_content,
+                            )
+                    except Exception as exc_wb:
+                        logger.warning("Failed to write memory for task %s: %s", effective_task_id, exc_wb)
+
+                event_bus.emit(
+                    "task_end",
+                    {
+                        "task_id": effective_task_id,
+                        "requested_task_id": task_id,
+                        "state": (current_task or {}).get("status"),
                     },
                 )
-
-            current_task = task_manager.get_task(project_id, effective_task_id)
-
-            if memory_store is not None and brain_result.get("status") not in (
-                "execution_failed",
-                "execution_cancelled",
-            ):
-                try:
-                    from backend.db_pg import get_db as _get_db_for_wb
-
-                    _db_wb = await _get_db_for_wb()
-                    wb_content = json.dumps(brain_result.get("execution", {}).get("result", {}))
-                    if wb_content and len(wb_content) < 100_000:
-                        await memory_store.write_memory(
-                            user_id=user_id,
-                            scope=MemoryScope.PROJECT,
-                            key=f"project_result_{project_id}",
-                            value=wb_content,
-                        )
-                except Exception as exc:
-                    logger.warning("Failed to write memory for task %s: %s", effective_task_id, exc)
-
-            event_bus.emit(
-                "task_end",
-                {
-                    "task_id": effective_task_id,
-                    "requested_task_id": task_id,
-                    "state": (current_task or {}).get("status"),
-                },
-            )
-            return brain_result.get("execution") or {
-                "success": True,
-                "output": "Task completed.",
-            }
+                return brain_result.get("execution") or {
+                    "success": True,
+                    "output": "Task completed.",
+                }
 
         except Exception as exc:
             logger.exception("RuntimeEngine.execute_with_control failed for task %s: %s", effective_task_id, exc)

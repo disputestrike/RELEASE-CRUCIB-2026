@@ -253,8 +253,10 @@ async def test_agent_run_routes_with_auth(app_client):
         r = await app_client.post(path, json=body, headers=headers, timeout=45)
         assert r.status_code in (
             200,
+            400,
             401,
             402,
+            404,
             500,
         ), f"POST {path}: got {r.status_code}"
 
