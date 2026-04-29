@@ -116,70 +116,6 @@ function jobTranscriptLinesFromEvents(events, jobId) {
   return rows;
 }
 
-/**
- * WorkspaceStatusChip
- * Subtle replacement for the old top job-control bar.
- * Shows a quiet status dot and an overflow menu (Pause / Resume / Cancel / Sync).
- */
-function WorkspaceStatusChip({ jobStatus, onPause, onResume, onCancel, onSync, canSync }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const tone =
-    jobStatus === 'running' ? 'running'
-    : jobStatus === 'failed' || jobStatus === 'cancelled' ? 'failed'
-    : jobStatus === 'completed' ? 'success'
-    : jobStatus === 'blocked' || jobStatus === 'waiting_for_user' ? 'warn'
-    : 'idle';
-  const label = jobStatus ? jobStatus.replace(/_/g, ' ') : 'Idle';
-  const isRunning = jobStatus === 'running';
-  const canResume = jobStatus === 'failed' || jobStatus === 'blocked';
-
-  return (
-    <div className="uw-status-chip-wrap" ref={ref}>
-      <button
-        type="button"
-        className={`uw-status-chip uw-status-chip--${tone}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Run controls"
-      >
-        <span className="uw-status-dot" aria-hidden />
-        <span className="uw-status-label">{label}</span>
-        <span className="uw-status-overflow" aria-hidden>•••</span>
-      </button>
-      {open ? (
-        <div className="uw-status-menu" role="menu">
-          {isRunning ? (
-            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onPause?.(); }}>Pause run</button>
-          ) : null}
-          {canResume ? (
-            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onResume?.(); }}>Resume run</button>
-          ) : null}
-          {jobStatus && !['completed', 'cancelled'].includes(jobStatus) ? (
-            <button type="button" className="uw-status-menu-item uw-status-menu-item--danger" onClick={() => { setOpen(false); onCancel?.(); }}>Cancel run</button>
-          ) : null}
-          {canSync ? (
-            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onSync?.(); }}>Sync workspace</button>
-          ) : null}
-          {!isRunning && !canResume && (!jobStatus || ['completed', 'cancelled'].includes(jobStatus)) && !canSync ? (
-            <div className="uw-status-menu-empty">No actions available</div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -1875,31 +1811,22 @@ export default function App() {
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
-        <div className="arp-center-pane arp-center-pane--composer-bottom">
-          <div className="arp-center-toolbar uw-center-headline uw-center-headline--minimal">
-            <div className="uw-center-headline-brand" aria-label="Crucible product version">
-              <span className="uw-center-headline-name">Crucible</span>
-              <span className="uw-center-headline-version">1.0</span>
-            </div>
-            <div className="uw-center-headline-actions">
-              <WorkspaceStatusChip
-                jobStatus={job?.status}
-                onPause={handleCancel}
-                onResume={handleResume}
-                onCancel={handleCancel}
-                onSync={reloadWorkspaceFromServer}
-                canSync={Boolean((effectiveProjectId || effectiveJobId) && token)}
-              />
-            </div>
-          </div>
+        <div className="arp-center-pane arp-center-pane--composer-bottom arp-center-pane--no-toolbar">
 
-          <div className="arp-center-pane-scroll">
+          <div className="arp-center-pane-scroll arp-center-pane-scroll--top">
             <BrainGuidancePanel
               userMessages={userChatMessages.filter((m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId)}
               events={events}
               jobStatus={job?.status}
               jobId={effectiveJobId || null}
+              buildTargetMeta={buildTargetMeta}
+              buildTargetId={buildTarget}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
+              onPause={handleCancel}
+              onResume={handleResume}
+              onCancel={handleCancel}
+              onSync={reloadWorkspaceFromServer}
+              canSync={Boolean((effectiveProjectId || effectiveJobId) && token)}
             />
 
             {stage === 'plan' && plan && (

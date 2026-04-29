@@ -31,7 +31,10 @@
   --crucibai-accent-soft: rgba(129, 140, 248, 0.12);
 }
 
-/* Outer thread container — bottom-anchored when content is short. */
+/* Outer thread container.
+   The default variant remains bottom-anchored for backward compat;
+   the .bgp-thread-only--top variant matches the Manus first-state look:
+   content flows top-down, scrollable, no margin tricks. */
 .bgp-thread-only {
   flex: 1 1 auto;
   display: flex;
@@ -43,6 +46,156 @@
 }
 
 .bgp-thread-only > *:first-child { margin-top: auto; }
+
+.bgp-thread-only.bgp-thread-only--top {
+  padding: 22px 28px 16px;
+  gap: 14px;
+}
+
+.bgp-thread-only.bgp-thread-only--top > *:first-child { margin-top: 0; }
+
+/* Top row of the thread: build target chip on the left, overflow on the right */
+.p4-thread-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.p4-target-row {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.p4-target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--crucibai-panel-soft);
+  border: 1px solid var(--crucibai-border);
+  font-size: 11px;
+  color: var(--crucibai-muted);
+}
+
+.p4-target-chip svg { color: var(--crucibai-accent); }
+
+/* Inline overflow menu (Pause / Resume / Cancel / Sync) */
+.p4-overflow-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.p4-overflow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--crucibai-muted);
+  cursor: pointer;
+}
+
+.p4-overflow-btn:hover {
+  background: var(--crucibai-panel-soft);
+  border-color: var(--crucibai-border);
+  color: var(--crucibai-text);
+}
+
+.p4-overflow-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--crucibai-panel);
+  border: 1px solid var(--crucibai-border);
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.14);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.p4-overflow-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--crucibai-text);
+  cursor: pointer;
+}
+
+.p4-overflow-item:hover { background: var(--crucibai-accent-soft); }
+
+.p4-overflow-item--danger { color: var(--crucibai-danger); }
+.p4-overflow-item--danger:hover { background: rgba(220, 38, 38, 0.08); }
+
+/* Initial-state assistant handle row (small CrucibAI label, no message body) */
+.p4-row-handle .p4-assist-name--header {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--crucibai-text);
+  align-self: center;
+}
+
+.p4-handle-pill-row {
+  display: flex;
+  margin-left: 34px;
+  margin-top: -4px;
+}
+
+/* Initial-state status pill (Working / Build paused / Reviewing) */
+.p4-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  border: 1px solid var(--crucibai-border);
+  background: var(--crucibai-panel-soft);
+  color: var(--crucibai-text);
+  width: fit-content;
+}
+
+.p4-status-pill--running {
+  background: var(--crucibai-accent-soft);
+  border-color: rgba(99, 102, 241, 0.22);
+  color: var(--crucibai-accent);
+}
+
+.p4-status-pill--paused {
+  background: rgba(217, 119, 6, 0.08);
+  border-color: rgba(217, 119, 6, 0.22);
+  color: var(--crucibai-warning);
+}
+
+.p4-status-pill--success {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.22);
+  color: var(--crucibai-success);
+}
+
+.p4-status-pill--queued {
+  background: var(--crucibai-panel-soft);
+  border-color: var(--crucibai-border);
+  color: var(--crucibai-muted);
+}
 
 .bgp-thread-empty {
   flex: 1 1 auto;

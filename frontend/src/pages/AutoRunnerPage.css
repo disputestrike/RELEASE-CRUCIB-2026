@@ -266,6 +266,15 @@
   position: relative;
   z-index: 1;
 }
+
+/* Manus-style top-anchored scrollable thread (replaces the old bottom-anchor) */
+.arp-center-pane--composer-bottom .arp-center-pane-scroll.arp-center-pane-scroll--top {
+  justify-content: flex-start;
+  padding: 0;
+  gap: 0;
+}
+
+.arp-center-pane--no-toolbar { padding-top: 0; }
 .arp-center-pane--composer-bottom .arp-center-pane-composer {
   flex-shrink: 0;
   margin-top: auto;
