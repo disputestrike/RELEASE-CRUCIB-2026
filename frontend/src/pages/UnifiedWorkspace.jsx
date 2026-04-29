@@ -18,7 +18,6 @@ import {
   FileArchive,
   Wrench,
 } from 'lucide-react';
-import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
@@ -113,6 +112,70 @@ function jobTranscriptLinesFromEvents(events, jobId) {
   }
   rows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
   return rows;
+}
+
+/**
+ * WorkspaceStatusChip
+ * Subtle replacement for the old top job-control bar.
+ * Shows a quiet status dot and an overflow menu (Pause / Resume / Cancel / Sync).
+ */
+function WorkspaceStatusChip({ jobStatus, onPause, onResume, onCancel, onSync, canSync }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const tone =
+    jobStatus === 'running' ? 'running'
+    : jobStatus === 'failed' || jobStatus === 'cancelled' ? 'failed'
+    : jobStatus === 'completed' ? 'success'
+    : jobStatus === 'blocked' || jobStatus === 'waiting_for_user' ? 'warn'
+    : 'idle';
+  const label = jobStatus ? jobStatus.replace(/_/g, ' ') : 'Idle';
+  const isRunning = jobStatus === 'running';
+  const canResume = jobStatus === 'failed' || jobStatus === 'blocked';
+
+  return (
+    <div className="uw-status-chip-wrap" ref={ref}>
+      <button
+        type="button"
+        className={`uw-status-chip uw-status-chip--${tone}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Run controls"
+      >
+        <span className="uw-status-dot" aria-hidden />
+        <span className="uw-status-label">{label}</span>
+        <span className="uw-status-overflow" aria-hidden>•••</span>
+      </button>
+      {open ? (
+        <div className="uw-status-menu" role="menu">
+          {isRunning ? (
+            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onPause?.(); }}>Pause run</button>
+          ) : null}
+          {canResume ? (
+            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onResume?.(); }}>Resume run</button>
+          ) : null}
+          {jobStatus && !['completed', 'cancelled'].includes(jobStatus) ? (
+            <button type="button" className="uw-status-menu-item uw-status-menu-item--danger" onClick={() => { setOpen(false); onCancel?.(); }}>Cancel run</button>
+          ) : null}
+          {canSync ? (
+            <button type="button" className="uw-status-menu-item" onClick={() => { setOpen(false); onSync?.(); }}>Sync workspace</button>
+          ) : null}
+          {!isRunning && !canResume && (!jobStatus || ['completed', 'cancelled'].includes(jobStatus)) && !canSync ? (
+            <div className="uw-status-menu-empty">No actions available</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function UnifiedWorkspace() {
@@ -1806,34 +1869,19 @@ export default function App() {
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom">
-          <div className="arp-center-toolbar uw-center-headline">
+          <div className="arp-center-toolbar uw-center-headline uw-center-headline--minimal">
             <div className="uw-center-headline-brand" aria-label="Crucible product version">
               <span className="uw-center-headline-name">Crucible</span>
               <span className="uw-center-headline-version">1.0</span>
             </div>
             <div className="uw-center-headline-actions">
-              {(effectiveProjectId || effectiveJobId) && token && (
-                <button
-                  type="button"
-                  className="arp-topbar-btn"
-                  style={{ fontSize: 11 }}
-                  title="Reload files from server"
-                  onClick={reloadWorkspaceFromServer}
-                >
-                  Sync
-                </button>
-              )}
-              <AutoRunnerPanel
-                mode="auto"
-                jobId={effectiveJobId}
+              <WorkspaceStatusChip
                 jobStatus={job?.status}
-                onRun={() => handleApprove()}
                 onPause={handleCancel}
                 onResume={handleResume}
                 onCancel={handleCancel}
-                budget={estimate}
-                showRunButton={false}
-                showModeSelector={false}
+                onSync={reloadWorkspaceFromServer}
+                canSync={Boolean((effectiveProjectId || effectiveJobId) && token)}
               />
             </div>
           </div>
@@ -1843,6 +1891,7 @@ export default function App() {
               userMessages={userChatMessages.filter((m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId)}
               events={events}
               jobStatus={job?.status}
+              jobId={effectiveJobId || null}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
             />
 
