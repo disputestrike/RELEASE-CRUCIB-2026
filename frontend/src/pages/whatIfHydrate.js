@@ -98,5 +98,6 @@ export function hydrateSimulationDetail(details) {
     output_answer: run.output_answer || report.output_answer || {},
     routed_intent: run.routed_intent || report.routed_intent || null,
     retrieval_ledger: run.retrieval_ledger ?? null,
+    retrieval_debug: details.retrieval_debug ?? run.retrieval_debug ?? null,
   };
 }

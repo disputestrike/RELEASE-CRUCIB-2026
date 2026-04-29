@@ -52,7 +52,12 @@ def _confidence_line(final_verdict: Dict[str, Any], trust: Optional[Dict[str, An
     return "; ".join(parts)
 
 
-def _evidence_status(ledger: Dict[str, Any], live_used: bool, live_count: int) -> str:
+def _evidence_status(
+    ledger: Dict[str, Any],
+    live_used: bool,
+    live_count: int,
+    quality: Dict[str, Any] | None = None,
+) -> str:
     tv = ledger.get("tavily") or {}
     pw = ledger.get("playwright") or {}
     ch = ledger.get("cheerio") or {}
@@ -61,11 +66,16 @@ def _evidence_status(ledger: Dict[str, Any], live_used: bool, live_count: int) -
     pm = api.get("pubmed_eutils") or {}
     ofa = api.get("openfda") or {}
     up = ledger.get("uploaded_files") or {}
+    conn = ledger.get("connector") or {}
     parts = [
         f"Tavily attempted: {'yes' if tv.get('attempted') else 'no'}"
         + (f" (success: {tv.get('success')})" if tv.get("attempted") else ""),
         f"Playwright attempted: {'yes' if pw.get('attempted') else 'no'} — wired: {pw.get('wired', False)}",
         f"Cheerio attempted: {'yes' if ch.get('attempted') else 'no'} — wired: {ch.get('wired', False)}",
+        (
+            "Connector (fixtures): "
+            f"attempted {conn.get('attempted')}, success {conn.get('success')}, rows {conn.get('rows_returned', 0)}"
+        ),
         (
             "Official API: "
             f"ClinicalTrials.gov attempted {ct.get('attempted')}, success {ct.get('success')}; "
@@ -77,6 +87,13 @@ def _evidence_status(ledger: Dict[str, Any], live_used: bool, live_count: int) -
     ]
     if tv.get("failure_reason"):
         parts.append(f"Tavily note: {tv['failure_reason']}")
+    auth = (quality or {}).get("authority_summary") or {}
+    if auth.get("sources_downranked"):
+        parts.append(
+            "Authority policy: "
+            f"regulated_domain={auth.get('regulated_domain')}; "
+            f"sources_downranked={auth.get('sources_downranked')}"
+        )
     return " | ".join(parts)
 
 
@@ -177,6 +194,8 @@ def build_output_answer(
 ) -> Dict[str, Any]:
     ledger = evidence_summary.get("retrieval_ledger") or {}
     quality = evidence_summary.get("quality") or {}
+    retrieval_debug = evidence_summary.get("retrieval_debug") or quality.get("retrieval_debug") or {}
+    gate = retrieval_debug.get("gate") or {}
     live_used = bool(quality.get("live_data_used"))
     live_count = int(quality.get("live_source_count") or 0)
     sources = evidence_summary.get("sources") or []
@@ -188,6 +207,13 @@ def build_output_answer(
         final_verdict=final_verdict,
         evidence_summary=evidence_summary,
     )
+    if not gate.get("passed", True):
+        direct = (
+            "Live retrieval did not satisfy the engine's minimum multi-collector gate or produced no auditable rows. "
+            "This answer is assumption-based / exploratory only — do not treat it as tape-backed research. "
+            f"Gate: {gate.get('reason', 'see retrieval_debug')}. "
+            + direct
+        )
     reasoning = (
         (final_verdict.get("why") or "").strip()
         + " "
@@ -198,7 +224,7 @@ def build_output_answer(
     return {
         "direct_answer": direct.strip(),
         "confidence": _confidence_line(final_verdict, trust),
-        "evidence_status": _evidence_status(ledger, live_used, live_count),
+        "evidence_status": _evidence_status(ledger, live_used, live_count, quality),
         "reasoning_summary": reasoning[:4000] or reasoning,
         "data_used_summary": _fmt_sources(sources),
         "data_missing": list(evidence_summary.get("missing_evidence") or []),
@@ -206,5 +232,9 @@ def build_output_answer(
         "assumption_based_insight": _assumption_insight(classification, final_verdict, evidence_summary),
         "safety_compliance_note": _safety_note(classification, routed_intent),
         "retrieval_ledger": ledger,
-        "exploratory": (final_verdict.get("verdict") == "Insufficient Evidence") or not live_used,
+        "retrieval_debug": retrieval_debug,
+        "retrieval_gate_passed": bool(gate.get("passed", True)),
+        "exploratory": (final_verdict.get("verdict") == "Insufficient Evidence")
+        or not live_used
+        or not gate.get("passed", True),
     }

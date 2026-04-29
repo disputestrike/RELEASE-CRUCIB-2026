@@ -34,6 +34,7 @@ export default function WorkspaceVNext() {
   const [whatIfLoading, setWhatIfLoading] = useState(false);
   const [whatIfResult, setWhatIfResult] = useState(null);
   const [whatIfError, setWhatIfError] = useState('');
+  const [whatIfRequireLive, setWhatIfRequireLive] = useState(false);
 
   const caps = useMemo(() => getWorkspaceCapabilities(user), [user]);
   const requestedMode = readRequestedMode(searchParams);
@@ -149,6 +150,7 @@ export default function WorkspaceVNext() {
           scenario,
           population_size: 48,
           rounds: 4,
+          require_live_retrieval_success: whatIfRequireLive,
           priors: {
             cost_sensitive: 0.3,
             security_first: 0.35,
@@ -156,12 +158,23 @@ export default function WorkspaceVNext() {
           },
         }),
       });
+      const rawText = await res.text();
+      let payload = null;
+      try {
+        payload = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        payload = null;
+      }
       if (!res.ok) {
         setWhatIfResult(null);
-        setWhatIfError('What-if simulation failed.');
+        const detail = payload && typeof payload === 'object' ? payload.detail : null;
+        if (res.status === 422 && detail && detail.code === 'retrieval_gate_failed') {
+          setWhatIfError(detail.message || 'Live retrieval did not meet the evidence gate. Add API keys or disable “Require live evidence”.');
+        } else {
+          setWhatIfError((detail && detail.message) || rawText.slice(0, 200).trim() || 'What-if simulation failed.');
+        }
         return;
       }
-      const payload = await res.json();
       setWhatIfResult(payload);
     } catch {
       setWhatIfResult(null);
@@ -263,6 +276,15 @@ export default function WorkspaceVNext() {
             onChange={(e) => setWhatIfScenario(e.target.value)}
             rows={4}
           />
+          <label className="workspace-vnext-whatif-strict">
+            <input
+              type="checkbox"
+              checked={whatIfRequireLive}
+              onChange={(e) => setWhatIfRequireLive(e.target.checked)}
+              disabled={whatIfLoading}
+            />
+            <span>Require live evidence gate (422 if retrieval fails)</span>
+          </label>
           <button type="button" onClick={runWhatIf} disabled={whatIfLoading}>
             {whatIfLoading ? 'Running...' : 'Run simulation'}
           </button>

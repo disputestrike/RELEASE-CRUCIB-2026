@@ -127,6 +127,50 @@
   color: #065f46;
 }
 
+.simulation-evidence-gate {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+}
+
+.simulation-evidence-gate-label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  margin: 0;
+  font-size: 13px;
+  color: #1e1b4b;
+}
+
+.simulation-evidence-gate-label input {
+  margin-top: 3px;
+  accent-color: #4338ca;
+}
+
+.simulation-evidence-gate-label strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.simulation-evidence-gate-label small {
+  display: block;
+  color: #4338ca;
+  font-size: 11px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+.simulation-evidence-gate-label code {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
 .simulation-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 0.36fr);
@@ -668,6 +712,25 @@ button.simulation-secondary:disabled {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid rgba(245, 158, 11, 0.38);
+}
+
+.simulation-retrieval-lede {
+  margin-bottom: 10px !important;
+}
+
+.simulation-retrieval-json {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.4;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .sim-explore-columns {

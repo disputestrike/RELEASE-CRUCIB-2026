@@ -24,6 +24,10 @@ class SimulationRunRequest(BaseModel):
     rounds: int = Field(default=5, ge=1, le=8)
     agent_count: int = Field(default=8, ge=3, le=24)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    require_live_retrieval_success: bool = Field(
+        default=False,
+        description="If true, current-data runs return 422 when retrieval_debug.gate.passed is false.",
+    )
 
 
 class SimulationFeedback(BaseModel):

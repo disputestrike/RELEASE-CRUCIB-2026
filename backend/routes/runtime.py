@@ -12,6 +12,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 try:
+    from ..services.simulation.evidence_engine import RetrievalGateError
+except ImportError:
+    try:
+        from services.simulation.evidence_engine import RetrievalGateError
+    except ImportError:
+        from backend.services.simulation.evidence_engine import RetrievalGateError
+
+try:
     from ..services.events import event_bus
     from ..services.runtime.task_manager import task_manager
 except ImportError:  # compatibility for legacy tests importing `routes.runtime`
@@ -273,6 +281,10 @@ class WhatIfBody(BaseModel):
     rounds: int = Field(default=4, ge=1, le=8)
     priors: Dict[str, float] = Field(default_factory=dict)
     agent_roles: Optional[list] = None
+    require_live_retrieval_success: bool = Field(
+        default=False,
+        description="If true, return 422 when live retrieval gate fails instead of an exploratory answer.",
+    )
 
 
 @router.post("/what-if")
@@ -293,18 +305,30 @@ async def run_what_if(body: WhatIfBody, user: dict = Depends(_get_auth())):
         metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},
     )
 
-    result = await reality_engine.run_simulation(
-        simulation_id=simulation["id"],
-        user_id=uid,
-        prompt=body.scenario,
-        assumptions=[],
-        attachments=[],
-        depth=body.depth,
-        population_size=max(100, min(10000, int(body.population_size or 1000))),
-        rounds=body.rounds,
-        agent_count=max(3, min(24, int(body.population_size or 8))),
-        metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},
-    )
+    try:
+        result = await reality_engine.run_simulation(
+            simulation_id=simulation["id"],
+            user_id=uid,
+            prompt=body.scenario,
+            assumptions=[],
+            attachments=[],
+            depth=body.depth,
+            population_size=max(100, min(10000, int(body.population_size or 1000))),
+            rounds=body.rounds,
+            agent_count=max(3, min(24, int(body.population_size or 8))),
+            metadata={"compatibility_route": "/api/runtime/what-if", "requested_mode": body.mode},
+            require_live_retrieval_success=body.require_live_retrieval_success,
+        )
+    except RetrievalGateError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "code": "retrieval_gate_failed",
+                "retrieval_debug": exc.retrieval_debug,
+                "message": "Live retrieval did not meet minimum collector coverage; widen keys, queries, or disable require_live_retrieval_success.",
+            },
+        )
 
     return {
         "success": True,

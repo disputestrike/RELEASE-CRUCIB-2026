@@ -5,6 +5,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..services.simulation.models import SimulationCreate, SimulationFeedback, SimulationRunRequest
+from ..services.simulation.evidence_engine import RetrievalGateError
 from ..services.simulation.reality_engine import reality_engine
 from ..services.simulation.repository import new_id, now_iso, repository
 
@@ -59,20 +60,32 @@ async def _run_simulation_for_id(simulation_id: str, body: SimulationRunRequest,
     prompt = (body.prompt or sim.get("prompt") or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="Simulation prompt is required")
-    result = await reality_engine.run_simulation(
-        simulation_id=simulation_id,
-        user_id=_user_id(user),
-        prompt=prompt,
-        assumptions=body.assumptions or sim.get("assumptions") or [],
-        attachments=body.attachments or sim.get("attachments") or [],
-        depth=body.depth,
-        use_live_evidence=body.use_live_evidence,
-        population_size=body.population_size,
-        evidence_depth=body.evidence_depth,
-        rounds=body.rounds,
-        agent_count=body.agent_count,
-        metadata=body.metadata,
-    )
+    try:
+        result = await reality_engine.run_simulation(
+            simulation_id=simulation_id,
+            user_id=_user_id(user),
+            prompt=prompt,
+            assumptions=body.assumptions or sim.get("assumptions") or [],
+            attachments=body.attachments or sim.get("attachments") or [],
+            depth=body.depth,
+            use_live_evidence=body.use_live_evidence,
+            population_size=body.population_size,
+            evidence_depth=body.evidence_depth,
+            rounds=body.rounds,
+            agent_count=body.agent_count,
+            metadata=body.metadata,
+            require_live_retrieval_success=body.require_live_retrieval_success,
+        )
+    except RetrievalGateError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "success": False,
+                "code": "retrieval_gate_failed",
+                "retrieval_debug": exc.retrieval_debug,
+                "message": "Live retrieval did not meet minimum collector coverage; widen keys, queries, or set use_live_evidence=false.",
+            },
+        )
     return {"success": True, **result}
 
 

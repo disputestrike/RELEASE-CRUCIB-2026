@@ -218,6 +218,13 @@ export default function WhatIfPage() {
   const [prompt, setPrompt] = useState(PROMPTS[0]);
   const [assumptionsText, setAssumptionsText] = useState('');
   const [depth, setDepth] = useState('balanced');
+  const [requireLiveRetrievalSuccess, setRequireLiveRetrievalSuccess] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem('crucib_require_live_retrieval') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -342,6 +349,7 @@ export default function WhatIfPage() {
         attachments,
         depth,
         use_live_evidence: true,
+        require_live_retrieval_success: requireLiveRetrievalSuccess,
         metadata: { surface: 'simulation_command_center', depth },
       };
       const runRes = await fetch(`${API}/simulations/run`, {
@@ -350,30 +358,62 @@ export default function WhatIfPage() {
         headers,
         body: JSON.stringify(runPayload),
       });
+      const runText = await runRes.text();
+      let runJson = null;
       try {
-        const runJson = await readJsonResponse(runRes, 'Run simulation');
+        runJson = runText ? JSON.parse(runText) : null;
+      } catch {
+        runJson = null;
+      }
+
+      if (runRes.ok && runJson && typeof runJson === 'object') {
         applyRunPayload(runJson);
         persistCompletedRun(runJson, cleanPrompt);
         pushSimulationActivity({ status: 'completed', label: cleanPrompt.slice(0, 80), simulationId, runId: runJson?.run?.id });
         setActivityStrip(readActivityStrip());
-      } catch (runErr) {
-        const fallbackRes = await fetch(`${API}/runtime/what-if`, {
-          method: 'POST',
-          credentials: 'include',
-          headers,
-          body: JSON.stringify({
-            scenario: cleanPrompt,
-            assumptions,
-            attachments,
-            depth,
-            metadata: { surface: 'simulation_command_center', fallback_from: 'simulations_run', depth },
-          }),
-        });
-        const fallback = await readJsonResponse(fallbackRes, 'Run simulation fallback');
-        const merged = { ...fallback, fallback_used: 'runtime_what_if' };
-        setResult(merged);
-        pushSimulationActivity({ status: 'completed', label: cleanPrompt.slice(0, 80), note: 'compat runtime' });
-        setActivityStrip(readActivityStrip());
+      } else {
+        const detail = runJson && typeof runJson === 'object' ? runJson.detail : null;
+        const gateFailed = runRes.status === 422 && detail && detail.code === 'retrieval_gate_failed';
+        if (gateFailed) {
+          setError(detail.message || 'Live retrieval did not pass the evidence gate.');
+          setResult({
+            retrieval_gate_failed: true,
+            retrieval_debug: detail.retrieval_debug || null,
+          });
+          pushSimulationActivity({ status: 'error', label: cleanPrompt.slice(0, 80), note: 'retrieval gate' });
+          setActivityStrip(readActivityStrip());
+        } else if (requireLiveRetrievalSuccess) {
+          setError(
+            (detail && detail.message) || runText.slice(0, 260).trim() || `Simulation run failed (${runRes.status}).`,
+          );
+          pushSimulationActivity({ status: 'error', label: cleanPrompt.slice(0, 80) });
+          setActivityStrip(readActivityStrip());
+        } else {
+          try {
+            const fallbackRes = await fetch(`${API}/runtime/what-if`, {
+              method: 'POST',
+              credentials: 'include',
+              headers,
+              body: JSON.stringify({
+                scenario: cleanPrompt,
+                depth,
+                require_live_retrieval_success: requireLiveRetrievalSuccess,
+                metadata: { surface: 'simulation_command_center', fallback_from: 'simulations_run', depth },
+              }),
+            });
+            const fallback = await readJsonResponse(fallbackRes, 'Run simulation fallback');
+            const merged = { ...fallback, fallback_used: 'runtime_what_if' };
+            setResult(merged);
+            pushSimulationActivity({ status: 'completed', label: cleanPrompt.slice(0, 80), note: 'compat runtime' });
+            setActivityStrip(readActivityStrip());
+          } catch {
+            setError(
+              (detail && detail.message) || runText.slice(0, 260).trim() || 'Simulation run and compatibility fallback both failed.',
+            );
+            pushSimulationActivity({ status: 'error', label: cleanPrompt.slice(0, 80) });
+            setActivityStrip(readActivityStrip());
+          }
+        }
       }
     } catch (err) {
       setError(err?.message || 'Simulation failed.');
@@ -417,6 +457,14 @@ export default function WhatIfPage() {
       exploratory: true,
     };
   }, [result, report, finalVerdict]);
+  const retrievalDebug = useMemo(
+    () =>
+      result?.retrieval_debug
+      || report?.evidence_summary?.retrieval_debug
+      || outputAnswer?.retrieval_debug
+      || null,
+    [result, report, outputAnswer],
+  );
   const evidencePolicyNested = report?.evidence_summary?.evidence_policy;
   const evidencePolicy = evidencePolicyNested || result?.trust_score?.evidence_policy || {};
   const replayEvents = Array.isArray(result?.replay_events) ? result.replay_events : [];
@@ -514,6 +562,32 @@ export default function WhatIfPage() {
           rows={3}
           placeholder="Optional assumptions, one per line. Example: LeBron is healthy. CAC is $90. Railway is the target host."
         />
+        <div className="simulation-evidence-gate">
+          <label className="simulation-evidence-gate-label">
+            <input
+              type="checkbox"
+              checked={requireLiveRetrievalSuccess}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setRequireLiveRetrievalSuccess(v);
+                try {
+                  window.localStorage.setItem('crucib_require_live_retrieval', v ? '1' : '0');
+                } catch {
+                  /* ignore */
+                }
+              }}
+              disabled={loading || hydrating}
+            />
+            <span>
+              <strong>Require live evidence gate</strong>
+              <small>
+                For current or time-sensitive scenarios, fail the run (HTTP 422) if retrieval does not hit multiple
+                collector families—instead of falling back to an exploratory answer. Uses the same flag as the API{' '}
+                <code>require_live_retrieval_success</code>.
+              </small>
+            </span>
+          </label>
+        </div>
         <div className="simulation-controls">
           <fieldset className="simulation-depth">
             <legend>Simulation Depth</legend>
@@ -645,6 +719,17 @@ export default function WhatIfPage() {
               </section>
             </div>
           </Panel>
+
+          {retrievalDebug && typeof retrievalDebug === 'object' && (
+            <Panel title="Evidence retrieval status" icon={Telescope} aside={retrievalDebug.gate?.passed === false ? 'Gate failed — inspect collectors' : 'Pipeline debug'}>
+              <p className="simulation-interpretation simulation-retrieval-lede">
+                Query variants, per-collector HTTP diagnostics, accept/reject hints, and gate reasons. Use this before blaming “template simulation.”
+              </p>
+              <pre className="simulation-retrieval-json" aria-label="Retrieval debug JSON">
+                {JSON.stringify(retrievalDebug, null, 2)}
+              </pre>
+            </Panel>
+          )}
 
           <Panel title="Evidence Panel" icon={FileText} aside={`${sources.length} sources / ${evidence.length} facts`}>
             <div className="simulation-evidence-layout">

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from .models import ScenarioClassification
+from .retrieval_evaluation import coherence_violations
 
 
 def build_report(
@@ -43,6 +44,14 @@ def build_report(
     else:
         executive = recommendation.get("summary")
 
+    coherence = []
+    if output_answer:
+        coherence = coherence_violations(
+            output_answer=output_answer,
+            retrieval_debug=evidence_summary.get("retrieval_debug") or {},
+            sources=evidence_summary.get("sources") or [],
+        )
+
     return {
         "executive_summary": executive,
         "final_verdict": verdict,
@@ -55,6 +64,9 @@ def build_report(
             "unsupported_claims": evidence_summary.get("unsupported_claims") or [],
             "evidence_policy": (evidence_summary.get("quality") or {}).get("evidence_policy") or {},
             "claim_graph_preview": (evidence_summary.get("claims") or [])[:8],
+            "retrieval_debug": evidence_summary.get("retrieval_debug") or {},
+            "authority_summary": (evidence_summary.get("quality") or {}).get("authority_summary") or {},
+            "coherence_evaluation": {"violations": coherence, "passed": len(coherence) == 0},
         },
         "agent_consensus_disagreement": {
             "agent_count": len(agents),

@@ -174,6 +174,11 @@ describe('WorkspaceVNext', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
+        text: async () =>
+          JSON.stringify({
+            recommendation: { recommended_action: 'Adopt change with guardrails', confidence: 0.77 },
+            rounds_executed: 3,
+          }),
         json: async () => ({
           recommendation: { recommended_action: 'Adopt change with guardrails', confidence: 0.77 },
           rounds_executed: 3,

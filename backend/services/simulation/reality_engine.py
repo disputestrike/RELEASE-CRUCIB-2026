@@ -7,7 +7,7 @@ from .classifier import classify_scenario
 from .debate_llm import augment_debate_with_llm_maybe
 from .debate_engine import run_debate
 from .domain_policy import build_evidence_policy
-from .evidence_engine import build_evidence
+from .evidence_engine import RetrievalGateError, build_evidence
 from .intent_router import route_intent
 from .outcome_engine import build_outcomes, build_recommendation
 from .output_answer_engine import build_output_answer
@@ -109,8 +109,12 @@ class RealityEngine:
         rounds: int = 5,
         agent_count: int = 8,
         metadata: Optional[Dict[str, Any]] = None,
+        require_live_retrieval_success: bool = False,
     ) -> Dict[str, Any]:
         config = _depth_config(depth, rounds, agent_count, population_size, evidence_depth)
+        meta = dict(metadata or {})
+        if require_live_retrieval_success:
+            meta["require_live_retrieval_success"] = True
         run_id = new_id("run")
         now = now_iso()
         run_doc = {
@@ -123,7 +127,7 @@ class RealityEngine:
             "agent_count_requested": config["agent_count"],
             "population_size_requested": config["population_size"],
             "evidence_depth_requested": config["evidence_depth"],
-            "metadata": metadata or {},
+            "metadata": meta,
             "created_at": now,
             "updated_at": now,
         }
@@ -168,7 +172,12 @@ class RealityEngine:
             use_live_evidence=use_live_evidence,
             evidence_depth=config["evidence_depth"],
             evidence_policy=evidence_policy,
+            user_id=user_id,
         )
+        if meta.get("require_live_retrieval_success") and use_live_evidence:
+            gate = (evidence.get("retrieval_debug") or {}).get("gate") or {}
+            if not gate.get("passed"):
+                raise RetrievalGateError(evidence.get("retrieval_debug") or {})
         for source in evidence["sources"]:
             await repository.insert("simulation_sources", source)
         for fact in evidence["evidence"]:
@@ -368,6 +377,7 @@ class RealityEngine:
             "output_answer": output_answer,
             "routed_intent": routed_intent,
             "retrieval_ledger": evidence.get("retrieval_ledger"),
+            "retrieval_debug": evidence.get("retrieval_debug"),
             "completed_at": now_iso(),
             "updated_at": now_iso(),
         }
@@ -426,6 +436,7 @@ class RealityEngine:
             "output_answer": output_answer,
             "routed_intent": routed_intent,
             "retrieval_ledger": evidence.get("retrieval_ledger"),
+            "retrieval_debug": evidence.get("retrieval_debug"),
             "engine": "Reality Engine V1",
         }
 

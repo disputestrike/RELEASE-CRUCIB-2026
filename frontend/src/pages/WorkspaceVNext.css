@@ -169,6 +169,21 @@
   font-size: 12px;
 }
 
+.workspace-vnext-whatif-strict {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #cbd5f5;
+  cursor: pointer;
+}
+
+.workspace-vnext-whatif-strict input {
+  margin-top: 2px;
+  accent-color: #818cf8;
+}
+
 .workspace-vnext-whatif button {
   margin-top: 8px;
   border: 1px solid rgba(16, 185, 129, 0.6);
