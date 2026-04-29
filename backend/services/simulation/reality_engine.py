@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from .agent_factory import build_agents
 from .classifier import classify_scenario
+from .debate_llm import augment_debate_with_llm_maybe
 from .debate_engine import run_debate
 from .domain_policy import build_evidence_policy
 from .evidence_engine import build_evidence
@@ -210,6 +211,11 @@ class RealityEngine:
             evidence_summary=evidence,
             rounds=config["rounds"],
         )
+        debate = await augment_debate_with_llm_maybe(
+            debate,
+            classification=classification,
+            evidence_summary=evidence,
+        )
         for row in debate["rounds"]:
             await repository.insert("simulation_rounds", row)
             await self._event(simulation_id=simulation_id, run_id=run_id, event_type="simulation.round_completed", payload=row)
@@ -339,6 +345,11 @@ class RealityEngine:
             "final_verdict": final_verdict,
             "report": report,
             "simulation_pulse": pulse_feed,
+            "debate_engine_mode": debate.get("debate_engine_mode"),
+            "debate_augment": {
+                "reason": debate.get("debate_augment_reason"),
+                "caps": debate.get("debate_augment_caps"),
+            },
             "completed_at": now_iso(),
             "updated_at": now_iso(),
         }
@@ -389,6 +400,11 @@ class RealityEngine:
             "trust_score": trust,
             "report": report,
             "simulation_pulse": pulse_feed,
+            "debate_engine_mode": debate.get("debate_engine_mode"),
+            "debate_augment": {
+                "reason": debate.get("debate_augment_reason"),
+                "caps": debate.get("debate_augment_caps"),
+            },
             "engine": "Reality Engine V1",
         }
 

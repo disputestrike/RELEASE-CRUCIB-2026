@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import urllib.parse
 from typing import Any, Dict, List, Tuple
 
 from .models import ScenarioClassification
@@ -36,6 +37,13 @@ DOMAIN_MISSING = {
         "latest official policy text",
         "recent stakeholder statements",
         "current legal constraints",
+    ],
+    "biomedical": [
+        "peer-reviewed modality-level outcome data for indication subtype",
+        "registered trial statuses (ClinicalTrials.gov / CTR parity)",
+        "regulatory approvals or boxed warnings pertinent to modality",
+        "biomarker assay traceability linking bench to surrogate endpoint",
+        "population heterogeneity stratification survival curves",
     ],
 }
 
@@ -91,6 +99,12 @@ def _queries(prompt: str, classification: ScenarioClassification, evidence_depth
             f"{base} latest policy official statements legal constraints",
             f"{base} current news stakeholder reaction impact analysis",
         ]
+    elif classification.domain == "biomedical":
+        candidates = [
+            f"{base} clinical trial oncology immunotherapy biomarker RCT PubMed NIH",
+            f"{base} FDA approval indication toxicology surrogate endpoint CAR-T cellular therapy Genomics CT.gov",
+            f"{base} guideline ASCO ESMO NCCN modality heterogeneity recurrence",
+        ]
     else:
         candidates = [f"{base} current evidence data analysis", f"{base} recent sources"]
     return candidates[: max(1, min(evidence_depth, len(candidates)))]
@@ -118,6 +132,45 @@ async def _tavily_search(query: str, max_results: int) -> List[Dict[str, Any]]:
             return []
         data = response.json()
         return data.get("results") or []
+    except Exception:
+        return []
+
+
+async def _clinicaltrials_gov_snapshots(prompt: str, max_results: int) -> List[Dict[str, Any]]:
+    """Public ClinicalTrials.gov v2 snapshots — dynamic trial metadata without API secrets."""
+    if os.getenv("REALITY_ENGINE_CTGOV", "1").lower() not in {"1", "true", "yes", "on"}:
+        return []
+    term = urllib.parse.quote((prompt or "").strip()[:220] or "oncology")
+    try:
+        import httpx
+
+        url = f"https://clinicaltrials.gov/api/v2/studies?query.term={term}&pageSize={max(1, min(10, max_results))}&format=json"
+        async with httpx.AsyncClient(timeout=18.0) as client:
+            response = await client.get(url)
+        if response.status_code != 200:
+            return []
+        data = response.json()
+        out: List[Dict[str, Any]] = []
+        for st in (data.get("studies") or [])[:max_results]:
+            ps = (st or {}).get("protocolSection") or {}
+            im = ps.get("identificationModule") or {}
+            title = im.get("briefTitle") or im.get("officialTitle") or "clinical trial snapshot"
+            nct = str((st.get("nctId") or im.get("nctId") or st.get("id") or "")).strip()
+            pid = urllib.parse.quote(nct.replace(" ", ""))
+            canonical = f"https://clinicaltrials.gov/study/{pid}" if nct else "https://clinicaltrials.gov"
+            out.append(
+                {
+                    "title": title[:400],
+                    "url": canonical,
+                    "snippet": (
+                        "Registry-derived trial metadata (ClinicalTrials.gov v2)—check inclusion criteria and primary outcome before extrapolating."
+                    ),
+                    "_nct": nct,
+                }
+            )
+            if len(out) >= max_results:
+                break
+        return out
     except Exception:
         return []
 
@@ -184,6 +237,20 @@ async def build_evidence(
         for query in search_queries:
             live_results.extend(await _tavily_search(query, max_results=3))
 
+    if classification.domain == "biomedical":
+        ct_rows = await _clinicaltrials_gov_snapshots(
+            prompt, max_results=max(2, min(evidence_depth + 1, 8))
+        )
+        for row in ct_rows:
+            live_results.append(
+                {
+                    "url": row.get("url"),
+                    "title": row.get("title"),
+                    "content": row.get("snippet") or "",
+                    "snippet": row.get("snippet") or "",
+                }
+            )
+
     seen_urls = set()
     for idx, result in enumerate(live_results[: max(0, evidence_depth * 3)]):
         url = str(result.get("url") or "").strip()
@@ -192,12 +259,13 @@ async def build_evidence(
             continue
         seen_urls.add(url)
         reliability, reliability_score, source_precedence = _source_reliability(url, title)
+        src_type = "trial_registry" if "clinicaltrials.gov" in url.lower() else "web"
         sources.append(
             {
                 "id": new_id("src"),
                 "simulation_id": simulation_id,
                 "run_id": run_id,
-                "type": "web",
+                "type": src_type,
                 "title": title[:240],
                 "status": "available",
                 "reliability": reliability,
@@ -248,8 +316,10 @@ async def build_evidence(
         },
     ]
 
-    live_source_ids = [source["id"] for source in sources if source.get("type") == "web"]
-    source_by_url = {source.get("url"): source for source in sources if source.get("type") == "web"}
+    live_source_ids = [
+        source["id"] for source in sources if source.get("type") in {"web", "trial_registry"}
+    ]
+    source_by_url = {source.get("url"): source for source in sources if source.get("type") in {"web", "trial_registry"}}
     for result in live_results[: max(0, evidence_depth * 3)]:
         url = str(result.get("url") or "").strip()
         source = source_by_url.get(url)
@@ -259,6 +329,7 @@ async def build_evidence(
         if not content:
             continue
         _, reliability_score, _ = _source_reliability(url, str(result.get("title") or ""))
+        ev_et = "trial_registry_extract" if "clinicaltrials.gov" in url.lower() else "live_web_extract"
         facts.append(
             {
                 "id": new_id("fact"),
@@ -266,7 +337,7 @@ async def build_evidence(
                 "run_id": run_id,
                 "source_id": source["id"],
                 "claim": content[:700],
-                "evidence_type": "live_web_extract",
+                "evidence_type": ev_et,
                 "reliability_score": reliability_score,
                 "freshness_score": 0.82,
                 "confidence": min(0.88, reliability_score + 0.03),
@@ -329,7 +400,12 @@ async def build_evidence(
 
     claims: List[Dict[str, Any]] = []
     for idx, fact in enumerate(facts):
-        supports_or_refutes = "supports" if fact.get("evidence_type") in {"prompt_fact", "live_web_extract", "user_assumption"} else "context"
+        supports_or_refutes = "supports" if fact.get("evidence_type") in {
+            "prompt_fact",
+            "live_web_extract",
+            "trial_registry_extract",
+            "user_assumption",
+        } else "context"
         if fact.get("evidence_type") == "scenario_interpretation":
             supports_or_refutes = "context"
         claims.append(
@@ -406,5 +482,6 @@ async def build_evidence(
                 sum(float(item.get("fit_score") or 0) for item in facts) / max(1, len(facts)),
                 3,
             ),
+            "registry_snapshots": sum(1 for s in sources if s.get("type") == "trial_registry"),
         },
     }
