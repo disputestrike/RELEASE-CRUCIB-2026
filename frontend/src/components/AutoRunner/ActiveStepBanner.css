@@ -1,0 +1,163 @@
+/* ActiveStepBanner — pinned "current activity" card above the composer */
+
+.asb-root {
+  position: relative;
+  width: min(560px, calc(100% - 24px));
+  margin: 4px auto 8px;
+  background: var(--crucibai-panel, #ffffff);
+  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  font-size: 12px;
+  color: var(--crucibai-text, #0f172a);
+  animation: asb-fade 0.18s ease;
+}
+
+@keyframes asb-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.asb-root--running { border-color: rgba(99, 102, 241, 0.22); }
+.asb-root--success { border-color: rgba(22, 163, 74, 0.22); }
+.asb-root--failed { border-color: rgba(220, 38, 38, 0.24); }
+
+.asb-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.asb-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--crucibai-accent-soft, rgba(99, 102, 241, 0.08));
+  color: var(--crucibai-accent, #6366f1);
+}
+
+.asb-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.asb-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.asb-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--crucibai-text, #0f172a);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asb-agent {
+  font-size: 10.5px;
+  color: var(--crucibai-muted, #64748b);
+  background: var(--crucibai-panel-soft, #f7f7f9);
+  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  padding: 1px 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.asb-files-inline {
+  font-size: 11px;
+  color: var(--crucibai-muted, #64748b);
+  font-family: 'SFMono-Regular', 'Menlo', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asb-files-more {
+  margin-left: 4px;
+  color: var(--crucibai-accent, #6366f1);
+}
+
+.asb-counter {
+  font-size: 11px;
+  color: var(--crucibai-muted, #64748b);
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--crucibai-panel-soft, #f7f7f9);
+  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+}
+
+.asb-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--crucibai-muted, #64748b);
+}
+
+.asb-icon-spin {
+  animation: asb-rotate 1s linear infinite;
+  color: var(--crucibai-accent, #6366f1);
+}
+
+.asb-icon-ok { color: var(--crucibai-success, #16a34a); }
+.asb-icon-bad { color: var(--crucibai-danger, #dc2626); }
+
+@keyframes asb-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.asb-detail {
+  border-top: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asb-detail-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--crucibai-text, #0f172a);
+}
+
+.asb-detail-label {
+  color: var(--crucibai-muted, #64748b);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  padding-top: 1px;
+}
+
+.asb-detail-value { color: var(--crucibai-text, #0f172a); }
+
+.asb-detail-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: 'SFMono-Regular', 'Menlo', monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--crucibai-text, #0f172a);
+}

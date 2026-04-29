@@ -27,6 +27,8 @@ import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
+import ActiveStepBanner from '../components/AutoRunner/ActiveStepBanner';
+import { deriveCurrentActivity } from '../lib/buildThreadModel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
 import WorkspaceLiveControl from '../components/AutoRunner/WorkspaceLiveControl';
@@ -1864,6 +1866,11 @@ export default function App() {
     setRightCollapsed(false);
   }, [effectiveJobId, isCompleted, job?.status, stage]);
 
+  const currentActivity = useMemo(
+    () => deriveCurrentActivity({ events, activeJobId: effectiveJobId || null }),
+    [events, effectiveJobId]
+  );
+
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
@@ -1909,6 +1916,8 @@ export default function App() {
             )}
 
           </div>
+
+          <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
 
           <div className="arp-center-pane-composer">
             <GoalComposer

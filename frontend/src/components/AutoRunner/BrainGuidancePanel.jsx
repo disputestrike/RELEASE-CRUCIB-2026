@@ -3,17 +3,15 @@
  * --------------------------
  * Conversation-first center pane for /app/workspace.
  *
- * Order is enforced (NOT styled):
- *   1. user prompt
- *   2. assistant acknowledgement
- *   3. plan / checklist
- *   4. tool/agent activity grouped under the relevant phase
- *   5. failure / repair / proof inline
+ * Visual model: Manus / Kimi style with CrucibAI brand tokens.
+ *  - User prompt renders FIRST always (no event can render above it).
+ *  - Assistant text renders as plain text on the left, NO bubble border.
+ *  - Phases render as collapsible chevron sections.
+ *  - Tool calls render as small inline pill chips with an icon + title.
+ *  - Failures / repairs / proof render as inline accent cards (not modals).
  *
- * Events from a different jobId are filtered out.
- *
- * Exported as the default of BrainGuidancePanel so the existing mount path in
- * UnifiedWorkspace continues to work without renaming files.
+ * Exported as the default of `BrainGuidancePanel` so the existing mount
+ * path in `UnifiedWorkspace` picks it up without renaming files.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -24,10 +22,12 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronRight,
-  FileCode2,
+  FileEdit,
   Loader2,
   Sparkles,
-  ArrowRight,
+  Hammer,
+  CircleDot,
+  RefreshCcw,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
 import './BrainGuidancePanel.css';
@@ -41,18 +41,37 @@ const formatTime = (ts) => {
   }
 };
 
-function UserBubble({ content, ts }) {
+const ToolIcon = ({ kind, status }) => {
+  if (status === 'running') return <Loader2 size={11} className="p4-spin" />;
+  if (status === 'failed') return <AlertTriangle size={11} className="p4-bad" />;
+  switch (kind) {
+    case 'edit':
+      return <FileEdit size={11} className="p4-muted" />;
+    case 'sync':
+      return <RefreshCcw size={11} className="p4-muted" />;
+    case 'check':
+      return <CheckCircle2 size={11} className="p4-ok" />;
+    case 'spark':
+      return <Sparkles size={11} className="p4-accent" />;
+    case 'tool':
+      return <Hammer size={11} className="p4-muted" />;
+    default:
+      return <CircleDot size={11} className="p4-muted" />;
+  }
+};
+
+function UserPrompt({ content, ts }) {
   return (
     <div className="p4-row p4-row-user">
-      <div className="p4-bubble p4-bubble-user">
-        <div className="p4-bubble-text">{content}</div>
+      <div className="p4-user-bubble">
+        <div className="p4-user-text">{content}</div>
         {ts ? <div className="p4-meta-time">{formatTime(ts)}</div> : null}
       </div>
     </div>
   );
 }
 
-function AssistantBubble({ content, ts, logoOk, onLogoFail }) {
+function AssistantSay({ content, ts, logoOk, onLogoFail }) {
   return (
     <div className="p4-row p4-row-assistant">
       <div className="p4-avatar" aria-hidden>
@@ -62,9 +81,12 @@ function AssistantBubble({ content, ts, logoOk, onLogoFail }) {
           <span className="p4-avatar-fallback">C</span>
         )}
       </div>
-      <div className="p4-bubble p4-bubble-assistant">
-        <div className="p4-bubble-text">{content}</div>
-        {ts ? <div className="p4-meta-time">{formatTime(ts)}</div> : null}
+      <div className="p4-assist-col">
+        <div className="p4-assist-handle">
+          <span className="p4-assist-name">CrucibAI</span>
+          {ts ? <span className="p4-assist-time">{formatTime(ts)}</span> : null}
+        </div>
+        <div className="p4-assist-text">{content}</div>
       </div>
     </div>
   );
@@ -73,23 +95,18 @@ function AssistantBubble({ content, ts, logoOk, onLogoFail }) {
 function PlanBlock({ title, steps }) {
   const [open, setOpen] = useState(true);
   const stepIcon = (status) => {
-    if (status === 'completed' || status === 'success') return <CheckCircle2 size={13} className="p4-ok" />;
-    if (status === 'failed') return <AlertTriangle size={13} className="p4-bad" />;
+    if (status === 'completed' || status === 'success') return <CheckCircle2 size={12} className="p4-ok" />;
+    if (status === 'failed') return <AlertTriangle size={12} className="p4-bad" />;
     if (status === 'running' || status === 'in_progress')
-      return <Loader2 size={13} className="p4-spin" />;
+      return <Loader2 size={12} className="p4-spin" />;
     return <span className="p4-step-dot" />;
   };
   return (
     <div className="p4-block p4-plan-block">
-      <button
-        type="button"
-        className="p4-block-head"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <Sparkles size={13} className="p4-plan-icon" />
-        <span className="p4-block-title">{title}</span>
-        <span className="p4-block-counter">{steps.length} steps</span>
+      <button type="button" className="p4-section-head" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <span className="p4-section-title">{title}</span>
+        <span className="p4-section-counter">{steps.length}</span>
       </button>
       {open && (
         <ul className="p4-plan-list">
@@ -106,44 +123,32 @@ function PlanBlock({ title, steps }) {
 }
 
 function ToolGroup({ item }) {
-  const [open, setOpen] = useState(false);
-  const statusClass = `p4-tg--${item.status || 'success'}`;
-  const childIcon = (s) => {
-    if (s === 'failed') return <AlertTriangle size={12} className="p4-bad" />;
-    if (s === 'running') return <Loader2 size={12} className="p4-spin" />;
-    return <CheckCircle2 size={12} className="p4-ok" />;
-  };
+  const [open, setOpen] = useState(item.status === 'running');
+  const total = item.children.length;
+  const summary =
+    item.status === 'failed'
+      ? 'Failed'
+      : item.status === 'running'
+      ? `${total} step${total === 1 ? '' : 's'} running`
+      : `${total} step${total === 1 ? '' : 's'}`;
   return (
-    <div className={`p4-block p4-tool-group ${statusClass}`}>
-      <button
-        type="button"
-        className="p4-block-head"
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <FileCode2 size={13} className="p4-tg-icon" />
-        <span className="p4-block-title">{item.title}</span>
-        {item.agent ? <span className="p4-tg-agent">{item.agent}</span> : null}
-        <span className="p4-block-counter">{item.children.length}</span>
-        <span className={`p4-tg-state p4-tg-state--${item.status || 'success'}`}>
-          {item.status === 'failed'
-            ? 'Failed'
-            : item.status === 'running'
-            ? 'Running'
-            : 'Done'}
-        </span>
+    <div className={`p4-block p4-tool-group p4-tg--${item.status || 'success'}`}>
+      <button type="button" className="p4-section-head" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <span className="p4-section-title">{item.title}</span>
+        {item.agent ? <span className="p4-section-agent">{item.agent}</span> : null}
+        <span className="p4-section-counter">{summary}</span>
       </button>
       {open && (
-        <ul className="p4-tg-list">
+        <div className="p4-chip-list">
           {item.children.map((c) => (
-            <li key={c.id} className={`p4-tg-row p4-tg-row--${c.status}`}>
-              {childIcon(c.status)}
-              <span className="p4-tg-row-title">{c.title}</span>
-              {c.agent ? <span className="p4-tg-row-agent">{c.agent}</span> : null}
-              {c.ts ? <span className="p4-tg-row-time">{formatTime(c.ts)}</span> : null}
-            </li>
+            <div key={c.id} className={`p4-chip p4-chip--${c.status}`}>
+              <ToolIcon kind={c.iconKey} status={c.status} />
+              <span className="p4-chip-title">{c.title}</span>
+              {c.ts ? <span className="p4-chip-time">{formatTime(c.ts)}</span> : null}
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
@@ -151,25 +156,23 @@ function ToolGroup({ item }) {
 
 function FailureBlock({ item }) {
   return (
-    <div className="p4-block p4-failure-block">
-      <div className="p4-block-head p4-block-head-static">
-        <AlertTriangle size={14} className="p4-bad" />
-        <span className="p4-block-title">{item.title}</span>
+    <div className="p4-inline-card p4-card-failure">
+      <div className="p4-inline-head">
+        <AlertTriangle size={13} className="p4-bad" />
+        <span className="p4-inline-title">{item.title}</span>
       </div>
-      {item.reason ? <p className="p4-failure-reason">{item.reason}</p> : null}
+      {item.reason ? <p className="p4-inline-text">{item.reason}</p> : null}
       {Array.isArray(item.missingItems) && item.missingItems.length > 0 ? (
-        <ul className="p4-failure-missing">
+        <ul className="p4-inline-list">
           {item.missingItems.map((m, i) => (
             <li key={`${i}-${String(m)}`}>{String(m)}</li>
           ))}
         </ul>
       ) : null}
       {Array.isArray(item.actions) && item.actions.length > 0 ? (
-        <div className="p4-failure-actions">
+        <div className="p4-inline-actions">
           {item.actions.map((a) => (
-            <span key={a} className="p4-action-chip">
-              {a}
-            </span>
+            <span key={a} className="p4-action-chip">{a}</span>
           ))}
         </div>
       ) : null}
@@ -179,27 +182,21 @@ function FailureBlock({ item }) {
 
 function RepairBlock({ item }) {
   const stateLabel =
-    item.status === 'success'
-      ? 'Repaired'
-      : item.status === 'failed'
-      ? 'Failed'
-      : `Attempt ${item.attempt || 1}`;
+    item.status === 'success' ? 'Repaired'
+    : item.status === 'failed' ? 'Failed'
+    : `Attempt ${item.attempt || 1}`;
   return (
-    <div className={`p4-block p4-repair-block p4-repair--${item.status || 'running'}`}>
-      <div className="p4-block-head p4-block-head-static">
-        <Wrench size={14} className="p4-warn" />
-        <span className="p4-block-title">
-          {item.agent || 'RepairAgent'}
-          <span className="p4-repair-state">{stateLabel}</span>
-        </span>
+    <div className={`p4-inline-card p4-card-repair p4-card-repair--${item.status || 'running'}`}>
+      <div className="p4-inline-head">
+        <Wrench size={13} className="p4-warn" />
+        <span className="p4-inline-title">{item.agent || 'RepairAgent'}</span>
+        <span className="p4-inline-state">{stateLabel}</span>
       </div>
-      {item.narration ? <p className="p4-repair-narration">{item.narration}</p> : null}
+      {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}
       {Array.isArray(item.filesChanged) && item.filesChanged.length > 0 ? (
-        <ul className="p4-repair-files">
+        <ul className="p4-inline-files">
           {item.filesChanged.map((f, i) => (
-            <li key={`${i}-${String(f)}`}>
-              <FileCode2 size={11} /> {String(f)}
-            </li>
+            <li key={`${i}-${String(f)}`}>{String(f)}</li>
           ))}
         </ul>
       ) : null}
@@ -208,17 +205,17 @@ function RepairBlock({ item }) {
 }
 
 function ProofBlock({ item }) {
+  const label =
+    item.proofType === 'export_gate_ready' ? 'Export gate ready' :
+    item.proofType === 'run_snapshot' ? 'Runtime proof captured' :
+    item.proofType === 'contract_delta_created' ? 'Contract updated' : 'Proof';
   return (
-    <div className="p4-block p4-proof-block">
-      <div className="p4-block-head p4-block-head-static">
-        <ShieldCheck size={14} className="p4-ok" />
-        <span className="p4-block-title">
-          {item.proofType === 'export_gate' ? 'Export gate ready' :
-            item.proofType === 'run_snapshot' ? 'Runtime proof captured' :
-            item.proofType === 'contract_delta_created' ? 'Contract updated' : 'Proof'}
-        </span>
+    <div className="p4-inline-card p4-card-proof">
+      <div className="p4-inline-head">
+        <ShieldCheck size={13} className="p4-ok" />
+        <span className="p4-inline-title">{label}</span>
       </div>
-      {item.narration ? <p className="p4-proof-narration">{item.narration}</p> : null}
+      {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}
     </div>
   );
 }
@@ -226,10 +223,10 @@ function ProofBlock({ item }) {
 function ThreadItem({ item, logoOk, onLogoFail }) {
   switch (item.kind) {
     case 'user_message':
-      return <UserBubble content={item.content} ts={item.ts} />;
+      return <UserPrompt content={item.content} ts={item.ts} />;
     case 'assistant_message':
       return (
-        <AssistantBubble
+        <AssistantSay
           content={item.content}
           ts={item.ts}
           logoOk={logoOk}
@@ -327,7 +324,7 @@ export default function BrainGuidancePanel({
               <span className="p4-avatar-fallback">C</span>
             )}
           </div>
-          <div className="p4-bubble p4-bubble-assistant">
+          <div className="p4-assist-col">
             <div className="p4-typing-dots">
               <span /> <span /> <span />
             </div>
@@ -336,9 +333,7 @@ export default function BrainGuidancePanel({
       ) : null}
 
       {jobStatus === 'completed' ? (
-        <div className="p4-status-line">
-          <ArrowRight size={12} /> Build complete
-        </div>
+        <div className="p4-status-line">Build complete</div>
       ) : null}
     </div>
   );

@@ -11,12 +11,15 @@
  *  - repair_block
  *  - proof_block
  *
- * Rules:
- *  - The first user message of the active job is always pinned to the top.
- *  - Plan + assistant ack always appear immediately after the first user message.
+ * Hard guarantees:
+ *  - The first user message of the active job ALWAYS appears at index 0.
+ *    No backend event, regardless of ts, can render above it.
+ *  - Events with a job_id that does not match activeJobId are filtered out.
  *  - Tool/step events are grouped consecutively by phase into a single tool_group.
  *  - Failures, repairs, proof events render inline at their actual time.
- *  - Events from a different jobId are filtered out (no leak).
+ *
+ * Also exposes deriveCurrentActivity({ events, activeJobId }) used by the
+ * "Active step" banner pinned above the composer.
  */
 
 import { narrateBuildEvent } from './narrateBuildEvent';
@@ -96,8 +99,8 @@ const deriveToolTitle = (ev) => {
   const agent = getAgent(ev);
   const phase = prettyPhase(getPhase(ev));
   if (t === 'file_written' || t === 'file_write')
-    return `Wrote ${p.file || p.path || 'file'}`;
-  if (t === 'workspace_files_updated') return 'Workspace files updated';
+    return `Write ${p.file || p.path || 'file'}`;
+  if (t === 'workspace_files_updated') return 'Update workspace files';
   if (t === 'tool_call') return `Run ${agent || p.name || 'tool'}`;
   if (t === 'tool_result') return `${agent || 'Tool'} returned`;
   if (t === 'verifier_started') return `Verify ${phase || ''}`.trim();
@@ -106,6 +109,16 @@ const deriveToolTitle = (ev) => {
   if (t === 'step_completed' || t === 'dag_node_completed') return p.name || phase || 'Step completed';
   if (t === 'code_mutation') return p.file ? `Edit ${p.file}` : 'Apply edit';
   return phase || (t ? t.replace(/_/g, ' ') : 'Activity');
+};
+
+const toolIconKey = (ev) => {
+  const t = ev.type || ev.event_type || '';
+  if (t === 'file_written' || t === 'file_write' || t === 'code_mutation') return 'edit';
+  if (t === 'workspace_files_updated') return 'sync';
+  if (/^verifier_/.test(t)) return 'check';
+  if (/^step_|^dag_node_|^phase_/.test(t)) return 'spark';
+  if (t === 'tool_call' || t === 'tool_result') return 'tool';
+  return 'dot';
 };
 
 const deriveGroupStatus = (children) => {
@@ -133,19 +146,19 @@ const isToolEvent = (t) =>
     'code_mutation',
   ].includes(t);
 
-export function buildThreadModel({ userMessages = [], events = [], activeJobId = null } = {}) {
-  const idCounter = { n: 0 };
-  const newId = (prefix) => `${prefix}_${idCounter.n++}`;
-
-  const filteredEvents = (events || []).filter((ev) => {
+const filterEventsForJob = (events, activeJobId) =>
+  (events || []).filter((ev) => {
     if (!ev) return false;
     if (!activeJobId) return true;
     const evJob = ev.job_id || ev.jobId;
     return !evJob || evJob === activeJobId;
   });
 
-  const evTimes = filteredEvents.map(parseTs).filter((t) => t > 0);
-  const minEventTs = evTimes.length ? Math.min(...evTimes) : null;
+export function buildThreadModel({ userMessages = [], events = [], activeJobId = null } = {}) {
+  const idCounter = { n: 0 };
+  const newId = (prefix) => `${prefix}_${idCounter.n++}`;
+
+  const filteredEvents = filterEventsForJob(events, activeJobId);
 
   const userMsgs = (userMessages || [])
     .filter((m) => !activeJobId || !m?.jobId || m.jobId === activeJobId)
@@ -157,14 +170,20 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }))
     .sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
-  if (userMsgs.length && minEventTs && userMsgs[0].ts > minEventTs) {
-    userMsgs[0] = { ...userMsgs[0], ts: minEventTs - 1 };
-  }
+  /**
+   * HARD GUARANTEE: the first user message renders at index 0.
+   * We split the items into two arrays: [firstUser] and rest. The rest is sorted
+   * by ts, and the first user message is unconditionally prepended.
+   */
+  const firstUser = userMsgs.length ? userMsgs[0] : null;
+  const restUserMsgs = userMsgs.slice(1);
 
-  const items = [];
+  // Process events into thread-rest items
+  const restItems = [];
 
-  for (const m of userMsgs) {
-    items.push({
+  // Push remaining user messages (steering) into rest by ts
+  for (const m of restUserMsgs) {
+    restItems.push({
       kind: m.role === 'assistant' ? 'assistant_message' : 'user_message',
       role: m.role,
       content: m.body,
@@ -173,14 +192,10 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     });
   }
 
-  const sorted = [...filteredEvents]
-    .map((ev) => ({ ev, ts: parseTs(ev) }))
-    .sort((a, b) => a.ts - b.ts);
-
   let bucket = null;
   const flushBucket = () => {
     if (bucket && bucket.children.length) {
-      items.push({
+      restItems.push({
         kind: 'tool_group',
         title: bucket.title,
         agent: bucket.agent,
@@ -194,6 +209,10 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     bucket = null;
   };
 
+  const sorted = [...filteredEvents]
+    .map((ev) => ({ ev, ts: parseTs(ev) }))
+    .sort((a, b) => a.ts - b.ts);
+
   for (const { ev, ts } of sorted) {
     const t = ev.type || ev.event_type || '';
     if (!t) continue;
@@ -201,7 +220,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'plan_created') {
       flushBucket();
-      items.push({
+      restItems.push({
         kind: 'assistant_message',
         role: 'assistant',
         content:
@@ -212,7 +231,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       });
       const steps = extractPlanSteps(ev);
       if (steps.length) {
-        items.push({ kind: 'plan_block', title: 'Build plan', steps, ts, id: newId('pb') });
+        restItems.push({ kind: 'plan_block', title: 'Build plan', steps, ts, id: newId('pb') });
       }
       continue;
     }
@@ -221,7 +240,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       flushBucket();
       const text = narrateBuildEvent(ev);
       if (text) {
-        items.push({ kind: 'assistant_message', role: 'assistant', content: text, ts, id: newId('am') });
+        restItems.push({ kind: 'assistant_message', role: 'assistant', content: text, ts, id: newId('am') });
       }
       continue;
     }
@@ -229,7 +248,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     if (/^(verifier_failed|assembly_failed|export_gate_blocked|error)$/.test(t)) {
       flushBucket();
       const p = readPayload(ev);
-      items.push({
+      restItems.push({
         kind: 'failure_block',
         title: p.summary || p.message || `Verification failed at ${prettyPhase(getPhase(ev))}`,
         reason: p.error || p.detail || narrateBuildEvent(ev) || '',
@@ -245,7 +264,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       flushBucket();
       const p = readPayload(ev);
       const status = t === 'repair_completed' ? 'success' : t === 'repair_failed' ? 'failed' : 'running';
-      items.push({
+      restItems.push({
         kind: 'repair_block',
         agent: p.agent || p.agent_name || 'RepairAgent',
         attempt: Number(p.attempt || 1),
@@ -264,7 +283,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
       flushBucket();
-      items.push({
+      restItems.push({
         kind: 'proof_block',
         proofType: t,
         status: 'success',
@@ -294,24 +313,115 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
         status: deriveStatus(ev),
         ts,
         type: t,
+        iconKey: toolIconKey(ev),
         payload: readPayload(ev),
         agent,
       });
       continue;
     }
 
-    // Fallback: treat as assistant narration if narration is non-empty
     const fallback = narrateBuildEvent(ev);
     if (fallback) {
       flushBucket();
-      items.push({ kind: 'assistant_message', role: 'assistant', content: fallback, ts, id: newId('am') });
+      restItems.push({ kind: 'assistant_message', role: 'assistant', content: fallback, ts, id: newId('am') });
     }
   }
 
   flushBucket();
 
-  // Final chronological sort with stable ordering
-  return items.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  // Sort the rest by ts (does NOT touch the pinned first user message)
+  restItems.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+  const out = [];
+  if (firstUser) {
+    out.push({
+      kind: 'user_message',
+      role: 'user',
+      content: firstUser.body,
+      ts: firstUser.ts,
+      id: firstUser.id || newId('um'),
+    });
+  }
+  for (const item of restItems) out.push(item);
+
+  return out;
+}
+
+/**
+ * deriveCurrentActivity — what is the system doing right NOW?
+ * Returns null if nothing active.
+ * Used by the pinned ActiveStepBanner above the composer.
+ */
+export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) {
+  const filtered = filterEventsForJob(events, activeJobId);
+  if (!filtered.length) return null;
+
+  const sorted = [...filtered]
+    .map((ev) => ({ ev, ts: parseTs(ev) }))
+    .sort((a, b) => b.ts - a.ts);
+
+  // Walk back to find the latest meaningful active event.
+  let activePhase = null;
+  let activeAgent = null;
+  let runningTitle = null;
+  let runningStatus = 'running';
+  const recentFiles = [];
+  let totalSteps = 0;
+  let stepIndex = 0;
+
+  for (const { ev } of sorted) {
+    const t = ev.type || ev.event_type || '';
+    const p = readPayload(ev);
+    if (!t) continue;
+
+    if (!activePhase && (t === 'phase_started' || t === 'dag_node_started' || t === 'step_started')) {
+      activePhase = prettyPhase(getPhase(ev));
+      activeAgent = getAgent(ev);
+      runningTitle = p.name || activePhase || 'Working';
+      runningStatus = 'running';
+    }
+
+    if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
+      runningTitle = t === 'repair_started'
+        ? `Repairing${p.agent ? ` with ${p.agent}` : ''}`
+        : `Verifying ${prettyPhase(getPhase(ev)) || ''}`.trim();
+      activeAgent = activeAgent || getAgent(ev);
+      runningStatus = 'running';
+    }
+
+    if (recentFiles.length < 3 && (t === 'file_written' || t === 'file_write' || t === 'code_mutation')) {
+      const f = p.file || p.path;
+      if (f && !recentFiles.includes(f)) recentFiles.push(f);
+    }
+
+    if (!totalSteps && Array.isArray(p.steps)) totalSteps = p.steps.length;
+    if (!stepIndex && typeof p.step_index === 'number') stepIndex = p.step_index + 1;
+  }
+
+  // Detect "complete" / "failed" terminal states from the most recent event
+  const latest = sorted[0]?.ev;
+  if (latest) {
+    const lt = latest.type || latest.event_type || '';
+    if (/^(export_gate_ready|run_snapshot|done)$/.test(lt)) {
+      runningTitle = runningTitle || 'Build complete';
+      runningStatus = 'success';
+    } else if (/(failed|blocked|error)$/.test(lt)) {
+      runningTitle = runningTitle || 'Build paused';
+      runningStatus = 'failed';
+    }
+  }
+
+  if (!runningTitle && !activePhase && recentFiles.length === 0) return null;
+
+  return {
+    title: runningTitle || activePhase || 'Working',
+    phase: activePhase || '',
+    agent: activeAgent || '',
+    files: recentFiles,
+    status: runningStatus,
+    stepIndex: stepIndex || 0,
+    totalSteps: totalSteps || 0,
+  };
 }
 
 export const __test__ = { readPayload, parseTs, prettyPhase, getPhase, getAgent, isToolEvent };
