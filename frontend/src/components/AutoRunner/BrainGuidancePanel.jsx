@@ -12,37 +12,97 @@ import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Terminal, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import './BrainGuidancePanel.css';
 
-// Human-readable narration for events
-const getNarration = (event) => {
-  const type = event.type || '';
-  const payload = event.payload || {};
-  
-  if (type === 'user_instruction') return null; // User messages shown separately
-  if (type.includes('plan_created')) return 'Planning your build...';
-  if (type.includes('thinking')) return payload.message || 'Thinking...';
-  if (type.includes('tool_call')) return `Running ${payload.tool || 'tool'}...`;
-  if (type.includes('repair_started')) return `Found issue: ${payload.issue || 'repair needed'}. Fixing...`;
-  if (type.includes('repair_completed')) return 'Issue fixed. Continuing...';
-  if (type.includes('phase_started')) return `Starting ${payload.phase || 'phase'}...`;
-  if (type.includes('phase_completed')) return `${payload.phase || 'Phase'} complete.`;
-  if (type.includes('export_gate_ready')) return 'Build verified. Ready to export.';
-  if (type.includes('image')) return `Generating ${payload.target || 'image'}...`;
-  
-  return payload.message || null;
+const prettyList = (value) => {
+  if (!Array.isArray(value) || value.length === 0) return '';
+  return value.map((v) => `- ${String(v)}`).join('\n');
 };
 
-// Get compact action label
-const getActionLabel = (event) => {
+const normalizeEvent = (event, idx) => {
   const type = event.type || '';
   const payload = event.payload || {};
-  
-  if (type.includes('tool_call')) return payload.tool;
-  if (type.includes('file_write')) return payload.file || 'Write file';
-  if (type.includes('repair')) return 'Repair';
-  if (type.includes('verifier')) return 'Verify';
-  if (type.includes('image')) return 'Image';
-  
-  return null;
+  const failed = /failed|error|blocked/i.test(type);
+  const running = /started|running|progress|in_progress/i.test(type);
+  const status = failed ? 'failed' : running ? 'running' : 'success';
+  const phase = payload.phase || payload.step || payload.step_key || '';
+  const agent = payload.agent || payload.agent_name || payload.tool || '';
+
+  let title = '';
+  let summary = '';
+
+  switch (type) {
+    case 'plan_created':
+      title = 'Plan created';
+      summary = payload.summary || 'Build plan drafted.';
+      break;
+    case 'phase_started':
+      title = `Phase started: ${phase || 'unknown'}`;
+      summary = payload.message || 'Execution in progress.';
+      break;
+    case 'phase_completed':
+      title = `Phase completed: ${phase || 'unknown'}`;
+      summary = payload.message || 'Completed successfully.';
+      break;
+    case 'verifier_failed':
+    case 'assembly_failed':
+    case 'export_gate_blocked':
+    case 'error': {
+      const missing = payload.missing_routes || payload.missing || payload.missing_items || [];
+      title = `Verification failed at ${phase || type}`;
+      summary = payload.summary || payload.message || payload.error || 'Verification did not pass.';
+      if (missing.length) summary = `${summary}\n${prettyList(missing)}`;
+      break;
+    }
+    case 'repair_started':
+      title = `Repair started${agent ? `: ${agent}` : ''}`;
+      summary = payload.issue || payload.message || 'Starting repair.';
+      break;
+    case 'repair_completed':
+      title = `Repair completed${agent ? `: ${agent}` : ''}`;
+      summary = payload.message || 'Repair succeeded and execution continues.';
+      break;
+    case 'repair_failed':
+      title = `Repair failed${agent ? `: ${agent}` : ''}`;
+      summary = payload.message || payload.error || 'Repair attempt failed.';
+      break;
+    case 'tool_call':
+      title = `Tool call: ${agent || 'tool'}`;
+      summary = payload.command || payload.message || 'Running tool call.';
+      break;
+    case 'tool_result':
+      title = `Tool result: ${agent || 'tool'}`;
+      summary = payload.output || payload.message || 'Tool returned.';
+      break;
+    case 'run_snapshot':
+      title = 'Runtime snapshot captured';
+      summary = payload.status || payload.message || 'Runtime evidence updated.';
+      break;
+    case 'code_mutation':
+      title = 'Code mutation applied';
+      summary = payload.file || payload.path || payload.message || 'Files updated.';
+      break;
+    case 'export_gate_ready':
+      title = 'Export gate ready';
+      summary = payload.message || 'All required checks passed.';
+      break;
+    default:
+      title = type || `event_${idx}`;
+      summary = payload.message || payload.summary || '';
+      break;
+  }
+
+  return {
+    id: event.id || `ev_${idx}_${event.created_at || Date.now()}`,
+    type,
+    role: 'assistant',
+    title,
+    summary: summary || null,
+    phase,
+    agent,
+    status,
+    timestamp: event.created_at ? new Date(event.created_at).getTime() : Date.now(),
+    payload,
+    raw: event,
+  };
 };
 
 export default function BrainGuidancePanel({
@@ -68,15 +128,15 @@ export default function BrainGuidancePanel({
     const fromEvents = (events || [])
       .filter((ev) => ev && ev.type !== 'user_instruction')
       .map((ev, idx) => {
-        const content = getNarration(ev);
-        if (!content) return null;
+        const n = normalizeEvent(ev, idx);
         return {
-          id: ev.id || `ev_${idx}_${ev.created_at || Date.now()}`,
+          id: n.id,
           role: 'assistant',
-          content,
+          content: n.summary || n.title,
           event: ev,
-          status: ev.status || 'completed',
-          ts: ev.created_at ? new Date(ev.created_at).getTime() : Date.now(),
+          normalized: n,
+          status: n.status,
+          ts: n.timestamp,
         };
       })
       .filter(Boolean);
@@ -128,7 +188,7 @@ export default function BrainGuidancePanel({
       {threadMessages.map((msg) => {
         const isUser = msg.role === 'user';
         const isExpanded = expanded.has(msg.id);
-        const actionLabel = msg.event ? getActionLabel(msg.event) : null;
+        const actionLabel = msg.normalized?.agent || msg.normalized?.phase || null;
         
         return (
           <div key={msg.id} className={`bgp-msg ${isUser ? 'bgp-msg-user' : 'bgp-msg-assistant'}`}>
@@ -154,6 +214,10 @@ export default function BrainGuidancePanel({
             {/* Content */}
             <div className="bgp-msg-body">
               {/* Main text */}
+              {msg.normalized?.title && (
+                <div className="bgp-msg-text" style={{ fontWeight: 600 }}>{msg.normalized.title}</div>
+              )}
+
               {msg.content && (
                 <div className="bgp-msg-text">{msg.content}</div>
               )}

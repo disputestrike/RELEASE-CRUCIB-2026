@@ -252,6 +252,32 @@
   font-weight: 500;
 }
 
+.pp-build-activity {
+  width: min(520px, 92%);
+  border: 1px solid color-mix(in srgb, var(--border-1) 52%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 92%, transparent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  animation: pp-idle-breathe 2.4s ease-in-out infinite;
+}
+
+.pp-build-activity-head {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pp-build-activity-row {
+  margin: 2px 0;
+}
+
+.pp-build-activity-list {
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
 .pp-preview-iframe {
   flex: 1;
   min-height: 0;

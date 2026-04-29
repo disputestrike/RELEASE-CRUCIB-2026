@@ -1157,6 +1157,7 @@ export default function App() {
       try {
         const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers, timeout: 30000 });
         const newJid = res.data.job_id;
+        console.info('[phase4-proof] job_started', { source: 'workspace', jobId: newJid });
         setPlan(res.data.plan);
         setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
         if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
@@ -1443,12 +1444,14 @@ export default function App() {
     if (unified && unified.prompt) {
       const raw = unified.prompt.trim();
       if (raw) {
+        console.info('[phase4-proof] workspace_handoff_consumed', { source: unified.source || 'unknown' });
         const key = `uh_${unified.handoffNonce || Date.now()}`;
         if (processedLocationHandoffRef.current.has(key)) return;
         processedLocationHandoffRef.current.add(key);
 
         if (unified.autoStart) {
           workspaceAutostartDoneRef.current = false;
+          console.info('[phase4-proof] unified_workspace_autostart', { source: unified.source || 'unknown' });
         }
         setGoal(raw);
         navigate(
@@ -1885,16 +1888,7 @@ export default function App() {
                   />
                 )}
 
-                {failureStep && activePane !== 'failure' && (
-                  <FailureDrawer
-                    step={failureStep}
-                    onRetry={handleRetryStep}
-                    onOpenCode={jumpStepToCode}
-                    onPauseJob={handleCancel}
-                    onClose={() => setFailedStep(null)}
-                    openWorkspacePath={openWorkspacePath}
-                  />
-                )}
+                {/* Phase 4 regression fix: failure cards render in the thread + Failure tab only. */}
               </div>
             )}
           </div>
@@ -2077,6 +2071,7 @@ export default function App() {
                     token={token}
                     apiBase={API}
                     jobStatus={job?.status}
+                    events={events}
                   />
                 )}
                 {activePane === 'live' && (

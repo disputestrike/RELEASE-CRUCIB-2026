@@ -40,6 +40,7 @@ const LandingPage = () => {
   const startBuild = async (promptOverride = null, filesOverride = null) => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
+    console.info('[phase4-proof] landing_prompt_captured', { chars: prompt.length });
     
     // If user is not signed in, save to sessionStorage for post-auth redirect
     // This is the ONLY allowed sessionStorage usage (auth handoff)
@@ -50,6 +51,7 @@ const LandingPage = () => {
           autoStart: true,
           source: 'landing'
         }));
+        console.info('[phase4-proof] pending_prompt_restored_after_auth', { queued: true });
       } catch (_) { void 0; }
       navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
       return;
@@ -61,6 +63,7 @@ const LandingPage = () => {
       autoStart: true,
       source: 'landing'
     });
+    console.info('[phase4-proof] workspace_handoff_created', { source: 'landing' });
     
     navigate('/app/workspace', { state: handoff });
   };

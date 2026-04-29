@@ -555,9 +555,11 @@ const Dashboard = () => {
     }
 
     // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
+    console.info('[phase4-proof] dashboard_input_received', { chars: (userPrompt || '').length });
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
 
     if (intent === 'build') {
+      console.info('[phase4-proof] intent_detected_build', { source: 'dashboard' });
       // Go straight to workspace (like CrucibAI): works with or without backend; spec from AI or fallback to prompt
       setChatLoading(false);
       const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
@@ -577,6 +579,7 @@ const Dashboard = () => {
         autoStart: true,
         source: 'chat'
       });
+      console.info('[phase4-proof] workspace_handoff_created', { source: 'dashboard' });
       
       navigate({
         pathname: '/app/workspace',

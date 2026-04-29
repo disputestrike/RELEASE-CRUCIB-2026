@@ -56,6 +56,7 @@ export default function PreviewPanel({
   apiBase = '',
   /** Drives re-fetch of /dev-preview when the job or workspace on disk changes (e.g. dist/ lands). */
   jobStatus = null,
+  events = [],
 }) {
   const iframeRef = useRef(null);
   const [devServerUrl, setDevServerUrl] = useState(null);
@@ -198,6 +199,20 @@ export default function PreviewPanel({
     ? 'Booting a workspace dev server so preview updates without a manual refresh.'
     : null);
   const overlayTitle = devPreviewError ? 'Preview issue' : 'Starting live preview';
+  const activity = useMemo(() => {
+    const rows = Array.isArray(events) ? events : [];
+    const last = rows.length ? rows[rows.length - 1] : null;
+    const payload = last?.payload && typeof last.payload === 'object' ? last.payload : {};
+    const missing = payload.missing || payload.missing_routes || payload.missing_items || [];
+    const files = payload.files || payload.changed_files || payload.output_files || [];
+    return {
+      eventType: last?.type || null,
+      phase: payload.phase || payload.step || payload.step_key || 'planning',
+      agent: payload.agent || payload.agent_name || payload.tool || 'orchestrator',
+      files: Array.isArray(files) ? files.slice(0, 4) : [],
+      missing: Array.isArray(missing) ? missing.slice(0, 4) : [],
+    };
+  }, [events]);
 
   return (
     <div className="preview-panel">
@@ -292,6 +307,25 @@ export default function PreviewPanel({
           <div className="pp-preview-building">
             <div className="pp-preview-shimmer" />
             <span className="pp-preview-building-text">Assembling your preview…</span>
+            <div className="pp-build-activity" role="status">
+              <div className="pp-build-activity-head">Building your app...</div>
+              <div className="pp-build-activity-row">Current phase: {activity.phase}</div>
+              <div className="pp-build-activity-row">Active agent: {activity.agent}</div>
+              {activity.files.length > 0 && (
+                <div className="pp-build-activity-list">
+                  {activity.files.map((f, i) => (
+                    <div key={`${f}_${i}`}>- {String(f)}</div>
+                  ))}
+                </div>
+              )}
+              {activity.missing.length > 0 && (
+                <div className="pp-build-activity-list">
+                  {activity.missing.map((m, i) => (
+                    <div key={`${m}_${i}`}>- missing: {String(m)}</div>
+                  ))}
+                </div>
+              )}
+            </div>
             {blockedDetail ? (
               <p className="pp-preview-blocked-hint" title={typeof blockedDetail === 'string' ? blockedDetail : undefined}>
                 {typeof blockedDetail === 'string' ? blockedDetail : ''}
