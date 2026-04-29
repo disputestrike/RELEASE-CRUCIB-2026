@@ -5,7 +5,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { Mic, MicOff, Paperclip, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
+import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -390,7 +390,7 @@ export default function GoalComposer({
           onKeyDown={(e) => {
             if (!enterSends || e.key !== 'Enter' || e.shiftKey) return;
             e.preventDefault();
-            if (!loading && goal.trim() && token && !authLoading) onSubmit?.();
+            if (!loading && goal.trim() && !authLoading) onSubmit?.();
           }}
         />
         <div className="gc-composer-footer">
@@ -413,15 +413,6 @@ export default function GoalComposer({
               title="Add files"
             >
               <Plus size={20} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              className="gc-icon-btn"
-              onClick={() => fileRef.current?.click()}
-              disabled={loading}
-              title="Attach files (appended to goal)"
-            >
-              <Paperclip size={20} strokeWidth={2} />
             </button>
             {_composerVariant !== 'workspace' ? (
               <button
@@ -452,9 +443,9 @@ export default function GoalComposer({
             </button>
             <button
               type="button"
-              className={`gc-submit-send ${!loading && goal.trim() && token && !authLoading ? 'gc-submit-send--ready' : ''}`}
+              className={`gc-submit-send ${!loading && goal.trim() && !authLoading ? 'gc-submit-send--ready' : ''}`}
               onClick={onSubmit}
-              disabled={loading || !goal.trim() || authLoading || !token}
+              disabled={loading || !goal.trim() || authLoading}
               title={enterSends ? 'Send' : 'Generate plan'}
               aria-label={enterSends ? 'Send' : 'Generate plan'}
             >

@@ -9,7 +9,7 @@ import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
 import SuggestionChips from '../components/SuggestionChips';
 import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../components/SolutionsNavDropdown';
-import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
+import { createWorkspaceHandoff } from '../utils/unifiedHandoff';
 
 const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
 const MAX_PROMPT_IN_URL = 1500;
@@ -40,20 +40,29 @@ const LandingPage = () => {
   const startBuild = async (promptOverride = null, filesOverride = null) => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
-    const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
-    // If user is not signed in, save prompt so after auth we go straight to building (time-to-action)
+    
+    // If user is not signed in, save to sessionStorage for post-auth redirect
+    // This is the ONLY allowed sessionStorage usage (auth handoff)
     if (!user && !token) {
       try {
-        sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
-        if (state?.initialAttachedFiles?.length) {
-          sessionStorage.setItem(PENDING_PROMPT_KEY + '_hasFiles', '1');
-        }
+        sessionStorage.setItem(PENDING_PROMPT_KEY, JSON.stringify({
+          prompt,
+          autoStart: true,
+          source: 'landing'
+        }));
       } catch (_) { void 0; }
       navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
       return;
     }
-    const q = `prompt=${encodeURIComponent(prompt)}&autoStart=1`;
-    navigate(`/app/workspace?${q}`, { state: withWorkspaceHandoffNonce({ ...state, initialPrompt: prompt, autoStart: true }) });
+    
+    // SINGULAR HANDOFF: Only React Router state, no query params
+    const handoff = createWorkspaceHandoff({
+      prompt,
+      autoStart: true,
+      source: 'landing'
+    });
+    
+    navigate('/app/workspace', { state: handoff });
   };
 
   const handleLandingFileSelect = (e) => {

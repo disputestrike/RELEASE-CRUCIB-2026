@@ -272,3 +272,33 @@
   flex: 1;
   min-height: 280px;
 }
+
+/* TRUTH BANNER: explicit preview mode indicator */
+.pp-preview-truth-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-1);
+}
+
+.pp-preview-truth-fallback {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #92400e;
+}
+
+.pp-preview-truth-live {
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  color: #166534;
+}
+
+.pp-preview-truth-icon {
+  font-size: 14px;
+}
+
+.pp-preview-truth-text {
+  line-height: 1.4;
+}

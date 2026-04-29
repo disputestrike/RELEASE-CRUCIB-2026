@@ -28,9 +28,6 @@ import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
-import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
-import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
-import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
@@ -65,6 +62,7 @@ import {
 } from '../workspace/workspaceTaskBinding';
 import { setCanonicalWorkspaceTaskId } from '../workspace/canonicalWorkspaceTask';
 import { failureStepFromLatestFailure } from '../workspace/workspaceFailureUtils';
+import { extractWorkspaceHandoff } from '../utils/unifiedHandoff';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
@@ -433,6 +431,19 @@ export default function UnifiedWorkspace() {
     token,
   );
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    const last = Array.isArray(events) && events.length ? events[events.length - 1] : null;
+    // Temporary Phase 4.1 wiring visibility
+    // eslint-disable-next-line no-console
+    console.debug('[workspace:wiring]', {
+      taskId: sessionTaskId || taskIdFromUrl || null,
+      jobId: effectiveJobId || null,
+      eventsCount: Array.isArray(events) ? events.length : 0,
+      lastEventType: last?.type || null,
+    });
+  }, [events, effectiveJobId, sessionTaskId, taskIdFromUrl]);
+
   const effectiveProjectId = job?.project_id || sessionProjectId || projectIdFromUrl || null;
 
   const persistTranscriptLine = useCallback(
@@ -491,6 +502,22 @@ export default function UnifiedWorkspace() {
     setError(friendly);
     setErrorRaw(text);
   }, []);
+
+  const pushedErrorRef = useRef('');
+  useEffect(() => {
+    if (!error) return;
+    if (pushedErrorRef.current === error) return;
+    pushedErrorRef.current = error;
+    const aid =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `uw_err_${Date.now()}`;
+    setUserChatMessages((prev) => [
+      ...prev,
+      { id: aid, body: error, role: 'assistant', jobId: effectiveJobId || null, ts: Date.now() },
+    ]);
+    persistTranscriptLine('assistant', error);
+  }, [error, effectiveJobId, persistTranscriptLine]);
 
   const buildDisplayTitle = useMemo(() => {
     const g = (job?.goal || '').trim();
@@ -1118,12 +1145,12 @@ export default function App() {
     async (goalText) => {
       const trimmed = (goalText || '').trim();
       // Do not gate on authLoading here: handoff/autostart can race a one-frame loading flip while token is valid.
-      if (!trimmed || !token || !API) return;
+      if (!trimmed || !API) return;
       if (sendInFlightRef.current) return;
       sendInFlightRef.current = true;
       setLoading(true);
       clearBuildError();
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const planBody = { goal: trimmed, mode: 'auto', build_target: null };
       const pid = (projectIdFromUrl || '').trim();
       if (pid) planBody.project_id = pid;
@@ -1219,7 +1246,7 @@ export default function App() {
    * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
    */
   const handleSend = async () => {
-    if (!goal.trim() || authLoading || !token || !API) return;
+    if (!goal.trim() || authLoading || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
     const activeJobId = effectiveJobId;
@@ -1242,7 +1269,7 @@ export default function App() {
       sendInFlightRef.current = true;
       setLoading(true);
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: true },
@@ -1304,7 +1331,7 @@ export default function App() {
       sendInFlightRef.current = true;
       setLoading(true);
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: false },
@@ -1352,7 +1379,7 @@ export default function App() {
       sendInFlightRef.current = true;
       setLoading(true);
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: false },
@@ -1409,8 +1436,30 @@ export default function App() {
     await runNewPlanAndAuto(submitted);
   };
 
-  /** Home / dashboard: consume navigate(..., { state: { initialPrompt, autoStart } }). */
+  /** Unified Handoff: Consume navigate(..., { state: handoff }) from Landing/Dashboard. */
   useEffect(() => {
+    // Try unified handoff first (new schema)
+    const unified = extractWorkspaceHandoff(location.state);
+    if (unified && unified.prompt) {
+      const raw = unified.prompt.trim();
+      if (raw) {
+        const key = `uh_${unified.handoffNonce || Date.now()}`;
+        if (processedLocationHandoffRef.current.has(key)) return;
+        processedLocationHandoffRef.current.add(key);
+
+        if (unified.autoStart) {
+          workspaceAutostartDoneRef.current = false;
+        }
+        setGoal(raw);
+        navigate(
+          { pathname: location.pathname, search: location.search || '' },
+          { replace: true, state: {} },
+        );
+        return;
+      }
+    }
+    
+    // Legacy fallback: old schema with initialPrompt
     const st = location.state;
     if (!st || typeof st.initialPrompt !== 'string') return;
     const raw = st.initialPrompt.trim();
@@ -1424,11 +1473,6 @@ export default function App() {
 
     if (st.autoStart) {
       workspaceAutostartDoneRef.current = false;
-      try {
-        sessionStorage.setItem('crucibai_autostart_goal', raw);
-      } catch (_) {
-        /* private mode / quota */
-      }
     }
     setGoal(raw);
     navigate(
@@ -1794,33 +1838,11 @@ export default function App() {
 
           <div className="arp-center-pane-scroll">
             <BrainGuidancePanel
-              jobId={effectiveJobId}
-              workspaceStage={stage}
-              jobHydrating={Boolean(effectiveJobId && !job && loading)}
+              userMessages={userChatMessages.filter((m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId)}
               events={events}
               jobStatus={job?.status}
-              failureStep={failureStep}
-              proof={proof}
-              latestFailure={latestFailure}
-              milestoneBatch={milestoneBatch}
-              repairQueueLen={repairQueueLen}
-              steps={steps}
+              isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
             />
-            {(stage === 'input' || effectiveJobId) && (
-              <WorkspaceActivityFeed
-                stage={stage}
-                plan={plan}
-                job={job}
-                steps={steps}
-                events={events}
-                effectiveJobId={effectiveJobId}
-                loading={loading}
-                connectionMode={connectionMode}
-                fallbackGoal={goal}
-                hideGoalEcho={userChatMessages.length > 0}
-                openWorkspacePath={openWorkspacePath}
-              />
-            )}
 
             {stage === 'plan' && plan && (
               <PlanApproval
@@ -1878,17 +1900,6 @@ export default function App() {
           </div>
 
           <div className="arp-center-pane-composer">
-            {error ? (
-              <div className="uw-workspace-error-banner">
-                <div className="uw-workspace-error-friendly">{error}</div>
-                {errorRaw ? (
-                  <details className="uw-workspace-error-details">
-                    <summary className="uw-workspace-error-details-summary">Technical details</summary>
-                    <pre className="uw-workspace-error-details-pre">{errorRaw}</pre>
-                  </details>
-                ) : null}
-              </div>
-            ) : null}
             {showFailureCallout && (
               <div className="uw-failure-callout" role="status">
                 <div className="uw-failure-callout-text">
@@ -1917,16 +1928,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            <WorkspaceStatusDock
-              jobId={effectiveJobId}
-              job={job}
-              steps={steps}
-              stage={stage}
-              events={events}
-              connectionMode={connectionMode}
-              loading={loading}
-            />
-            <WorkspaceUserChat messages={userChatMessages} />
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}

@@ -18,7 +18,7 @@ import axios from 'axios';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import './Dashboard.css';
-import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
+import { createWorkspaceHandoff } from '../utils/unifiedHandoff';
 import {
   clearCanonicalWorkspaceTaskId,
   reuseOrCreateWorkspaceBuildTask,
@@ -570,18 +570,18 @@ const Dashboard = () => {
         prompt: spec || userPrompt,
         status: 'pending',
       });
-      stashWorkspaceAutostartGoal(spec || userPrompt);
-      const ws = new URLSearchParams();
-      if (taskId) ws.set('taskId', taskId);
-      ws.set('autoStart', '1');
+      
+      // SINGULAR HANDOFF: Only React Router state
+      const handoff = createWorkspaceHandoff({
+        prompt: spec || userPrompt,
+        autoStart: true,
+        source: 'chat'
+      });
+      
       navigate({
         pathname: '/app/workspace',
-        search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({
-          initialPrompt: spec || userPrompt,
-          autoStart: true,
-          initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
-        })
+        search: taskId ? `?taskId=${taskId}` : '',  // taskId only for reference, not handoff
+        state: handoff
       });
       return;
     }

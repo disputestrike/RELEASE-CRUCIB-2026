@@ -169,14 +169,21 @@ export default function PreviewPanel({
           ? 'var(--state-success)'
           : 'var(--text-muted)';
 
+  // TRUTH MODE: explicit indicator of preview type
+  const previewMode = useRemote
+    ? 'dev-server'
+    : hasSandpack
+      ? 'sandpack-fallback'
+      : 'static';
+  
   const statusLabel = useRemote
-    ? 'Live'
+    ? 'Live (dev server)'
     : status === 'blocked'
       ? 'Paused'
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
-        ? 'Preview'
+        ? 'Preview (fallback)'
         : 'Next up';
   const readiness = derivePreviewReadiness({
     previewStatus: status,
@@ -225,6 +232,23 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        {/* TRUTH BANNER: explicit mode indicator */}
+        {previewMode === 'sandpack-fallback' && (
+          <div className="pp-preview-truth-banner pp-preview-truth-fallback" role="status">
+            <span className="pp-preview-truth-icon">⚠️</span>
+            <span className="pp-preview-truth-text">
+              Preview is a fallback sandbox. Runtime not yet available.
+            </span>
+          </div>
+        )}
+        {previewMode === 'dev-server' && (
+          <div className="pp-preview-truth-banner pp-preview-truth-live" role="status">
+            <span className="pp-preview-truth-icon">✓</span>
+            <span className="pp-preview-truth-text">
+              Live dev server running
+            </span>
+          </div>
+        )}
         <div className={`pp-preview-state-strip pp-preview-state-strip--${readiness.severity}`} role="status">
           <span className="pp-preview-state-label">{readiness.label}</span>
           <span className="pp-preview-state-detail">{readiness.detail}</span>

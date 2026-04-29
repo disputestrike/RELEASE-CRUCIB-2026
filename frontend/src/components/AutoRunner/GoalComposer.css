@@ -135,6 +135,11 @@
   border-color: var(--border-2);
 }
 
+.goal-composer--workspace .gc-composer-shell:focus-within {
+  border-color: #3f3f46;
+  box-shadow: 0 0 0 1px rgba(63, 63, 70, 0.28);
+}
+
 .gc-composer-footer {
   display: flex;
   align-items: center;
@@ -257,6 +262,10 @@
 }
 .gc-input:focus {
   outline: none;
+}
+
+.goal-composer--workspace .gc-input {
+  caret-color: #111111;
 }
 .gc-input::placeholder {
   color: var(--text-muted);
