@@ -195,7 +195,8 @@ async def run_retrieval_pipeline(
         and "api.fda.gov" not in r["url"].lower()
     ][: max(4, min(10, evidence_depth + 4))]
 
-    if run_tavily and cheerio_seed:
+    cheerio_eligible = bool(use_live_evidence and cheerio_seed)
+    if cheerio_eligible:
         enriched, ch_debug = await deep_fetch_urls(cheerio_seed, max_pages=max(3, min(8, evidence_depth + 2)))
         collector_summaries.append(ch_debug)
         by_url = {r["url"]: r for r in all_rows if r.get("url")}
@@ -205,6 +206,12 @@ async def run_retrieval_pipeline(
                 by_url[u] = maybe_new
         all_rows = list(by_url.values())
     else:
+        skip_detail = "Live evidence disabled — static HTML fetch not run."
+        if use_live_evidence and not cheerio_seed:
+            skip_detail = (
+                "No eligible HTTP seed URLs for static fetch (excluding clinicaltrials.gov / PubMed / openFDA). "
+                "Tavily/connector/fixtures returned no generic web URLs, or only registry endpoints."
+            )
         collector_summaries.append(
             {
                 "name": "cheerio",
@@ -212,14 +219,15 @@ async def run_retrieval_pipeline(
                 "wired": True,
                 "success": False,
                 "failure_kind": "skipped",
-                "failure_detail": "No eligible seed URLs or Tavily not routed.",
+                "failure_detail": skip_detail,
                 "pages_fetched": 0,
                 "latency_ms": 0.0,
                 "errors": [],
             }
         )
 
-    if run_tavily and os.getenv("REALITY_ENGINE_PLAYWRIGHT", "0").lower() in {"1", "true", "yes", "on"}:
+    playwright_on = os.getenv("REALITY_ENGINE_PLAYWRIGHT", "0").lower() in {"1", "true", "yes", "on"}
+    if use_live_evidence and playwright_on:
         pw_rows, pw_debug = await playwright_deep_fetch(all_rows, max_pages=2)
         collector_summaries.append(pw_debug)
         by_url = {r["url"]: r for r in all_rows if r.get("url")}
@@ -228,14 +236,23 @@ async def run_retrieval_pipeline(
                 by_url[r["url"]] = r
         all_rows = list(by_url.values())
     else:
+        if not use_live_evidence:
+            pw_detail = "Live evidence disabled — Playwright not invoked."
+            pw_kind = "skipped"
+        elif not playwright_on:
+            pw_detail = "REALITY_ENGINE_PLAYWRIGHT default off — set to 1 after `playwright install chromium`."
+            pw_kind = "disabled"
+        else:
+            pw_detail = "Playwright not invoked."
+            pw_kind = "skipped"
         collector_summaries.append(
             {
                 "name": "playwright",
                 "attempted": False,
                 "wired": True,
                 "success": False,
-                "failure_kind": "disabled",
-                "failure_detail": "REALITY_ENGINE_PLAYWRIGHT default off — set to 1 after `playwright install chromium`.",
+                "failure_kind": pw_kind,
+                "failure_detail": pw_detail,
                 "pages_fetched": 0,
                 "latency_ms": 0.0,
                 "errors": [],
