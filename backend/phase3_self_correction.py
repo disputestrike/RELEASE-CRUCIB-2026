@@ -468,7 +468,7 @@ class SelfCorrectingCodeGenerator:
         self.max_iterations = 5
 
     async def generate_with_correction(
-        self, requirements: Dict[str, Any], initial_code: str
+        self, requirements: Dict[str, Any], initial_code: str, job_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate code with automatic testing and correction.
