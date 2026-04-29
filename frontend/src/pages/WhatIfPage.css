@@ -706,6 +706,13 @@ button.simulation-secondary:disabled {
   line-height: 1.38;
 }
 
+.simulation-debate-kicker {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
 @media (max-width: 920px) {
   .simulation-grid.four,
   .simulation-grid.two,

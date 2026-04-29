@@ -50,6 +50,8 @@ DOMAIN_MISSING = {
 
 def _source_reliability(url: str, title: str) -> Tuple[str, float, str]:
     lowered = f"{url} {title}".lower()
+    if any(domain in lowered for domain in ["pubmed.ncbi.nlm.nih.gov", "pubmed/"]):
+        return "indexed_peer_lit", 0.88, "targeted_pubmed_esearch"
     if any(domain in lowered for domain in [".gov", "sec.gov", "federalregister.gov", "clinicaltrials.gov", "fda.gov", "cdc.gov", "who.int"]):
         return "official_primary", 1.0, "official_api_or_primary_web"
     if any(domain in lowered for domain in ["nba.com", "fifa.com", "mlb.com", "nfl.com"]):
@@ -175,6 +177,66 @@ async def _clinicaltrials_gov_snapshots(prompt: str, max_results: int) -> List[D
         return []
 
 
+async def _pubmed_eutils_snapshots(prompt: str, max_results: int) -> List[Dict[str, Any]]:
+    """NCBI E-utilities (PubMed) — no API key required; abide by NIH usage guidelines."""
+    if os.getenv("REALITY_ENGINE_PUBMED", "1").lower() not in {"1", "true", "yes", "on"}:
+        return []
+    term_raw = (prompt or "").strip()[:400] or "oncology randomized controlled trial"
+    term = urllib.parse.quote(term_raw)
+    retmax = max(1, min(12, int(max_results)))
+    tool_email = (
+        urllib.parse.quote((os.getenv("CRUCIB_NCBI_EMAIL") or "dev@crucib.ai").strip())
+    )
+    try:
+        import httpx
+
+        base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+        async with httpx.AsyncClient(timeout=22.0) as client:
+            esearch_url = (
+                f"{base}esearch.fcgi?db=pubmed&retmax={retmax}&retmode=json&tool=CrucibAI&email={tool_email}&term={term}"
+            )
+            er = await client.get(esearch_url)
+            if er.status_code != 200:
+                return []
+            idlist = (er.json().get("esearchresult") or {}).get("idlist") or []
+            idlist = [str(x).strip() for x in idlist if x]
+            if not idlist:
+                return []
+            idstr = ",".join(idlist[:retmax])
+            summary_url = f"{base}esummary.fcgi?db=pubmed&id={idstr}&retmode=json&tool=CrucibAI&email={tool_email}"
+            sr = await client.get(summary_url)
+            if sr.status_code != 200:
+                return []
+            summ_data = sr.json().get("result") or {}
+        out: List[Dict[str, Any]] = []
+        for uid in (summ_data.get("uids") or idlist[:retmax]):
+            rec = summ_data.get(str(uid))
+            if not isinstance(rec, dict):
+                continue
+            title = (rec.get("title") or "").strip() or "PubMed citation"
+            url = f"https://pubmed.ncbi.nlm.nih.gov/{uid}/"
+            journal = str(rec.get("source") or "").strip()
+            jp = journal[:120]
+            snippet = (
+                f"PubMed catalog hit ( PMID:{uid}"
+                + (f" · {jp}" if jp else "")
+                + " ) — review abstract for indication/method specificity before citing clinical effect."
+            )
+            out.append(
+                {
+                    "title": title[:400],
+                    "url": url,
+                    "snippet": snippet,
+                    "pmid": uid,
+                }
+            )
+            if len(out) >= max_results:
+                break
+        return out
+    except Exception:
+        return []
+
+
 async def build_evidence(
     *,
     simulation_id: str,
@@ -250,6 +312,16 @@ async def build_evidence(
                     "snippet": row.get("snippet") or "",
                 }
             )
+        pm_rows = await _pubmed_eutils_snapshots(prompt, max_results=max(3, min(evidence_depth + 2, 10)))
+        for row in pm_rows:
+            live_results.append(
+                {
+                    "url": row.get("url"),
+                    "title": row.get("title"),
+                    "content": row.get("snippet") or "",
+                    "snippet": row.get("snippet") or "",
+                }
+            )
 
     seen_urls = set()
     for idx, result in enumerate(live_results[: max(0, evidence_depth * 3)]):
@@ -259,7 +331,13 @@ async def build_evidence(
             continue
         seen_urls.add(url)
         reliability, reliability_score, source_precedence = _source_reliability(url, title)
-        src_type = "trial_registry" if "clinicaltrials.gov" in url.lower() else "web"
+        lo = url.lower()
+        if "clinicaltrials.gov" in lo:
+            src_type = "trial_registry"
+        elif "pubmed" in lo or "/pubmed/" in lo or "ncbi.nlm.nih.gov/pubmed" in lo:
+            src_type = "pubmed_catalog"
+        else:
+            src_type = "web"
         sources.append(
             {
                 "id": new_id("src"),
@@ -317,9 +395,15 @@ async def build_evidence(
     ]
 
     live_source_ids = [
-        source["id"] for source in sources if source.get("type") in {"web", "trial_registry"}
+        source["id"]
+        for source in sources
+        if source.get("type") in {"web", "trial_registry", "pubmed_catalog"}
     ]
-    source_by_url = {source.get("url"): source for source in sources if source.get("type") in {"web", "trial_registry"}}
+    source_by_url = {
+        source.get("url"): source
+        for source in sources
+        if source.get("type") in {"web", "trial_registry", "pubmed_catalog"}
+    }
     for result in live_results[: max(0, evidence_depth * 3)]:
         url = str(result.get("url") or "").strip()
         source = source_by_url.get(url)
@@ -329,7 +413,13 @@ async def build_evidence(
         if not content:
             continue
         _, reliability_score, _ = _source_reliability(url, str(result.get("title") or ""))
-        ev_et = "trial_registry_extract" if "clinicaltrials.gov" in url.lower() else "live_web_extract"
+        lo = url.lower()
+        if "clinicaltrials.gov" in lo:
+            ev_et = "trial_registry_extract"
+        elif "pubmed" in lo:
+            ev_et = "pubmed_catalog_extract"
+        else:
+            ev_et = "live_web_extract"
         facts.append(
             {
                 "id": new_id("fact"),
@@ -404,6 +494,7 @@ async def build_evidence(
             "prompt_fact",
             "live_web_extract",
             "trial_registry_extract",
+            "pubmed_catalog_extract",
             "user_assumption",
         } else "context"
         if fact.get("evidence_type") == "scenario_interpretation":
@@ -483,5 +574,6 @@ async def build_evidence(
                 3,
             ),
             "registry_snapshots": sum(1 for s in sources if s.get("type") == "trial_registry"),
+            "pubmed_snapshots": sum(1 for s in sources if s.get("type") == "pubmed_catalog"),
         },
     }

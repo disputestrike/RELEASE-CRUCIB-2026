@@ -404,7 +404,16 @@ export default function WhatIfPage() {
   const repExploreFor = Array.isArray(report.strongest_evidence_for) ? report.strongest_evidence_for : [];
   const repExploreAgainst = Array.isArray(report.strongest_evidence_against) ? report.strongest_evidence_against : [];
   const repWhatChange = Array.isArray(report.what_would_change_the_outcome) ? report.what_would_change_the_outcome : [];
+  const debateMode = result?.debate_engine_mode ?? result?.run?.debate_engine_mode ?? null;
+  const debateAside =
+    debateMode === 'llm_augmented_claude'
+      ? 'Claude-augmented dialogue'
+      : debateMode === 'template_skeleton'
+        ? 'Deterministic scaffold'
+        : debateMode ? String(debateMode) : '—';
 
+  const debateMessageCap =
+    debateMode === 'llm_augmented_claude' ? 12 : 5;
   const engineLabel =
     loading || hydrating
       ? hydrating
@@ -695,10 +704,17 @@ export default function WhatIfPage() {
             )}
           </Panel>
 
-          <Panel title="Debate Timeline" icon={GitBranch}>
+          <Panel title="Debate Timeline" icon={GitBranch} aside={debateAside}>
+            {(debateMode === 'template_skeleton' || debateMode === 'llm_augmented_claude') && (
+              <p className="simulation-debate-kicker">
+                {debateMode === 'llm_augmented_claude'
+                  ? 'Lines below blend the structural debate lattice with Claude-expanded expert wording tied to harvested evidence—not recycled boilerplate.'
+                  : 'Structural debate lattice runs first; configure ANTHROPIC_API_KEY and enable REALITY_ENGINE_LLM_DEBATE for expert-expanded turns.'}
+              </p>
+            )}
             <div className="simulation-timeline">
               {(result.rounds || []).map((round) => {
-                const roundMessages = messages.filter((msg) => msg.round_id === round.id).slice(0, 3);
+                const roundMessages = messages.filter((msg) => msg.round_id === round.id).slice(0, debateMessageCap);
                 const roundUpdates = updates.filter((update) => update.round_id === round.id).slice(0, 3);
                 return (
                   <div className="simulation-round" key={round.id}>

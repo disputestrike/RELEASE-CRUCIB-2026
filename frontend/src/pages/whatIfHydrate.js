@@ -93,5 +93,7 @@ export function hydrateSimulationDetail(details) {
     replay_events: Array.isArray(details.replay_events) ? details.replay_events : [],
     events: Array.isArray(details.events) ? details.events : [],
     simulation_pulse: simulationPulseFromDetails(details),
+    debate_engine_mode: details.debate_engine_mode ?? run.debate_engine_mode ?? null,
+    debate_augment: details.debate_augment ?? run.debate_augment ?? null,
   };
 }

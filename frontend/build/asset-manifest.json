@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.ccb07257.css",
-    "main.js": "/static/js/main.1d188331.js",
+    "main.css": "/static/css/main.6c7a26d8.css",
+    "main.js": "/static/js/main.5033065f.js",
     "static/js/550.1f9c4ac7.chunk.js": "/static/js/550.1f9c4ac7.chunk.js",
     "static/js/967.d1fbc514.chunk.js": "/static/js/967.d1fbc514.chunk.js",
     "static/js/531.d8d55189.chunk.js": "/static/js/531.d8d55189.chunk.js",
@@ -96,8 +96,8 @@
     "static/media/fira-code-symbols2-400-normal.woff2": "/static/media/fira-code-symbols2-400-normal.0412f32d131ffee849a4.woff2",
     "static/media/jetbrains-mono-cyrillic-ext-400-normal.woff": "/static/media/jetbrains-mono-cyrillic-ext-400-normal.831e0db23a3b56373d02.woff",
     "static/media/jetbrains-mono-cyrillic-ext-400-normal.woff2": "/static/media/jetbrains-mono-cyrillic-ext-400-normal.7347c7bfed47f1ef0b25.woff2",
-    "main.ccb07257.css.map": "/static/css/main.ccb07257.css.map",
-    "main.1d188331.js.map": "/static/js/main.1d188331.js.map",
+    "main.6c7a26d8.css.map": "/static/css/main.6c7a26d8.css.map",
+    "main.5033065f.js.map": "/static/js/main.5033065f.js.map",
     "550.1f9c4ac7.chunk.js.map": "/static/js/550.1f9c4ac7.chunk.js.map",
     "967.d1fbc514.chunk.js.map": "/static/js/967.d1fbc514.chunk.js.map",
     "531.d8d55189.chunk.js.map": "/static/js/531.d8d55189.chunk.js.map",
@@ -105,7 +105,7 @@
     "55.3eaba4e4.chunk.js.map": "/static/js/55.3eaba4e4.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.ccb07257.css",
-    "static/js/main.1d188331.js"
+    "static/css/main.6c7a26d8.css",
+    "static/js/main.5033065f.js"
   ]
 }
