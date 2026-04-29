@@ -12,19 +12,32 @@ import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Terminal, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import './BrainGuidancePanel.css';
 
+const readPayload = (event) => {
+  if (event?.payload && typeof event.payload === 'object') return event.payload;
+  if (event?.payload_json) {
+    try {
+      const parsed = JSON.parse(event.payload_json);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+};
+
 const prettyList = (value) => {
   if (!Array.isArray(value) || value.length === 0) return '';
   return value.map((v) => `- ${String(v)}`).join('\n');
 };
 
 const normalizeEvent = (event, idx) => {
-  const type = event.type || '';
-  const payload = event.payload || {};
+  const type = event.type || event.event_type || '';
+  const payload = readPayload(event);
   const failed = /failed|error|blocked/i.test(type);
   const running = /started|running|progress|in_progress/i.test(type);
   const status = failed ? 'failed' : running ? 'running' : 'success';
-  const phase = payload.phase || payload.step || payload.step_key || '';
-  const agent = payload.agent || payload.agent_name || payload.tool || '';
+  const phase = payload.phase || payload.step || payload.step_key || payload.node_id || event.step_key || '';
+  const agent = payload.agent || payload.agent_name || payload.tool || payload.agent_id || '';
 
   let title = '';
   let summary = '';
@@ -33,6 +46,29 @@ const normalizeEvent = (event, idx) => {
     case 'plan_created':
       title = 'Plan created';
       summary = payload.summary || 'Build plan drafted.';
+      break;
+    case 'brain_guidance':
+      title = payload.headline || 'CrucibAI';
+      summary = payload.summary || payload.message || '';
+      break;
+    case 'step_started':
+    case 'dag_node_started':
+      title = payload.name || phase || 'Step started';
+      summary = payload.message || 'Running this step.';
+      break;
+    case 'step_completed':
+    case 'dag_node_completed':
+      title = payload.name || phase || 'Step completed';
+      summary = payload.output || payload.message || 'Completed.';
+      break;
+    case 'file_written':
+    case 'file_write':
+      title = `Wrote ${payload.file || payload.path || 'file'}`;
+      summary = payload.message || '';
+      break;
+    case 'workspace_files_updated':
+      title = 'Workspace files updated';
+      summary = payload.message || '';
       break;
     case 'phase_started':
       title = `Phase started: ${phase || 'unknown'}`;
@@ -85,10 +121,14 @@ const normalizeEvent = (event, idx) => {
       summary = payload.message || 'All required checks passed.';
       break;
     default:
-      title = type || `event_${idx}`;
+      title = type
+        ? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        : '';
       summary = payload.message || payload.summary || '';
       break;
   }
+
+  if (!title && !summary) return null;
 
   return {
     id: event.id || `ev_${idx}_${event.created_at || Date.now()}`,
@@ -103,6 +143,18 @@ const normalizeEvent = (event, idx) => {
     payload,
     raw: event,
   };
+};
+
+const isNarrationEvent = (item) => {
+  const type = item?.normalized?.type;
+  return type === 'brain_guidance' || type === 'message' || type === 'narration.started' || type === 'narration.progress' || type === 'narration.completed';
+};
+
+const statusText = (status) => {
+  if (status === 'failed') return 'Needs attention';
+  if (status === 'running') return 'Running';
+  if (status === 'repaired') return 'Repaired';
+  return 'Done';
 };
 
 export default function BrainGuidancePanel({
@@ -129,6 +181,7 @@ export default function BrainGuidancePanel({
       .filter((ev) => ev && ev.type !== 'user_instruction')
       .map((ev, idx) => {
         const n = normalizeEvent(ev, idx);
+        if (!n) return null;
         return {
           id: n.id,
           role: 'assistant',
@@ -189,6 +242,32 @@ export default function BrainGuidancePanel({
         const isUser = msg.role === 'user';
         const isExpanded = expanded.has(msg.id);
         const actionLabel = msg.normalized?.agent || msg.normalized?.phase || null;
+        const isEvent = Boolean(msg.normalized);
+        const renderAsNarration = isEvent && isNarrationEvent(msg);
+
+        if (isEvent && !renderAsNarration) {
+          const n = msg.normalized;
+          return (
+            <div key={msg.id} className={`bgp-exec-card bgp-exec-card--${n.status}`}>
+              <div className="bgp-exec-status-dot" aria-hidden />
+              <div className="bgp-exec-main">
+                <div className="bgp-exec-row">
+                  <span className="bgp-exec-title">{n.title}</span>
+                  <span className="bgp-exec-state">{statusText(n.status)}</span>
+                </div>
+                {n.summary && n.summary !== n.title && (
+                  <div className="bgp-exec-summary">{n.summary}</div>
+                )}
+                {(n.agent || n.phase) && (
+                  <div className="bgp-exec-meta">
+                    {n.agent ? <span>{n.agent}</span> : null}
+                    {n.phase ? <span>{n.phase}</span> : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
         
         return (
           <div key={msg.id} className={`bgp-msg ${isUser ? 'bgp-msg-user' : 'bgp-msg-assistant'}`}>

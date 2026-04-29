@@ -8,11 +8,11 @@
   flex: 0 0 auto;
   margin-top: auto;
   overflow: visible;
-  padding: 12px 32px 10px;
+  padding: 12px 40px 10px;
   background: transparent;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 /* Empty state - centered, minimal */
@@ -70,7 +70,7 @@
 .bgp-msg {
   display: flex;
   gap: 12px;
-  max-width: 85%;
+  max-width: 76%;
   animation: bgp-fade-in 0.2s ease;
 }
 
@@ -143,11 +143,122 @@
 
 /* Message body */
 .bgp-msg-body {
-  padding: 12px 16px;
-  font-size: 14px;
-  line-height: 1.6;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
   color: #374151;
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.bgp-exec-card {
+  width: min(520px, 82%);
+  align-self: flex-start;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 10px;
+  margin-left: 44px;
+  border-radius: 11px;
+  background: #f4f4f5;
+  border: 1px solid rgba(24, 24, 27, 0.06);
+  color: #3f3f46;
+  animation: bgp-fade-in 0.18s ease;
+}
+
+.bgp-exec-card--running {
+  background: #f5f3ff;
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.bgp-exec-card--failed {
+  background: #fef2f2;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.bgp-exec-card--success {
+  background: #f7f7f8;
+}
+
+.bgp-exec-status-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border-radius: 5px;
+  background: #d4d4d8;
+  position: relative;
+}
+
+.bgp-exec-card--running .bgp-exec-status-dot {
+  background: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
+  animation: bgp-pulse 1.6s ease-in-out infinite;
+}
+
+.bgp-exec-card--success .bgp-exec-status-dot {
+  background: #22c55e;
+}
+
+.bgp-exec-card--failed .bgp-exec-status-dot {
+  background: #ef4444;
+}
+
+@keyframes bgp-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.bgp-exec-main {
+  min-width: 0;
+}
+
+.bgp-exec-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bgp-exec-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #27272a;
+}
+
+.bgp-exec-state {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: #71717a;
+}
+
+.bgp-exec-summary {
+  margin-top: 4px;
+  max-height: 42px;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #71717a;
+  white-space: pre-wrap;
+}
+
+.bgp-exec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bgp-exec-meta span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(24, 24, 27, 0.06);
+  font-size: 10px;
+  color: #71717a;
 }
 
 .bgp-msg-text {
