@@ -5,10 +5,11 @@
 
 /* Thread container - fills available space */
 .bgp-thread-only {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 32px;
-  background: #fafafa;
+  flex: 0 0 auto;
+  margin-top: auto;
+  overflow: visible;
+  padding: 12px 32px 10px;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -16,11 +17,12 @@
 
 /* Empty state - centered, minimal */
 .bgp-thread-empty {
-  flex: 1;
+  flex: 0 0 auto;
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 12px 32px 18px;
 }
 
 .bgp-empty-inner {
@@ -35,10 +37,10 @@
 }
 
 .bgp-empty-text {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 20px;
+  color: #4b5563;
+  margin: 0;
 }
 
 .bgp-empty-chips {

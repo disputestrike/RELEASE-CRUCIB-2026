@@ -27,7 +27,6 @@ import { workspaceZipQuery } from '../lib/workspaceZip';
 import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
-import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
@@ -1860,68 +1859,9 @@ export default function App() {
               />
             )}
 
-            {(stage === 'running' ||
-              stage === 'completed' ||
-              job?.status === 'failed' ||
-              job?.status === 'cancelled' ||
-              job?.status === 'blocked') && (
-              <div className="arp-execution-area">
-                {isCompleted && (
-                  <BuildCompletionCard
-                    job={job}
-                    proof={proof}
-                    apiBase={API}
-                    token={token}
-                    onOpenPreview={() => {
-                      setActivePane('preview');
-                      setRightCollapsed(false);
-                    }}
-                    onOpenProof={() => {
-                      setActivePane('proof');
-                      setRightCollapsed(false);
-                    }}
-                    onOpenCode={() => {
-                      setActivePane('code');
-                      setRightCollapsed(false);
-                    }}
-                    onDeployAgain={handleReset}
-                  />
-                )}
-
-                {/* Phase 4 regression fix: failure cards render in the thread + Failure tab only. */}
-              </div>
-            )}
           </div>
 
           <div className="arp-center-pane-composer">
-            {showFailureCallout && (
-              <div className="uw-failure-callout" role="status">
-                <div className="uw-failure-callout-text">
-                  <strong>Run failed</strong>
-                  {previewBlockedDetail ? (
-                    <span className="uw-failure-callout-detail">
-                      {String(previewBlockedDetail).slice(0, 200)}
-                      {String(previewBlockedDetail).length > 200 ? '…' : ''}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="uw-failure-callout-actions">
-                  <button
-                    type="button"
-                    className="arp-topbar-btn"
-                    onClick={() => {
-                      setActivePane('failure');
-                      setRightCollapsed(false);
-                    }}
-                  >
-                    Open Failure
-                  </button>
-                  <button type="button" className="arp-topbar-btn uw-failure-callout-dismiss" onClick={() => setFailureCalloutDismissed(true)}>
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )}
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}

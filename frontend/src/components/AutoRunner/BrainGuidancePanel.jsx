@@ -154,9 +154,9 @@ export default function BrainGuidancePanel({
   }, [onScroll]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const node = scrollRef.current;
+    const scroller = node?.parentElement;
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }, [threadMessages, isTyping]);
 
   const toggleExpand = (id) => {

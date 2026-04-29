@@ -375,7 +375,7 @@ export const Sidebar = ({
           return;
         }
         if (status === 401 || status === 403) {
-          window.alert('You must be signed in to delete this project.');
+          finalizeHideProjectFromRecent(item);
           return;
         }
         window.alert(
@@ -956,17 +956,6 @@ export const Sidebar = ({
                 <button type="button" disabled={deleteBusy} onClick={() => setDeleteConfirmTask(null)}>
                   Cancel
                 </button>
-                {deleteConfirmTask.isProject && (
-                  <button
-                    type="button"
-                    className="sidebar-delete-hide-recent"
-                    disabled={deleteBusy}
-                    title="Does not touch the server—only hides this project from Recent in this browser"
-                    onClick={() => finalizeHideProjectFromRecent(deleteConfirmTask)}
-                  >
-                    Hide from Recent only
-                  </button>
-                )}
                 <button type="button" className="danger" disabled={deleteBusy} onClick={handleDeleteConfirm}>
                   {deleteBusy ? 'Working…' : deleteConfirmTask.isProject ? 'Delete project' : 'Remove'}
                 </button>
