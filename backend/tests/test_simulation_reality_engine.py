@@ -49,7 +49,10 @@ async def test_lakers_prompt_is_sports_forecast_not_business_decision(app_client
     assert payload["final_verdict"]["next_best_action"]
     rendered = str(payload).lower()
     assert "implementation plan" not in rendered
-    assert "no verified live source" in rendered
+    oa = payload.get("output_answer") or {}
+    assert oa.get("direct_answer") and len(str(oa["direct_answer"])) > 80
+    assert oa.get("evidence_status")
+    assert "tavily attempted" in str(oa.get("evidence_status", "")).lower()
     app.dependency_overrides.pop(dep, None)
 
 
@@ -235,4 +238,34 @@ async def test_stock_short_horizon_recommendation_is_evidence_gated_scan(app_cli
     assert payload["classification"]["domain"] == "finance"
     assert payload["classification"]["scenario_type"] == "short_horizon_forecast"
     assert payload["recommendation"]["type"] == "evidence_gated_market_scan"
+    app.dependency_overrides.pop(dep, None)
+
+
+async def test_weekly_options_scan_routes_specialists_and_output_answer(app_client):
+    app, dep = _install_fake_auth()
+    create = await app_client.post(
+        "/api/simulations",
+        json={"prompt": "give me the best option trade for this week"},
+        timeout=10,
+    )
+    assert create.status_code == 200
+    simulation_id = create.json()["simulation"]["id"]
+    run = await app_client.post(
+        "/api/simulations/run",
+        json={
+            "simulation_id": simulation_id,
+            "prompt": "give me the best option trade for this week",
+            "depth": "fast",
+            "use_live_evidence": False,
+        },
+        timeout=20,
+    )
+    assert run.status_code == 200
+    payload = run.json()
+    assert payload["classification"]["domain"] == "finance"
+    roles = [a["role"] for a in payload["agents"]]
+    assert any("Options" in r or "Volatility" in r for r in roles)
+    oa = payload.get("output_answer") or {}
+    assert oa.get("direct_answer")
+    assert "not" in oa["direct_answer"].lower() and "advice" in oa["direct_answer"].lower()
     app.dependency_overrides.pop(dep, None)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Tuple
 
 from .models import ScenarioClassification
@@ -57,6 +58,16 @@ DOMAIN_AGENTS = {
         ("Policy Analyst", "policy and regulatory drivers", 0.36, "policy"),
         ("Sentiment Analyst", "market narrative and confidence", 0.44, "sentiment"),
     ],
+    "finance_options": [
+        ("Options Market Strategist", "structure selection, greeks, and risk/reward framing", 0.44, "balanced"),
+        ("Volatility & Skew Analyst", "IV term structure, event vol, skew regimes", 0.43, "data_first"),
+        ("Liquidity & Spread Analyst", "bid/ask width, depth, executable size", 0.41, "skeptical"),
+        ("Catalyst & Events Analyst", "earnings, macro prints, FDA/PDUFA hooks on underlyings", 0.42, "market"),
+        ("Open Interest & Flow Analyst", "oi/volume context; unusual activity (if data exists)", 0.4, "sentiment"),
+        ("Macro Calendar Analyst", "FOMC/CPI/labor prints; rate path that re-prices options", 0.41, "macro"),
+        ("Risk Manager", "max loss, margin, path risk, gap risk, invalidation planning", 0.39, "risk"),
+        ("Options Compliance Framing Analyst", "NOT financial advice guardrails; suitability surface area", 0.37, "compliance"),
+    ],
     "politics": [
         ("Policy Analyst", "policy mechanics and constraints", 0.40, "policy"),
         ("Geopolitical Risk Analyst", "state actor and conflict risk", 0.34, "risk"),
@@ -78,6 +89,50 @@ FALLBACK_AGENTS = [
 ]
 
 
+def _options_scan_intent(routed_intent: Dict[str, Any] | None, prompt: str) -> bool:
+    if (routed_intent or {}).get("primary_intent") == "market_scan":
+        return True
+    pl = (prompt or "").lower()
+    if re.search(r"\b(options?|calls?|puts?)\b", pl):
+        return True
+    return any(
+        w in pl
+        for w in (
+            "straddle",
+            "strangle",
+            "spread",
+            "iron condor",
+            "credit spread",
+            "debit spread",
+            "gamma ",
+            "theta ",
+            "open interest",
+            "implied vol",
+        )
+    )
+
+
+def _roster_for_run(
+    classification_domain: str,
+    *,
+    routed_intent: Dict[str, Any] | None = None,
+    prompt: str = "",
+) -> List[Tuple[str, str, float, str]]:
+    domain = (classification_domain or "").strip().lower()
+    if domain == "finance" and _options_scan_intent(routed_intent, prompt):
+        merged: List[Tuple[str, str, float, str]] = list(DOMAIN_AGENTS.get("finance_options") or [])
+        seen = {t[0] for t in merged}
+        for t in DOMAIN_AGENTS.get("finance") or []:
+            if t[0] not in seen:
+                merged.append(t)
+                seen.add(t[0])
+        for t in FALLBACK_AGENTS:
+            if t[0] not in seen:
+                merged.append(t)
+        return merged
+    return _extended_roster(classification_domain)
+
+
 def _extended_roster(classification_domain: str) -> List[Tuple[str, str, float, str]]:
     """Domain personas first; then FALLBACK titles not yet used — avoids pointless '(2)' duplicates."""
     domain = (classification_domain or "").strip().lower()
@@ -96,8 +151,10 @@ def build_agents(
     classification: ScenarioClassification,
     agent_count: int,
     evidence_summary: Dict[str, Any],
+    routed_intent: Dict[str, Any] | None = None,
+    prompt: str = "",
 ) -> List[Dict[str, Any]]:
-    roster = _extended_roster(classification.domain)
+    roster = _roster_for_run(classification.domain, routed_intent=routed_intent, prompt=prompt)
     n = max(3, min(int(agent_count or len(roster)), 24))
     selected: List[Tuple[str, str, float, str]] = []
     roster_len = max(1, len(roster))

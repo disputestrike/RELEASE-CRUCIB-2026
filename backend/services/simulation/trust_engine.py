@@ -77,9 +77,22 @@ def build_trust_score(
         + weak_evidence_penalty
     )
     score = max(0.05, min(0.95, score - penalty))
+    ledger = evidence_summary.get("retrieval_ledger") or {}
+    tav = ledger.get("tavily") or {}
     warnings: List[str] = []
     if not live_data and classification.time_sensitivity == "current":
-        warnings.append("Current or time-sensitive scenario; no verified live data source was used.")
+        if not tav.get("attempted"):
+            warnings.append(
+                "Current or time-sensitive scenario: no Tavily attempt logged—check use_live_evidence, depth routing, and TAVILY_API_KEY (see retrieval ledger)."
+            )
+        elif not tav.get("success"):
+            warnings.append(
+                "Current or time-sensitive scenario: Tavily ran but returned no ingestible rows—see Output Answer evidence status."
+            )
+        else:
+            warnings.append(
+                "Tavily reported results but no live rows entered the audited source graph—check dedup/filters and URL quality."
+            )
     if missing_count:
         warnings.append("Important evidence is missing; treat forecast and recommendation as provisional.")
     if agreement < 0.65:

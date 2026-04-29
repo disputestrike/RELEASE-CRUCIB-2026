@@ -95,5 +95,8 @@ export function hydrateSimulationDetail(details) {
     simulation_pulse: simulationPulseFromDetails(details),
     debate_engine_mode: details.debate_engine_mode ?? run.debate_engine_mode ?? null,
     debate_augment: details.debate_augment ?? run.debate_augment ?? null,
+    output_answer: run.output_answer || report.output_answer || {},
+    routed_intent: run.routed_intent || report.routed_intent || null,
+    retrieval_ledger: run.retrieval_ledger ?? null,
   };
 }

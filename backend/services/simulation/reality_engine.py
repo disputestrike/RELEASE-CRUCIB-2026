@@ -8,7 +8,9 @@ from .debate_llm import augment_debate_with_llm_maybe
 from .debate_engine import run_debate
 from .domain_policy import build_evidence_policy
 from .evidence_engine import build_evidence
+from .intent_router import route_intent
 from .outcome_engine import build_outcomes, build_recommendation
+from .output_answer_engine import build_output_answer
 from .population_engine import build_population_model
 from .pulse_events import build_simulation_pulse
 from .report_builder import build_report
@@ -129,6 +131,7 @@ class RealityEngine:
         await self._event(simulation_id=simulation_id, run_id=run_id, event_type="simulation.created", payload={"status": "running"})
 
         classification = classify_scenario(prompt)
+        routed_intent = route_intent(classification, prompt)
         input_doc = {
             "id": new_id("input"),
             "simulation_id": simulation_id,
@@ -193,6 +196,8 @@ class RealityEngine:
             classification=classification,
             agent_count=config["agent_count"],
             evidence_summary=evidence,
+            routed_intent=routed_intent,
+            prompt=prompt,
         )
         for agent in agents:
             await repository.insert("simulation_agents", agent)
@@ -315,6 +320,14 @@ class RealityEngine:
             outcomes=outcomes,
             trust=trust,
         )
+        output_answer = build_output_answer(
+            prompt=prompt,
+            classification=classification,
+            routed_intent=routed_intent,
+            evidence_summary=evidence,
+            final_verdict=final_verdict,
+            trust=trust,
+        )
         await self._event(
             simulation_id=simulation_id,
             run_id=run_id,
@@ -334,6 +347,8 @@ class RealityEngine:
             run_id=run_id,
             population_model=population_model,
             final_verdict=final_verdict,
+            output_answer=output_answer,
+            routed_intent=routed_intent,
         )
 
         completed = {
@@ -350,6 +365,9 @@ class RealityEngine:
                 "reason": debate.get("debate_augment_reason"),
                 "caps": debate.get("debate_augment_caps"),
             },
+            "output_answer": output_answer,
+            "routed_intent": routed_intent,
+            "retrieval_ledger": evidence.get("retrieval_ledger"),
             "completed_at": now_iso(),
             "updated_at": now_iso(),
         }
@@ -405,6 +423,9 @@ class RealityEngine:
                 "reason": debate.get("debate_augment_reason"),
                 "caps": debate.get("debate_augment_caps"),
             },
+            "output_answer": output_answer,
+            "routed_intent": routed_intent,
+            "retrieval_ledger": evidence.get("retrieval_ledger"),
             "engine": "Reality Engine V1",
         }
 

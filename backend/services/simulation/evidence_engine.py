@@ -32,6 +32,8 @@ DOMAIN_MISSING = {
         "latest market prices",
         "recent macro indicators",
         "current policy signals",
+        "live option chain, IV, OI, and spread for named underlyings",
+        "earnings and catalyst calendar for those names",
     ],
     "politics": [
         "latest official policy text",
@@ -237,6 +239,105 @@ async def _pubmed_eutils_snapshots(prompt: str, max_results: int) -> List[Dict[s
         return []
 
 
+async def _openfda_label_snapshot(prompt: str, max_results: int) -> List[Dict[str, Any]]:
+    """openFDA drug label search — public, no API key."""
+    if os.getenv("REALITY_ENGINE_OPENFDA", "1").lower() not in {"1", "true", "yes", "on"}:
+        return []
+    raw = " ".join((prompt or "").replace(",", " ").split()[:14])[:200] or "cancer therapy"
+    term = urllib.parse.quote(raw)
+    try:
+        import httpx
+
+        url = f"https://api.fda.gov/drug/label.json?search={term}&limit={max(1, min(5, max_results))}"
+        async with httpx.AsyncClient(timeout=18.0) as client:
+            response = await client.get(url)
+        if response.status_code != 200:
+            return []
+        data = response.json()
+        out: List[Dict[str, Any]] = []
+        for rec in (data.get("results") or [])[:max_results]:
+            openfda = rec.get("openfda") or {}
+            brands = openfda.get("brand_name") or []
+            brand = brands[0] if isinstance(brands, list) and brands else ""
+            title = (brand or "openFDA drug label hit")[:400]
+            set_id = str(rec.get("set_id") or rec.get("id") or "").strip()
+            link = f"https://api.fda.gov/drug/label.json?search=set_id:{urllib.parse.quote(set_id)}" if set_id else "https://www.fda.gov/drugs"
+            ind = rec.get("indications_and_usage")
+            if isinstance(ind, list):
+                ind = ind[0] if ind else ""
+            ind_s = str(ind or "")[:320]
+            out.append(
+                {
+                    "title": title,
+                    "url": link,
+                    "snippet": (
+                        "openFDA drug label snapshot—verify indication, dosing, and warnings in the full SPL PDF. "
+                        f"Snippet hint: {ind_s}"
+                    ),
+                }
+            )
+            if len(out) >= max_results:
+                break
+        return out
+    except Exception:
+        return []
+
+
+def _live_prompt_keywords(prompt: str) -> bool:
+    pl = (prompt or "").lower()
+    keys = (
+        "crypto",
+        "bitcoin",
+        "ethereum",
+        "weather",
+        "breaking",
+        "headline",
+        "today",
+        "right now",
+        "live price",
+        "premarket",
+        "after hours",
+        "stock price",
+    )
+    return any(k in pl for k in keys)
+
+
+def _should_run_tavily(classification: ScenarioClassification, prompt: str, use_live_evidence: bool) -> bool:
+    if not use_live_evidence:
+        return False
+    if classification.time_sensitivity in {"current", "future"}:
+        return True
+    if classification.domain in {"finance", "sports", "politics", "business", "product", "biomedical"}:
+        return True
+    if _live_prompt_keywords(prompt):
+        return True
+    return False
+
+
+def _empty_retrieval_ledger(attachments: List[Dict[str, Any]] | None) -> Dict[str, Any]:
+    return {
+        "tavily": {"attempted": False, "success": False, "failure_reason": None},
+        "playwright": {
+            "attempted": False,
+            "success": False,
+            "wired": False,
+            "note": "Playwright crawl not wired in Reality Engine V1 (reserved connector).",
+        },
+        "cheerio": {
+            "attempted": False,
+            "success": False,
+            "wired": False,
+            "note": "Cheerio/static HTML pass not wired in Reality Engine V1 (reserved connector).",
+        },
+        "uploaded_files": {"count": len(attachments or []), "ingested": bool(attachments)},
+        "official_api": {
+            "clinicaltrials_gov": {"attempted": False, "success": False, "failure_reason": None},
+            "pubmed_eutils": {"attempted": False, "success": False, "failure_reason": None},
+            "openfda": {"attempted": False, "success": False, "failure_reason": None},
+        },
+    }
+
+
 async def build_evidence(
     *,
     simulation_id: str,
@@ -295,14 +396,34 @@ async def build_evidence(
 
     live_results: List[Dict[str, Any]] = []
     search_queries = _queries(prompt, classification, evidence_depth)
-    if use_live_evidence and classification.time_sensitivity in {"current", "future"}:
-        for query in search_queries:
-            live_results.extend(await _tavily_search(query, max_results=3))
+    retrieval_ledger = _empty_retrieval_ledger(attachments)
+    tavily_row_total = 0
+    if _should_run_tavily(classification, prompt, use_live_evidence):
+        retrieval_ledger["tavily"]["attempted"] = True
+        if not os.getenv("TAVILY_API_KEY"):
+            retrieval_ledger["tavily"]["failure_reason"] = "TAVILY_API_KEY not set — no Tavily HTTP calls executed."
+        else:
+            for query in search_queries:
+                batch = await _tavily_search(query, max_results=3)
+                tavily_row_total += len(batch)
+                live_results.extend(batch)
+            retrieval_ledger["tavily"]["success"] = tavily_row_total > 0
+            if not retrieval_ledger["tavily"]["success"]:
+                retrieval_ledger["tavily"]["failure_reason"] = (
+                    "Tavily returned zero rows or errored — check API key, quota, and query viability."
+                )
 
     if classification.domain == "biomedical":
+        ct_on = os.getenv("REALITY_ENGINE_CTGOV", "1").lower() in {"1", "true", "yes", "on"}
+        retrieval_ledger["official_api"]["clinicaltrials_gov"]["attempted"] = ct_on
         ct_rows = await _clinicaltrials_gov_snapshots(
             prompt, max_results=max(2, min(evidence_depth + 1, 8))
         )
+        retrieval_ledger["official_api"]["clinicaltrials_gov"]["success"] = len(ct_rows) > 0
+        if ct_on and not ct_rows:
+            retrieval_ledger["official_api"]["clinicaltrials_gov"]["failure_reason"] = (
+                "Registry HTTP non-200, empty studies, or parse failure."
+            )
         for row in ct_rows:
             live_results.append(
                 {
@@ -312,8 +433,32 @@ async def build_evidence(
                     "snippet": row.get("snippet") or "",
                 }
             )
+        pm_on = os.getenv("REALITY_ENGINE_PUBMED", "1").lower() in {"1", "true", "yes", "on"}
+        retrieval_ledger["official_api"]["pubmed_eutils"]["attempted"] = pm_on
         pm_rows = await _pubmed_eutils_snapshots(prompt, max_results=max(3, min(evidence_depth + 2, 10)))
+        retrieval_ledger["official_api"]["pubmed_eutils"]["success"] = len(pm_rows) > 0
+        if pm_on and not pm_rows:
+            retrieval_ledger["official_api"]["pubmed_eutils"]["failure_reason"] = (
+                "PubMed E-utilities returned no PMIDs or non-200 response."
+            )
         for row in pm_rows:
+            live_results.append(
+                {
+                    "url": row.get("url"),
+                    "title": row.get("title"),
+                    "content": row.get("snippet") or "",
+                    "snippet": row.get("snippet") or "",
+                }
+            )
+        fda_on = os.getenv("REALITY_ENGINE_OPENFDA", "1").lower() in {"1", "true", "yes", "on"}
+        retrieval_ledger["official_api"]["openfda"]["attempted"] = fda_on
+        fda_rows = await _openfda_label_snapshot(prompt, max_results=max(2, min(evidence_depth, 5)))
+        retrieval_ledger["official_api"]["openfda"]["success"] = len(fda_rows) > 0
+        if fda_on and not fda_rows:
+            retrieval_ledger["official_api"]["openfda"]["failure_reason"] = (
+                "openFDA label search returned no records or HTTP error."
+            )
+        for row in fda_rows:
             live_results.append(
                 {
                     "url": row.get("url"),
@@ -336,6 +481,8 @@ async def build_evidence(
             src_type = "trial_registry"
         elif "pubmed" in lo or "/pubmed/" in lo or "ncbi.nlm.nih.gov/pubmed" in lo:
             src_type = "pubmed_catalog"
+        elif "api.fda.gov" in lo or "openfda" in (result.get("snippet") or "").lower():
+            src_type = "regulatory_openfda"
         else:
             src_type = "web"
         sources.append(
@@ -397,12 +544,12 @@ async def build_evidence(
     live_source_ids = [
         source["id"]
         for source in sources
-        if source.get("type") in {"web", "trial_registry", "pubmed_catalog"}
+        if source.get("type") in {"web", "trial_registry", "pubmed_catalog", "regulatory_openfda"}
     ]
     source_by_url = {
         source.get("url"): source
         for source in sources
-        if source.get("type") in {"web", "trial_registry", "pubmed_catalog"}
+        if source.get("type") in {"web", "trial_registry", "pubmed_catalog", "regulatory_openfda"}
     }
     for result in live_results[: max(0, evidence_depth * 3)]:
         url = str(result.get("url") or "").strip()
@@ -418,6 +565,8 @@ async def build_evidence(
             ev_et = "trial_registry_extract"
         elif "pubmed" in lo:
             ev_et = "pubmed_catalog_extract"
+        elif "api.fda.gov" in lo:
+            ev_et = "openfda_label_extract"
         else:
             ev_et = "live_web_extract"
         facts.append(
@@ -462,8 +611,17 @@ async def build_evidence(
     )
     unsupported_claims = []
     live_data_used = bool(live_source_ids)
-    if classification.time_sensitivity == "current" and not live_data_used:
-        unsupported_claims.append("No verified live source was used in this V1 run unless uploaded evidence was provided.")
+    want_tavily = _should_run_tavily(classification, prompt, True)
+    if use_live_evidence and want_tavily:
+        if retrieval_ledger["tavily"]["attempted"] and not retrieval_ledger["tavily"]["success"] and not live_data_used:
+            unsupported_claims.append(
+                "Live web retrieval (Tavily) produced no ingestible source rows in this run; see retrieval_ledger."
+            )
+    elif not use_live_evidence and want_tavily:
+        unsupported_claims.append(
+            "Live evidence was disabled (use_live_evidence=false); Tavily was not invoked—answer still includes exploratory synthesis."
+        )
+
     if policy.get("official_required_for_strong_verdict") and not live_data_used:
         unsupported_claims.append("The evidence policy requires fresh primary or trusted external sources before a strong verdict.")
 
@@ -495,6 +653,7 @@ async def build_evidence(
             "live_web_extract",
             "trial_registry_extract",
             "pubmed_catalog_extract",
+            "openfda_label_extract",
             "user_assumption",
         } else "context"
         if fact.get("evidence_type") == "scenario_interpretation":
@@ -575,5 +734,8 @@ async def build_evidence(
             ),
             "registry_snapshots": sum(1 for s in sources if s.get("type") == "trial_registry"),
             "pubmed_snapshots": sum(1 for s in sources if s.get("type") == "pubmed_catalog"),
+            "openfda_snapshots": sum(1 for s in sources if s.get("type") == "regulatory_openfda"),
+            "retrieval_ledger": retrieval_ledger,
         },
+        "retrieval_ledger": retrieval_ledger,
     }

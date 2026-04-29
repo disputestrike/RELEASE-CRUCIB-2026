@@ -7,6 +7,7 @@ import {
   FileText,
   GitBranch,
   Loader2,
+  MessageSquare,
   Play,
   RadioTower,
   RefreshCw,
@@ -397,6 +398,25 @@ export default function WhatIfPage() {
   const missingEvidence = Array.isArray(result?.missing_evidence) ? result.missing_evidence : [];
   const unsupportedClaims = Array.isArray(result?.unsupported_claims) ? result.unsupported_claims : [];
   const finalVerdict = result?.final_verdict || report?.final_verdict || {};
+  const outputAnswer = useMemo(() => {
+    if (!result) return {};
+    const fromApi = result.output_answer || report.output_answer;
+    if (fromApi && typeof fromApi === 'object' && (fromApi.direct_answer || fromApi.confidence)) return fromApi;
+    const fv = finalVerdict || {};
+    const parts = [fv.verdict && `Structural verdict: ${fv.verdict}.`, fv.why, fv.next_best_action].filter(Boolean);
+    return {
+      direct_answer: parts.join(' ') || '—',
+      confidence: fv.confidence_label || '—',
+      evidence_status: 'Retrieval ledger not available (legacy or partial payload).',
+      reasoning_summary: fv.why || '',
+      data_used_summary: '',
+      data_missing: Array.isArray(result.missing_evidence) ? result.missing_evidence : [],
+      best_next_action: fv.next_best_action || '',
+      assumption_based_insight: '',
+      safety_compliance_note: '',
+      exploratory: true,
+    };
+  }, [result, report, finalVerdict]);
   const evidencePolicyNested = report?.evidence_summary?.evidence_policy;
   const evidencePolicy = evidencePolicyNested || result?.trust_score?.evidence_policy || {};
   const replayEvents = Array.isArray(result?.replay_events) ? result.replay_events : [];
@@ -582,6 +602,49 @@ export default function WhatIfPage() {
               )}
             </Panel>
           )}
+
+          <Panel title="Output Answer" icon={MessageSquare} aside={outputAnswer.exploratory ? 'May include exploratory synthesis' : 'Mapped to this run'}>
+            <div className="simulation-output-answer">
+              <section>
+                <h4>Direct answer</h4>
+                <p className="simulation-oa-direct">{outputAnswer.direct_answer || '—'}</p>
+              </section>
+              <div className="simulation-grid two">
+                <div><span>Confidence</span><strong className="simulation-oa-muted">{outputAnswer.confidence || '—'}</strong></div>
+                <div><span>Best next action</span><strong className="simulation-oa-muted">{outputAnswer.best_next_action || '—'}</strong></div>
+              </div>
+              <section>
+                <h4>Evidence status (retrieval)</h4>
+                <p className="simulation-oa-meta">{outputAnswer.evidence_status || '—'}</p>
+              </section>
+              <section>
+                <h4>Reasoning summary</h4>
+                <p className="simulation-oa-meta">{outputAnswer.reasoning_summary || '—'}</p>
+              </section>
+              <section>
+                <h4>Data used</h4>
+                <pre className="simulation-oa-pre">{outputAnswer.data_used_summary || '—'}</pre>
+              </section>
+              {Array.isArray(outputAnswer.data_missing) && outputAnswer.data_missing.length > 0 && (
+                <section>
+                  <h4>Data missing</h4>
+                  <ul className="simulation-oa-list">
+                    {outputAnswer.data_missing.map((item, idx) => (
+                      <li key={simLineKey('oa-miss', item, idx)}>{simDisplayLine(item)}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <section>
+                <h4>Assumption-based insight</h4>
+                <p className="simulation-oa-meta">{outputAnswer.assumption_based_insight || '—'}</p>
+              </section>
+              <section>
+                <h4>Safety / compliance</h4>
+                <p className="simulation-oa-safety">{outputAnswer.safety_compliance_note || '—'}</p>
+              </section>
+            </div>
+          </Panel>
 
           <Panel title="Evidence Panel" icon={FileText} aside={`${sources.length} sources / ${evidence.length} facts`}>
             <div className="simulation-evidence-layout">

@@ -86,6 +86,10 @@ FINANCE_TERMS = {
     "nyse",
     "earnings",
     "valuation",
+    "option",
+    "options",
+    "puts",
+    "calls",
 }
 POLITICS_TERMS = {"election", "ban", "policy", "sanction", "government", "war", "military", "defense"}
 ENGINEERING_TERMS = {"aws", "api", "database", "migrate", "stack", "backend", "frontend", "cloud", "security"}

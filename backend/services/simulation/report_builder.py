@@ -19,6 +19,8 @@ def build_report(
     run_id: str,
     population_model: Dict[str, Any] | None = None,
     final_verdict: Dict[str, Any] | None = None,
+    output_answer: Dict[str, Any] | None = None,
+    routed_intent: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     disagreements = []
     for cluster in debate.get("clusters") or []:
@@ -82,4 +84,6 @@ def build_report(
             "live_data_used": bool((evidence_summary.get("quality") or {}).get("live_data_used")),
             "replay_scope": "core-agent transcript plus aggregated population cohorts",
         },
+        "output_answer": output_answer or {},
+        "routed_intent": routed_intent or {},
     }
