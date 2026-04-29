@@ -7,7 +7,7 @@ Enables CrucibAI to understand the full context of problems.
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -36,7 +36,7 @@ class MediaInput:
     metadata: Dict[str, Any]
     processing_status: str = "pending"
     extracted_content: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -108,7 +108,7 @@ class SensorReading:
     value: float
     unit: str
     location: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -589,7 +589,7 @@ class MultiModalUnderstanding:
             "inputs_processed": len(media_inputs),
             "insights_by_type": insights_by_type,
             "synthesis": self._synthesize_insights(insights_by_type),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         self.multimodal_insights.append(synthesis)
