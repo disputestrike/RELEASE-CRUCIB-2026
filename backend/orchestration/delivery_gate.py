@@ -255,8 +255,7 @@ def assert_workspace_download_allowed(
     if not score_ok:
         goal = str((job or {}).get("goal") or "")
         bt = (job or {}).get("build_target") or (job or {}).get("crucib_build_target")
-        from backend.orchestration.build_integrity_validator import validate_workspace_integrity
-
+        from ....orchestration.build_integrity_validator import validate_workspace_integrity
         biv = validate_workspace_integrity(
             str(workspace_path),
             goal=goal,
@@ -314,8 +313,7 @@ def assert_workspace_publish_allowed(workspace_path: str, job: Optional[Dict[str
     if not score_ok:
         goal = str((job or {}).get("goal") or "")
         bt = (job or {}).get("build_target") or (job or {}).get("crucib_build_target")
-        from backend.orchestration.build_integrity_validator import validate_workspace_integrity
-
+        from ....orchestration.build_integrity_validator import validate_workspace_integrity
         biv = validate_workspace_integrity(
             str(workspace_path),
             goal=goal,

@@ -11,8 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 try:
-    from backend.db_pg import get_pg_pool
-except Exception:  # pragma: no cover
+    from ....db_pg import get_pg_poolexcept Exception:  # pragma: no cover
     get_pg_pool = None  # type: ignore
 
 router = APIRouter(prefix="/api/share", tags=["share"])

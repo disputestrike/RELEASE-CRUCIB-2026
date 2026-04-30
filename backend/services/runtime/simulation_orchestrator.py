@@ -5,8 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Dict, List, Optional
 
-from backend.services.runtime.simulation_engine import SimulationEngine
-
+from .....services.runtime.simulation_engine import SimulationEngine
 
 class SimulationOrchestrator:
     def __init__(self, *, job_id: str, user_id: str):
@@ -16,8 +15,7 @@ class SimulationOrchestrator:
 
     async def _persist_log(self, kind: str, payload: Dict[str, Any]) -> None:
         try:
-            from backend.db_pg import get_db
-
+            from .....db_pg import get_db
             db = await get_db()
             await db.project_logs.insert_one(
                 {

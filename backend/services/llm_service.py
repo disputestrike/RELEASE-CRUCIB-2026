@@ -34,20 +34,7 @@ try:
     from .events import event_bus
     from .skills import detect_skill
 except ImportError:  # compatibility for legacy tests importing `services.*`
-    from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-    from backend.deps import get_optional_user
-    from backend.dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
-    from backend.dev_stub_llm import detect_build_kind as _stub_detect_build_kind
-    from backend.dev_stub_llm import is_real_agent_only
-    from backend.dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
-    from backend.dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
-    from backend.llm_router import CEREBRAS_MODEL
-    from backend.llm_router import TaskComplexity, classifier
-    from backend.llm_router import get_cerebras_key as _get_cerebras_key
-    from backend.llm_router import router as llm_router
-    from backend.services.events import event_bus
-    from backend.services.skills import detect_skill
-
+    from ....anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model    from ....deps import get_optional_user    from ....dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available    from ....dev_stub_llm import detect_build_kind as _stub_detect_build_kind    from ....dev_stub_llm import is_real_agent_only    from ....dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions    from ....dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown    from ....llm_router import CEREBRAS_MODEL    from ....llm_router import TaskComplexity, classifier    from ....llm_router import get_cerebras_key as _get_cerebras_key    from ....llm_router import router as llm_router    from ....services.events import event_bus    from ....services.skills import detect_skill
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -791,8 +778,7 @@ async def _call_llm_with_fallback(
     Returns ``(response_text, model_used)`` tuple.
     """
     if require_runtime_scope:
-        from backend.services.runtime.execution_authority import require_runtime_authority
-
+        from ....services.runtime.execution_authority import require_runtime_authority
         require_runtime_authority("llm_service", detail="model execution")
 
     task_complexity = classifier.classify(message, agent_name)

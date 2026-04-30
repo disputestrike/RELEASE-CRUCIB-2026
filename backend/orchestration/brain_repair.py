@@ -61,8 +61,7 @@ async def run_full_brain_repair(
     Layer 3 = what a developer does.
     Layer 4 = what a DevOps engineer does (adjust how the agent runs).
     """
-    from backend.agents.code_repair_agent import CodeRepairAgent
-
+    from ....agents.code_repair_agent import CodeRepairAgent
     from .brain_intelligence import recall_best_fix, remember_fix, search_error_solution
     from .llm_code_repair import (
         analyse_failure_with_llm,

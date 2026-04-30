@@ -99,8 +99,7 @@ async def get_project_memory() -> ProjectMemory:
     global _mem
     if _mem is not None:
         return _mem
-    from backend.db_pg import get_pg_pool
-
+    from ....db_pg import get_pg_pool
     pool = await get_pg_pool()
     _mem = ProjectMemory(pool)
     return _mem

@@ -6,8 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from backend.project_state import WORKSPACE_ROOT
-
+from .....project_state import WORKSPACE_ROOT
 
 TASKS_DIRNAME = "runtime_tasks"
 

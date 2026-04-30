@@ -7,8 +7,7 @@ import logging
 import os
 from typing import Dict, Optional
 
-from backend.agents.base_agent import BaseAgent
-
+from ....agents.base_agent import BaseAgent
 logger = logging.getLogger(__name__)
 
 PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY")

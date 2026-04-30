@@ -11,9 +11,7 @@ from typing import Any, Dict, List, Optional, Set
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.agents.base_agent import AgentValidationError, BaseAgent
-from backend.agents.registry import AgentRegistry
-
+from ....agents.base_agent import AgentValidationError, BaseAgentfrom ....agents.registry import AgentRegistry
 import logging
 
 logger = logging.getLogger(__name__)

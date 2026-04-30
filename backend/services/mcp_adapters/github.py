@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from backend.services.mcp_client import Adapter, AdapterTool
-
+from .....services.mcp_client import Adapter, AdapterTool
 
 def build(env_get: Callable[[str], Optional[str]]) -> Adapter:
     token = env_get("GITHUB_PAT") or env_get("GITHUB_TOKEN")

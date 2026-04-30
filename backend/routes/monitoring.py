@@ -72,8 +72,7 @@ async def track_event(body: TrackEventRequest):
     """Persist a monitoring event to PostgreSQL (monitoring_events table)."""
     event_id = str(uuid.uuid4())
     try:
-        from backend.db_pg import get_pool
-
+        from ....db_pg import get_pool
         pool = await get_pool()
         if pool:
             async with pool.acquire() as conn:
@@ -102,8 +101,7 @@ async def list_events(
 ):
     """List recent monitoring events from PostgreSQL, with optional filters."""
     try:
-        from backend.db_pg import get_pool
-
+        from ....db_pg import get_pool
         pool = await get_pool()
         if not pool:
             return {

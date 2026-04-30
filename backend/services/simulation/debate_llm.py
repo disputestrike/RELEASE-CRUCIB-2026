@@ -83,9 +83,7 @@ async def augment_debate_with_llm_maybe(
     user_block = json.dumps(briefing, ensure_ascii=False)[:14000]
 
     try:
-        from backend.services.llm_service import _call_anthropic_direct
-        from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
-
+        from .....services.llm_service import _call_anthropic_direct        from .....anthropic_models import ANTHROPIC_HAIKU_MODEL
         model = os.getenv("REALITY_ENGINE_DEBATE_MODEL", "").strip() or ANTHROPIC_HAIKU_MODEL
         raw = await _call_anthropic_direct(
             user_block,

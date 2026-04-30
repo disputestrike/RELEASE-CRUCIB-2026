@@ -198,8 +198,7 @@ async def write_meta_proof_index(
     steps: List[Dict[str, Any]],
 ) -> Optional[Dict[str, Any]]:
     """Persist META/proof_index.json; returns document or None."""
-    from backend.proof import proof_service
-
+    from ....proof import proof_service
     step_key_by_id = {
         str(s.get("id") or ""): str(s.get("step_key") or "")
         for s in steps

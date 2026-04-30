@@ -46,7 +46,7 @@ def get_db():
 
 
 async def get_documents_db_async():
-    """Mongo-style DB: injected via ``deps.init`` (tests) or PostgreSQL (runtime)."""
+    """Document-style DB backed by PostgreSQL (JSONB): injected via ``deps.init`` (tests) or asyncpg pool (runtime)."""
 
     injected = _state.get("db")
     if injected is not None:

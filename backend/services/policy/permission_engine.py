@@ -135,8 +135,7 @@ def _contract_mode_allowed(tool_name: str, surface: Optional[str]) -> Optional[P
     if not surface:
         return None
     try:
-        from backend.services.tools import get_tool_contract
-    except Exception:
+        from .....services.tools import get_tool_contract    except Exception:
         return None
     contract = get_tool_contract(tool_name)
     if not contract or not contract.allowed_modes:
@@ -165,8 +164,7 @@ def _skill_scope_allowed(tool_name: str, skill_name: Optional[str]) -> Optional[
     if not skill_name:
         return None
     try:
-        from backend.services.skills.skill_registry import get_skill
-    except Exception:
+        from .....services.skills.skill_registry import get_skill    except Exception:
         return None
     skill = get_skill(skill_name)
     if skill is None:

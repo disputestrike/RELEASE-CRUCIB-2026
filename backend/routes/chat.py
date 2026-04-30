@@ -4,11 +4,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from backend.services.brain_layer import BrainLayer
-from backend.services.conversation_manager import ContextManager
-from backend.services.events import event_bus
-from backend.services.runtime.task_manager import task_manager
-
+from ....services.brain_layer import BrainLayerfrom ....services.conversation_manager import ContextManagerfrom ....services.events import event_busfrom ....services.runtime.task_manager import task_manager
 router = APIRouter(prefix="/api", tags=["chat"])
 
 

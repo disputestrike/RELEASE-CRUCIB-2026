@@ -6,8 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from backend.project_state import WORKSPACE_ROOT
-
+from ....project_state import WORKSPACE_ROOT
 
 def _safe_project_id(project_id: str) -> str:
     return (project_id or "unknown").replace("/", "_").replace("\\", "_")

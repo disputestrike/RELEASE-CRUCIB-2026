@@ -15,14 +15,12 @@ router = APIRouter(prefix="/api", tags=["ide"])
 
 
 def _get_auth():
-    from backend.server import get_current_user
-
+    from ....server import get_current_user
     return get_current_user
 
 
 def _get_optional_user():
-    from backend.server import get_optional_user
-
+    from ....server import get_optional_user
     return get_optional_user
 
 
@@ -33,8 +31,7 @@ def _get_db():
 
 
 async def _resolve_ws(project_id, user):
-    from backend.server import _resolve_project_workspace_path_for_user
-
+    from ....server import _resolve_project_workspace_path_for_user
     return await _resolve_project_workspace_path_for_user(project_id, user)
 
 

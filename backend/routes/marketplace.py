@@ -25,8 +25,7 @@ _TABLE_CHECKED = False
 
 async def _get_pool():
     try:
-        from backend.db_pg import get_db  # type: ignore
-        return await get_db()
+        from ....db_pg import get_db  # type: ignore        return await get_db()
     except Exception:
         return None
 

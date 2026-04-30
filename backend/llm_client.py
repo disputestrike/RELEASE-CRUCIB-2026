@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from backend.anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+from .anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 
 logger = logging.getLogger(__name__)
 

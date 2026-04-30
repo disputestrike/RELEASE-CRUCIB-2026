@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
-from backend.orchestration.runtime_state import runtime_state_adapter
+from .orchestration.runtime_state import runtime_state_adapter
 
 logger = logging.getLogger(__name__)
 

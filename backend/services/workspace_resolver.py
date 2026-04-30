@@ -44,8 +44,7 @@ class WorkspaceResolver:
 
     def workspace_root(self) -> Path:
         try:
-            from backend.config import WORKSPACE_ROOT
-
+            from ....config import WORKSPACE_ROOT
             return Path(WORKSPACE_ROOT)
         except Exception:
             return Path("/tmp/workspaces")

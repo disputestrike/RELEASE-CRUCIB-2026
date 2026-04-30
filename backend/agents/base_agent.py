@@ -11,17 +11,13 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from backend.agent_recursive_learning import (
-    AdaptiveStrategy,
+from ....agent_recursive_learning import (    AdaptiveStrategy,
     AgentMemory,
     ExecutionStatus,
     PerformanceTracker,
 )
 from anthropic import AsyncAnthropic
-from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-from backend.llm_cerebras import invoke_cerebras, invoke_cerebras_stream
-from backend.services.runtime.execution_authority import require_runtime_authority
-
+from ....anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_modelfrom ....llm_cerebras import invoke_cerebras, invoke_cerebras_streamfrom ....services.runtime.execution_authority import require_runtime_authority
 logger = logging.getLogger(__name__)
 
 CEREBRAS_CONTEXT_TOKEN_LIMIT = int(

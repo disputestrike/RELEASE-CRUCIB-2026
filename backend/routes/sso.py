@@ -18,14 +18,12 @@ router = APIRouter(prefix="/api", tags=["sso"])
 
 
 def _get_auth():
-    from backend.server import get_current_user
-
+    from ....server import get_current_user
     return get_current_user
 
 
 def _get_optional_user():
-    from backend.server import get_optional_user
-
+    from ....server import get_optional_user
     return get_optional_user
 
 

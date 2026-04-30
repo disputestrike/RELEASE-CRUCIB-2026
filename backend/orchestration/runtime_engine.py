@@ -22,8 +22,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from backend.tool_executor import is_allowlisted_run_command
-
+from ....tool_executor import is_allowlisted_run_command
 logger = logging.getLogger(__name__)
 
 # ─── Constants ────────────────────────────────────────────────────────────────

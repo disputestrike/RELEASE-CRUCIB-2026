@@ -13,8 +13,7 @@ Improvements over the original ``db_pg.run_migrations()``:
 
 Usage (server.py startup)::
 
-    from backend.services.migration_runner import run_migrations_idempotent
-    await run_migrations_idempotent()
+    from ....services.migration_runner import run_migrations_idempotent    await run_migrations_idempotent()
 """
 
 from __future__ import annotations
@@ -152,8 +151,7 @@ def _split_sql_statements(content: str) -> list[str]:
 
 async def _get_pool():
     """Import and return the asyncpg connection pool from db_pg."""
-    from backend.db_pg import get_pg_pool  # type: ignore[import]
-
+    from ....db_pg import get_pg_pool  # type: ignore[import]
     return await get_pg_pool()
 
 

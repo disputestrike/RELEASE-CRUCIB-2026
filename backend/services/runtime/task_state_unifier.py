@@ -13,10 +13,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 try:
-    from backend.config import WORKSPACE_ROOT
-except ImportError:
-    from backend.project_state import WORKSPACE_ROOT
-
+    from .....config import WORKSPACE_ROOTexcept ImportError:
+    from .....project_state import WORKSPACE_ROOT
 
 def _runtime_state_dir(project_id: str, task_id: str) -> Path:
     safe_project = (project_id or "runtime_compat").replace("/", "_").replace("\\", "_")

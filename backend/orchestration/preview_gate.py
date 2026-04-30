@@ -309,8 +309,7 @@ async def verify_preview_workspace(
         }
 
     try:
-        from backend.agents.preview_validator_agent import PreviewValidatorAgent
-
+        from ....agents.preview_validator_agent import PreviewValidatorAgent
         validator = PreviewValidatorAgent()
         preflight = await validator.execute({"workspace_path": workspace_path})
         critical_issues = list(preflight.get("critical_issues") or [])

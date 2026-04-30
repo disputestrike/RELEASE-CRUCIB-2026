@@ -66,8 +66,7 @@ def _guess_mime(path: Path) -> str:
 
 def _workspace_root() -> Path:
     """Return the configured WORKSPACE_ROOT."""
-    from backend.services.workspace_resolver import workspace_resolver
-
+    from ....services.workspace_resolver import workspace_resolver
     return workspace_resolver.workspace_root()
 
 
@@ -78,16 +77,14 @@ async def _get_project_id_for_job(job_id: str) -> Optional[str]:
     serving still needs to find completed workspaces, so fall back to Postgres.
     """
     try:
-        from backend.orchestration.runtime_state import get_job
-        job = await get_job(job_id)
+        from ....orchestration.runtime_state import get_job        job = await get_job(job_id)
         if job:
             return job.get("project_id") or job.get("id")
     except Exception as exc:
         logger.debug("preview_serve: runtime_state lookup failed for %s: %s", job_id, exc)
 
     try:
-        from backend.db_pg import get_pg_pool
-
+        from ....db_pg import get_pg_pool
         pool = await get_pg_pool()
         if pool:
             async with pool.acquire() as conn:
@@ -101,8 +98,7 @@ async def _get_project_id_for_job(job_id: str) -> Optional[str]:
         logger.debug("preview_serve: jobs.project_id lookup failed for %s: %s", job_id, exc)
 
     try:
-        from backend.db_pg import get_pg_pool
-
+        from ....db_pg import get_pg_pool
         pool = await get_pg_pool()
         if pool:
             async with pool.acquire() as conn:
@@ -126,8 +122,7 @@ def _job_workspace_root(job_id: str, project_id: Optional[str] = None) -> Path:
     3. WORKSPACE_ROOT/{job_id}               (legacy path)
     4. /tmp/workspaces/{job_id}              (last resort)
     """
-    from backend.services.workspace_resolver import workspace_resolver
-
+    from ....services.workspace_resolver import workspace_resolver
     return workspace_resolver.workspace_for_job(job_id, project_id).workspace
 
 

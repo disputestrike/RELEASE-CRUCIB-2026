@@ -26,8 +26,7 @@ _JOBS: Dict[str, Dict[str, Any]] = {}
 def _get_auth() -> Optional[Dict[str, Any]]:
     """Optional auth — falls back to anonymous for local/dev."""
     try:
-        from backend.routes.auth import get_current_user  # type: ignore
-        return None  # caller wires via Depends below when available
+        from ....routes.auth import get_current_user  # type: ignore        return None  # caller wires via Depends below when available
     except Exception:
         return None
 

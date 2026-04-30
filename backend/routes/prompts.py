@@ -2,8 +2,7 @@
 from fastapi import APIRouter, HTTPException
 
 try:
-    from backend.prompts.loader import list_available, load_preamble  # dev/test layout
-except ImportError:  # production layout where /app is on sys.path
+    from ....prompts.loader import list_available, load_preamble  # dev/test layoutexcept ImportError:  # production layout where /app is on sys.path
     try:
         from prompts.loader import list_available, load_preamble  # type: ignore[no-redef]
     except ImportError:

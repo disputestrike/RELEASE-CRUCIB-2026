@@ -43,9 +43,7 @@ def _normalize_row(job_id: str, row: dict) -> dict:
 async def workspace_events_ws(websocket: WebSocket):
     import jwt
 
-    from backend.db_pg import get_pg_pool
-    from backend.server import JWT_ALGORITHM, JWT_SECRET, _assert_job_owner_match, _get_orchestration, db
-
+    from ....db_pg import get_pg_pool    from ....server import JWT_ALGORITHM, JWT_SECRET, _assert_job_owner_match, _get_orchestration, db
     token = websocket.query_params.get("token") or websocket.query_params.get("access_token")
     if not token:
         await websocket.close(code=1008)

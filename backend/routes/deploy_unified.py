@@ -34,8 +34,7 @@ SUPPORTED_TARGETS = {"railway", "vercel", "netlify", "docker", "k8s", "terraform
 
 def _get_auth():
     try:
-        from backend.server import get_current_user
-        return get_current_user
+        from ....server import get_current_user        return get_current_user
     except Exception:
         from fastapi import Request
 
@@ -148,8 +147,7 @@ def _zip_bytes(entries: Dict[str, str]) -> bytes:
 
 async def _load_deploy_files(db, project_id: str, user_id: str) -> tuple[Dict[str, str], str]:
     try:
-        from backend.services.project_deploy_service import get_project_deploy_files_service
-        return await get_project_deploy_files_service(db, project_id, user_id)
+        from ....services.project_deploy_service import get_project_deploy_files_service        return await get_project_deploy_files_service(db, project_id, user_id)
     except HTTPException:
         raise
     except Exception:
@@ -185,8 +183,7 @@ async def unified_deploy(
 
         if target == "vercel":
             try:
-                from backend.services.project_deploy_service import one_click_deploy_vercel_service
-                from validate_deployment import validate_deployment  # type: ignore
+                from ....services.project_deploy_service import one_click_deploy_vercel_service                from validate_deployment import validate_deployment  # type: ignore
                 import httpx
             except Exception as exc:
                 raise HTTPException(status_code=503, detail=f"vercel path unavailable: {exc}")
@@ -202,8 +199,7 @@ async def unified_deploy(
             )
         if target == "netlify":
             try:
-                from backend.services.project_deploy_service import one_click_deploy_netlify_service
-                from validate_deployment import validate_deployment  # type: ignore
+                from ....services.project_deploy_service import one_click_deploy_netlify_service                from validate_deployment import validate_deployment  # type: ignore
                 import httpx
             except Exception as exc:
                 raise HTTPException(status_code=503, detail=f"netlify path unavailable: {exc}")
@@ -219,8 +215,7 @@ async def unified_deploy(
             )
         # Railway: delegate to existing /api/projects/{pid}/deploy/railway
         try:
-            from backend.services.project_deploy_service import deploy_railway_package_service
-            from validate_deployment import validate_deployment  # type: ignore
+            from ....services.project_deploy_service import deploy_railway_package_service            from validate_deployment import validate_deployment  # type: ignore
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"railway path unavailable: {exc}")
         return await deploy_railway_package_service(

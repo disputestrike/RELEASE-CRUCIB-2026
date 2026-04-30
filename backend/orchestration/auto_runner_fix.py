@@ -60,8 +60,7 @@ def prepare_job_failure_state(
 #
 # CHANGE TO:
 # ```python
-# from backend.orchestration.auto_runner_fix import prepare_job_failure_state
-#
+# from ....orchestration.auto_runner_fix import prepare_job_failure_state#
 # blocked_steps = [step for step in dag_steps if step in blocked_from_deps]
 # failure_state = prepare_job_failure_state(
 #     job_id,

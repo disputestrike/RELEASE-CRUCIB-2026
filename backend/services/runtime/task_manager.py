@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, List, Optional
 try:
-    from backend.agents.schemas import IntentSchema
-except ImportError:
+    from .....agents.schemas import IntentSchemaexcept ImportError:
     IntentSchema = None
 
 from ..events import event_bus

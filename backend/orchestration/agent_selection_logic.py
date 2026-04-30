@@ -10,8 +10,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Set
 
-from backend.agent_dag import AGENT_DAG, get_execution_phases
-
+from ....agent_dag import AGENT_DAG, get_execution_phases
 from .agent_audit_registry import agents_excluded_from_autorunner_selection
 from .brain_policy import agent_selection_hard_cap
 from .directory_contracts import (

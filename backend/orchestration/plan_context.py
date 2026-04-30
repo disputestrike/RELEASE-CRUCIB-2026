@@ -16,8 +16,7 @@ async def fetch_build_target_for_job(job_id: str) -> str:
     if not job_id:
         return DEFAULT_BUILD_TARGET
     try:
-        from backend.db_pg import get_pg_pool
-
+        from ....db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(

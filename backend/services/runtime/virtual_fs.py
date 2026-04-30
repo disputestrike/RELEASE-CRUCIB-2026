@@ -9,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from backend.project_state import WORKSPACE_ROOT
-
+from .....project_state import WORKSPACE_ROOT
 
 class VirtualFS:
     """Sandboxed filesystem scoped to a single task workspace."""

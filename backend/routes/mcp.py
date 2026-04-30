@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, HTTPException
 
-from backend.services.mcp_client import bootstrap_registry, registry
-
+from ....services.mcp_client import bootstrap_registry, registry
 # Initialize adapters at import time (idempotent if called again).
 _bootstrapped = False
 

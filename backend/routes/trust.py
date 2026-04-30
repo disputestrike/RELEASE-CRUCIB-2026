@@ -10,10 +10,7 @@ from typing import Iterable
 
 from fastapi import APIRouter, HTTPException
 
-from backend.services.enterprise_readiness import build_enterprise_readiness
-from backend.services.proof_manifest import build_replay_plan, verify_manifest
-from backend.services.public_proof_readiness import build_public_proof_readiness
-
+from ....services.enterprise_readiness import build_enterprise_readinessfrom ....services.proof_manifest import build_replay_plan, verify_manifestfrom ....services.public_proof_readiness import build_public_proof_readiness
 logger = logging.getLogger(__name__)
 
 
@@ -301,8 +298,7 @@ def create_trust_router(root_dir: Path) -> APIRouter:
         if run_name:
             verification_command = (
                 "python -c \"import json, pathlib; "
-                "from backend.services.proof_manifest import verify_manifest; "
-                f"p=pathlib.Path('proof/benchmarks/product_dominance_v1/{run_name}/proof_manifest.json'); "
+                "from ....services.proof_manifest import verify_manifest; "                f"p=pathlib.Path('proof/benchmarks/product_dominance_v1/{run_name}/proof_manifest.json'); "
                 "m=json.loads(p.read_text(encoding='utf-8')); "
                 "print(verify_manifest(m, secret='local-proof-test-secret'))\""
             )

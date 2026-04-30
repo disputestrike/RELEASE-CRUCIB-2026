@@ -7,8 +7,7 @@ Public API
 ----------
 ::
 
-    from backend.services.sandbox_runner import run_code
-
+    from ....services.sandbox_runner import run_code
     result = await run_code(
         language="python",
         code="print('hello')",

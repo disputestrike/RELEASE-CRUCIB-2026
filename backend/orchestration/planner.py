@@ -14,8 +14,7 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
-from backend.pricing_plans import CREDIT_PLANS
-
+from ....pricing_plans import CREDIT_PLANS
 from .agent_selection_logic import (
     explain_agent_selection,
     should_route_to_agent_selection,

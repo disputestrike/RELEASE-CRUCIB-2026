@@ -46,10 +46,7 @@ async def debug_runtime_state(
     project_id: str, _admin: dict = Depends(_admin_dep())
 ):  # noqa: ARG001
     try:
-        from backend.services.runtime.cost_tracker import cost_tracker
-        from backend.services.runtime.memory_graph import get_graph
-        from backend.services.runtime.task_manager import task_manager
-    except ImportError:
+        from ....services.runtime.cost_tracker import cost_tracker        from ....services.runtime.memory_graph import get_graph        from ....services.runtime.task_manager import task_manager    except ImportError:
         from services.runtime.cost_tracker import cost_tracker
         from services.runtime.memory_graph import get_graph
         from services.runtime.task_manager import task_manager

@@ -31,8 +31,7 @@ async def expand_queries_via_subagents(
 
     branches = max(2, min(8, int(os.getenv("CRUCIB_RETRIEVAL_SWARM_BRANCHES", "3") or 3)))
     try:
-        from backend.services.runtime.subagent_orchestrator import SubagentOrchestrator
-    except ImportError:
+        from ......services.runtime.subagent_orchestrator import SubagentOrchestrator    except ImportError:
         try:
             from services.runtime.subagent_orchestrator import SubagentOrchestrator
         except ImportError:
