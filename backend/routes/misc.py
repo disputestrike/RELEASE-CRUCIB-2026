@@ -1023,7 +1023,7 @@ async def get_saved_prompts(user: dict = Depends(_get_auth())):
 @router.post("/ai/quality-gate")
 async def quality_gate(data: QualityGateBody):
     """Run code quality score on code or multi-file output. No auth required for UI feedback."""
-    from backend.server import score_generated_code
+    from backend.code_quality import score_generated_code
 
     frontend_code = data.code or ""
     if not frontend_code and data.files:

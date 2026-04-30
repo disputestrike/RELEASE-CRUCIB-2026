@@ -33,9 +33,9 @@ def _get_db():
 
 
 async def _resolve_ws(project_id, user):
-    from backend.server import _resolve_project_workspace_path_for_user
-
-    return await _resolve_project_workspace_path_for_user(project_id, user)
+    from backend.server import _get_server_helpers
+    _, _, _, _project_workspace_path = _get_server_helpers()
+    return _project_workspace_path(project_id)
 
 
 class IDEBreakpointRequest(BaseModel):

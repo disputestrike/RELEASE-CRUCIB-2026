@@ -44,7 +44,8 @@ async def workspace_events_ws(websocket: WebSocket):
     import jwt
 
     from backend.db_pg import get_pg_pool
-    from backend.server import JWT_ALGORITHM, JWT_SECRET, _assert_job_owner_match, _get_orchestration, db
+    from backend.server import JWT_ALGORITHM, JWT_SECRET, _get_server_helpers
+    _user_credits, _assert_job_owner_match, _resolve_job_project_id_for_user, _project_workspace_path = _get_server_helpers()
 
     token = websocket.query_params.get("token") or websocket.query_params.get("access_token")
     if not token:
@@ -52,10 +53,10 @@ async def workspace_events_ws(websocket: WebSocket):
         return
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0}) if db is not None else None
+        user = {"id": payload.get("sub") or payload.get("user_id"), "email": payload.get("email"), "role": payload.get("role", "user")}
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, KeyError, TypeError):
         user = None
-    if not user or user.get("suspended"):
+    if not user or not user.get("id"):
         await websocket.close(code=1008)
         return
 
@@ -89,7 +90,9 @@ async def workspace_events_ws(websocket: WebSocket):
             if not job_id:
                 continue
 
-            runtime_state, *_ = _get_orchestration()
+            from backend.orchestration import runtime_state as _rs_mod, dag_engine, planner, auto_runner as _ar_mod
+            from backend.proof import proof_service as _ps_mod
+            runtime_state = _rs_mod
             pool = await get_pg_pool()
             runtime_state.set_pool(pool)
             job = await runtime_state.get_job(job_id)

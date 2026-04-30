@@ -3,7 +3,6 @@ Re-export from db_pg. Primary data store is PostgreSQL (JSONB documents).
 """
 
 from backend.db_pg import (
-    TABLE_CONFIG,
     close_pg_pool,
     close_pool,
     get_db,
@@ -19,5 +18,4 @@ __all__ = [
     "close_pool",
     "close_pg_pool",
     "is_pg_available",
-    "TABLE_CONFIG",
 ]
