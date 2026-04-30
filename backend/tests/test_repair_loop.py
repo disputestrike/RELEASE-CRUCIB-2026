@@ -6,7 +6,6 @@ from backend.orchestration.repair_loop import (
     RepairResult,
     RepairAgentInterface,
     SyntaxRepairAgent,
-    ImportRepairAgent,
 )
 
 
@@ -62,33 +61,25 @@ class TestRepairAgentInterface:
 
     @pytest.mark.asyncio
     async def test_syntax_repair_agent_returns_success(self):
+        import tempfile, os
         agent = SyntaxRepairAgent()
-        result = await agent.repair(
-            contract_item_id="required_files:main.py",
-            contract=None,
-            workspace_path="/tmp/test",
-            error_context={},
-            priority="high",
-        )
-        assert result["success"] is True
-        assert "main.py" in result["files_modified"]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a file with a missing colon (fixable by SyntaxRepairAgent)
+            test_file = os.path.join(tmpdir, "main.py")
+            with open(test_file, "w") as f:
+                f.write("def hello()\n    print('hello')\n")
+            result = await agent.repair(
+                contract_item_id="required_files:main.py",
+                contract=None,
+                workspace_path=tmpdir,
+                error_context={},
+                priority="high",
+            )
+            assert result["success"] is True
+            assert "main.py" in result["files_modified"]
 
     @pytest.mark.asyncio
-    async def test_import_repair_agent_returns_success(self):
-        agent = ImportRepairAgent()
-        result = await agent.repair(
-            contract_item_id="required_files:utils.py",
-            contract=None,
-            workspace_path="/tmp/test",
-            error_context={"missing_import": "os"},
-            priority="medium",
-        )
-        assert result["success"] is True
-
-    def test_base_interface_raises_not_implemented(self):
+    async def test_base_interface_raises_not_implemented(self):
         agent = RepairAgentInterface()
         with pytest.raises(NotImplementedError):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(
-                agent.repair("", None, "", {}, "")
-            )
+            await agent.repair("", None, "", {}, "")

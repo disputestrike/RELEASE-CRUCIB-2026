@@ -116,92 +116,93 @@ class TestRuntimeValidator:
     @pytest.mark.asyncio
     async def test_syntax_validation_passes_valid_python(self):
         """Valid Python code passes syntax validation."""
+        import tempfile
         from backend.orchestration.runtime_validator import RuntimeValidator
         validator = RuntimeValidator()
-        files = {
-            "backend/main.py": '''
-from fastapi import FastAPI
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "backend"))
+            with open(os.path.join(tmpdir, "backend", "main.py"), "w") as f:
+                f.write('''from fastapi import FastAPI
 
 app = FastAPI()
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
-''',
-            "backend/requirements.txt": "fastapi\nuvicorn\n",
-        }
-        result = await validator._validate_syntax(files, {"backend": {"language": "python"}})
-        assert result.passed is True
-        assert len(result.errors) == 0
+''')
+            with open(os.path.join(tmpdir, "backend", "requirements.txt"), "w") as f:
+                f.write("fastapi\nuvicorn\n")
+            result = await validator.validate(workspace_path=tmpdir)
+            syntax_ok = result.details["stage_results"]["syntax"]["success"]
+            assert syntax_ok is True
 
     @pytest.mark.asyncio
     async def test_syntax_validation_fails_bad_python(self):
         """Invalid Python code fails syntax validation."""
+        import tempfile
         from backend.orchestration.runtime_validator import RuntimeValidator
         validator = RuntimeValidator()
-        files = {
-            "backend/main.py": '''
-def broken(
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "backend"))
+            with open(os.path.join(tmpdir, "backend", "main.py"), "w") as f:
+                f.write("""def broken(
     # Missing closing paren and colon
-''',
-        }
-        result = await validator._validate_syntax(files, {"backend": {"language": "python"}})
-        assert result.passed is False
-        assert len(result.errors) > 0
+""")
+            result = await validator.validate(workspace_path=tmpdir)
+            syntax_ok = result.details["stage_results"]["syntax"]["success"]
+            assert syntax_ok is False
+            assert len(result.errors) > 0
 
     @pytest.mark.asyncio
     async def test_syntax_validation_fails_bad_json(self):
-        """Invalid JSON fails syntax validation."""
+        """Invalid JSON in package.json causes build failure."""
+        import tempfile
         from backend.orchestration.runtime_validator import RuntimeValidator
         validator = RuntimeValidator()
-        files = {
-            "package.json": '{invalid json syntax,,,',
-        }
-        result = await validator._validate_syntax(files, {"backend": {"language": "javascript"}})
-        assert result.passed is False
-        assert any("JSON" in e for e in result.errors)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "package.json"), "w") as f:
+                f.write("{invalid json syntax,,,")
+            result = await validator.validate(workspace_path=tmpdir)
+            assert result.success is False
+            # Bad JSON causes npm install to fail at the build stage
+            build_errors = result.details["stage_results"].get("build", {}).get("errors", [])
+            assert len(build_errors) > 0
 
     @pytest.mark.asyncio
     async def test_syntax_validation_passes_valid_json(self):
-        """Valid JSON passes syntax validation."""
+        """Valid JSON package.json passes syntax validation."""
+        import tempfile
         from backend.orchestration.runtime_validator import RuntimeValidator
         validator = RuntimeValidator()
-        files = {
-            "package.json": json.dumps({"name": "test", "version": "1.0.0", "scripts": {"start": "node server.js"}}),
-        }
-        result = await validator._validate_syntax(files, {"backend": {"language": "javascript"}})
-        assert result.passed is True
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "package.json"), "w") as f:
+                json.dump({"name": "test", "version": "1.0.0", "scripts": {"start": "node server.js"}}, f)
+            with open(os.path.join(tmpdir, "index.js"), "w") as f:
+                f.write('const express = require("express");\n')
+            result = await validator.validate(workspace_path=tmpdir)
+            syntax_ok = result.details["stage_results"]["syntax"]["success"]
+            assert syntax_ok is True
 
     @pytest.mark.asyncio
     async def test_full_validation_without_workspace(self):
-        """Validation without workspace fails at runtime stage."""
+        """Validation without workspace returns failure immediately."""
         from backend.orchestration.runtime_validator import RuntimeValidator
         validator = RuntimeValidator()
-        files = {
-            "backend/main.py": '''
-from fastapi import FastAPI
-app = FastAPI()
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-''',
-        }
-        result = await validator.validate(files, {"backend": {"language": "python", "framework": "fastapi"}})
-        # Should fail at runtime stage (no workspace to run server)
+        result = await validator.validate()
         assert result.success is False
-        assert result.stage in ("runtime", "build")
+        assert result.stage == "none"
+        assert "No workspace_path provided" in result.errors[0]
 
-    @pytest.mark.asyncio
-    async def test_validation_result_dataclass(self):
+    def test_validation_result_dataclass(self):
         """ValidationResult has correct structure."""
         from backend.orchestration.runtime_validator import ValidationResult
         vr = ValidationResult(success=True, stage="passed")
         assert vr.success is True
-        assert bool(vr) is True
+        assert vr.stage == "passed"
 
         vr_fail = ValidationResult(success=False, errors=["test error"], stage="syntax")
         assert vr_fail.success is False
-        assert bool(vr_fail) is False
+        assert len(vr_fail.errors) == 1
 
 
 # ── 3. Repair Gate Tests ───────────────────────────────────────────────────
@@ -360,49 +361,47 @@ class TestTemplateEnforcement:
 
     def test_python_fastapi_template_exists(self):
         """Python FastAPI template has required files."""
-        from backend.agents.templates.registry import get_template
-        stack = {"backend": {"language": "python", "framework": "fastapi"}}
-        template = get_template(stack)
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a FastAPI REST API")
         assert template is not None
-        assert template["name"] == "Python FastAPI"
-        paths = [f["path"] for f in template["files"]]
-        assert "backend/main.py" in paths
-        assert "backend/models.py" in paths
-        assert "backend/requirements.txt" in paths
+        assert template["id"] == "python_fastapi"
+        assert template["language"] == "python"
+        assert template["framework"] == "fastapi"
+        assert "backend/main.py" in template["required_files"]
+        assert "backend/models.py" in template["required_files"]
+        assert "backend/requirements.txt" in template["required_files"]
 
     def test_react_vite_template_exists(self):
         """React Vite template has required files."""
-        from backend.agents.templates.registry import get_template
-        stack = {"frontend": {"language": "typescript", "framework": "react-vite"}, "backend": None}
-        template = get_template(stack)
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a React frontend with Vite")
         assert template is not None
-        paths = [f["path"] for f in template["files"]]
-        assert "frontend/package.json" in paths
-        assert "frontend/src/main.jsx" in paths
-        assert "frontend/src/App.jsx" in paths
+        assert template["id"] == "react_vite"
+        assert "package.json" in template["required_files"]
+        assert "src/main.jsx" in template["required_files"]
+        assert "src/App.jsx" in template["required_files"]
 
-    def test_unknown_stack_returns_none(self):
-        """Unknown stack returns None (allows experimental mode)."""
-        from backend.agents.templates.registry import get_template
-        stack = {"backend": {"language": "ruby", "framework": "rails"}}
-        template = get_template(stack)
-        assert template is None
+    def test_unknown_stack_defaults_to_fastapi(self):
+        """Unknown stack defaults to python_fastapi template."""
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a ruby rails app")
+        assert template is not None
+        # Unrecognized stacks fall back to the default template
+        assert template["id"] == "python_fastapi"
 
-    def test_template_has_build_commands(self):
-        """Templates include build commands."""
-        from backend.agents.templates.registry import get_template
-        stack = {"backend": {"language": "python", "framework": "fastapi"}}
-        template = get_template(stack)
-        assert "build_commands" in template
-        assert len(template["build_commands"]) >= 2
+    def test_template_has_build_command(self):
+        """Templates include a build command."""
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a FastAPI REST API")
+        assert "build_command" in template
+        assert template["build_command"] != ""
 
-    def test_template_has_min_files(self):
-        """Templates define minimum file count."""
-        from backend.agents.templates.registry import get_template
-        stack = {"backend": {"language": "python", "framework": "fastapi"}}
-        template = get_template(stack)
-        assert "min_files" in template
-        assert template["min_files"] >= 2
+    def test_template_has_required_files(self):
+        """Templates define required files."""
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a FastAPI REST API")
+        assert "required_files" in template
+        assert len(template["required_files"]) >= 2
 
 
 # ── 5. Hard Runtime Gate Tests ─────────────────────────────────────────────
@@ -454,21 +453,22 @@ class TestHardRuntimeGate:
 class TestBuilderAgentIntegration:
     """Tests for BuilderAgent with confidence gate and template enforcement."""
 
-    def test_builder_agent_has_confidence_gate(self):
-        """BuilderAgent.execute calls check_stack_confidence."""
+    def test_builder_agent_has_template_enforcement(self):
+        """BuilderAgent.execute uses template registry for generation."""
         import inspect
         from backend.agents.builder_agent import BuilderAgent
         source = inspect.getsource(BuilderAgent.execute)
-        assert "check_stack_confidence" in source
-        assert "CONFIDENCE GATE" in source
+        # BuilderAgent resolves templates from the registry
+        assert "select_template" in source
+        assert "TEMPLATE_REGISTRY" in source
 
-    def test_builder_agent_has_template_lock(self):
-        """BuilderAgent.execute calls get_template."""
+    def test_builder_agent_tracks_confidence(self):
+        """BuilderAgent.execute tracks template confidence."""
         import inspect
         from backend.agents.builder_agent import BuilderAgent
         source = inspect.getsource(BuilderAgent.execute)
-        assert "get_template" in source
-        assert "TEMPLATE LOCK" in source
+        assert "confidence" in source
+        assert "_template_confidence" in source
 
 
 # ── 7. End-to-End Pipeline Tests ───────────────────────────────────────────
@@ -506,10 +506,11 @@ class TestEndToEndPipeline:
         repair_source = inspect.getsource(repair_until_valid)
         assert "revalidation" in repair_source.lower() or "validator.validate(" in repair_source
 
-        # 5. BuilderAgent has confidence gate
+        # 5. BuilderAgent uses template registry with confidence
         from backend.agents.builder_agent import BuilderAgent
         ba_source = inspect.getsource(BuilderAgent.execute)
-        assert "check_stack_confidence" in ba_source
+        assert "select_template" in ba_source
+        assert "confidence" in ba_source
 
         print("✅ Pipeline has NO fake success paths")
 

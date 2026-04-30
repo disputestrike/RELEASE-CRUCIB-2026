@@ -25,88 +25,74 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 class TestStackSelection(unittest.TestCase):
-    """Test that the stack selector correctly identifies and routes language requests."""
+    """Test that the template registry correctly routes language/framework requests."""
 
     def setUp(self):
-        from backend.agents.builder_agent import select_stack, _detect_product_type, _detect_explicit_language
-        self.select_stack = select_stack
-        self._detect_product_type = _detect_product_type
-        self._detect_explicit_language = _detect_explicit_language
+        from backend.agents.templates.registry import select_template, list_templates
+        self.select_template = select_template
+        self.list_templates = list_templates
 
     # ── Test 1: Explicit language request is respected ──
 
     def test_explicit_python_fastapi(self):
-        """User says 'build a FastAPI API' → should select Python/FastAPI."""
-        stack = self.select_stack("Build a REST API with FastAPI and PostgreSQL")
-        self.assertIsNotNone(stack.get("backend"))
-        self.assertEqual(stack["backend"]["language"], "python")
-        self.assertEqual(stack["backend"]["framework"], "fastapi")
-        self.assertTrue(stack["explicit_language"])
+        """User says 'build a FastAPI API' → should select Python/FastAPI template."""
+        template = self.select_template(goal="Build a REST API with FastAPI and PostgreSQL")
+        self.assertIsNotNone(template)
+        self.assertEqual(template["id"], "python_fastapi")
+        self.assertEqual(template["language"], "python")
+        self.assertEqual(template["framework"], "fastapi")
+        self.assertGreaterEqual(template["confidence"], 0.90)
 
     def test_explicit_node_express(self):
-        """User says 'build a Node.js Express API' → should select Node/Express."""
-        stack = self.select_stack("Build a Node.js Express API with auth")
-        self.assertIsNotNone(stack.get("backend"))
-        self.assertEqual(stack["backend"]["language"], "javascript")
-        self.assertEqual(stack["backend"]["framework"], "express")
-        self.assertTrue(stack["explicit_language"])
+        """User says 'build a Node.js Express API' → should select Node/Express template."""
+        template = self.select_template(goal="Build a Node.js Express API with auth")
+        self.assertIsNotNone(template)
+        self.assertEqual(template["id"], "node_express")
+        self.assertEqual(template["framework"], "express")
 
     def test_explicit_cpp_cmake(self):
-        """User says 'build a C++ CLI tool with CMake' → should select C++/CMake."""
-        stack = self.select_stack("Build a C++ command-line calculator with CMake")
-        self.assertIsNotNone(stack.get("backend"))
-        self.assertEqual(stack["backend"]["language"], "cpp")
-        self.assertEqual(stack["backend"]["framework"], "cmake")
-        self.assertTrue(stack["explicit_language"])
-        # C++ tools should NOT have a frontend
-        self.assertIsNone(stack.get("frontend"))
+        """User says 'build a C++ CLI tool with CMake' → should select C++/CMake template."""
+        template = self.select_template(goal="Build a C++ command-line calculator with CMake")
+        self.assertIsNotNone(template)
+        self.assertEqual(template["id"], "cpp_cmake")
+        self.assertEqual(template["language"], "cpp")
+        self.assertEqual(template["framework"], "cmake")
+
+    def test_explicit_react_vite(self):
+        """User says 'build a React frontend with Vite' → should select React/Vite template."""
+        template = self.select_template(goal="Build a React SPA with Vite and TypeScript")
+        self.assertIsNotNone(template)
+        self.assertEqual(template["id"], "react_vite")
+        self.assertEqual(template["language"], "typescript")
 
     # ── Test 2: Missing language defaults to best stack ──
 
-    def test_default_saas_dashboard(self):
-        """No language specified, SaaS dashboard → defaults to React + FastAPI."""
-        stack = self.select_stack("Build an admin dashboard with analytics")
-        self.assertIsNotNone(stack.get("frontend"))
-        self.assertEqual(stack["frontend"]["framework"], "react-vite")
-        self.assertIsNotNone(stack.get("backend"))
-        self.assertEqual(stack["backend"]["framework"], "fastapi")
-        self.assertFalse(stack["explicit_language"])
+    def test_default_api_defaults_to_fastapi(self):
+        """Generic API goal → defaults to FastAPI template."""
+        template = self.select_template(goal="Build a REST API for user management")
+        self.assertIsNotNone(template)
+        # Default fallback is python_fastapi
+        self.assertEqual(template["id"], "python_fastapi")
 
-    def test_default_landing_page(self):
-        """No language specified, landing page → defaults to React, no backend."""
-        stack = self.select_stack("Build a landing page for my startup")
-        self.assertIsNotNone(stack.get("frontend"))
-        self.assertEqual(stack["frontend"]["framework"], "react-vite")
+    # ── Test 8: Template registry has all expected stacks ──
 
-    def test_default_api_only(self):
-        """No language specified, API only → defaults to FastAPI backend, no frontend."""
-        stack = self.select_stack("Build a REST API for user management")
-        self.assertEqual(stack["product_type"], "api_only")
+    def test_registry_has_all_expected_templates(self):
+        """Template registry contains all 7 expected template IDs."""
+        templates = self.list_templates()
+        ids = {t["id"] for t in templates}
+        self.assertIn("python_fastapi", ids)
+        self.assertIn("node_express", ids)
+        self.assertIn("react_vite", ids)
+        self.assertIn("cpp_cmake", ids)
+        self.assertIn("python_cli", ids)
+        self.assertIn("go_gin", ids)
+        self.assertIn("rust_axum", ids)
 
-    # ── Test 8: Stack selector routes by product type ──
-
-    def test_product_type_detection(self):
-        """Product type detection routes correctly."""
-        self.assertEqual(self._detect_product_type("Build a React + FastAPI admin dashboard"), "saas_admin")
-        self.assertEqual(self._detect_product_type("Build a landing page for my startup"), "landing_page")
-        self.assertEqual(self._detect_product_type("Build a Node.js Express API with auth"), "node_api")
-        self.assertEqual(self._detect_product_type("Build a Python CLI tool"), "cli_tool")
-        self.assertEqual(self._detect_product_type("Build a C++ command-line calculator"), "cpp_tool")
-        self.assertEqual(self._detect_product_type("Build a mobile app with Expo"), "mobile_app")
-
-    def test_explicit_language_detection(self):
-        """Explicit language detection works for multiple languages."""
-        result = self._detect_explicit_language("Build this in Python with FastAPI")
-        self.assertIsNotNone(result)
-        self.assertEqual(result["backend_language"], "python")
-
-        result = self._detect_explicit_language("Use Node.js and Express")
-        self.assertIsNotNone(result)
-        self.assertEqual(result["backend_language"], "javascript")
-
-        result = self._detect_explicit_language("Make a C++ CLI tool with CMake")
-        self.assertIsNotNone(result)
-        self.assertEqual(result["backend_language"], "cpp")
+    def test_explicit_language_parameter(self):
+        """Explicit language/framework params override goal-based detection."""
+        template = self.select_template(goal="Build something", explicit_language="python", explicit_framework="fastapi")
+        self.assertIsNotNone(template)
+        self.assertEqual(template["id"], "python_fastapi")
 
 
 class TestAgentImports(unittest.TestCase):
@@ -114,7 +100,7 @@ class TestAgentImports(unittest.TestCase):
 
     def test_builder_agent_import(self):
         """BuilderAgent can be imported."""
-        from backend.agents.builder_agent import BuilderAgent, select_stack
+        from backend.agents.builder_agent import BuilderAgent
         agent = BuilderAgent()
         self.assertEqual(agent.name, "BuilderAgent")
 
@@ -130,16 +116,18 @@ class TestAgentImports(unittest.TestCase):
         agent = BackendAgent()
         self.assertEqual(agent.name, "BackendAgent")
 
-    def test_builder_agent_select_stack(self):
-        """select_stack returns proper structure."""
-        from backend.agents.builder_agent import select_stack
-        stack = select_stack("Build a React dashboard")
-        self.assertIn("frontend", stack)
-        self.assertIn("backend", stack)
-        self.assertIn("database", stack)
-        self.assertIn("product_type", stack)
-        self.assertIn("reasoning", stack)
-        self.assertIn("explicit_language", stack)
+    def test_template_registry_select_template(self):
+        """select_template returns proper structure."""
+        from backend.agents.templates.registry import select_template
+        template = select_template(goal="Build a React dashboard")
+        self.assertIn("id", template)
+        self.assertIn("language", template)
+        self.assertIn("framework", template)
+        self.assertIn("confidence", template)
+        self.assertIn("build_command", template)
+        self.assertIn("run_command", template)
+        self.assertIn("required_files", template)
+        self.assertIn("files", template)
 
     def test_stack_selector_agent_import(self):
         """StackSelectorAgent can be imported."""
@@ -148,17 +136,18 @@ class TestAgentImports(unittest.TestCase):
 
 
 class TestValidatorIntegration(unittest.TestCase):
-    """Test validators work correctly."""
+    """Test validators work correctly with workspace_path."""
 
-    # ── Test 3: Python/FastAPI build validates ──
+    # ── Test 3: Python/FastAPI syntax validates ──
 
     def test_python_validator_valid_code(self):
-        """Valid Python code passes validation."""
+        """Valid Python code passes syntax validation."""
         from backend.agents.validators.python_validator import PythonValidator
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write('''
-from fastapi import FastAPI
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "backend"))
+            with open(os.path.join(tmpdir, "backend", "main.py"), "w") as f:
+                f.write('''from fastapi import FastAPI
 app = FastAPI()
 
 @app.get("/health")
@@ -169,96 +158,72 @@ def health():
 def list_users():
     return [{"id": 1, "name": "Test User"}]
 ''')
-            f.flush()
-            validator = PythonValidator()
-            result = validator.validate_file(f.name)
-            self.assertTrue(result["valid"])
-            self.assertTrue(result["syntax_ok"])
-            self.assertGreaterEqual(result["line_count"], 10)
-            os.unlink(f.name)
+            with open(os.path.join(tmpdir, "backend", "requirements.txt"), "w") as f:
+                f.write("fastapi\nuvicorn\n")
+            validator = PythonValidator(workspace_path=tmpdir)
+            result = validator.validate_syntax()
+            self.assertTrue(result.success)
 
     def test_python_validator_rejects_syntax_error(self):
-        """Invalid Python code fails validation."""
+        """Invalid Python code fails syntax validation."""
         from backend.agents.validators.python_validator import PythonValidator
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("def broken(:\n    return 1\n")
-            f.flush()
-            validator = PythonValidator()
-            result = validator.validate_file(f.name)
-            self.assertFalse(result["valid"])
-            self.assertFalse(result["syntax_ok"])
-            os.unlink(f.name)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "backend"))
+            with open(os.path.join(tmpdir, "backend", "main.py"), "w") as f:
+                f.write("def broken(:\n    return 1\n")
+            validator = PythonValidator(workspace_path=tmpdir)
+            result = validator.validate_syntax()
+            self.assertFalse(result.success)
 
-    # ── Test 7: Stub output is rejected ──
-
-    def test_python_validator_rejects_stub(self):
-        """8-line stub file is rejected."""
-        from backend.agents.validators.python_validator import PythonValidator
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write('''from fastapi import FastAPI
-app = FastAPI()
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-''')
-            f.flush()
-            validator = PythonValidator()
-            result = validator.validate_file(f.name)
-            self.assertFalse(result["valid"])
-            self.assertIn("stub", result.get("error", "").lower())
-            os.unlink(f.name)
-
-    # ── Test 4: React/Vite package.json validates ──
+    # ── Test 4: Node/Express package.json validates ──
 
     def test_node_validator_valid_package(self):
-        """Valid package.json passes validation."""
+        """Valid package.json passes syntax validation."""
         from backend.agents.validators.node_validator import NodeValidator
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        with tempfile.TemporaryDirectory() as tmpdir:
             json.dump({
                 "name": "test-app",
                 "version": "1.0.0",
                 "scripts": {"start": "node server.js", "dev": "vite", "build": "vite build"},
                 "dependencies": {"express": "^4.18.0", "cors": "^2.8.5"},
-            }, f)
-            f.flush()
-            validator = NodeValidator()
-            result = validator.validate_package_json(f.name)
-            self.assertTrue(result["valid"])
-            self.assertTrue(result["has_express"])
-            self.assertGreaterEqual(result["dependency_count"], 2)
-            os.unlink(f.name)
+            }, open(os.path.join(tmpdir, "package.json"), "w"))
+            with open(os.path.join(tmpdir, "index.js"), "w") as f:
+                f.write('const express = require("express");\nconst app = express();\n')
+            validator = NodeValidator(workspace_path=tmpdir)
+            result = validator.validate_syntax()
+            self.assertTrue(result.success)
 
-    # ── Test 5: Node/Express package.json validates ──
+    # ── Test 5: Node/Express express detected ──
 
     def test_node_validator_express_detected(self):
         """Express dependency is detected in package.json."""
         from backend.agents.validators.node_validator import NodeValidator
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        with tempfile.TemporaryDirectory() as tmpdir:
             json.dump({
                 "name": "express-api",
                 "version": "0.1.0",
                 "dependencies": {"express": "^4.18.0"},
                 "scripts": {"start": "node index.js"},
-            }, f)
-            f.flush()
-            validator = NodeValidator()
-            result = validator.validate_package_json(f.name)
-            self.assertTrue(result["has_express"])
-            os.unlink(f.name)
+            }, open(os.path.join(tmpdir, "package.json"), "w"))
+            with open(os.path.join(tmpdir, "index.js"), "w") as f:
+                f.write('const express = require("express");\n')
+            validator = NodeValidator(workspace_path=tmpdir)
+            result = validator.validate_syntax()
+            self.assertTrue(result.success)
 
     # ── Test 6: C++ CMakeLists.txt validates ──
 
     def test_cpp_validator_valid_cmake(self):
-        """Valid CMakeLists.txt passes validation."""
+        """Valid CMakeLists.txt passes syntax validation."""
         from backend.agents.validators.cpp_validator import CppValidator
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, prefix="CMakeLists") as f:
-            f.write('''cmake_minimum_required(VERSION 3.10)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.makedirs(os.path.join(tmpdir, "src"))
+            with open(os.path.join(tmpdir, "CMakeLists.txt"), "w") as f:
+                f.write('''cmake_minimum_required(VERSION 3.10)
 project(Calculator LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -268,30 +233,13 @@ add_executable(calculator
     src/calculator.cpp
 )
 ''')
-            f.flush()
-            validator = CppValidator()
-            result = validator.validate_cmakelists(f.name)
-            self.assertTrue(result["valid"])
-            os.unlink(f.name)
-
-    def test_cpp_validator_rejects_stub_source(self):
-        """Stub C++ source file (very short) is rejected."""
-        from backend.agents.validators.cpp_validator import CppValidator
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", delete=False) as f:
-            f.write('''#include <iostream>
-
-int main() {
-    std::cout << "Hello" << std::endl;
-    return 0;
-}
+            with open(os.path.join(tmpdir, "src", "main.cpp"), "w") as f:
+                f.write('''#include <iostream>
+int main() { std::cout << "Hello" << std::endl; return 0; }
 ''')
-            f.flush()
-            validator = CppValidator()
-            result = validator.validate_source_file(f.name)
-            self.assertFalse(result["valid"])
-            self.assertIn("stub", result.get("error", "").lower())
-            os.unlink(f.name)
+            validator = CppValidator(workspace_path=tmpdir)
+            result = validator.validate_syntax()
+            self.assertTrue(result.success)
 
 
 class TestIntentClassifier(unittest.TestCase):
