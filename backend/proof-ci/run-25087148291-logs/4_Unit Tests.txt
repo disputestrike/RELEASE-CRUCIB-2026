@@ -1,0 +1,1298 @@
+﻿2026-04-29T01:57:57.9807482Z Current runner version: '2.334.0'
+2026-04-29T01:57:57.9830904Z ##[group]Runner Image Provisioner
+2026-04-29T01:57:57.9831663Z Hosted Compute Agent
+2026-04-29T01:57:57.9832644Z Version: 20260213.493
+2026-04-29T01:57:57.9833204Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-04-29T01:57:57.9834456Z Build Date: 2026-02-13T00:28:41Z
+2026-04-29T01:57:57.9835524Z Worker ID: {18165e42-b466-467d-9109-d2c9bc22981d}
+2026-04-29T01:57:57.9836480Z Azure Region: eastus2
+2026-04-29T01:57:57.9837378Z ##[endgroup]
+2026-04-29T01:57:57.9839316Z ##[group]Operating System
+2026-04-29T01:57:57.9839910Z Ubuntu
+2026-04-29T01:57:57.9840434Z 24.04.4
+2026-04-29T01:57:57.9840922Z LTS
+2026-04-29T01:57:57.9841336Z ##[endgroup]
+2026-04-29T01:57:57.9842215Z ##[group]Runner Image
+2026-04-29T01:57:57.9842802Z Image: ubuntu-24.04
+2026-04-29T01:57:57.9843263Z Version: 20260413.86.1
+2026-04-29T01:57:57.9844468Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+2026-04-29T01:57:57.9845910Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+2026-04-29T01:57:57.9846854Z ##[endgroup]
+2026-04-29T01:57:57.9847896Z ##[group]GITHUB_TOKEN Permissions
+2026-04-29T01:57:57.9849755Z Contents: read
+2026-04-29T01:57:57.9850348Z Metadata: read
+2026-04-29T01:57:57.9850872Z Packages: read
+2026-04-29T01:57:57.9851395Z ##[endgroup]
+2026-04-29T01:57:57.9853717Z Secret source: Actions
+2026-04-29T01:57:57.9854639Z Prepare workflow directory
+2026-04-29T01:57:58.0413462Z Prepare all required actions
+2026-04-29T01:57:58.0449722Z Getting action download info
+2026-04-29T01:57:58.3883705Z Download action repository 'actions/checkout@v6' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-04-29T01:57:58.5239127Z Download action repository 'actions/setup-python@v6' (SHA:a309ff8b426b58ec0e2a45f0f869d46889d02405)
+2026-04-29T01:57:58.6437391Z Download action repository 'actions/setup-node@v6' (SHA:48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e)
+2026-04-29T01:57:58.9353793Z Download action repository 'codecov/codecov-action@v3' (SHA:ab904c41d6ece82784817410c45d8b8c02684457)
+2026-04-29T01:57:59.1864486Z Download action repository 'actions/upload-artifact@v7' (SHA:043fb46d1a93c77aae656e7c1c64a875d1fc6a0a)
+2026-04-29T01:57:59.6238797Z Complete job name: Unit Tests
+2026-04-29T01:57:59.6785066Z ##[group]Checking docker version
+2026-04-29T01:57:59.6799019Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-04-29T01:57:59.7168166Z '1.48'
+2026-04-29T01:57:59.7185006Z Docker daemon API version: '1.48'
+2026-04-29T01:57:59.7186319Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-04-29T01:57:59.7341696Z '1.48'
+2026-04-29T01:57:59.7354581Z Docker client API version: '1.48'
+2026-04-29T01:57:59.7360888Z ##[endgroup]
+2026-04-29T01:57:59.7365124Z ##[group]Clean up resources from previous jobs
+2026-04-29T01:57:59.7370861Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=996cb3"
+2026-04-29T01:57:59.7507758Z ##[command]/usr/bin/docker network prune --force --filter "label=996cb3"
+2026-04-29T01:57:59.7628863Z ##[endgroup]
+2026-04-29T01:57:59.7629657Z ##[group]Create local container network
+2026-04-29T01:57:59.7640485Z ##[command]/usr/bin/docker network create --label 996cb3 github_network_6df66755072047f8a95fff7e78fd91d1
+2026-04-29T01:57:59.8154001Z c8d10d0778f1812b49c072e3c6dc8dc8bcee23881f31672aeed81eebe916da93
+2026-04-29T01:57:59.8172111Z ##[endgroup]
+2026-04-29T01:57:59.8198201Z ##[group]Starting postgres service container
+2026-04-29T01:57:59.8220530Z ##[command]/usr/bin/docker pull postgres:15-alpine
+2026-04-29T01:58:00.0943209Z 15-alpine: Pulling from library/postgres
+2026-04-29T01:58:00.1805784Z 6a0ac1617861: Pulling fs layer
+2026-04-29T01:58:00.1807744Z fae1993563ec: Pulling fs layer
+2026-04-29T01:58:00.1809275Z 013d59842ad1: Pulling fs layer
+2026-04-29T01:58:00.1810436Z 9bf7646f4ff5: Pulling fs layer
+2026-04-29T01:58:00.1812466Z 459be1018dcb: Pulling fs layer
+2026-04-29T01:58:00.1813621Z 697a7e77ac2e: Pulling fs layer
+2026-04-29T01:58:00.1815197Z cb0bf5bcb56f: Pulling fs layer
+2026-04-29T01:58:00.1816357Z 37a63010ee4d: Pulling fs layer
+2026-04-29T01:58:00.1817509Z 5206f96f8a8d: Pulling fs layer
+2026-04-29T01:58:00.1818570Z 523b9d9d6254: Pulling fs layer
+2026-04-29T01:58:00.1819777Z ba2769f58dd8: Pulling fs layer
+2026-04-29T01:58:00.1820948Z 9bf7646f4ff5: Waiting
+2026-04-29T01:58:00.1822104Z 459be1018dcb: Waiting
+2026-04-29T01:58:00.1823089Z 37a63010ee4d: Waiting
+2026-04-29T01:58:00.1824133Z 697a7e77ac2e: Waiting
+2026-04-29T01:58:00.1825143Z cb0bf5bcb56f: Waiting
+2026-04-29T01:58:00.1826078Z 5206f96f8a8d: Waiting
+2026-04-29T01:58:00.1827150Z 523b9d9d6254: Waiting
+2026-04-29T01:58:00.1828087Z ba2769f58dd8: Waiting
+2026-04-29T01:58:00.2663049Z fae1993563ec: Verifying Checksum
+2026-04-29T01:58:00.2664965Z fae1993563ec: Download complete
+2026-04-29T01:58:00.3019890Z 013d59842ad1: Download complete
+2026-04-29T01:58:00.3385482Z 6a0ac1617861: Download complete
+2026-04-29T01:58:00.3587245Z 9bf7646f4ff5: Verifying Checksum
+2026-04-29T01:58:00.3589014Z 9bf7646f4ff5: Download complete
+2026-04-29T01:58:00.3810710Z 459be1018dcb: Verifying Checksum
+2026-04-29T01:58:00.3812817Z 459be1018dcb: Download complete
+2026-04-29T01:58:00.4507466Z 6a0ac1617861: Pull complete
+2026-04-29T01:58:00.4655799Z 37a63010ee4d: Verifying Checksum
+2026-04-29T01:58:00.4684003Z 37a63010ee4d: Download complete
+2026-04-29T01:58:00.4689926Z cb0bf5bcb56f: Verifying Checksum
+2026-04-29T01:58:00.4692099Z cb0bf5bcb56f: Download complete
+2026-04-29T01:58:00.4848130Z fae1993563ec: Pull complete
+2026-04-29T01:58:00.5405166Z 013d59842ad1: Pull complete
+2026-04-29T01:58:00.5601684Z 9bf7646f4ff5: Pull complete
+2026-04-29T01:58:00.5715835Z 523b9d9d6254: Verifying Checksum
+2026-04-29T01:58:00.5717817Z 523b9d9d6254: Download complete
+2026-04-29T01:58:00.5735537Z 5206f96f8a8d: Verifying Checksum
+2026-04-29T01:58:00.5737465Z 5206f96f8a8d: Download complete
+2026-04-29T01:58:00.5755776Z 459be1018dcb: Pull complete
+2026-04-29T01:58:00.6471595Z ba2769f58dd8: Verifying Checksum
+2026-04-29T01:58:00.6474578Z ba2769f58dd8: Download complete
+2026-04-29T01:58:01.2643086Z 697a7e77ac2e: Verifying Checksum
+2026-04-29T01:58:01.2644190Z 697a7e77ac2e: Download complete
+2026-04-29T01:58:03.6048855Z 697a7e77ac2e: Pull complete
+2026-04-29T01:58:03.6209045Z cb0bf5bcb56f: Pull complete
+2026-04-29T01:58:03.6331333Z 37a63010ee4d: Pull complete
+2026-04-29T01:58:03.6447284Z 5206f96f8a8d: Pull complete
+2026-04-29T01:58:03.6555150Z 523b9d9d6254: Pull complete
+2026-04-29T01:58:03.6654752Z ba2769f58dd8: Pull complete
+2026-04-29T01:58:03.6699012Z Digest: sha256:09e4f20b14ddb3dfe3a0c825b206032aaf8f28300ba2070c0b60fc1c10c6abc7
+2026-04-29T01:58:03.6717894Z Status: Downloaded newer image for postgres:15-alpine
+2026-04-29T01:58:03.6739723Z docker.io/library/postgres:15-alpine
+2026-04-29T01:58:03.6807076Z ##[command]/usr/bin/docker create --name 14bf738085224cb7a697ff25df428881_postgres15alpine_b9a610 --label 996cb3 --network github_network_6df66755072047f8a95fff7e78fd91d1 --network-alias postgres -p 5432:5432 --health-cmd "pg_isready -U crucibai -d crucibai" --health-interval 10s --health-timeout 5s --health-retries 10 -e "POSTGRES_USER=crucibai" -e "POSTGRES_PASSWORD=crucibai" -e "POSTGRES_DB=crucibai" -e GITHUB_ACTIONS=true -e CI=true postgres:15-alpine
+2026-04-29T01:58:03.7061522Z fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:03.7082637Z ##[command]/usr/bin/docker start fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:03.8773349Z fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:03.8804166Z ##[command]/usr/bin/docker ps --all --filter id=fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-04-29T01:58:03.8937972Z fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4 Up Less than a second (health: starting)
+2026-04-29T01:58:03.8954298Z ##[command]/usr/bin/docker port fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:03.9085427Z 5432/tcp -> 0.0.0.0:5432
+2026-04-29T01:58:03.9086197Z 5432/tcp -> [::]:5432
+2026-04-29T01:58:03.9143744Z ##[endgroup]
+2026-04-29T01:58:03.9145782Z ##[group]Starting redis service container
+2026-04-29T01:58:03.9147722Z ##[command]/usr/bin/docker pull redis:7-alpine
+2026-04-29T01:58:04.1497202Z 7-alpine: Pulling from library/redis
+2026-04-29T01:58:04.2334793Z 897d797d2723: Pulling fs layer
+2026-04-29T01:58:04.2336014Z 1f0676652ae4: Pulling fs layer
+2026-04-29T01:58:04.2336526Z 51bf34b872a6: Pulling fs layer
+2026-04-29T01:58:04.2337365Z 9572acab3f32: Pulling fs layer
+2026-04-29T01:58:04.2337771Z 47836b8a3274: Pulling fs layer
+2026-04-29T01:58:04.2339120Z 2da9501c87e4: Pulling fs layer
+2026-04-29T01:58:04.2339965Z 4f4fb700ef54: Pulling fs layer
+2026-04-29T01:58:04.2340426Z 6447bc944d85: Pulling fs layer
+2026-04-29T01:58:04.2341169Z 9572acab3f32: Waiting
+2026-04-29T01:58:04.2342125Z 2da9501c87e4: Waiting
+2026-04-29T01:58:04.2342736Z 4f4fb700ef54: Waiting
+2026-04-29T01:58:04.2343171Z 6447bc944d85: Waiting
+2026-04-29T01:58:04.2345047Z 47836b8a3274: Waiting
+2026-04-29T01:58:04.3166393Z 1f0676652ae4: Verifying Checksum
+2026-04-29T01:58:04.3167257Z 1f0676652ae4: Download complete
+2026-04-29T01:58:04.3207519Z 51bf34b872a6: Verifying Checksum
+2026-04-29T01:58:04.3208620Z 51bf34b872a6: Download complete
+2026-04-29T01:58:04.3841648Z 897d797d2723: Verifying Checksum
+2026-04-29T01:58:04.3858284Z 897d797d2723: Download complete
+2026-04-29T01:58:04.4265972Z 9572acab3f32: Verifying Checksum
+2026-04-29T01:58:04.4267314Z 9572acab3f32: Download complete
+2026-04-29T01:58:04.4744005Z 2da9501c87e4: Download complete
+2026-04-29T01:58:04.5036346Z 4f4fb700ef54: Verifying Checksum
+2026-04-29T01:58:04.5037616Z 4f4fb700ef54: Download complete
+2026-04-29T01:58:04.5170643Z 47836b8a3274: Verifying Checksum
+2026-04-29T01:58:04.5171353Z 47836b8a3274: Download complete
+2026-04-29T01:58:04.5531148Z 897d797d2723: Pull complete
+2026-04-29T01:58:04.5656281Z 6447bc944d85: Verifying Checksum
+2026-04-29T01:58:04.5657267Z 6447bc944d85: Download complete
+2026-04-29T01:58:04.5894740Z 1f0676652ae4: Pull complete
+2026-04-29T01:58:04.7518268Z 51bf34b872a6: Pull complete
+2026-04-29T01:58:04.7837858Z 9572acab3f32: Pull complete
+2026-04-29T01:58:05.0315873Z 47836b8a3274: Pull complete
+2026-04-29T01:58:05.0489646Z 2da9501c87e4: Pull complete
+2026-04-29T01:58:05.0584517Z 4f4fb700ef54: Pull complete
+2026-04-29T01:58:05.0719862Z 6447bc944d85: Pull complete
+2026-04-29T01:58:05.0761104Z Digest: sha256:7aec734b2bb298a1d769fd8729f13b8514a41bf90fcdd1f38ec52267fbaa8ee6
+2026-04-29T01:58:05.0771428Z Status: Downloaded newer image for redis:7-alpine
+2026-04-29T01:58:05.0780673Z docker.io/library/redis:7-alpine
+2026-04-29T01:58:05.0799519Z ##[command]/usr/bin/docker create --name 73d44714734041b39b88bac6140360fc_redis7alpine_09a62b --label 996cb3 --network github_network_6df66755072047f8a95fff7e78fd91d1 --network-alias redis -p 6379:6379 --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 10 -e GITHUB_ACTIONS=true -e CI=true redis:7-alpine
+2026-04-29T01:58:05.1055360Z 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:58:05.1066685Z ##[command]/usr/bin/docker start 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:58:05.2588091Z 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:58:05.2604997Z ##[command]/usr/bin/docker ps --all --filter id=980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-04-29T01:58:05.2753038Z 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a Up Less than a second (health: starting)
+2026-04-29T01:58:05.2769255Z ##[command]/usr/bin/docker port 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:58:05.2920343Z 6379/tcp -> 0.0.0.0:6379
+2026-04-29T01:58:05.2920796Z 6379/tcp -> [::]:6379
+2026-04-29T01:58:05.2930578Z ##[endgroup]
+2026-04-29T01:58:05.2940136Z ##[group]Waiting for all services to be ready
+2026-04-29T01:58:05.2954456Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:05.3071226Z starting
+2026-04-29T01:58:05.3089187Z postgres service is starting, waiting 2 seconds before checking again.
+2026-04-29T01:58:07.3083513Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:07.3199964Z starting
+2026-04-29T01:58:07.3211288Z postgres service is starting, waiting 3 seconds before checking again.
+2026-04-29T01:58:11.1664592Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:11.1785054Z starting
+2026-04-29T01:58:11.1796755Z postgres service is starting, waiting 6 seconds before checking again.
+2026-04-29T01:58:18.0155024Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:58:18.0275060Z healthy
+2026-04-29T01:58:18.0290272Z postgres service is healthy.
+2026-04-29T01:58:18.0291072Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:58:18.0399412Z healthy
+2026-04-29T01:58:18.0411181Z redis service is healthy.
+2026-04-29T01:58:18.0411740Z ##[endgroup]
+2026-04-29T01:58:18.0662400Z ##[group]Run actions/checkout@v6
+2026-04-29T01:58:18.0663008Z with:
+2026-04-29T01:58:18.0663235Z   repository: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.0663649Z   token: ***
+2026-04-29T01:58:18.0663821Z   ssh-strict: true
+2026-04-29T01:58:18.0664009Z   ssh-user: git
+2026-04-29T01:58:18.0664191Z   persist-credentials: true
+2026-04-29T01:58:18.0664427Z   clean: true
+2026-04-29T01:58:18.0664626Z   sparse-checkout-cone-mode: true
+2026-04-29T01:58:18.0664859Z   fetch-depth: 1
+2026-04-29T01:58:18.0665037Z   fetch-tags: false
+2026-04-29T01:58:18.0665217Z   show-progress: true
+2026-04-29T01:58:18.0665402Z   lfs: false
+2026-04-29T01:58:18.0665560Z   submodules: false
+2026-04-29T01:58:18.0665748Z   set-safe-directory: true
+2026-04-29T01:58:18.0666126Z env:
+2026-04-29T01:58:18.0666289Z   REGISTRY: ghcr.io
+2026-04-29T01:58:18.0666510Z   IMAGE_NAME: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.0666782Z ##[endgroup]
+2026-04-29T01:58:18.1639462Z Syncing repository: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.1640720Z ##[group]Getting Git version info
+2026-04-29T01:58:18.1641160Z Working directory is '/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026'
+2026-04-29T01:58:18.1642056Z [command]/usr/bin/git version
+2026-04-29T01:58:18.1686220Z git version 2.53.0
+2026-04-29T01:58:18.1740843Z ##[endgroup]
+2026-04-29T01:58:18.1754368Z Temporarily overriding HOME='/home/runner/work/_temp/b5ff010d-4309-4ada-b9f5-3ff3ec5c82f3' before making global git config changes
+2026-04-29T01:58:18.1755308Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-29T01:58:18.1760192Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.1792894Z Deleting the contents of '/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026'
+2026-04-29T01:58:18.1796644Z ##[group]Initializing the repository
+2026-04-29T01:58:18.1801777Z [command]/usr/bin/git init /home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.1912101Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-29T01:58:18.1913517Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-29T01:58:18.1914513Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-29T01:58:18.1915396Z hint: call:
+2026-04-29T01:58:18.1915674Z hint:
+2026-04-29T01:58:18.1916073Z hint: 	git config --global init.defaultBranch <name>
+2026-04-29T01:58:18.1916433Z hint:
+2026-04-29T01:58:18.1916744Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-29T01:58:18.1917357Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-29T01:58:18.1918047Z hint:
+2026-04-29T01:58:18.1918399Z hint: 	git branch -m <name>
+2026-04-29T01:58:18.1918764Z hint:
+2026-04-29T01:58:18.1919189Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-29T01:58:18.1920202Z Initialized empty Git repository in /home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git/
+2026-04-29T01:58:18.1924584Z [command]/usr/bin/git remote add origin https://github.com/disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:18.1953772Z ##[endgroup]
+2026-04-29T01:58:18.1954211Z ##[group]Disabling automatic garbage collection
+2026-04-29T01:58:18.1957503Z [command]/usr/bin/git config --local gc.auto 0
+2026-04-29T01:58:18.1984118Z ##[endgroup]
+2026-04-29T01:58:18.1984490Z ##[group]Setting up auth
+2026-04-29T01:58:18.1985422Z Removing SSH command configuration
+2026-04-29T01:58:18.1990998Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-29T01:58:18.2020969Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-29T01:58:18.2331664Z Removing HTTP extra header
+2026-04-29T01:58:18.2337013Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-29T01:58:18.2366324Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-29T01:58:18.2576629Z Removing includeIf entries pointing to credentials config files
+2026-04-29T01:58:18.2582526Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-29T01:58:18.2612882Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-29T01:58:18.2831169Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-29T01:58:18.2867547Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git.path /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:58:18.2896200Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:58:18.2924235Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:58:18.2953828Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:58:18.2978432Z ##[endgroup]
+2026-04-29T01:58:18.2978797Z ##[group]Fetching the repository
+2026-04-29T01:58:18.2987239Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3744644b236581258daacacd9eab45905e13316b:refs/remotes/origin/main
+2026-04-29T01:58:19.1296734Z From https://github.com/disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:19.1297456Z  * [new ref]         3744644b236581258daacacd9eab45905e13316b -> origin/main
+2026-04-29T01:58:19.1329993Z [command]/usr/bin/git branch --list --remote origin/main
+2026-04-29T01:58:19.1353897Z   origin/main
+2026-04-29T01:58:19.1361757Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-04-29T01:58:19.1383963Z 3744644b236581258daacacd9eab45905e13316b
+2026-04-29T01:58:19.1388054Z ##[endgroup]
+2026-04-29T01:58:19.1388641Z ##[group]Determining the checkout info
+2026-04-29T01:58:19.1389409Z ##[endgroup]
+2026-04-29T01:58:19.1394196Z [command]/usr/bin/git sparse-checkout disable
+2026-04-29T01:58:19.1431587Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-29T01:58:19.1456884Z ##[group]Checking out the ref
+2026-04-29T01:58:19.1460223Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-04-29T01:58:19.4345153Z Switched to a new branch 'main'
+2026-04-29T01:58:19.4346020Z branch 'main' set up to track 'origin/main'.
+2026-04-29T01:58:19.4358513Z ##[endgroup]
+2026-04-29T01:58:19.4405246Z [command]/usr/bin/git log -1 --format=%H
+2026-04-29T01:58:19.4429320Z 3744644b236581258daacacd9eab45905e13316b
+2026-04-29T01:58:19.4649148Z ##[group]Run actions/setup-python@v6
+2026-04-29T01:58:19.4649430Z with:
+2026-04-29T01:58:19.4649610Z   python-version: 3.11
+2026-04-29T01:58:19.4649809Z   cache: pip
+2026-04-29T01:58:19.4650030Z   cache-dependency-path: backend/requirements.txt
+2026-04-29T01:58:19.4650315Z   check-latest: false
+2026-04-29T01:58:19.4650634Z   token: ***
+2026-04-29T01:58:19.4650816Z   update-environment: true
+2026-04-29T01:58:19.4651027Z   allow-prereleases: false
+2026-04-29T01:58:19.4651244Z   freethreaded: false
+2026-04-29T01:58:19.4651418Z env:
+2026-04-29T01:58:19.4651568Z   REGISTRY: ghcr.io
+2026-04-29T01:58:19.4651970Z   IMAGE_NAME: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:19.4652237Z ##[endgroup]
+2026-04-29T01:58:19.5915163Z ##[group]Installed versions
+2026-04-29T01:58:19.6043348Z Successfully set up CPython (3.11.15)
+2026-04-29T01:58:19.6044111Z ##[endgroup]
+2026-04-29T01:58:19.6318606Z [command]/opt/hostedtoolcache/Python/3.11.15/x64/bin/pip cache dir
+2026-04-29T01:58:19.9952931Z /home/runner/.cache/pip
+2026-04-29T01:58:20.0838990Z Cache hit for: setup-python-Linux-x64-24.04-Ubuntu-python-3.11.15-pip-b21bc93abc13dfec2a005bc3dee06107ee265d904c90348f6bddfa29218787c8
+2026-04-29T01:58:21.0891309Z Received 227336355 of 227336355 (100.0%), 225.4 MBs/sec
+2026-04-29T01:58:21.0893033Z Cache Size: ~217 MB (227336355 B)
+2026-04-29T01:58:21.1002291Z [command]/usr/bin/tar -xf /home/runner/work/_temp/429846ec-68ab-4bdc-8d97-f1a46dda02f3/cache.tzst -P -C /home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026 --use-compress-program unzstd
+2026-04-29T01:58:21.4978842Z Cache restored successfully
+2026-04-29T01:58:21.5078794Z Cache restored from key: setup-python-Linux-x64-24.04-Ubuntu-python-3.11.15-pip-b21bc93abc13dfec2a005bc3dee06107ee265d904c90348f6bddfa29218787c8
+2026-04-29T01:58:21.5239887Z ##[group]Run python -m pip install --upgrade pip
+2026-04-29T01:58:21.5240294Z [36;1mpython -m pip install --upgrade pip[0m
+2026-04-29T01:58:21.5240619Z [36;1mpip install -r backend/requirements.txt[0m
+2026-04-29T01:58:21.5270189Z shell: /usr/bin/bash -e {0}
+2026-04-29T01:58:21.5270454Z env:
+2026-04-29T01:58:21.5270626Z   REGISTRY: ghcr.io
+2026-04-29T01:58:21.5270859Z   IMAGE_NAME: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:21.5271224Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:21.5271712Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-29T01:58:21.5272438Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:21.5272789Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:21.5273150Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:21.5273502Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-29T01:58:21.5273831Z ##[endgroup]
+2026-04-29T01:58:22.0172822Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (26.0.1)
+2026-04-29T01:58:22.1195314Z Collecting pip
+2026-04-29T01:58:22.1223567Z   Using cached pip-26.1-py3-none-any.whl.metadata (4.6 kB)
+2026-04-29T01:58:22.1245633Z Using cached pip-26.1-py3-none-any.whl (1.8 MB)
+2026-04-29T01:58:22.1470163Z Installing collected packages: pip
+2026-04-29T01:58:22.1471550Z   Attempting uninstall: pip
+2026-04-29T01:58:22.1485672Z     Found existing installation: pip 26.0.1
+2026-04-29T01:58:22.2238027Z     Uninstalling pip-26.0.1:
+2026-04-29T01:58:22.2301057Z       Successfully uninstalled pip-26.0.1
+2026-04-29T01:58:23.0580003Z Successfully installed pip-26.1
+2026-04-29T01:58:23.5069850Z Collecting aiohappyeyeballs==2.6.1 (from -r backend/requirements.txt (line 2))
+2026-04-29T01:58:23.5086096Z   Using cached aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+2026-04-29T01:58:23.9651298Z Collecting aiohttp==3.13.3 (from -r backend/requirements.txt (line 3))
+2026-04-29T01:58:23.9674927Z   Using cached aiohttp-3.13.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+2026-04-29T01:58:23.9816735Z Collecting aiosignal==1.4.0 (from -r backend/requirements.txt (line 4))
+2026-04-29T01:58:23.9831044Z   Using cached aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+2026-04-29T01:58:23.9944601Z Collecting annotated-types==0.7.0 (from -r backend/requirements.txt (line 5))
+2026-04-29T01:58:23.9962830Z   Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+2026-04-29T01:58:24.0131601Z Collecting anyio==4.12.1 (from -r backend/requirements.txt (line 6))
+2026-04-29T01:58:24.0146344Z   Using cached anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+2026-04-29T01:58:24.0283896Z Collecting attrs==25.4.0 (from -r backend/requirements.txt (line 7))
+2026-04-29T01:58:24.0298030Z   Using cached attrs-25.4.0-py3-none-any.whl.metadata (10 kB)
+2026-04-29T01:58:24.0651517Z Collecting bcrypt==4.1.3 (from -r backend/requirements.txt (line 8))
+2026-04-29T01:58:24.0667236Z   Using cached bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl.metadata (9.5 kB)
+2026-04-29T01:58:24.1128543Z Collecting black==26.1.0 (from -r backend/requirements.txt (line 9))
+2026-04-29T01:58:24.1143017Z   Using cached black-26.1.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (88 kB)
+2026-04-29T01:58:24.3291493Z Collecting boto3==1.42.42 (from -r backend/requirements.txt (line 10))
+2026-04-29T01:58:24.3306430Z   Using cached boto3-1.42.42-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:24.5577194Z Collecting botocore==1.42.42 (from -r backend/requirements.txt (line 11))
+2026-04-29T01:58:24.5592492Z   Using cached botocore-1.42.42-py3-none-any.whl.metadata (5.9 kB)
+2026-04-29T01:58:24.5754650Z Collecting certifi==2026.1.4 (from -r backend/requirements.txt (line 12))
+2026-04-29T01:58:24.5768419Z   Using cached certifi-2026.1.4-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:24.6640535Z Collecting cffi==2.0.0 (from -r backend/requirements.txt (line 13))
+2026-04-29T01:58:24.6656187Z   Using cached cffi-2.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.6 kB)
+2026-04-29T01:58:24.7467059Z Collecting charset-normalizer==3.4.4 (from -r backend/requirements.txt (line 14))
+2026-04-29T01:58:24.7482344Z   Using cached charset_normalizer-3.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (37 kB)
+2026-04-29T01:58:24.7654596Z Collecting click==8.3.1 (from -r backend/requirements.txt (line 15))
+2026-04-29T01:58:24.7668333Z   Using cached click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:24.9457039Z Collecting cryptography==46.0.4 (from -r backend/requirements.txt (line 16))
+2026-04-29T01:58:24.9471988Z   Using cached cryptography-46.0.4-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+2026-04-29T01:58:24.9623043Z Collecting distro==1.9.0 (from -r backend/requirements.txt (line 17))
+2026-04-29T01:58:24.9636503Z   Using cached distro-1.9.0-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:24.9764907Z Collecting dnspython==2.8.0 (from -r backend/requirements.txt (line 18))
+2026-04-29T01:58:24.9778159Z   Using cached dnspython-2.8.0-py3-none-any.whl.metadata (5.7 kB)
+2026-04-29T01:58:24.9916225Z Collecting ecdsa==0.19.1 (from -r backend/requirements.txt (line 19))
+2026-04-29T01:58:24.9929361Z   Using cached ecdsa-0.19.1-py2.py3-none-any.whl.metadata (29 kB)
+2026-04-29T01:58:25.0067569Z Collecting email-validator==2.3.0 (from -r backend/requirements.txt (line 20))
+2026-04-29T01:58:25.0081795Z   Using cached email_validator-2.3.0-py3-none-any.whl.metadata (26 kB)
+2026-04-29T01:58:25.0407441Z Collecting fastapi==0.110.1 (from -r backend/requirements.txt (line 21))
+2026-04-29T01:58:25.0420228Z   Using cached fastapi-0.110.1-py3-none-any.whl.metadata (24 kB)
+2026-04-29T01:58:25.0715300Z Collecting fastuuid==0.14.0 (from -r backend/requirements.txt (line 22))
+2026-04-29T01:58:25.0729482Z   Using cached fastuuid-0.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.1 kB)
+2026-04-29T01:58:25.0899206Z Collecting filelock==3.20.3 (from -r backend/requirements.txt (line 23))
+2026-04-29T01:58:25.0912471Z   Using cached filelock-3.20.3-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:25.1081640Z Collecting flake8==7.3.0 (from -r backend/requirements.txt (line 24))
+2026-04-29T01:58:25.1095144Z   Using cached flake8-7.3.0-py2.py3-none-any.whl.metadata (3.8 kB)
+2026-04-29T01:58:25.1683298Z Collecting frozenlist==1.8.0 (from -r backend/requirements.txt (line 25))
+2026-04-29T01:58:25.1698606Z   Using cached frozenlist-1.8.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (20 kB)
+2026-04-29T01:58:25.1898050Z Collecting fsspec==2026.1.0 (from -r backend/requirements.txt (line 26))
+2026-04-29T01:58:25.1911349Z   Using cached fsspec-2026.1.0-py3-none-any.whl.metadata (10 kB)
+2026-04-29T01:58:25.2185384Z Collecting google-ai-generativelanguage==0.6.15 (from -r backend/requirements.txt (line 27))
+2026-04-29T01:58:25.2198768Z   Using cached google_ai_generativelanguage-0.6.15-py3-none-any.whl.metadata (5.7 kB)
+2026-04-29T01:58:25.2431934Z Collecting google-api-core==2.29.0 (from -r backend/requirements.txt (line 28))
+2026-04-29T01:58:25.2446162Z   Using cached google_api_core-2.29.0-py3-none-any.whl.metadata (3.3 kB)
+2026-04-29T01:58:25.2831727Z Collecting google-api-python-client==2.189.0 (from -r backend/requirements.txt (line 29))
+2026-04-29T01:58:25.2845148Z   Using cached google_api_python_client-2.189.0-py3-none-any.whl.metadata (7.0 kB)
+2026-04-29T01:58:25.3183030Z Collecting google-auth==2.49.0.dev0 (from -r backend/requirements.txt (line 30))
+2026-04-29T01:58:25.3203493Z   Using cached google_auth-2.49.0.dev0-py3-none-any.whl.metadata (6.0 kB)
+2026-04-29T01:58:25.3380717Z Collecting google-auth-httplib2==0.3.0 (from -r backend/requirements.txt (line 31))
+2026-04-29T01:58:25.3397176Z   Using cached google_auth_httplib2-0.3.0-py3-none-any.whl.metadata (3.1 kB)
+2026-04-29T01:58:25.3575630Z Collecting google-genai==1.62.0 (from -r backend/requirements.txt (line 32))
+2026-04-29T01:58:25.3588668Z   Using cached google_genai-1.62.0-py3-none-any.whl.metadata (53 kB)
+2026-04-29T01:58:25.3738413Z Collecting google-generativeai==0.8.6 (from -r backend/requirements.txt (line 33))
+2026-04-29T01:58:25.3752529Z   Using cached google_generativeai-0.8.6-py3-none-any.whl.metadata (3.9 kB)
+2026-04-29T01:58:25.3909971Z Collecting googleapis-common-protos==1.72.0 (from -r backend/requirements.txt (line 34))
+2026-04-29T01:58:25.3924366Z   Using cached googleapis_common_protos-1.72.0-py3-none-any.whl.metadata (9.4 kB)
+2026-04-29T01:58:25.8294764Z Collecting grpcio==1.76.0 (from -r backend/requirements.txt (line 35))
+2026-04-29T01:58:25.8310215Z   Using cached grpcio-1.76.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.7 kB)
+2026-04-29T01:58:25.8867891Z Collecting grpcio-status==1.71.2 (from -r backend/requirements.txt (line 36))
+2026-04-29T01:58:25.8881860Z   Using cached grpcio_status-1.71.2-py3-none-any.whl.metadata (1.1 kB)
+2026-04-29T01:58:25.9000859Z Collecting h11==0.16.0 (from -r backend/requirements.txt (line 37))
+2026-04-29T01:58:25.9014039Z   Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-04-29T01:58:25.9526334Z Collecting hf-xet==1.2.0 (from -r backend/requirements.txt (line 38))
+2026-04-29T01:58:25.9540035Z   Using cached hf_xet-1.2.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+2026-04-29T01:58:25.9695903Z Collecting httpcore==1.0.9 (from -r backend/requirements.txt (line 39))
+2026-04-29T01:58:25.9710230Z   Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-04-29T01:58:25.9861222Z Collecting httplib2==0.31.2 (from -r backend/requirements.txt (line 40))
+2026-04-29T01:58:25.9875045Z   Using cached httplib2-0.31.2-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:26.0035881Z Collecting httpx==0.28.1 (from -r backend/requirements.txt (line 41))
+2026-04-29T01:58:26.0049746Z   Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-04-29T01:58:26.0372494Z Collecting huggingface_hub==1.4.0 (from -r backend/requirements.txt (line 42))
+2026-04-29T01:58:26.0386291Z   Using cached huggingface_hub-1.4.0-py3-none-any.whl.metadata (13 kB)
+2026-04-29T01:58:26.0599748Z Collecting idna==3.11 (from -r backend/requirements.txt (line 43))
+2026-04-29T01:58:26.0613518Z   Using cached idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+2026-04-29T01:58:26.0820313Z Collecting importlib_metadata==8.5.0 (from -r backend/requirements.txt (line 45))
+2026-04-29T01:58:26.0834872Z   Using cached importlib_metadata-8.5.0-py3-none-any.whl.metadata (4.8 kB)
+2026-04-29T01:58:26.0960335Z Collecting iniconfig==2.3.0 (from -r backend/requirements.txt (line 46))
+2026-04-29T01:58:26.0974249Z   Using cached iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:26.1207986Z Collecting isort==7.0.0 (from -r backend/requirements.txt (line 47))
+2026-04-29T01:58:26.1227238Z   Using cached isort-7.0.0-py3-none-any.whl.metadata (11 kB)
+2026-04-29T01:58:26.1397451Z Collecting Jinja2==3.1.6 (from -r backend/requirements.txt (line 48))
+2026-04-29T01:58:26.1412897Z   Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+2026-04-29T01:58:26.2103273Z Collecting jiter==0.13.0 (from -r backend/requirements.txt (line 49))
+2026-04-29T01:58:26.2118632Z   Using cached jiter-0.13.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.2 kB)
+2026-04-29T01:58:26.2250143Z Collecting jmespath==1.1.0 (from -r backend/requirements.txt (line 50))
+2026-04-29T01:58:26.2263881Z   Using cached jmespath-1.1.0-py3-none-any.whl.metadata (7.6 kB)
+2026-04-29T01:58:26.3025128Z Collecting jq==1.11.0 (from -r backend/requirements.txt (line 51))
+2026-04-29T01:58:26.3040799Z   Using cached jq-1.11.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (7.0 kB)
+2026-04-29T01:58:26.3243783Z Collecting jsonschema==4.26.0 (from -r backend/requirements.txt (line 52))
+2026-04-29T01:58:26.3258556Z   Using cached jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+2026-04-29T01:58:26.3401436Z Collecting jsonschema-specifications==2025.9.1 (from -r backend/requirements.txt (line 53))
+2026-04-29T01:58:26.3416113Z   Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+2026-04-29T01:58:26.4305005Z Collecting librt==0.7.8 (from -r backend/requirements.txt (line 54))
+2026-04-29T01:58:26.4321538Z   Using cached librt-0.7.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-04-29T01:58:26.4462851Z Collecting markdown-it-py==4.0.0 (from -r backend/requirements.txt (line 55))
+2026-04-29T01:58:26.4477106Z   Using cached markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+2026-04-29T01:58:26.5603094Z Collecting MarkupSafe==3.0.3 (from -r backend/requirements.txt (line 56))
+2026-04-29T01:58:26.5620162Z   Using cached markupsafe-3.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+2026-04-29T01:58:26.5736999Z Collecting mccabe==0.7.0 (from -r backend/requirements.txt (line 57))
+2026-04-29T01:58:26.5751366Z   Using cached mccabe-0.7.0-py2.py3-none-any.whl.metadata (5.0 kB)
+2026-04-29T01:58:26.5866447Z Collecting mdurl==0.1.2 (from -r backend/requirements.txt (line 58))
+2026-04-29T01:58:26.5880362Z   Using cached mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-04-29T01:58:26.6017646Z Collecting motor==3.3.1 (from -r backend/requirements.txt (line 59))
+2026-04-29T01:58:26.6031475Z   Using cached motor-3.3.1-py3-none-any.whl.metadata (20 kB)
+2026-04-29T01:58:26.8116347Z Collecting multidict==6.7.1 (from -r backend/requirements.txt (line 60))
+2026-04-29T01:58:26.8133576Z   Using cached multidict-6.7.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+2026-04-29T01:58:26.8986634Z Collecting mypy==1.19.1 (from -r backend/requirements.txt (line 61))
+2026-04-29T01:58:26.9003301Z   Using cached mypy-1.19.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.2 kB)
+2026-04-29T01:58:26.9130451Z Collecting mypy_extensions==1.1.0 (from -r backend/requirements.txt (line 62))
+2026-04-29T01:58:26.9145137Z   Using cached mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-04-29T01:58:27.1382844Z Collecting numpy==2.4.2 (from -r backend/requirements.txt (line 63))
+2026-04-29T01:58:27.1400265Z   Using cached numpy-2.4.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-04-29T01:58:27.1539351Z Collecting oauthlib==3.3.1 (from -r backend/requirements.txt (line 64))
+2026-04-29T01:58:27.1554310Z   Using cached oauthlib-3.3.1-py3-none-any.whl.metadata (7.9 kB)
+2026-04-29T01:58:27.1996098Z Collecting openai==1.99.9 (from -r backend/requirements.txt (line 65))
+2026-04-29T01:58:27.2011646Z   Using cached openai-1.99.9-py3-none-any.whl.metadata (29 kB)
+2026-04-29T01:58:27.2297944Z Collecting anthropic>=0.39.0 (from -r backend/requirements.txt (line 66))
+2026-04-29T01:58:27.2312107Z   Using cached anthropic-0.97.0-py3-none-any.whl.metadata (3.1 kB)
+2026-04-29T01:58:27.2439511Z Collecting docstring_parser>=0.15 (from -r backend/requirements.txt (line 67))
+2026-04-29T01:58:27.2453475Z   Using cached docstring_parser-0.18.0-py3-none-any.whl.metadata (3.5 kB)
+2026-04-29T01:58:27.2600683Z Collecting packaging==26.0 (from -r backend/requirements.txt (line 68))
+2026-04-29T01:58:27.2614930Z   Using cached packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+2026-04-29T01:58:27.3638134Z Collecting pandas==3.0.0 (from -r backend/requirements.txt (line 69))
+2026-04-29T01:58:27.3654714Z   Using cached pandas-3.0.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (79 kB)
+2026-04-29T01:58:27.3997646Z Collecting passlib==1.7.4 (from -r backend/requirements.txt (line 70))
+2026-04-29T01:58:27.4012276Z   Using cached passlib-1.7.4-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:27.4142582Z Collecting pathspec==1.0.4 (from -r backend/requirements.txt (line 71))
+2026-04-29T01:58:27.4156949Z   Using cached pathspec-1.0.4-py3-none-any.whl.metadata (13 kB)
+2026-04-29T01:58:27.5688763Z Collecting pillow==12.1.0 (from -r backend/requirements.txt (line 72))
+2026-04-29T01:58:27.5705154Z   Using cached pillow-12.1.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (8.8 kB)
+2026-04-29T01:58:27.5891016Z Collecting platformdirs==4.5.1 (from -r backend/requirements.txt (line 73))
+2026-04-29T01:58:27.5904852Z   Using cached platformdirs-4.5.1-py3-none-any.whl.metadata (12 kB)
+2026-04-29T01:58:27.6041310Z Collecting pluggy==1.6.0 (from -r backend/requirements.txt (line 74))
+2026-04-29T01:58:27.6055771Z   Using cached pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+2026-04-29T01:58:27.6536107Z Collecting propcache==0.4.1 (from -r backend/requirements.txt (line 75))
+2026-04-29T01:58:27.6550376Z   Using cached propcache-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (13 kB)
+2026-04-29T01:58:27.6712640Z Collecting proto-plus==1.27.1 (from -r backend/requirements.txt (line 76))
+2026-04-29T01:58:27.6726171Z   Using cached proto_plus-1.27.1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:27.8626152Z Collecting protobuf==5.29.6 (from -r backend/requirements.txt (line 77))
+2026-04-29T01:58:27.8641752Z   Using cached protobuf-5.29.6-cp38-abi3-manylinux2014_x86_64.whl.metadata (592 bytes)
+2026-04-29T01:58:27.8840275Z Collecting pyasn1==0.6.2 (from -r backend/requirements.txt (line 78))
+2026-04-29T01:58:27.8854025Z   Using cached pyasn1-0.6.2-py3-none-any.whl.metadata (8.4 kB)
+2026-04-29T01:58:27.9032148Z Collecting pyasn1_modules==0.4.2 (from -r backend/requirements.txt (line 79))
+2026-04-29T01:58:27.9045785Z   Using cached pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+2026-04-29T01:58:27.9167265Z Collecting pycodestyle==2.14.0 (from -r backend/requirements.txt (line 80))
+2026-04-29T01:58:27.9180457Z   Using cached pycodestyle-2.14.0-py2.py3-none-any.whl.metadata (4.5 kB)
+2026-04-29T01:58:27.9297366Z Collecting pycparser==3.0 (from -r backend/requirements.txt (line 81))
+2026-04-29T01:58:27.9310802Z   Using cached pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+2026-04-29T01:58:27.9456507Z Collecting openpyxl==3.1.5 (from -r backend/requirements.txt (line 82))
+2026-04-29T01:58:27.9470259Z   Using cached openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:28.0422713Z Collecting pydantic==2.12.5 (from -r backend/requirements.txt (line 83))
+2026-04-29T01:58:28.0437962Z   Using cached pydantic-2.12.5-py3-none-any.whl.metadata (90 kB)
+2026-04-29T01:58:28.1394282Z Collecting reportlab==4.2.5 (from -r backend/requirements.txt (line 84))
+2026-04-29T01:58:28.1408887Z   Using cached reportlab-4.2.5-py3-none-any.whl.metadata (1.5 kB)
+2026-04-29T01:58:28.7665029Z Collecting pydantic_core==2.41.5 (from -r backend/requirements.txt (line 85))
+2026-04-29T01:58:28.7681235Z   Using cached pydantic_core-2.41.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.3 kB)
+2026-04-29T01:58:28.7822514Z Collecting pyflakes==3.4.0 (from -r backend/requirements.txt (line 86))
+2026-04-29T01:58:28.7836723Z   Using cached pyflakes-3.4.0-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-04-29T01:58:28.8033575Z Collecting Pygments==2.19.2 (from -r backend/requirements.txt (line 87))
+2026-04-29T01:58:28.8047949Z   Using cached pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:28.8207527Z Collecting PyJWT==2.11.0 (from -r backend/requirements.txt (line 88))
+2026-04-29T01:58:28.8221214Z   Using cached pyjwt-2.11.0-py3-none-any.whl.metadata (4.0 kB)
+2026-04-29T01:58:29.1443267Z Collecting pymongo==4.5.0 (from -r backend/requirements.txt (line 89))
+2026-04-29T01:58:29.1458966Z   Using cached pymongo-4.5.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (22 kB)
+2026-04-29T01:58:29.1715921Z Collecting pyparsing==3.3.2 (from -r backend/requirements.txt (line 90))
+2026-04-29T01:58:29.1729807Z   Using cached pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+2026-04-29T01:58:29.1970964Z Collecting pytest==8.4.1 (from -r backend/requirements.txt (line 91))
+2026-04-29T01:58:29.1984483Z   Using cached pytest-8.4.1-py3-none-any.whl.metadata (7.7 kB)
+2026-04-29T01:58:29.2154642Z Collecting pytest-asyncio==0.24.0 (from -r backend/requirements.txt (line 92))
+2026-04-29T01:58:29.2167705Z   Using cached pytest_asyncio-0.24.0-py3-none-any.whl.metadata (3.9 kB)
+2026-04-29T01:58:29.2308088Z Collecting pytest-cov==6.0.0 (from -r backend/requirements.txt (line 93))
+2026-04-29T01:58:29.2321763Z   Using cached pytest_cov-6.0.0-py3-none-any.whl.metadata (27 kB)
+2026-04-29T01:58:29.2465356Z Collecting python-dateutil==2.9.0.post0 (from -r backend/requirements.txt (line 94))
+2026-04-29T01:58:29.2478610Z   Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-04-29T01:58:29.2623707Z Collecting python-dotenv==1.2.1 (from -r backend/requirements.txt (line 95))
+2026-04-29T01:58:29.2636655Z   Using cached python_dotenv-1.2.1-py3-none-any.whl.metadata (25 kB)
+2026-04-29T01:58:29.2776718Z Collecting python-json-logger==2.0.7 (from -r backend/requirements.txt (line 96))
+2026-04-29T01:58:29.2789742Z   Using cached python_json_logger-2.0.7-py3-none-any.whl.metadata (6.5 kB)
+2026-04-29T01:58:29.2915334Z Collecting python-jose==3.5.0 (from -r backend/requirements.txt (line 97))
+2026-04-29T01:58:29.2929159Z   Using cached python_jose-3.5.0-py2.py3-none-any.whl.metadata (5.5 kB)
+2026-04-29T01:58:29.3075783Z Collecting python-multipart==0.0.22 (from -r backend/requirements.txt (line 98))
+2026-04-29T01:58:29.3088928Z   Using cached python_multipart-0.0.22-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:29.3237880Z Collecting pytokens==0.4.1 (from -r backend/requirements.txt (line 99))
+2026-04-29T01:58:29.3251401Z   Using cached pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-04-29T01:58:29.3588117Z Collecting PyYAML==6.0.3 (from -r backend/requirements.txt (line 100))
+2026-04-29T01:58:29.3602290Z   Using cached pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-04-29T01:58:29.3793754Z Collecting referencing==0.37.0 (from -r backend/requirements.txt (line 101))
+2026-04-29T01:58:29.3806907Z   Using cached referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+2026-04-29T01:58:29.6770621Z Collecting regex==2026.1.15 (from -r backend/requirements.txt (line 102))
+2026-04-29T01:58:29.6788313Z   Using cached regex-2026.1.15-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-04-29T01:58:29.6998054Z Collecting requests==2.32.5 (from -r backend/requirements.txt (line 103))
+2026-04-29T01:58:29.7012323Z   Using cached requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+2026-04-29T01:58:29.7309415Z Collecting requests-oauthlib==2.0.0 (from -r backend/requirements.txt (line 104))
+2026-04-29T01:58:29.7323655Z   Using cached requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+2026-04-29T01:58:29.7593558Z Collecting rich==14.3.2 (from -r backend/requirements.txt (line 105))
+2026-04-29T01:58:29.7607264Z   Using cached rich-14.3.2-py3-none-any.whl.metadata (18 kB)
+2026-04-29T01:58:30.0522609Z Collecting rpds-py==0.30.0 (from -r backend/requirements.txt (line 106))
+2026-04-29T01:58:30.0538566Z   Using cached rpds_py-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+2026-04-29T01:58:30.0674948Z Collecting rsa==4.9.1 (from -r backend/requirements.txt (line 107))
+2026-04-29T01:58:30.0688961Z   Using cached rsa-4.9.1-py3-none-any.whl.metadata (5.6 kB)
+2026-04-29T01:58:30.0838842Z Collecting s3transfer==0.16.0 (from -r backend/requirements.txt (line 108))
+2026-04-29T01:58:30.0852510Z   Using cached s3transfer-0.16.0-py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:30.1042533Z Collecting s5cmd==0.2.0 (from -r backend/requirements.txt (line 109))
+2026-04-29T01:58:30.1057020Z   Using cached s5cmd-0.2.0-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.7 kB)
+2026-04-29T01:58:30.1196499Z Collecting shellingham==1.5.4 (from -r backend/requirements.txt (line 110))
+2026-04-29T01:58:30.1210468Z   Using cached shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-04-29T01:58:30.1369074Z Collecting six==1.17.0 (from -r backend/requirements.txt (line 111))
+2026-04-29T01:58:30.1383967Z   Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:30.1492047Z Collecting sniffio==1.3.1 (from -r backend/requirements.txt (line 112))
+2026-04-29T01:58:30.1506234Z   Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+2026-04-29T01:58:30.1730986Z Collecting starlette==0.37.2 (from -r backend/requirements.txt (line 113))
+2026-04-29T01:58:30.1744971Z   Using cached starlette-0.37.2-py3-none-any.whl.metadata (5.9 kB)
+2026-04-29T01:58:30.2007561Z Collecting together>=1.0.0 (from -r backend/requirements.txt (line 114))
+2026-04-29T01:58:30.2972900Z   Downloading together-2.11.0-py3-none-any.whl.metadata (22 kB)
+2026-04-29T01:58:30.3185756Z Collecting pyotp==2.9.0 (from -r backend/requirements.txt (line 115))
+2026-04-29T01:58:30.3199368Z   Using cached pyotp-2.9.0-py3-none-any.whl.metadata (9.8 kB)
+2026-04-29T01:58:30.3322092Z Collecting qrcode==7.4.2 (from qrcode[pil]==7.4.2->-r backend/requirements.txt (line 116))
+2026-04-29T01:58:30.3335880Z   Using cached qrcode-7.4.2-py3-none-any.whl.metadata (17 kB)
+2026-04-29T01:58:30.3494458Z Collecting pypng>=0.20220715.0 (from -r backend/requirements.txt (line 117))
+2026-04-29T01:58:30.3507989Z   Using cached pypng-0.20220715.0-py3-none-any.whl.metadata (13 kB)
+2026-04-29T01:58:30.3652988Z Collecting tenacity==9.1.2 (from -r backend/requirements.txt (line 118))
+2026-04-29T01:58:30.3667668Z   Using cached tenacity-9.1.2-py3-none-any.whl.metadata (1.2 kB)
+2026-04-29T01:58:30.3992225Z Collecting tiktoken==0.12.0 (from -r backend/requirements.txt (line 119))
+2026-04-29T01:58:30.4006231Z   Using cached tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl.metadata (6.7 kB)
+2026-04-29T01:58:30.5361604Z Collecting tokenizers==0.22.2 (from -r backend/requirements.txt (line 120))
+2026-04-29T01:58:30.5378468Z   Using cached tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.3 kB)
+2026-04-29T01:58:30.5616983Z Collecting tqdm==4.67.3 (from -r backend/requirements.txt (line 121))
+2026-04-29T01:58:30.5631223Z   Using cached tqdm-4.67.3-py3-none-any.whl.metadata (57 kB)
+2026-04-29T01:58:30.5835734Z Collecting typer==0.21.1 (from -r backend/requirements.txt (line 122))
+2026-04-29T01:58:30.5849579Z   Using cached typer-0.21.1-py3-none-any.whl.metadata (16 kB)
+2026-04-29T01:58:30.5998296Z Collecting typer-slim==0.21.1 (from -r backend/requirements.txt (line 123))
+2026-04-29T01:58:30.6011964Z   Using cached typer_slim-0.21.1-py3-none-any.whl.metadata (16 kB)
+2026-04-29T01:58:30.6152717Z Collecting typing-inspection==0.4.2 (from -r backend/requirements.txt (line 124))
+2026-04-29T01:58:30.6168442Z   Using cached typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:30.6319020Z Collecting typing_extensions==4.15.0 (from -r backend/requirements.txt (line 125))
+2026-04-29T01:58:30.6333502Z   Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+2026-04-29T01:58:30.6465995Z Collecting tzdata==2025.3 (from -r backend/requirements.txt (line 126))
+2026-04-29T01:58:30.6479749Z   Using cached tzdata-2025.3-py2.py3-none-any.whl.metadata (1.4 kB)
+2026-04-29T01:58:30.6612379Z Collecting uritemplate==4.2.0 (from -r backend/requirements.txt (line 127))
+2026-04-29T01:58:30.6626441Z   Using cached uritemplate-4.2.0-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:30.6800077Z Collecting urllib3==2.6.3 (from -r backend/requirements.txt (line 128))
+2026-04-29T01:58:30.6813914Z   Using cached urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+2026-04-29T01:58:30.7018895Z Collecting uvicorn==0.25.0 (from -r backend/requirements.txt (line 129))
+2026-04-29T01:58:30.7032563Z   Using cached uvicorn-0.25.0-py3-none-any.whl.metadata (6.4 kB)
+2026-04-29T01:58:30.7798342Z Collecting watchfiles==1.1.1 (from -r backend/requirements.txt (line 130))
+2026-04-29T01:58:30.7812644Z   Using cached watchfiles-1.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+2026-04-29T01:58:30.8505809Z Collecting websockets==15.0.1 (from -r backend/requirements.txt (line 131))
+2026-04-29T01:58:30.8520394Z   Using cached websockets-15.0.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+2026-04-29T01:58:31.1604448Z Collecting yarl==1.22.0 (from -r backend/requirements.txt (line 132))
+2026-04-29T01:58:31.1620659Z   Using cached yarl-1.22.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (75 kB)
+2026-04-29T01:58:31.1859314Z Collecting zipp==3.23.0 (from -r backend/requirements.txt (line 133))
+2026-04-29T01:58:31.1875880Z   Using cached zipp-3.23.0-py3-none-any.whl.metadata (3.6 kB)
+2026-04-29T01:58:31.2061142Z Collecting croniter==2.0.2 (from -r backend/requirements.txt (line 135))
+2026-04-29T01:58:31.2075905Z   Using cached croniter-2.0.2-py2.py3-none-any.whl.metadata (24 kB)
+2026-04-29T01:58:31.2275145Z Collecting tavily-python>=0.5.0 (from -r backend/requirements.txt (line 137))
+2026-04-29T01:58:31.2352126Z   Downloading tavily_python-0.7.24-py3-none-any.whl.metadata (11 kB)
+2026-04-29T01:58:31.2571510Z Collecting pypdf>=5.0.0 (from -r backend/requirements.txt (line 139))
+2026-04-29T01:58:31.2585357Z   Using cached pypdf-6.10.2-py3-none-any.whl.metadata (7.1 kB)
+2026-04-29T01:58:31.2919224Z Collecting playwright==1.49.1 (from -r backend/requirements.txt (line 141))
+2026-04-29T01:58:31.2933245Z   Using cached playwright-1.49.1-py3-none-manylinux1_x86_64.whl.metadata (3.5 kB)
+2026-04-29T01:58:31.3302895Z Collecting asyncpg==0.30.0 (from -r backend/requirements.txt (line 142))
+2026-04-29T01:58:31.3316607Z   Using cached asyncpg-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.0 kB)
+2026-04-29T01:58:31.3448046Z Collecting aiomysql==0.2.0 (from -r backend/requirements.txt (line 143))
+2026-04-29T01:58:31.3461228Z   Using cached aiomysql-0.2.0-py3-none-any.whl.metadata (11 kB)
+2026-04-29T01:58:31.3591081Z Collecting aiosqlite==0.20.0 (from -r backend/requirements.txt (line 144))
+2026-04-29T01:58:31.3604341Z   Using cached aiosqlite-0.20.0-py3-none-any.whl.metadata (4.3 kB)
+2026-04-29T01:58:31.3762978Z Collecting prometheus-client==0.21.1 (from -r backend/requirements.txt (line 145))
+2026-04-29T01:58:31.3776133Z   Using cached prometheus_client-0.21.1-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:31.3953591Z Collecting opentelemetry-api==1.28.0 (from -r backend/requirements.txt (line 146))
+2026-04-29T01:58:31.3967430Z   Using cached opentelemetry_api-1.28.0-py3-none-any.whl.metadata (1.4 kB)
+2026-04-29T01:58:31.4131326Z Collecting opentelemetry-sdk==1.28.0 (from -r backend/requirements.txt (line 147))
+2026-04-29T01:58:31.4144828Z   Using cached opentelemetry_sdk-1.28.0-py3-none-any.whl.metadata (1.5 kB)
+2026-04-29T01:58:31.4375057Z Collecting redis>=5.0.0 (from -r backend/requirements.txt (line 148))
+2026-04-29T01:58:31.4388825Z   Using cached redis-7.4.0-py3-none-any.whl.metadata (12 kB)
+2026-04-29T01:58:31.4611944Z Collecting braintree==4.42.0 (from -r backend/requirements.txt (line 149))
+2026-04-29T01:58:31.4625370Z   Using cached braintree-4.42.0-py2.py3-none-any.whl.metadata (1.0 kB)
+2026-04-29T01:58:31.4901134Z Collecting chromadb<0.6.0,>=0.5.0 (from -r backend/requirements.txt (line 155))
+2026-04-29T01:58:31.4913870Z   Using cached chromadb-0.5.23-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:31.5075205Z Collecting beautifulsoup4>=4.12.0 (from -r backend/requirements.txt (line 156))
+2026-04-29T01:58:31.5088630Z   Using cached beautifulsoup4-4.14.3-py3-none-any.whl.metadata (3.8 kB)
+2026-04-29T01:58:31.7224173Z Collecting et-xmlfile (from openpyxl==3.1.5->-r backend/requirements.txt (line 82))
+2026-04-29T01:58:31.7237956Z   Using cached et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-04-29T01:58:31.7522189Z Collecting chardet (from reportlab==4.2.5->-r backend/requirements.txt (line 84))
+2026-04-29T01:58:31.7537318Z   Using cached chardet-7.4.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (9.4 kB)
+2026-04-29T01:58:32.0738386Z Collecting coverage>=7.5 (from coverage[toml]>=7.5->pytest-cov==6.0.0->-r backend/requirements.txt (line 93))
+2026-04-29T01:58:32.0754879Z   Using cached coverage-7.13.5-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.5 kB)
+2026-04-29T01:58:32.1553336Z Collecting pytz>2021.1 (from croniter==2.0.2->-r backend/requirements.txt (line 135))
+2026-04-29T01:58:32.1567109Z   Using cached pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+2026-04-29T01:58:32.3805892Z Collecting greenlet==3.1.1 (from playwright==1.49.1->-r backend/requirements.txt (line 141))
+2026-04-29T01:58:32.3821981Z   Using cached greenlet-3.1.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-04-29T01:58:32.3972116Z Collecting pyee==12.0.0 (from playwright==1.49.1->-r backend/requirements.txt (line 141))
+2026-04-29T01:58:32.3985797Z   Using cached pyee-12.0.0-py3-none-any.whl.metadata (2.8 kB)
+2026-04-29T01:58:32.4161379Z Collecting PyMySQL>=1.0 (from aiomysql==0.2.0->-r backend/requirements.txt (line 143))
+2026-04-29T01:58:32.4175446Z   Using cached pymysql-1.1.2-py3-none-any.whl.metadata (4.3 kB)
+2026-04-29T01:58:32.4352011Z Collecting deprecated>=1.2.6 (from opentelemetry-api==1.28.0->-r backend/requirements.txt (line 146))
+2026-04-29T01:58:32.4366124Z   Using cached deprecated-1.3.1-py2.py3-none-any.whl.metadata (5.9 kB)
+2026-04-29T01:58:32.4549301Z Collecting opentelemetry-semantic-conventions==0.49b0 (from opentelemetry-sdk==1.28.0->-r backend/requirements.txt (line 147))
+2026-04-29T01:58:32.4563004Z   Using cached opentelemetry_semantic_conventions-0.49b0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:32.4802072Z Collecting build>=1.0.3 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.4816024Z   Using cached build-1.4.4-py3-none-any.whl.metadata (5.8 kB)
+2026-04-29T01:58:32.5065921Z Collecting chroma-hnswlib==0.7.6 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.5079784Z   Using cached chroma_hnswlib-0.7.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (252 bytes)
+2026-04-29T01:58:32.5414341Z Collecting posthog>=2.4.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.5428045Z   Using cached posthog-7.13.1-py3-none-any.whl.metadata (4.6 kB)
+2026-04-29T01:58:32.6039446Z Collecting onnxruntime>=1.14.1 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.6130993Z   Downloading onnxruntime-1.25.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+2026-04-29T01:58:32.6332996Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.6347911Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.41.1-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:32.6536771Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.6550514Z   Using cached opentelemetry_instrumentation_fastapi-0.62b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:32.6576965Z INFO: pip is looking at multiple versions of chromadb to determine which version is compatible with other requirements. This could take a while.
+2026-04-29T01:58:32.6580969Z Collecting chromadb<0.6.0,>=0.5.0 (from -r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.6595025Z   Using cached chromadb-0.5.21-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:32.6640524Z   Using cached chromadb-0.5.20-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:32.6840117Z Collecting pypika>=0.48.9 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.6853895Z   Using cached pypika-0.51.1-py2.py3-none-any.whl.metadata (51 kB)
+2026-04-29T01:58:32.7137015Z Collecting overrides>=7.3.1 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.7150394Z   Using cached overrides-7.7.0-py3-none-any.whl.metadata (5.8 kB)
+2026-04-29T01:58:32.7346668Z Collecting importlib-resources (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.7360565Z   Using cached importlib_resources-7.1.0-py3-none-any.whl.metadata (4.0 kB)
+2026-04-29T01:58:32.7606264Z Collecting kubernetes>=28.1.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.7619885Z   Using cached kubernetes-35.0.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:32.8040473Z Collecting mmh3>=4.0.1 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:32.8055269Z   Using cached mmh3-5.2.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (14 kB)
+2026-04-29T01:58:33.0154427Z Collecting orjson>=3.9.12 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.0170760Z   Using cached orjson-3.11.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (41 kB)
+2026-04-29T01:58:33.0600664Z Collecting cyclopts>=4.6.0 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.0615037Z   Using cached cyclopts-4.11.0-py3-none-any.whl.metadata (12 kB)
+2026-04-29T01:58:33.0754213Z Collecting detect-agent>=0.2.0 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.0768123Z   Using cached detect_agent-0.2.0-py3-none-any.whl.metadata (3.2 kB)
+2026-04-29T01:58:33.0919255Z Collecting tabulate>=0.9.0 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.0933184Z   Using cached tabulate-0.10.0-py3-none-any.whl.metadata (40 kB)
+2026-04-29T01:58:33.1126646Z Collecting types-pyyaml>=6.0.12.20250915 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.1139713Z   Using cached types_pyyaml-6.0.12.20260408-py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:33.1256574Z Collecting types-tabulate>=0.9.0.20240106 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.1269495Z   Using cached types_tabulate-0.10.0.20260408-py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:33.1424784Z Collecting types-tqdm>=4.67.0.20250516 (from together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.1437922Z   Using cached types_tqdm-4.67.3.20260408-py3-none-any.whl.metadata (1.7 kB)
+2026-04-29T01:58:33.1676955Z Collecting soupsieve>=1.6.1 (from beautifulsoup4>=4.12.0->-r backend/requirements.txt (line 156))
+2026-04-29T01:58:33.1690120Z   Using cached soupsieve-2.8.3-py3-none-any.whl.metadata (4.6 kB)
+2026-04-29T01:58:33.1820789Z Collecting pyproject_hooks (from build>=1.0.3->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.1834298Z   Using cached pyproject_hooks-1.2.0-py3-none-any.whl.metadata (1.3 kB)
+2026-04-29T01:58:33.2015635Z Collecting rich-rst<2.0.0,>=1.3.1 (from cyclopts>=4.6.0->together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.2028728Z   Using cached rich_rst-1.3.2-py3-none-any.whl.metadata (6.1 kB)
+2026-04-29T01:58:33.2216055Z Collecting docutils (from rich-rst<2.0.0,>=1.3.1->cyclopts>=4.6.0->together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:33.2228910Z   Using cached docutils-0.22.4-py3-none-any.whl.metadata (15 kB)
+2026-04-29T01:58:33.4114372Z Collecting wrapt<3,>=1.10 (from deprecated>=1.2.6->opentelemetry-api==1.28.0->-r backend/requirements.txt (line 146))
+2026-04-29T01:58:33.4129856Z   Using cached wrapt-2.1.2-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (7.4 kB)
+2026-04-29T01:58:33.4378252Z Collecting websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0 (from kubernetes>=28.1.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.4391690Z   Using cached websocket_client-1.9.0-py3-none-any.whl.metadata (8.3 kB)
+2026-04-29T01:58:33.4519130Z Collecting durationpy>=0.7 (from kubernetes>=28.1.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.4531894Z   Using cached durationpy-0.10-py3-none-any.whl.metadata (340 bytes)
+2026-04-29T01:58:33.4700970Z Collecting flatbuffers (from onnxruntime>=1.14.1->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.4714360Z   Using cached flatbuffers-25.12.19-py2.py3-none-any.whl.metadata (1.0 kB)
+2026-04-29T01:58:33.4900795Z Collecting opentelemetry-exporter-otlp-proto-common==1.41.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.4914015Z   Using cached opentelemetry_exporter_otlp_proto_common-1.41.1-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.5075658Z Collecting opentelemetry-proto==1.41.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5088606Z   Using cached opentelemetry_proto-1.41.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5109027Z INFO: pip is looking at multiple versions of opentelemetry-exporter-otlp-proto-grpc to determine which version is compatible with other requirements. This could take a while.
+2026-04-29T01:58:33.5112682Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5126732Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.41.0-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:33.5152303Z Collecting opentelemetry-exporter-otlp-proto-common==1.41.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5165689Z   Using cached opentelemetry_exporter_otlp_proto_common-1.41.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.5183223Z Collecting opentelemetry-proto==1.41.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5196114Z   Using cached opentelemetry_proto-1.41.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5215271Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5228529Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.40.0-py3-none-any.whl.metadata (2.6 kB)
+2026-04-29T01:58:33.5253920Z Collecting opentelemetry-exporter-otlp-proto-common==1.40.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5266652Z   Using cached opentelemetry_exporter_otlp_proto_common-1.40.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.5284288Z Collecting opentelemetry-proto==1.40.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5297366Z   Using cached opentelemetry_proto-1.40.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5316156Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5329493Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.39.1-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.5355764Z Collecting opentelemetry-exporter-otlp-proto-common==1.39.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5368583Z   Using cached opentelemetry_exporter_otlp_proto_common-1.39.1-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5385771Z Collecting opentelemetry-proto==1.39.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5398456Z   Using cached opentelemetry_proto-1.39.1-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5417429Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5430411Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.39.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.5455223Z Collecting opentelemetry-exporter-otlp-proto-common==1.39.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5467961Z   Using cached opentelemetry_exporter_otlp_proto_common-1.39.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5485569Z Collecting opentelemetry-proto==1.39.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5498353Z   Using cached opentelemetry_proto-1.39.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5516966Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5529990Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.38.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5554643Z Collecting opentelemetry-exporter-otlp-proto-common==1.38.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5567639Z   Using cached opentelemetry_exporter_otlp_proto_common-1.38.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5585594Z Collecting opentelemetry-proto==1.38.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5598387Z   Using cached opentelemetry_proto-1.38.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5617215Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5630473Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.37.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5655042Z Collecting opentelemetry-exporter-otlp-proto-common==1.37.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5668270Z   Using cached opentelemetry_exporter_otlp_proto_common-1.37.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5686429Z Collecting opentelemetry-proto==1.37.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5705711Z   Using cached opentelemetry_proto-1.37.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5724801Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5738089Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.36.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5762647Z Collecting opentelemetry-exporter-otlp-proto-common==1.36.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5776336Z   Using cached opentelemetry_exporter_otlp_proto_common-1.36.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5793778Z Collecting opentelemetry-proto==1.36.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5807324Z   Using cached opentelemetry_proto-1.36.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5824876Z INFO: pip is still looking at multiple versions of opentelemetry-exporter-otlp-proto-grpc to determine which version is compatible with other requirements. This could take a while.
+2026-04-29T01:58:33.5828369Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5841633Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.35.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5867860Z Collecting opentelemetry-exporter-otlp-proto-common==1.35.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5880554Z   Using cached opentelemetry_exporter_otlp_proto_common-1.35.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.5897835Z Collecting opentelemetry-proto==1.35.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5910854Z   Using cached opentelemetry_proto-1.35.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.5930051Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5943313Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.34.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.5973262Z Collecting opentelemetry-exporter-otlp-proto-common==1.34.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.5986239Z   Using cached opentelemetry_exporter_otlp_proto_common-1.34.1-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6004138Z Collecting opentelemetry-proto==1.34.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6017453Z   Using cached opentelemetry_proto-1.34.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6036560Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6049802Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.34.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6074840Z Collecting opentelemetry-exporter-otlp-proto-common==1.34.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6087784Z   Using cached opentelemetry_exporter_otlp_proto_common-1.34.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6107414Z Collecting opentelemetry-proto==1.34.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6129468Z   Using cached opentelemetry_proto-1.34.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6148192Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6161511Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.33.1-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6187614Z Collecting opentelemetry-exporter-otlp-proto-common==1.33.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6200529Z   Using cached opentelemetry_exporter_otlp_proto_common-1.33.1-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6218016Z Collecting opentelemetry-proto==1.33.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6231168Z   Using cached opentelemetry_proto-1.33.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6250610Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6264562Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.33.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6289994Z Collecting opentelemetry-exporter-otlp-proto-common==1.33.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6303410Z   Using cached opentelemetry_exporter_otlp_proto_common-1.33.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6320782Z Collecting opentelemetry-proto==1.33.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6334540Z   Using cached opentelemetry_proto-1.33.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6353033Z INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warnings/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+2026-04-29T01:58:33.6356134Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6369538Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.32.1-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6395288Z Collecting opentelemetry-exporter-otlp-proto-common==1.32.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6408197Z   Using cached opentelemetry_exporter_otlp_proto_common-1.32.1-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6426045Z Collecting opentelemetry-proto==1.32.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6438961Z   Using cached opentelemetry_proto-1.32.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6457686Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6471002Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.32.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6497417Z Collecting opentelemetry-exporter-otlp-proto-common==1.32.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6510291Z   Using cached opentelemetry_exporter_otlp_proto_common-1.32.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6528033Z Collecting opentelemetry-proto==1.32.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6541159Z   Using cached opentelemetry_proto-1.32.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6560396Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6574207Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.31.1-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6600764Z Collecting opentelemetry-exporter-otlp-proto-common==1.31.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6614167Z   Using cached opentelemetry_exporter_otlp_proto_common-1.31.1-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6631702Z Collecting opentelemetry-proto==1.31.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6645200Z   Using cached opentelemetry_proto-1.31.1-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6664246Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6677746Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.31.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:33.6703705Z Collecting opentelemetry-exporter-otlp-proto-common==1.31.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6716739Z   Using cached opentelemetry_exporter_otlp_proto_common-1.31.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6734488Z Collecting opentelemetry-proto==1.31.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6747700Z   Using cached opentelemetry_proto-1.31.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6766736Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6780076Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.30.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6805216Z Collecting opentelemetry-exporter-otlp-proto-common==1.30.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6818155Z   Using cached opentelemetry_exporter_otlp_proto_common-1.30.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:33.6836826Z Collecting opentelemetry-proto==1.30.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6850078Z   Using cached opentelemetry_proto-1.30.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-29T01:58:33.6868952Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6882348Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.29.0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.6906756Z Collecting opentelemetry-exporter-otlp-proto-common==1.29.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6919725Z   Using cached opentelemetry_exporter_otlp_proto_common-1.29.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.6937375Z Collecting opentelemetry-proto==1.29.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6950580Z   Using cached opentelemetry_proto-1.29.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.6969484Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.6983051Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.28.2-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.7007053Z Collecting opentelemetry-exporter-otlp-proto-common==1.28.2 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7020036Z   Using cached opentelemetry_exporter_otlp_proto_common-1.28.2-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.7037486Z Collecting opentelemetry-proto==1.28.2 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7050641Z   Using cached opentelemetry_proto-1.28.2-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.7069201Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7082786Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.28.1-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.7109933Z Collecting opentelemetry-exporter-otlp-proto-common==1.28.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7122307Z   Using cached opentelemetry_exporter_otlp_proto_common-1.28.1-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.7139713Z Collecting opentelemetry-proto==1.28.1 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7152838Z   Using cached opentelemetry_proto-1.28.1-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.7171507Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7185051Z   Using cached opentelemetry_exporter_otlp_proto_grpc-1.28.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.7209253Z Collecting opentelemetry-exporter-otlp-proto-common==1.28.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7223007Z   Using cached opentelemetry_exporter_otlp_proto_common-1.28.0-py3-none-any.whl.metadata (1.8 kB)
+2026-04-29T01:58:33.7240135Z Collecting opentelemetry-proto==1.28.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7253593Z   Using cached opentelemetry_proto-1.28.0-py3-none-any.whl.metadata (2.3 kB)
+2026-04-29T01:58:33.7539960Z Collecting opentelemetry-instrumentation-asgi==0.62b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7553869Z   Using cached opentelemetry_instrumentation_asgi-0.62b1-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:33.7750582Z Collecting opentelemetry-instrumentation==0.62b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7768241Z   Using cached opentelemetry_instrumentation-0.62b1-py3-none-any.whl.metadata (7.2 kB)
+2026-04-29T01:58:33.7793388Z INFO: pip is looking at multiple versions of opentelemetry-instrumentation-fastapi to determine which version is compatible with other requirements. This could take a while.
+2026-04-29T01:58:33.7797125Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7810858Z   Using cached opentelemetry_instrumentation_fastapi-0.62b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.7834025Z Collecting opentelemetry-instrumentation-asgi==0.62b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7847095Z   Using cached opentelemetry_instrumentation_asgi-0.62b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:33.7866049Z Collecting opentelemetry-instrumentation==0.62b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7879078Z   Using cached opentelemetry_instrumentation-0.62b0-py3-none-any.whl.metadata (7.2 kB)
+2026-04-29T01:58:33.7900058Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7913596Z   Using cached opentelemetry_instrumentation_fastapi-0.61b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.7936717Z Collecting opentelemetry-instrumentation-asgi==0.61b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7949707Z   Using cached opentelemetry_instrumentation_asgi-0.61b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:33.7968037Z Collecting opentelemetry-instrumentation==0.61b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.7981023Z   Using cached opentelemetry_instrumentation-0.61b0-py3-none-any.whl.metadata (7.2 kB)
+2026-04-29T01:58:33.8002266Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8015785Z   Using cached opentelemetry_instrumentation_fastapi-0.60b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8037815Z Collecting opentelemetry-instrumentation-asgi==0.60b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8050853Z   Using cached opentelemetry_instrumentation_asgi-0.60b1-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8069077Z Collecting opentelemetry-instrumentation==0.60b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8082251Z   Using cached opentelemetry_instrumentation-0.60b1-py3-none-any.whl.metadata (7.2 kB)
+2026-04-29T01:58:33.8102679Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8118259Z   Using cached opentelemetry_instrumentation_fastapi-0.60b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8140163Z Collecting opentelemetry-instrumentation-asgi==0.60b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8153223Z   Using cached opentelemetry_instrumentation_asgi-0.60b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8170981Z Collecting opentelemetry-instrumentation==0.60b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8185325Z   Using cached opentelemetry_instrumentation-0.60b0-py3-none-any.whl.metadata (7.2 kB)
+2026-04-29T01:58:33.8205796Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8219348Z   Using cached opentelemetry_instrumentation_fastapi-0.59b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8241041Z Collecting opentelemetry-instrumentation-asgi==0.59b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8254382Z   Using cached opentelemetry_instrumentation_asgi-0.59b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8272282Z Collecting opentelemetry-instrumentation==0.59b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8285578Z   Using cached opentelemetry_instrumentation-0.59b0-py3-none-any.whl.metadata (7.1 kB)
+2026-04-29T01:58:33.8306231Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8319268Z   Using cached opentelemetry_instrumentation_fastapi-0.58b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8341504Z Collecting opentelemetry-instrumentation-asgi==0.58b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8354709Z   Using cached opentelemetry_instrumentation_asgi-0.58b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8372749Z Collecting opentelemetry-instrumentation==0.58b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8385830Z   Using cached opentelemetry_instrumentation-0.58b0-py3-none-any.whl.metadata (7.1 kB)
+2026-04-29T01:58:33.8406058Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8419209Z   Using cached opentelemetry_instrumentation_fastapi-0.57b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8441960Z Collecting opentelemetry-instrumentation-asgi==0.57b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8455214Z   Using cached opentelemetry_instrumentation_asgi-0.57b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8473780Z Collecting opentelemetry-instrumentation==0.57b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8486619Z   Using cached opentelemetry_instrumentation-0.57b0-py3-none-any.whl.metadata (6.7 kB)
+2026-04-29T01:58:33.8505194Z INFO: pip is still looking at multiple versions of opentelemetry-instrumentation-fastapi to determine which version is compatible with other requirements. This could take a while.
+2026-04-29T01:58:33.8508687Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8521858Z   Using cached opentelemetry_instrumentation_fastapi-0.56b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8544376Z Collecting opentelemetry-instrumentation-asgi==0.56b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8556776Z   Using cached opentelemetry_instrumentation_asgi-0.56b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8574831Z Collecting opentelemetry-instrumentation==0.56b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8587857Z   Using cached opentelemetry_instrumentation-0.56b0-py3-none-any.whl.metadata (6.7 kB)
+2026-04-29T01:58:33.8607908Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8621209Z   Using cached opentelemetry_instrumentation_fastapi-0.55b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8644527Z Collecting opentelemetry-instrumentation-asgi==0.55b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8656683Z   Using cached opentelemetry_instrumentation_asgi-0.55b1-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8674963Z Collecting opentelemetry-instrumentation==0.55b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8695705Z   Using cached opentelemetry_instrumentation-0.55b1-py3-none-any.whl.metadata (6.7 kB)
+2026-04-29T01:58:33.8715873Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8728962Z   Using cached opentelemetry_instrumentation_fastapi-0.55b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8750972Z Collecting opentelemetry-instrumentation-asgi==0.55b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8764265Z   Using cached opentelemetry_instrumentation_asgi-0.55b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:33.8782392Z Collecting opentelemetry-instrumentation==0.55b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8795304Z   Using cached opentelemetry_instrumentation-0.55b0-py3-none-any.whl.metadata (6.7 kB)
+2026-04-29T01:58:33.8815375Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8828470Z   Using cached opentelemetry_instrumentation_fastapi-0.54b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:33.8851293Z Collecting opentelemetry-instrumentation-asgi==0.54b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8864500Z   Using cached opentelemetry_instrumentation_asgi-0.54b1-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:33.8882732Z Collecting opentelemetry-instrumentation==0.54b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8895751Z   Using cached opentelemetry_instrumentation-0.54b1-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:33.8915987Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:33.8929115Z   Using cached opentelemetry_instrumentation_fastapi-0.54b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0394575Z Collecting opentelemetry-instrumentation-asgi==0.54b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0410789Z   Using cached opentelemetry_instrumentation_asgi-0.54b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0433619Z Collecting opentelemetry-instrumentation==0.54b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0447783Z   Using cached opentelemetry_instrumentation-0.54b0-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:34.0467920Z INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warnings/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+2026-04-29T01:58:34.0471249Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0485453Z   Using cached opentelemetry_instrumentation_fastapi-0.53b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0509294Z Collecting opentelemetry-instrumentation-asgi==0.53b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0522410Z   Using cached opentelemetry_instrumentation_asgi-0.53b1-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0541210Z Collecting opentelemetry-instrumentation==0.53b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0554775Z   Using cached opentelemetry_instrumentation-0.53b1-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:34.0575530Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0589293Z   Using cached opentelemetry_instrumentation_fastapi-0.53b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0612784Z Collecting opentelemetry-instrumentation-asgi==0.53b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0626297Z   Using cached opentelemetry_instrumentation_asgi-0.53b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0645128Z Collecting opentelemetry-instrumentation==0.53b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0658379Z   Using cached opentelemetry_instrumentation-0.53b0-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:34.0678846Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0692164Z   Using cached opentelemetry_instrumentation_fastapi-0.52b1-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0714731Z Collecting opentelemetry-instrumentation-asgi==0.52b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0727787Z   Using cached opentelemetry_instrumentation_asgi-0.52b1-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0746397Z Collecting opentelemetry-instrumentation==0.52b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0759664Z   Using cached opentelemetry_instrumentation-0.52b1-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:34.0780243Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0793747Z   Using cached opentelemetry_instrumentation_fastapi-0.52b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0816535Z Collecting opentelemetry-instrumentation-asgi==0.52b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0829665Z   Using cached opentelemetry_instrumentation_asgi-0.52b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0847909Z Collecting opentelemetry-instrumentation==0.52b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0862069Z   Using cached opentelemetry_instrumentation-0.52b0-py3-none-any.whl.metadata (6.8 kB)
+2026-04-29T01:58:34.0882589Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0896192Z   Using cached opentelemetry_instrumentation_fastapi-0.51b0-py3-none-any.whl.metadata (2.2 kB)
+2026-04-29T01:58:34.0918479Z Collecting opentelemetry-instrumentation-asgi==0.51b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0931606Z   Using cached opentelemetry_instrumentation_asgi-0.51b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.0950320Z Collecting opentelemetry-instrumentation==0.51b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0964024Z   Using cached opentelemetry_instrumentation-0.51b0-py3-none-any.whl.metadata (6.3 kB)
+2026-04-29T01:58:34.0984437Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.0997920Z   Using cached opentelemetry_instrumentation_fastapi-0.50b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.1019758Z Collecting opentelemetry-instrumentation-asgi==0.50b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1033058Z   Using cached opentelemetry_instrumentation_asgi-0.50b0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:34.1050899Z Collecting opentelemetry-instrumentation==0.50b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1064403Z   Using cached opentelemetry_instrumentation-0.50b0-py3-none-any.whl.metadata (6.1 kB)
+2026-04-29T01:58:34.1084201Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1097631Z   Using cached opentelemetry_instrumentation_fastapi-0.49b2-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.1120342Z Collecting opentelemetry-instrumentation-asgi==0.49b2 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1135795Z   Using cached opentelemetry_instrumentation_asgi-0.49b2-py3-none-any.whl.metadata (1.9 kB)
+2026-04-29T01:58:34.1153955Z Collecting opentelemetry-instrumentation==0.49b2 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1167147Z   Using cached opentelemetry_instrumentation-0.49b2-py3-none-any.whl.metadata (6.1 kB)
+2026-04-29T01:58:34.1187087Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1200549Z   Using cached opentelemetry_instrumentation_fastapi-0.49b1-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.1222624Z Collecting opentelemetry-instrumentation-asgi==0.49b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1236059Z   Using cached opentelemetry_instrumentation_asgi-0.49b1-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:34.1254209Z Collecting opentelemetry-instrumentation==0.49b1 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1267367Z   Using cached opentelemetry_instrumentation-0.49b1-py3-none-any.whl.metadata (6.2 kB)
+2026-04-29T01:58:34.1287288Z Collecting opentelemetry-instrumentation-fastapi>=0.41b0 (from chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1300816Z   Using cached opentelemetry_instrumentation_fastapi-0.49b0-py3-none-any.whl.metadata (2.1 kB)
+2026-04-29T01:58:34.1323110Z Collecting opentelemetry-instrumentation-asgi==0.49b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1336522Z   Using cached opentelemetry_instrumentation_asgi-0.49b0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:34.1355173Z Collecting opentelemetry-instrumentation==0.49b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1368148Z   Using cached opentelemetry_instrumentation-0.49b0-py3-none-any.whl.metadata (6.2 kB)
+2026-04-29T01:58:34.1541138Z Collecting opentelemetry-util-http==0.49b0 (from opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1554853Z   Using cached opentelemetry_util_http-0.49b0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-29T01:58:34.1616853Z Collecting wrapt<3,>=1.10 (from deprecated>=1.2.6->opentelemetry-api==1.28.0->-r backend/requirements.txt (line 146))
+2026-04-29T01:58:34.1630368Z   Using cached wrapt-1.17.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.4 kB)
+2026-04-29T01:58:34.1826115Z Collecting asgiref~=3.0 (from opentelemetry-instrumentation-asgi==0.49b0->opentelemetry-instrumentation-fastapi>=0.41b0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.1838839Z   Using cached asgiref-3.11.1-py3-none-any.whl.metadata (9.3 kB)
+2026-04-29T01:58:34.2076470Z Collecting backoff>=1.10.0 (from posthog>=2.4.0->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.2090312Z   Using cached backoff-2.2.1-py3-none-any.whl.metadata (14 kB)
+2026-04-29T01:58:34.2481955Z Collecting types-requests (from types-tqdm>=4.67.0.20250516->together>=1.0.0->-r backend/requirements.txt (line 114))
+2026-04-29T01:58:34.2495354Z   Using cached types_requests-2.33.0.20260408-py3-none-any.whl.metadata (2.0 kB)
+2026-04-29T01:58:34.2794396Z Collecting httptools>=0.5.0 (from uvicorn[standard]>=0.18.3->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.2807875Z   Using cached httptools-0.7.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+2026-04-29T01:58:34.3164293Z Collecting uvloop!=0.15.0,!=0.15.1,>=0.14.0 (from uvicorn[standard]>=0.18.3->chromadb<0.6.0,>=0.5.0->-r backend/requirements.txt (line 155))
+2026-04-29T01:58:34.3177917Z   Using cached uvloop-0.22.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.9 kB)
+2026-04-29T01:58:34.3404691Z Using cached aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+2026-04-29T01:58:34.3418577Z Using cached aiohttp-3.13.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.7 MB)
+2026-04-29T01:58:34.3438132Z Using cached multidict-6.7.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (246 kB)
+2026-04-29T01:58:34.3452339Z Using cached yarl-1.22.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (365 kB)
+2026-04-29T01:58:34.3466888Z Using cached aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+2026-04-29T01:58:34.3480082Z Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2026-04-29T01:58:34.3493695Z Using cached anyio-4.12.1-py3-none-any.whl (113 kB)
+2026-04-29T01:58:34.3507285Z Using cached attrs-25.4.0-py3-none-any.whl (67 kB)
+2026-04-29T01:58:34.3521034Z Using cached bcrypt-4.1.3-cp39-abi3-manylinux_2_28_x86_64.whl (283 kB)
+2026-04-29T01:58:34.3547448Z Using cached black-26.1.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.7 MB)
+2026-04-29T01:58:34.3555809Z Using cached boto3-1.42.42-py3-none-any.whl (140 kB)
+2026-04-29T01:58:34.3569309Z Using cached botocore-1.42.42-py3-none-any.whl (14.6 MB)
+2026-04-29T01:58:34.3633898Z Using cached jmespath-1.1.0-py3-none-any.whl (20 kB)
+2026-04-29T01:58:34.3647284Z Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-04-29T01:58:34.3661297Z Using cached s3transfer-0.16.0-py3-none-any.whl (86 kB)
+2026-04-29T01:58:34.3675144Z Using cached urllib3-2.6.3-py3-none-any.whl (131 kB)
+2026-04-29T01:58:34.3688917Z Using cached certifi-2026.1.4-py3-none-any.whl (152 kB)
+2026-04-29T01:58:34.3703622Z Using cached cffi-2.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (215 kB)
+2026-04-29T01:58:34.3718184Z Using cached charset_normalizer-3.4.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (151 kB)
+2026-04-29T01:58:34.3731872Z Using cached click-8.3.1-py3-none-any.whl (108 kB)
+2026-04-29T01:58:34.3746507Z Using cached cryptography-46.0.4-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+2026-04-29T01:58:34.3775392Z Using cached distro-1.9.0-py3-none-any.whl (20 kB)
+2026-04-29T01:58:34.3788933Z Using cached dnspython-2.8.0-py3-none-any.whl (331 kB)
+2026-04-29T01:58:34.3803640Z Using cached ecdsa-0.19.1-py2.py3-none-any.whl (150 kB)
+2026-04-29T01:58:34.3817528Z Using cached email_validator-2.3.0-py3-none-any.whl (35 kB)
+2026-04-29T01:58:34.3830977Z Using cached fastapi-0.110.1-py3-none-any.whl (91 kB)
+2026-04-29T01:58:34.3845078Z Using cached pydantic-2.12.5-py3-none-any.whl (463 kB)
+2026-04-29T01:58:34.3860106Z Using cached starlette-0.37.2-py3-none-any.whl (71 kB)
+2026-04-29T01:58:34.3874265Z Using cached fastuuid-0.14.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (279 kB)
+2026-04-29T01:58:34.3888372Z Using cached filelock-3.20.3-py3-none-any.whl (16 kB)
+2026-04-29T01:58:34.3901835Z Using cached flake8-7.3.0-py2.py3-none-any.whl (57 kB)
+2026-04-29T01:58:34.3916080Z Using cached mccabe-0.7.0-py2.py3-none-any.whl (7.3 kB)
+2026-04-29T01:58:34.3929702Z Using cached pycodestyle-2.14.0-py2.py3-none-any.whl (31 kB)
+2026-04-29T01:58:34.3943505Z Using cached pyflakes-3.4.0-py2.py3-none-any.whl (63 kB)
+2026-04-29T01:58:34.3957790Z Using cached frozenlist-1.8.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (231 kB)
+2026-04-29T01:58:34.3971703Z Using cached fsspec-2026.1.0-py3-none-any.whl (201 kB)
+2026-04-29T01:58:34.3986299Z Using cached google_ai_generativelanguage-0.6.15-py3-none-any.whl (1.3 MB)
+2026-04-29T01:58:34.4004625Z Using cached google_api_core-2.29.0-py3-none-any.whl (173 kB)
+2026-04-29T01:58:34.4018756Z Using cached google_auth-2.49.0.dev0-py3-none-any.whl (236 kB)
+2026-04-29T01:58:34.4033196Z Using cached googleapis_common_protos-1.72.0-py3-none-any.whl (297 kB)
+2026-04-29T01:58:34.4047665Z Using cached proto_plus-1.27.1-py3-none-any.whl (50 kB)
+2026-04-29T01:58:34.4061605Z Using cached protobuf-5.29.6-cp38-abi3-manylinux2014_x86_64.whl (320 kB)
+2026-04-29T01:58:34.4076606Z Using cached requests-2.32.5-py3-none-any.whl (64 kB)
+2026-04-29T01:58:34.4090476Z Using cached idna-3.11-py3-none-any.whl (71 kB)
+2026-04-29T01:58:34.4104744Z Using cached google_api_python_client-2.189.0-py3-none-any.whl (14.5 MB)
+2026-04-29T01:58:34.4169262Z Using cached google_auth_httplib2-0.3.0-py3-none-any.whl (9.5 kB)
+2026-04-29T01:58:34.4183063Z Using cached httplib2-0.31.2-py3-none-any.whl (91 kB)
+2026-04-29T01:58:34.4196884Z Using cached pyparsing-3.3.2-py3-none-any.whl (122 kB)
+2026-04-29T01:58:34.4210858Z Using cached uritemplate-4.2.0-py3-none-any.whl (11 kB)
+2026-04-29T01:58:34.4224886Z Using cached google_genai-1.62.0-py3-none-any.whl (724 kB)
+2026-04-29T01:58:34.4240879Z Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-04-29T01:58:34.4254974Z Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-04-29T01:58:34.4268720Z Using cached tenacity-9.1.2-py3-none-any.whl (28 kB)
+2026-04-29T01:58:34.4282440Z Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+2026-04-29T01:58:34.4297535Z Using cached websockets-15.0.1-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (182 kB)
+2026-04-29T01:58:34.4311315Z Using cached google_generativeai-0.8.6-py3-none-any.whl (155 kB)
+2026-04-29T01:58:34.4326169Z Using cached grpcio-1.76.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (6.6 MB)
+2026-04-29T01:58:34.4362241Z Using cached grpcio_status-1.71.2-py3-none-any.whl (14 kB)
+2026-04-29T01:58:34.4376228Z Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+2026-04-29T01:58:34.4390287Z Using cached hf_xet-1.2.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.3 MB)
+2026-04-29T01:58:34.4415841Z Using cached huggingface_hub-1.4.0-py3-none-any.whl (553 kB)
+2026-04-29T01:58:34.4431140Z Using cached importlib_metadata-8.5.0-py3-none-any.whl (26 kB)
+2026-04-29T01:58:34.4445250Z Using cached iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+2026-04-29T01:58:34.4458743Z Using cached isort-7.0.0-py3-none-any.whl (94 kB)
+2026-04-29T01:58:34.4472539Z Using cached jinja2-3.1.6-py3-none-any.whl (134 kB)
+2026-04-29T01:58:34.4487055Z Using cached jiter-0.13.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (362 kB)
+2026-04-29T01:58:34.4501807Z Using cached jq-1.11.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (772 kB)
+2026-04-29T01:58:34.4518347Z Using cached jsonschema-4.26.0-py3-none-any.whl (90 kB)
+2026-04-29T01:58:34.4532457Z Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.4546960Z Using cached librt-0.7.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (188 kB)
+2026-04-29T01:58:34.4561137Z Using cached markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
+2026-04-29T01:58:34.4575352Z Using cached mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-04-29T01:58:34.4590061Z Using cached markupsafe-3.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+2026-04-29T01:58:34.4603770Z Using cached motor-3.3.1-py3-none-any.whl (70 kB)
+2026-04-29T01:58:34.4618032Z Using cached pymongo-4.5.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (675 kB)
+2026-04-29T01:58:34.4634232Z Using cached mypy-1.19.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (13.4 MB)
+2026-04-29T01:58:34.4693858Z Using cached mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-04-29T01:58:34.4707944Z Using cached numpy-2.4.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+2026-04-29T01:58:34.4779116Z Using cached oauthlib-3.3.1-py3-none-any.whl (160 kB)
+2026-04-29T01:58:34.4793429Z Using cached openai-1.99.9-py3-none-any.whl (786 kB)
+2026-04-29T01:58:34.4809576Z Using cached packaging-26.0-py3-none-any.whl (74 kB)
+2026-04-29T01:58:34.4823941Z Using cached pandas-3.0.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (11.2 MB)
+2026-04-29T01:58:34.4876398Z Using cached passlib-1.7.4-py2.py3-none-any.whl (525 kB)
+2026-04-29T01:58:34.4891566Z Using cached pathspec-1.0.4-py3-none-any.whl (55 kB)
+2026-04-29T01:58:34.4905739Z Using cached pillow-12.1.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.0 MB)
+2026-04-29T01:58:34.4943951Z Using cached platformdirs-4.5.1-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.4957326Z Using cached pluggy-1.6.0-py3-none-any.whl (20 kB)
+2026-04-29T01:58:34.4971601Z Using cached propcache-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (210 kB)
+2026-04-29T01:58:34.4986044Z Using cached pyasn1-0.6.2-py3-none-any.whl (83 kB)
+2026-04-29T01:58:34.4999968Z Using cached pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+2026-04-29T01:58:34.5014055Z Using cached pycparser-3.0-py3-none-any.whl (48 kB)
+2026-04-29T01:58:34.5027814Z Using cached openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-04-29T01:58:34.5041892Z Using cached reportlab-4.2.5-py3-none-any.whl (1.9 MB)
+2026-04-29T01:58:34.5062823Z Using cached pydantic_core-2.41.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+2026-04-29T01:58:34.5083553Z Using cached pygments-2.19.2-py3-none-any.whl (1.2 MB)
+2026-04-29T01:58:34.5101184Z Using cached pyjwt-2.11.0-py3-none-any.whl (28 kB)
+2026-04-29T01:58:34.5115253Z Using cached pytest-8.4.1-py3-none-any.whl (365 kB)
+2026-04-29T01:58:34.5130012Z Using cached pytest_asyncio-0.24.0-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.5146918Z Using cached pytest_cov-6.0.0-py3-none-any.whl (22 kB)
+2026-04-29T01:58:34.5163439Z Using cached python_dotenv-1.2.1-py3-none-any.whl (21 kB)
+2026-04-29T01:58:34.5177311Z Using cached python_json_logger-2.0.7-py3-none-any.whl (8.1 kB)
+2026-04-29T01:58:34.5190800Z Using cached python_jose-3.5.0-py2.py3-none-any.whl (34 kB)
+2026-04-29T01:58:34.5204907Z Using cached rsa-4.9.1-py3-none-any.whl (34 kB)
+2026-04-29T01:58:34.5218706Z Using cached python_multipart-0.0.22-py3-none-any.whl (24 kB)
+2026-04-29T01:58:34.5232871Z Using cached pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (260 kB)
+2026-04-29T01:58:34.5247803Z Using cached pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (806 kB)
+2026-04-29T01:58:34.5264016Z Using cached referencing-0.37.0-py3-none-any.whl (26 kB)
+2026-04-29T01:58:34.5278131Z Using cached regex-2026.1.15-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (800 kB)
+2026-04-29T01:58:34.5294369Z Using cached requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
+2026-04-29T01:58:34.5308029Z Using cached rich-14.3.2-py3-none-any.whl (309 kB)
+2026-04-29T01:58:34.5323163Z Using cached rpds_py-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (390 kB)
+2026-04-29T01:58:34.5338666Z Using cached s5cmd-0.2.0-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.7 MB)
+2026-04-29T01:58:34.5368311Z Using cached shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-04-29T01:58:34.5381838Z Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-04-29T01:58:34.5395965Z Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+2026-04-29T01:58:34.5409486Z Using cached pyotp-2.9.0-py3-none-any.whl (13 kB)
+2026-04-29T01:58:34.5423296Z Using cached qrcode-7.4.2-py3-none-any.whl (46 kB)
+2026-04-29T01:58:34.5437214Z Using cached tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl (1.2 MB)
+2026-04-29T01:58:34.5455273Z Using cached tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.3 MB)
+2026-04-29T01:58:34.5480237Z Using cached tqdm-4.67.3-py3-none-any.whl (78 kB)
+2026-04-29T01:58:34.5494325Z Using cached typer-0.21.1-py3-none-any.whl (47 kB)
+2026-04-29T01:58:34.5508037Z Using cached typer_slim-0.21.1-py3-none-any.whl (47 kB)
+2026-04-29T01:58:34.5521982Z Using cached typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+2026-04-29T01:58:34.5536067Z Using cached tzdata-2025.3-py2.py3-none-any.whl (348 kB)
+2026-04-29T01:58:34.5550703Z Using cached uvicorn-0.25.0-py3-none-any.whl (60 kB)
+2026-04-29T01:58:34.5565219Z Using cached watchfiles-1.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+2026-04-29T01:58:34.5580093Z Using cached zipp-3.23.0-py3-none-any.whl (10 kB)
+2026-04-29T01:58:34.5593718Z Using cached croniter-2.0.2-py2.py3-none-any.whl (19 kB)
+2026-04-29T01:58:34.5607444Z Using cached playwright-1.49.1-py3-none-manylinux1_x86_64.whl (44.2 MB)
+2026-04-29T01:58:34.5774279Z Using cached asyncpg-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.1 MB)
+2026-04-29T01:58:34.5798858Z Using cached aiomysql-0.2.0-py3-none-any.whl (44 kB)
+2026-04-29T01:58:34.5812746Z Using cached aiosqlite-0.20.0-py3-none-any.whl (15 kB)
+2026-04-29T01:58:34.5826996Z Using cached prometheus_client-0.21.1-py3-none-any.whl (54 kB)
+2026-04-29T01:58:34.5840901Z Using cached opentelemetry_api-1.28.0-py3-none-any.whl (64 kB)
+2026-04-29T01:58:34.5855070Z Using cached opentelemetry_sdk-1.28.0-py3-none-any.whl (118 kB)
+2026-04-29T01:58:34.5869048Z Using cached braintree-4.42.0-py2.py3-none-any.whl (168 kB)
+2026-04-29T01:58:34.5883708Z Using cached greenlet-3.1.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (602 kB)
+2026-04-29T01:58:34.5899411Z Using cached opentelemetry_semantic_conventions-0.49b0-py3-none-any.whl (159 kB)
+2026-04-29T01:58:34.5913541Z Using cached pyee-12.0.0-py3-none-any.whl (14 kB)
+2026-04-29T01:58:34.5927177Z Using cached chromadb-0.5.20-py3-none-any.whl (617 kB)
+2026-04-29T01:58:34.5943359Z Using cached chroma_hnswlib-0.7.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.4 MB)
+2026-04-29T01:58:34.5965204Z Using cached anthropic-0.97.0-py3-none-any.whl (662 kB)
+2026-04-29T01:58:34.5981446Z Using cached docstring_parser-0.18.0-py3-none-any.whl (22 kB)
+2026-04-29T01:58:34.6057899Z Downloading together-2.11.0-py3-none-any.whl (358 kB)
+2026-04-29T01:58:34.6293377Z Using cached pypng-0.20220715.0-py3-none-any.whl (58 kB)
+2026-04-29T01:58:34.6370445Z Downloading tavily_python-0.7.24-py3-none-any.whl (20 kB)
+2026-04-29T01:58:34.6403405Z Using cached pypdf-6.10.2-py3-none-any.whl (336 kB)
+2026-04-29T01:58:34.6418267Z Using cached redis-7.4.0-py3-none-any.whl (409 kB)
+2026-04-29T01:58:34.6433507Z Using cached beautifulsoup4-4.14.3-py3-none-any.whl (107 kB)
+2026-04-29T01:58:34.6447495Z Using cached build-1.4.4-py3-none-any.whl (25 kB)
+2026-04-29T01:58:34.6462082Z Using cached coverage-7.13.5-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (252 kB)
+2026-04-29T01:58:34.6477758Z Using cached cyclopts-4.11.0-py3-none-any.whl (208 kB)
+2026-04-29T01:58:34.6498450Z Using cached rich_rst-1.3.2-py3-none-any.whl (12 kB)
+2026-04-29T01:58:34.6512401Z Using cached deprecated-1.3.1-py2.py3-none-any.whl (11 kB)
+2026-04-29T01:58:34.6526447Z Using cached detect_agent-0.2.0-py3-none-any.whl (3.5 kB)
+2026-04-29T01:58:34.6540103Z Using cached kubernetes-35.0.0-py2.py3-none-any.whl (2.0 MB)
+2026-04-29T01:58:34.6561153Z Using cached durationpy-0.10-py3-none-any.whl (3.9 kB)
+2026-04-29T01:58:34.6575642Z Using cached mmh3-5.2.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (103 kB)
+2026-04-29T01:58:34.6656844Z Downloading onnxruntime-1.25.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (18.0 MB)
+2026-04-29T01:58:34.8413876Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 18.0/18.0 MB 105.9 MB/s  0:00:00
+2026-04-29T01:58:34.8429783Z Using cached opentelemetry_exporter_otlp_proto_grpc-1.28.0-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.8444114Z Using cached opentelemetry_exporter_otlp_proto_common-1.28.0-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.8457813Z Using cached opentelemetry_proto-1.28.0-py3-none-any.whl (55 kB)
+2026-04-29T01:58:34.8471613Z Using cached opentelemetry_instrumentation_fastapi-0.49b0-py3-none-any.whl (12 kB)
+2026-04-29T01:58:34.8485432Z Using cached opentelemetry_instrumentation-0.49b0-py3-none-any.whl (30 kB)
+2026-04-29T01:58:34.8498878Z Using cached opentelemetry_instrumentation_asgi-0.49b0-py3-none-any.whl (16 kB)
+2026-04-29T01:58:34.8512192Z Using cached opentelemetry_util_http-0.49b0-py3-none-any.whl (6.9 kB)
+2026-04-29T01:58:34.8525691Z Using cached asgiref-3.11.1-py3-none-any.whl (24 kB)
+2026-04-29T01:58:34.8539423Z Using cached wrapt-1.17.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (82 kB)
+2026-04-29T01:58:34.8553347Z Using cached orjson-3.11.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (133 kB)
+2026-04-29T01:58:34.8567044Z Using cached overrides-7.7.0-py3-none-any.whl (17 kB)
+2026-04-29T01:58:34.8580314Z Using cached posthog-7.13.1-py3-none-any.whl (228 kB)
+2026-04-29T01:58:34.8594861Z Using cached backoff-2.2.1-py3-none-any.whl (15 kB)
+2026-04-29T01:58:34.8608737Z Using cached pymysql-1.1.2-py3-none-any.whl (45 kB)
+2026-04-29T01:58:34.8622545Z Using cached pypika-0.51.1-py2.py3-none-any.whl (60 kB)
+2026-04-29T01:58:34.8636495Z Using cached pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+2026-04-29T01:58:34.8651714Z Using cached soupsieve-2.8.3-py3-none-any.whl (37 kB)
+2026-04-29T01:58:34.8665994Z Using cached tabulate-0.10.0-py3-none-any.whl (39 kB)
+2026-04-29T01:58:34.8679759Z Using cached types_pyyaml-6.0.12.20260408-py3-none-any.whl (20 kB)
+2026-04-29T01:58:34.8693617Z Using cached types_tabulate-0.10.0.20260408-py3-none-any.whl (8.1 kB)
+2026-04-29T01:58:34.8707155Z Using cached types_tqdm-4.67.3.20260408-py3-none-any.whl (24 kB)
+2026-04-29T01:58:34.8721308Z Using cached httptools-0.7.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (456 kB)
+2026-04-29T01:58:34.8737112Z Using cached uvloop-0.22.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.8 MB)
+2026-04-29T01:58:34.8763386Z Using cached websocket_client-1.9.0-py3-none-any.whl (82 kB)
+2026-04-29T01:58:34.8777971Z Using cached chardet-7.4.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (883 kB)
+2026-04-29T01:58:34.8794374Z Using cached docutils-0.22.4-py3-none-any.whl (633 kB)
+2026-04-29T01:58:34.8810072Z Using cached et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-04-29T01:58:34.8824018Z Using cached flatbuffers-25.12.19-py2.py3-none-any.whl (26 kB)
+2026-04-29T01:58:34.8837802Z Using cached importlib_resources-7.1.0-py3-none-any.whl (37 kB)
+2026-04-29T01:58:34.8851426Z Using cached pyproject_hooks-1.2.0-py3-none-any.whl (10 kB)
+2026-04-29T01:58:34.8865614Z Using cached types_requests-2.33.0.20260408-py3-none-any.whl (20 kB)
+2026-04-29T01:58:35.5318564Z Installing collected packages: pytz, pypng, pypika, passlib, flatbuffers, durationpy, zipp, wrapt, websockets, websocket-client, uvloop, urllib3, uritemplate, tzdata, typing_extensions, types-tabulate, types-pyyaml, tqdm, tenacity, tabulate, soupsieve, sniffio, six, shellingham, s5cmd, rpds-py, regex, redis, PyYAML, pytokens, python-multipart, python-json-logger, python-dotenv, pyproject_hooks, pypdf, pyparsing, pyotp, PyMySQL, PyJWT, Pygments, pyflakes, pycparser, pycodestyle, pyasn1, protobuf, propcache, prometheus-client, pluggy, platformdirs, pillow, pathspec, packaging, overrides, orjson, opentelemetry-util-http, oauthlib, numpy, mypy_extensions, multidict, mmh3, mdurl, mccabe, MarkupSafe, librt, jq, jmespath, jiter, isort, iniconfig, importlib-resources, idna, httptools, hf-xet, h11, greenlet, fsspec, frozenlist, filelock, fastuuid, et-xmlfile, docutils, docstring_parser, dnspython, distro, detect-agent, coverage, click, charset-normalizer, chardet, certifi, bcrypt, backoff, attrs, asyncpg, asgiref, annotated-types, aiohappyeyeballs, yarl, uvicorn, typing-inspection, types-requests, typer-slim, rsa, requests, reportlab, referencing, qrcode, python-dateutil, pytest, pymongo, pyee, pydantic_core, pyasn1_modules, proto-plus, opentelemetry-proto, openpyxl, onnxruntime, mypy, markdown-it-py, Jinja2, importlib_metadata, httplib2, httpcore, grpcio, googleapis-common-protos, flake8, email-validator, ecdsa, deprecated, chroma-hnswlib, cffi, build, black, beautifulsoup4, anyio, aiosqlite, aiosignal, aiomysql, watchfiles, types-tqdm, tiktoken, starlette, rich, requests-oauthlib, python-jose, pytest-cov, pytest-asyncio, pydantic, posthog, playwright, pandas, opentelemetry-exporter-otlp-proto-common, opentelemetry-api, motor, jsonschema-specifications, httpx, grpcio-status, cryptography, croniter, braintree, botocore, aiohttp, typer, tavily-python, s3transfer, rich-rst, opentelemetry-semantic-conventions, openai, kubernetes, jsonschema, huggingface_hub, google-auth, fastapi, anthropic, tokenizers, opentelemetry-sdk, opentelemetry-instrumentation, google-auth-httplib2, google-api-core, cyclopts, boto3, together, opentelemetry-instrumentation-asgi, opentelemetry-exporter-otlp-proto-grpc, google-genai, google-api-python-client, opentelemetry-instrumentation-fastapi, google-ai-generativelanguage, google-generativeai, chromadb
+2026-04-29T01:58:59.2285342Z 
+2026-04-29T01:58:59.2362763Z Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.3 PyJWT-2.11.0 PyMySQL-1.1.2 PyYAML-6.0.3 Pygments-2.19.2 aiohappyeyeballs-2.6.1 aiohttp-3.13.3 aiomysql-0.2.0 aiosignal-1.4.0 aiosqlite-0.20.0 annotated-types-0.7.0 anthropic-0.97.0 anyio-4.12.1 asgiref-3.11.1 asyncpg-0.30.0 attrs-25.4.0 backoff-2.2.1 bcrypt-4.1.3 beautifulsoup4-4.14.3 black-26.1.0 boto3-1.42.42 botocore-1.42.42 braintree-4.42.0 build-1.4.4 certifi-2026.1.4 cffi-2.0.0 chardet-7.4.3 charset-normalizer-3.4.4 chroma-hnswlib-0.7.6 chromadb-0.5.20 click-8.3.1 coverage-7.13.5 croniter-2.0.2 cryptography-46.0.4 cyclopts-4.11.0 deprecated-1.3.1 detect-agent-0.2.0 distro-1.9.0 dnspython-2.8.0 docstring_parser-0.18.0 docutils-0.22.4 durationpy-0.10 ecdsa-0.19.1 email-validator-2.3.0 et-xmlfile-2.0.0 fastapi-0.110.1 fastuuid-0.14.0 filelock-3.20.3 flake8-7.3.0 flatbuffers-25.12.19 frozenlist-1.8.0 fsspec-2026.1.0 google-ai-generativelanguage-0.6.15 google-api-core-2.29.0 google-api-python-client-2.189.0 google-auth-2.49.0.dev0 google-auth-httplib2-0.3.0 google-genai-1.62.0 google-generativeai-0.8.6 googleapis-common-protos-1.72.0 greenlet-3.1.1 grpcio-1.76.0 grpcio-status-1.71.2 h11-0.16.0 hf-xet-1.2.0 httpcore-1.0.9 httplib2-0.31.2 httptools-0.7.1 httpx-0.28.1 huggingface_hub-1.4.0 idna-3.11 importlib-resources-7.1.0 importlib_metadata-8.5.0 iniconfig-2.3.0 isort-7.0.0 jiter-0.13.0 jmespath-1.1.0 jq-1.11.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 kubernetes-35.0.0 librt-0.7.8 markdown-it-py-4.0.0 mccabe-0.7.0 mdurl-0.1.2 mmh3-5.2.1 motor-3.3.1 multidict-6.7.1 mypy-1.19.1 mypy_extensions-1.1.0 numpy-2.4.2 oauthlib-3.3.1 onnxruntime-1.25.1 openai-1.99.9 openpyxl-3.1.5 opentelemetry-api-1.28.0 opentelemetry-exporter-otlp-proto-common-1.28.0 opentelemetry-exporter-otlp-proto-grpc-1.28.0 opentelemetry-instrumentation-0.49b0 opentelemetry-instrumentation-asgi-0.49b0 opentelemetry-instrumentation-fastapi-0.49b0 opentelemetry-proto-1.28.0 opentelemetry-sdk-1.28.0 opentelemetry-semantic-conventions-0.49b0 opentelemetry-util-http-0.49b0 orjson-3.11.8 overrides-7.7.0 packaging-26.0 pandas-3.0.0 passlib-1.7.4 pathspec-1.0.4 pillow-12.1.0 platformdirs-4.5.1 playwright-1.49.1 pluggy-1.6.0 posthog-7.13.1 prometheus-client-0.21.1 propcache-0.4.1 proto-plus-1.27.1 protobuf-5.29.6 pyasn1-0.6.2 pyasn1_modules-0.4.2 pycodestyle-2.14.0 pycparser-3.0 pydantic-2.12.5 pydantic_core-2.41.5 pyee-12.0.0 pyflakes-3.4.0 pymongo-4.5.0 pyotp-2.9.0 pyparsing-3.3.2 pypdf-6.10.2 pypika-0.51.1 pypng-0.20220715.0 pyproject_hooks-1.2.0 pytest-8.4.1 pytest-asyncio-0.24.0 pytest-cov-6.0.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.1 python-jose-3.5.0 python-json-logger-2.0.7 python-multipart-0.0.22 pytokens-0.4.1 pytz-2026.1.post1 qrcode-7.4.2 redis-7.4.0 referencing-0.37.0 regex-2026.1.15 reportlab-4.2.5 requests-2.32.5 requests-oauthlib-2.0.0 rich-14.3.2 rich-rst-1.3.2 rpds-py-0.30.0 rsa-4.9.1 s3transfer-0.16.0 s5cmd-0.2.0 shellingham-1.5.4 six-1.17.0 sniffio-1.3.1 soupsieve-2.8.3 starlette-0.37.2 tabulate-0.10.0 tavily-python-0.7.24 tenacity-9.1.2 tiktoken-0.12.0 together-2.11.0 tokenizers-0.22.2 tqdm-4.67.3 typer-0.21.1 typer-slim-0.21.1 types-pyyaml-6.0.12.20260408 types-requests-2.33.0.20260408 types-tabulate-0.10.0.20260408 types-tqdm-4.67.3.20260408 typing-inspection-0.4.2 typing_extensions-4.15.0 tzdata-2025.3 uritemplate-4.2.0 urllib3-2.6.3 uvicorn-0.25.0 uvloop-0.22.1 watchfiles-1.1.1 websocket-client-1.9.0 websockets-15.0.1 wrapt-1.17.3 yarl-1.22.0 zipp-3.23.0
+2026-04-29T01:58:59.8347054Z ##[group]Run python scripts/verify_architecture_guardrails.py
+2026-04-29T01:58:59.8347514Z [36;1mpython scripts/verify_architecture_guardrails.py[0m
+2026-04-29T01:58:59.8370082Z shell: /usr/bin/bash -e {0}
+2026-04-29T01:58:59.8370303Z env:
+2026-04-29T01:58:59.8370471Z   REGISTRY: ghcr.io
+2026-04-29T01:58:59.8370708Z   IMAGE_NAME: disputestrike/RELEASE-CRUCIB-2026
+2026-04-29T01:58:59.8371051Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:59.8371458Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-29T01:58:59.8372110Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:59.8372464Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:59.8372798Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-29T01:58:59.8373150Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-29T01:58:59.8373445Z ##[endgroup]
+2026-04-29T01:58:59.9659757Z Traceback (most recent call last):
+2026-04-29T01:58:59.9669143Z   File "/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/backend/scripts/verify_architecture_guardrails.py", line 178, in <module>
+2026-04-29T01:58:59.9670135Z     raise SystemExit(main())
+2026-04-29T01:58:59.9670397Z                      ^^^^^^
+2026-04-29T01:58:59.9671123Z   File "/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/backend/scripts/verify_architecture_guardrails.py", line 167, in main
+2026-04-29T01:58:59.9672204Z     violations = run_all_guardrails()
+2026-04-29T01:58:59.9672502Z                  ^^^^^^^^^^^^^^^^^^^^
+2026-04-29T01:58:59.9673279Z   File "/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/backend/scripts/verify_architecture_guardrails.py", line 162, in run_all_guardrails
+2026-04-29T01:58:59.9674045Z     + verify_surface_lock()
+2026-04-29T01:58:59.9674285Z       ^^^^^^^^^^^^^^^^^^^^^
+2026-04-29T01:58:59.9675034Z   File "/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/backend/scripts/verify_architecture_guardrails.py", line 143, in verify_surface_lock
+2026-04-29T01:58:59.9675959Z     from backend.services.skills.skill_registry import list_skills
+2026-04-29T01:58:59.9676398Z ModuleNotFoundError: No module named 'backend'
+2026-04-29T01:58:59.9720339Z ##[error]Process completed with exit code 1.
+2026-04-29T01:58:59.9831382Z Post job cleanup.
+2026-04-29T01:59:00.0683970Z [command]/usr/bin/git version
+2026-04-29T01:59:00.0720548Z git version 2.53.0
+2026-04-29T01:59:00.0793841Z Temporarily overriding HOME='/home/runner/work/_temp/cf8ac5e0-4be5-4375-bc13-cca8ad12f051' before making global git config changes
+2026-04-29T01:59:00.0795178Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-29T01:59:00.0800573Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026
+2026-04-29T01:59:00.0831530Z Removing SSH command configuration
+2026-04-29T01:59:00.0838244Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-29T01:59:00.0872530Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-29T01:59:00.1102102Z Removing HTTP extra header
+2026-04-29T01:59:00.1106751Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-29T01:59:00.1140799Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-29T01:59:00.1364378Z Removing includeIf entries pointing to credentials config files
+2026-04-29T01:59:00.1370745Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-29T01:59:00.1395444Z includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git.path
+2026-04-29T01:59:00.1403956Z includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git/worktrees/*.path
+2026-04-29T01:59:00.1404953Z includeif.gitdir:/github/workspace/.git.path
+2026-04-29T01:59:00.1405792Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-04-29T01:59:00.1407491Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git.path
+2026-04-29T01:59:00.1431986Z /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1442318Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git.path /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1478012Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git/worktrees/*.path
+2026-04-29T01:59:00.1498498Z /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1507969Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/RELEASE-CRUCIB-2026/RELEASE-CRUCIB-2026/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1538345Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-04-29T01:59:00.1559493Z /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1568491Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1599452Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-04-29T01:59:00.1620245Z /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1629498Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config
+2026-04-29T01:59:00.1660988Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-29T01:59:00.1880397Z Removing credentials config '/home/runner/work/_temp/git-credentials-c6e8ae55-87ab-4ec5-80ac-e83cd2636ea2.config'
+2026-04-29T01:59:00.1990847Z Print service container logs: 14bf738085224cb7a697ff25df428881_postgres15alpine_b9a610
+2026-04-29T01:59:00.1995588Z ##[command]/usr/bin/docker logs --details fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:59:00.2118895Z  sh: locale: not found
+2026-04-29T01:59:00.2119930Z  The files belonging to this database system will be owned by user "postgres".
+2026-04-29T01:59:00.2132374Z  2026-04-29 01:58:04.355 UTC [35] WARNING:  no usable system locales were found
+2026-04-29T01:59:00.2133120Z  initdb: warning: enabling "trust" authentication for local connections
+2026-04-29T01:59:00.2134089Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-04-29T01:59:00.2134944Z  2026-04-29 01:58:05.371 UTC [1] LOG:  starting PostgreSQL 15.17 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-04-29T01:59:00.2135626Z  2026-04-29 01:58:05.371 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-04-29T01:59:00.2136087Z  2026-04-29 01:58:05.371 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-04-29T01:59:00.2136599Z  2026-04-29 01:58:05.372 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-04-29T01:59:00.2137151Z  2026-04-29 01:58:05.374 UTC [57] LOG:  database system was shut down at 2026-04-29 01:58:05 UTC
+2026-04-29T01:59:00.2137640Z  2026-04-29 01:58:05.378 UTC [1] LOG:  database system is ready to accept connections
+2026-04-29T01:59:00.2138038Z  This user must also own the server process.
+2026-04-29T01:59:00.2138296Z  
+2026-04-29T01:59:00.2138556Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-04-29T01:59:00.2138990Z  The default database encoding has accordingly been set to "UTF8".
+2026-04-29T01:59:00.2139399Z  The default text search configuration will be set to "english".
+2026-04-29T01:59:00.2139710Z  
+2026-04-29T01:59:00.2139892Z  Data page checksums are disabled.
+2026-04-29T01:59:00.2140131Z  
+2026-04-29T01:59:00.2140418Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-04-29T01:59:00.2140788Z  creating subdirectories ... ok
+2026-04-29T01:59:00.2141080Z  selecting dynamic shared memory implementation ... posix
+2026-04-29T01:59:00.2141410Z  selecting default max_connections ... 100
+2026-04-29T01:59:00.2141691Z  selecting default shared_buffers ... 128MB
+2026-04-29T01:59:00.2142218Z  selecting default time zone ... UTC
+2026-04-29T01:59:00.2142473Z  creating configuration files ... ok
+2026-04-29T01:59:00.2142737Z  running bootstrap script ... ok
+2026-04-29T01:59:00.2143015Z  performing post-bootstrap initialization ... ok
+2026-04-29T01:59:00.2143300Z  syncing data to disk ... ok
+2026-04-29T01:59:00.2143505Z  
+2026-04-29T01:59:00.2143657Z  
+2026-04-29T01:59:00.2143874Z  Success. You can now start the database server using:
+2026-04-29T01:59:00.2144147Z  
+2026-04-29T01:59:00.2144356Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-04-29T01:59:00.2144639Z  
+2026-04-29T01:59:00.2145179Z  waiting for server to start....2026-04-29 01:58:05.086 UTC [41] LOG:  starting PostgreSQL 15.17 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-04-29T01:59:00.2145948Z  2026-04-29 01:58:05.087 UTC [41] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-04-29T01:59:00.2146485Z  2026-04-29 01:58:05.090 UTC [44] LOG:  database system was shut down at 2026-04-29 01:58:05 UTC
+2026-04-29T01:59:00.2146982Z  2026-04-29 01:58:05.094 UTC [41] LOG:  database system is ready to accept connections
+2026-04-29T01:59:00.2147334Z   done
+2026-04-29T01:59:00.2147497Z  server started
+2026-04-29T01:59:00.2147672Z  CREATE DATABASE
+2026-04-29T01:59:00.2147843Z  
+2026-04-29T01:59:00.2147989Z  
+2026-04-29T01:59:00.2148282Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-04-29T01:59:00.2148647Z  
+2026-04-29T01:59:00.2149194Z  waiting for server to shut down...2026-04-29 01:58:05.250 UTC [41] LOG:  received fast shutdown request
+2026-04-29T01:59:00.2149709Z  .2026-04-29 01:58:05.251 UTC [41] LOG:  aborting any active transactions
+2026-04-29T01:59:00.2150267Z  2026-04-29 01:58:05.256 UTC [41] LOG:  background worker "logical replication launcher" (PID 47) exited with exit code 1
+2026-04-29T01:59:00.2150784Z  2026-04-29 01:58:05.257 UTC [42] LOG:  shutting down
+2026-04-29T01:59:00.2151152Z  2026-04-29 01:58:05.257 UTC [42] LOG:  checkpoint starting: shutdown immediate
+2026-04-29T01:59:00.2152604Z  2026-04-29 01:58:05.278 UTC [42] LOG:  checkpoint complete: wrote 921 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.017 s, sync=0.003 s, total=0.022 s; sync files=301, longest=0.001 s, average=0.001 s; distance=4239 kB, estimate=4239 kB
+2026-04-29T01:59:00.2153714Z  2026-04-29 01:58:05.287 UTC [41] LOG:  database system is shut down
+2026-04-29T01:59:00.2154032Z   done
+2026-04-29T01:59:00.2154201Z  server stopped
+2026-04-29T01:59:00.2154371Z  
+2026-04-29T01:59:00.2154600Z  PostgreSQL init process complete; ready for start up.
+2026-04-29T01:59:00.2154889Z  
+2026-04-29T01:59:00.2160264Z Stop and remove container: 14bf738085224cb7a697ff25df428881_postgres15alpine_b9a610
+2026-04-29T01:59:00.2165118Z ##[command]/usr/bin/docker rm --force fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:59:02.4582328Z fb771ad80108573669f4b486591e725b69df8e441471173979f12b52c650e6c4
+2026-04-29T01:59:02.4603516Z Print service container logs: 73d44714734041b39b88bac6140360fc_redis7alpine_09a62b
+2026-04-29T01:59:02.4604787Z ##[command]/usr/bin/docker logs --details 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:59:02.4726799Z  1:C 29 Apr 2026 01:58:05.267 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-04-29T01:59:02.4728465Z  1:C 29 Apr 2026 01:58:05.267 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-04-29T01:59:02.4728983Z  1:C 29 Apr 2026 01:58:05.267 * Redis version=7.4.8, bits=64, commit=00000000, modified=0, pid=1, just started
+2026-04-29T01:59:02.4729773Z  1:C 29 Apr 2026 01:58:05.267 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+2026-04-29T01:59:02.4730444Z  1:M 29 Apr 2026 01:58:05.268 * monotonic clock: POSIX clock_gettime
+2026-04-29T01:59:02.4730809Z  1:M 29 Apr 2026 01:58:05.268 * Running mode=standalone, port=6379.
+2026-04-29T01:59:02.4731240Z  1:M 29 Apr 2026 01:58:05.269 * Server initialized
+2026-04-29T01:59:02.4731557Z  1:M 29 Apr 2026 01:58:05.269 * Ready to accept connections tcp
+2026-04-29T01:59:02.4747444Z Stop and remove container: 73d44714734041b39b88bac6140360fc_redis7alpine_09a62b
+2026-04-29T01:59:02.4748162Z ##[command]/usr/bin/docker rm --force 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:59:02.5796932Z 980903e21d70d8181baaa41516b5bc0d6f9db3302b0dc3d77fc70a9ceee7fa4a
+2026-04-29T01:59:02.5821152Z Remove container network: github_network_6df66755072047f8a95fff7e78fd91d1
+2026-04-29T01:59:02.5827304Z ##[command]/usr/bin/docker network rm github_network_6df66755072047f8a95fff7e78fd91d1
+2026-04-29T01:59:02.6725443Z github_network_6df66755072047f8a95fff7e78fd91d1
+2026-04-29T01:59:02.6786913Z Cleaning up orphan processes

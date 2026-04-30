@@ -93,7 +93,7 @@ async def create_guest_user_service(
 ) -> dict:
     if db is None:
         if os.environ.get("CRUCIBAI_DEV") == "1":
-            from services import dev_guest
+            from . import dev_guest
 
             return await dev_guest.create_guest_user(
                 create_token=create_token,

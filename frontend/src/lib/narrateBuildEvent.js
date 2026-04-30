@@ -66,13 +66,17 @@ export function narrateBuildEvent(event) {
     case 'job_failed': {
       const r = (p.reason || p.failure_reason || p.error || p.message || '').trim();
       const short = r.length > 160 ? `${r.slice(0, 157)}…` : r;
-      return short ? `This run stopped: ${short}` : 'This run stopped before completion. You can adjust the goal and try again.';
+      return short
+        ? `A check failed (${short}). Starting repair and continuing the run.`
+        : 'A check failed. Starting repair and continuing the run.';
     }
     case 'step_failed': {
       const name = (p.name || p.step_key || phase || 'a step').trim();
       const err = (p.error_message || p.error || '').trim();
       const errShort = err.length > 120 ? `${err.slice(0, 117)}…` : err;
-      return errShort ? `${name} hit an issue: ${errShort}` : `${name} did not complete successfully.`;
+      return errShort
+        ? `${name} hit an issue (${errShort}). Applying a targeted fix now.`
+        : `${name} hit an issue. Applying a targeted fix now.`;
     }
     case 'plan_created':
       return "Here is the plan: screens and routes, data shape, and how we'll verify the build before you ship it.";

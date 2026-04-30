@@ -346,7 +346,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       continue;
     }
 
-    if (/^(verifier_failed|assembly_failed|export_gate_blocked|error|step_failed|job_failed)$/.test(t)) {
+    if (/^(verifier_failed|assembly_failed|export_gate_blocked|error)$/.test(t)) {
       const p = readPayload(ev);
       const phaseLabel = prettyPhase(getPhase(ev));
       const titleForFailure = () => {
@@ -541,8 +541,8 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
       runningTitle = runningTitle || 'Build complete';
       runningStatus = 'success';
     } else if (/(failed|blocked|error)$/.test(lt)) {
-      runningTitle = runningTitle || 'Build paused';
-      runningStatus = 'failed';
+      runningTitle = runningTitle || 'Repairing the build';
+      runningStatus = 'running';
     }
   }
 

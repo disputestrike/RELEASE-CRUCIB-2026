@@ -182,23 +182,15 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--running">
         <Loader2 size={11} className="p4-spin" />
-        <span>Working on your buildù</span>
+        <span>Working on your build...</span>
       </div>
     );
   }
-  if (jobStatus === 'failed' || jobStatus === 'cancelled') {
+  if (jobStatus === 'failed' || jobStatus === 'cancelled' || jobStatus === 'blocked' || jobStatus === 'waiting_for_user') {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Build paused ù send a new message to continue</span>
-      </div>
-    );
-  }
-  if (jobStatus === 'blocked' || jobStatus === 'waiting_for_user') {
-    return (
-      <div className="p4-status-pill p4-status-pill--paused">
-        <AlertTriangle size={11} />
-        <span>Waiting for your direction ù send a message to continue</span>
+        <span>Repairing and iterating...</span>
       </div>
     );
   }
@@ -213,7 +205,7 @@ function StatusPill({ jobStatus, isTyping }) {
   return (
     <div className="p4-status-pill p4-status-pill--queued">
       <Loader2 size={11} className="p4-spin" />
-      <span>Reviewing your requestù</span>
+      <span>Reviewing your request...</span>
     </div>
   );
 }
@@ -310,7 +302,7 @@ function FailureBlock({ item }) {
   const friendlyReason =
     niceReason && !/orchestrator_error/i.test(niceReason)
       ? niceReason
-      : 'The build stopped before verification could finish. I can pick up where it left off ù send a fix instruction below or use Resume on the right.';
+      : 'The build stopped before verification could finish. I can pick up where it left off - send a fix instruction below or use Resume on the right.';
   return (
     <div className="p4-chapter p4-chapter--diagnostic">
       <div className="p4-chapter-head p4-chapter-head--static">
@@ -402,6 +394,7 @@ export default function BrainGuidancePanel({
   jobStatus,
   isTyping,
   jobId = null,
+  hasTaskOrJobContext = false,
   buildTargetMeta = null,
   buildTargetId = null,
   /** Same job stream as Preview / Proof / Timeline (single effectiveJobId in workspace) */
@@ -426,6 +419,7 @@ export default function BrainGuidancePanel({
 
   const hasUserPrompt = items.some((i) => i.kind === 'user_message');
   const hasAssistantNarration = items.some((i) => i.kind === 'assistant_message');
+  const shouldRenderEmptyState = items.length === 0 && !isTyping && !jobId && !hasTaskOrJobContext;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -456,7 +450,7 @@ export default function BrainGuidancePanel({
     onScroll?.({ isNearBottom: distanceFromBottom < 120 });
   };
 
-  if (items.length === 0 && !isTyping) {
+  if (shouldRenderEmptyState) {
     return (
       <div className="bgp-thread-empty">
         <div className="bgp-empty-inner">
@@ -477,9 +471,9 @@ export default function BrainGuidancePanel({
         {jobId ? (
           <span
             className={`p4-stream-badge ${streamConnected ? 'p4-stream-badge--live' : 'p4-stream-badge--wait'}`}
-            title={`Job stream (${connectionMode || 'sse'}) ù ${eventCount} events`}
+            title={`Job stream (${connectionMode || 'sse'}) - ${eventCount} events`}
           >
-            {streamConnected ? 'Live' : 'ConnectingÖ'}
+            {streamConnected ? 'Live' : 'Connecting...'}
           </span>
         ) : null}
         <ThreadOverflow

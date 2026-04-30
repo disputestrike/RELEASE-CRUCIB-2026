@@ -1855,6 +1855,7 @@ export default function App() {
               events={events}
               jobStatus={job?.status}
               jobId={effectiveJobId || null}
+              hasTaskOrJobContext={Boolean(effectiveJobId || sessionTaskId || taskIdFromUrl)}
               buildTargetMeta={buildTargetMeta}
               buildTargetId={buildTarget}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
