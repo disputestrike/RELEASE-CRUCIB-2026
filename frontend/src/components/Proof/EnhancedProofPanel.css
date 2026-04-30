@@ -1,0 +1,1407 @@
+/* ==========================================================================
+   EnhancedProofPanel.css
+   Enhanced proof viewer with sub-navigation, validation timeline,
+   repair history, What-If analysis, and download actions.
+
+   Prefix: epp- (to avoid conflicts with existing ProofPanel pp- classes)
+   Root:   .enhanced-proof-panel
+   ========================================================================== */
+
+/* -- Root container ------------------------------------------------------ */
+.enhanced-proof-panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+}
+
+/* -- Empty / loading state ----------------------------------------------- */
+.epp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  flex: 1;
+}
+
+.epp-empty svg {
+  color: var(--border-2);
+}
+
+.epp-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.epp-empty-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Section 1: Build Overview (always visible at top)
+   ========================================================================== */
+.epp-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+}
+
+/* Status badge row */
+.epp-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.epp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid transparent;
+}
+
+.epp-status-badge svg {
+  flex-shrink: 0;
+}
+
+/* Status variants */
+.epp-status-pass {
+  background: color-mix(in srgb, var(--state-success) 14%, transparent);
+  color: var(--state-success);
+  border-color: color-mix(in srgb, var(--state-success) 28%, transparent);
+}
+
+.epp-status-fail {
+  background: color-mix(in srgb, var(--state-error) 14%, transparent);
+  color: var(--state-error);
+  border-color: color-mix(in srgb, var(--state-error) 28%, transparent);
+}
+
+.epp-status-pending {
+  background: color-mix(in srgb, #eab308 14%, transparent);
+  color: #a16207;
+  border-color: color-mix(in srgb, #eab308 28%, transparent);
+}
+
+.epp-status-warning {
+  background: color-mix(in srgb, var(--state-warning) 14%, transparent);
+  color: var(--state-warning);
+  border-color: color-mix(in srgb, var(--state-warning) 28%, transparent);
+}
+
+/* Confidence badge */
+.epp-confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-confidence-high {
+  background: color-mix(in srgb, var(--state-success) 14%, transparent);
+  color: var(--state-success);
+}
+
+.epp-confidence-medium {
+  background: color-mix(in srgb, var(--state-warning) 14%, transparent);
+  color: var(--state-warning);
+}
+
+.epp-confidence-low {
+  background: color-mix(in srgb, var(--state-error) 14%, transparent);
+  color: var(--state-error);
+}
+
+/* Job & project IDs */
+.epp-ids-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-id-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.epp-id-value {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* Stack summary */
+.epp-stack-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.epp-stack-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: var(--bg-3);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-1);
+}
+
+.epp-stack-tag svg {
+  color: var(--text-muted);
+}
+
+.epp-stack-separator {
+  color: var(--text-muted);
+}
+
+/* Reasoning / explanations text */
+.epp-reasoning {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+}
+
+.epp-reasoning strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Section 2: Sub-tab navigation
+   ========================================================================== */
+.epp-tabs-nav {
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-1);
+  background: var(--bg-1);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+/* Hide scrollbar but keep scrollable */
+.epp-tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.epp-tabs-nav {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.epp-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-ui);
+  border-bottom: 2px solid transparent;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.epp-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-2);
+}
+
+.epp-tab-btn.active {
+  color: var(--text-strong);
+  background: var(--bg-2);
+  border-bottom-color: var(--state-success);
+}
+
+.epp-tab-btn svg {
+  flex-shrink: 0;
+}
+
+.epp-tab-badge {
+  background: var(--bg-3);
+  color: var(--text-secondary);
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ==========================================================================
+   Action buttons bar (between tabs and content)
+   ========================================================================== */
+.epp-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.epp-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-1);
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-ui);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.epp-action-btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--text-primary);
+  border-color: var(--border-2);
+}
+
+.epp-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Repair button — danger accent */
+.epp-action-repair {
+  background: color-mix(in srgb, var(--state-error) 10%, var(--bg-2));
+  color: var(--state-error);
+  border-color: color-mix(in srgb, var(--state-error) 30%, transparent);
+}
+
+.epp-action-repair:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--state-error) 18%, var(--bg-2));
+  color: var(--state-error);
+}
+
+/* Replay button — neutral accent */
+.epp-action-replay {
+  background: color-mix(in srgb, var(--state-info) 10%, var(--bg-2));
+  color: var(--state-info);
+  border-color: color-mix(in srgb, var(--state-info) 25%, transparent);
+}
+
+.epp-action-replay:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--state-info) 18%, var(--bg-2));
+  color: var(--state-info);
+}
+
+/* ==========================================================================
+   Tab content area (scrollable)
+   ========================================================================== */
+.epp-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  min-height: 0;
+}
+
+/* Custom scrollbar */
+.epp-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.epp-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.epp-content::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 3px;
+}
+
+.epp-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Tab content not available message */
+.epp-not-available {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 20px 0;
+  justify-content: center;
+}
+
+.epp-not-available svg {
+  color: var(--border-2);
+}
+
+/* ==========================================================================
+   Tab: Overview content
+   ========================================================================== */
+.epp-overview-verdict {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--state-success) 6%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--state-success) 16%, var(--border-1));
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.epp-overview-verdict-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.epp-overview-failure {
+  background: color-mix(in srgb, var(--state-error) 6%, var(--bg-2));
+  border-color: color-mix(in srgb, var(--state-error) 16%, var(--border-1));
+  color: var(--state-error);
+}
+
+/* Trust language callout */
+.epp-trust-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(102, 102, 102, 0.06);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.epp-trust-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--state-info);
+}
+
+.epp-trust-callout strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.epp-trust-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.epp-trust-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--state-success);
+  font-weight: 500;
+}
+
+.epp-trust-check svg {
+  color: var(--state-success);
+}
+
+/* Meta info grid */
+.epp-meta-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.epp-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.epp-meta-label {
+  color: var(--text-muted);
+  min-width: 90px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.epp-meta-value {
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.epp-meta-value.muted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Build commands list */
+.epp-build-cmds {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epp-build-cmds li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  background: var(--bg-0);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+}
+
+.epp-build-cmds li::before {
+  content: '$';
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Test results */
+.epp-test-block {
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Tab: Agents content
+   ========================================================================== */
+.epp-agents-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.epp-agent-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-ui);
+}
+
+.epp-agent-card:hover {
+  border-color: var(--border-2);
+  background: var(--bg-3);
+}
+
+.epp-agent-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.epp-agent-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.epp-agent-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.epp-agent-status-dot.active {
+  background: var(--state-success);
+}
+
+.epp-agent-status-dot.inactive {
+  background: var(--border-2);
+}
+
+.epp-agent-status-label {
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.epp-agent-status-label.active {
+  color: var(--state-success);
+}
+
+/* ==========================================================================
+   Tab: Files content
+   ========================================================================== */
+.epp-files-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.epp-files-stat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.epp-files-stat span {
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-file-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.epp-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  transition: background 150ms;
+  cursor: default;
+}
+
+.epp-file-item:hover {
+  background: var(--bg-2);
+}
+
+.epp-file-item.highlighted {
+  background: color-mix(in srgb, var(--state-info) 6%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--state-info) 14%, var(--border-1));
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.epp-file-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.epp-file-icon.highlighted {
+  color: var(--state-info);
+}
+
+.epp-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.epp-file-indent {
+  padding-left: 24px;
+}
+
+.epp-file-indent-2 {
+  padding-left: 48px;
+}
+
+.epp-file-indent-3 {
+  padding-left: 72px;
+}
+
+/* ==========================================================================
+   Tab: Validation Timeline
+   ========================================================================== */
+.epp-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+/* Vertical line through timeline */
+.epp-timeline::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--border-1);
+  border-radius: 1px;
+}
+
+.epp-timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.epp-timeline-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid var(--border-1);
+  background: var(--bg-1);
+}
+
+.epp-timeline-icon.pass {
+  border-color: var(--state-success);
+  color: var(--state-success);
+  background: color-mix(in srgb, var(--state-success) 10%, var(--bg-1));
+}
+
+.epp-timeline-icon.fail {
+  border-color: var(--state-error);
+  color: var(--bg-1);
+  background: var(--state-error);
+}
+
+.epp-timeline-icon.warn {
+  border-color: var(--state-warning);
+  color: var(--state-warning);
+  background: color-mix(in srgb, var(--state-warning) 10%, var(--bg-1));
+}
+
+.epp-timeline-icon.skip {
+  border-color: var(--border-2);
+  color: var(--text-muted);
+  background: var(--bg-2);
+}
+
+.epp-timeline-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.epp-timeline-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.epp-timeline-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.epp-timeline-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.epp-timeline-duration {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.epp-timeline-errors {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.epp-timeline-error {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--state-error);
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--state-error) 6%, var(--bg-0));
+  border: 1px solid color-mix(in srgb, var(--state-error) 14%, var(--border-1));
+  border-radius: var(--radius-sm);
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   Tab: Runtime content
+   ========================================================================== */
+.epp-runtime-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.epp-runtime-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+}
+
+.epp-runtime-check.pass {
+  border-left: 3px solid var(--state-success);
+}
+
+.epp-runtime-check.fail {
+  border-left: 3px solid var(--state-error);
+}
+
+.epp-runtime-check-icon {
+  flex-shrink: 0;
+}
+
+.epp-runtime-check-icon.pass svg {
+  color: var(--state-success);
+}
+
+.epp-runtime-check-icon.fail svg {
+  color: var(--state-error);
+}
+
+.epp-runtime-check-icon.skip svg {
+  color: var(--text-muted);
+}
+
+.epp-runtime-check-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.epp-runtime-check-status {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.epp-runtime-check-status.pass {
+  color: var(--state-success);
+}
+
+.epp-runtime-check-status.fail {
+  color: var(--state-error);
+}
+
+.epp-runtime-check-status.skip {
+  color: var(--text-muted);
+}
+
+/* Preview URL */
+.epp-runtime-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--state-info) 6%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--state-info) 14%, var(--border-1));
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.epp-runtime-url svg {
+  color: var(--state-info);
+  flex-shrink: 0;
+}
+
+.epp-runtime-url a {
+  color: var(--state-info);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.epp-runtime-url a:hover {
+  opacity: 0.8;
+}
+
+.epp-runtime-url-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Runtime logs section */
+.epp-runtime-logs {
+  margin-top: 10px;
+}
+
+.epp-runtime-logs-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.epp-runtime-log-entry {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.epp-runtime-log-entry.warning {
+  background: color-mix(in srgb, var(--state-warning) 6%, var(--bg-0));
+  border: 1px solid color-mix(in srgb, var(--state-warning) 14%, var(--border-1));
+  color: var(--state-warning);
+}
+
+.epp-runtime-log-entry.error {
+  background: color-mix(in srgb, var(--state-error) 6%, var(--bg-0));
+  border: 1px solid color-mix(in srgb, var(--state-error) 14%, var(--border-1));
+  color: var(--state-error);
+}
+
+/* ==========================================================================
+   Tab: Repairs content
+   ========================================================================== */
+.epp-repairs-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 20px 0;
+  justify-content: center;
+}
+
+.epp-repairs-empty svg {
+  color: var(--state-success);
+}
+
+.epp-repair-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.epp-repair-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 150ms;
+  user-select: none;
+}
+
+.epp-repair-header:hover {
+  background: var(--bg-3);
+}
+
+.epp-repair-attempt-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-repair-type {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.epp-repair-agent {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-repair-result-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.epp-repair-result-badge.pass {
+  background: color-mix(in srgb, var(--state-success) 14%, transparent);
+  color: var(--state-success);
+}
+
+.epp-repair-result-badge.fail {
+  background: color-mix(in srgb, var(--state-error) 14%, transparent);
+  color: var(--state-error);
+}
+
+.epp-repair-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+}
+
+.epp-repair-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+/* Expanded repair detail */
+.epp-repair-detail {
+  border-top: 1px solid var(--border-1);
+  padding: 10px 12px;
+  animation: epp-expand 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes epp-expand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 400px;
+  }
+}
+
+.epp-repair-detail-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  margin-top: 10px;
+}
+
+.epp-repair-detail-label:first-child {
+  margin-top: 0;
+}
+
+.epp-repair-log-block {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  background: var(--bg-0);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.epp-repair-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.epp-repair-file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  padding: 3px 6px;
+  background: var(--bg-0);
+  border-radius: 4px;
+}
+
+.epp-repair-file-item svg {
+  color: var(--state-warning);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Tab: What-If content
+   ========================================================================== */
+.epp-whatif-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 20px 0;
+  justify-content: center;
+}
+
+.epp-whatif-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.epp-whatif-card.risk-high {
+  border-left: 3px solid var(--state-error);
+}
+
+.epp-whatif-card.risk-medium {
+  border-left: 3px solid var(--state-warning);
+}
+
+.epp-whatif-card.risk-low {
+  border-left: 3px solid var(--state-success);
+}
+
+.epp-whatif-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.epp-whatif-scenario {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+/* Risk badges */
+.epp-risk-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+.epp-risk-badge.low {
+  background: color-mix(in srgb, var(--state-success) 14%, transparent);
+  color: var(--state-success);
+}
+
+.epp-risk-badge.medium {
+  background: color-mix(in srgb, var(--state-warning) 14%, transparent);
+  color: var(--state-warning);
+}
+
+.epp-risk-badge.high {
+  background: color-mix(in srgb, var(--state-error) 14%, transparent);
+  color: var(--state-error);
+}
+
+.epp-whatif-result {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.epp-whatif-fix {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  background: var(--bg-0);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+}
+
+.epp-whatif-fix svg {
+  color: var(--state-info);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.epp-whatif-fix-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.epp-whatif-autofix {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--state-success) 10%, var(--bg-3));
+  color: var(--state-success);
+  border: 1px solid color-mix(in srgb, var(--state-success) 20%, transparent);
+}
+
+.epp-whatif-autofix svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ==========================================================================
+   Tab: Downloads content
+   ========================================================================== */
+.epp-downloads-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.epp-download-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-ui);
+  user-select: none;
+}
+
+.epp-download-card:hover {
+  background: var(--bg-3);
+  border-color: var(--border-2);
+}
+
+.epp-download-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.epp-download-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.epp-download-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.epp-download-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.epp-download-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--state-info);
+  flex-shrink: 0;
+}
+
+.epp-download-action svg {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Shared / utility classes
+   ========================================================================== */
+.epp-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.epp-divider {
+  height: 1px;
+  background: var(--border-1);
+  margin: 12px 0;
+}
+
+.epp-text-sm {
+  font-size: 11px;
+}
+
+.epp-text-xs {
+  font-size: 10px;
+}
+
+.epp-text-muted {
+  color: var(--text-muted);
+}
+
+.epp-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.epp-flex-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.epp-mt-sm {
+  margin-top: 6px;
+}
+
+.epp-mt-md {
+  margin-top: 12px;
+}
+
+.epp-mb-sm {
+  margin-bottom: 6px;
+}
+
+.epp-mb-md {
+  margin-bottom: 12px;
+}
+
+.epp-gap-sm {
+  gap: 6px;
+}
+
+/* ==========================================================================
+   Responsive adjustments
+   ========================================================================== */
+@media (max-width: 640px) {
+  .epp-overview {
+    padding: 12px;
+  }
+
+  .epp-content {
+    padding: 10px 12px;
+  }
+
+  .epp-actions-bar {
+    padding: 8px 12px;
+  }
+
+  .epp-status-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .epp-ids-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .epp-runtime-check {
+    flex-wrap: wrap;
+  }
+
+  .epp-runtime-check-status {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+@keyframes epp-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.epp-animate-in {
+  animation: epp-fade-in 200ms ease-out;
+}

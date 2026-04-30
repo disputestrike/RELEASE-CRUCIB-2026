@@ -111,7 +111,15 @@ class IntentClassifier:
         ],
         
         # Backend
-        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql", "collect emails", "newsletter signup", "form submission", "admin tool", "approval workflow", "approval workflows"],
+        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql", "collect emails", "newsletter signup", "form submission", "admin tool", "approval workflow", "approval workflows", "node", "nodejs", "node.js"],
+
+        # Explicit language requests
+        "language_python": ["python", "fastapi", "django", "flask", "py "],
+        "language_node": ["node.js", "nodejs", "express", "nestjs", "javascript backend"],
+        "language_go": [" golang", "go ", "go,", "gin framework", "echo framework"],
+        "language_rust": ["rust", "cargo", "actix", "rocket web"],
+        "language_cpp": ["c++", "cpp", "g++", "cmake", "clang"],
+        "language_c": [" c programming", "gcc", "makefile"],
         
         # Database
         "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis", "store signups", "collect data", "save emails", "subscribers", "data tables", "admin records", "form submissions"],
@@ -120,7 +128,7 @@ class IntentClassifier:
         "mobile": ["mobile", "ios", "android", "react native", "flutter", "expo"],
         
         # CLI. Keep this narrow: "tool" alone can mean a web/admin product.
-        "cli": ["cli", "command line", "terminal", "shell script", "command-line tool"],
+        "cli": ["cli", "command line", "terminal", "shell script", "command-line tool", "command line tool"],
         
         # Game
         "game": ["game", "unity", "unreal", "godot", "phaser", "2d", "3d"],
@@ -200,10 +208,25 @@ class IntentClassifier:
         # Stack patterns
         if "fastapi" in prompt_lower:
             patterns["backend"] = "FastAPI"
-        elif "express" in prompt_lower or "node" in prompt_lower:
+            patterns["backend_language"] = "python"
+        elif "express" in prompt_lower or "node" in prompt_lower or "node.js" in prompt_lower:
             patterns["backend"] = "Express"
+            patterns["backend_language"] = "node.js"
         elif "django" in prompt_lower:
             patterns["backend"] = "Django"
+            patterns["backend_language"] = "python"
+        elif "nestjs" in prompt_lower or "nest.js" in prompt_lower:
+            patterns["backend"] = "NestJS"
+            patterns["backend_language"] = "node.js"
+        elif "c++" in prompt_lower or "cpp" in prompt_lower or "cmake" in prompt_lower:
+            patterns["backend"] = "CMake/g++"
+            patterns["backend_language"] = "cpp"
+        elif "golang" in prompt_lower or " go " in prompt_lower or "go," in prompt_lower:
+            patterns["backend"] = "Gin/Echo"
+            patterns["backend_language"] = "go"
+        elif "rust" in prompt_lower or "cargo" in prompt_lower:
+            patterns["backend"] = "Actix/Rocket"
+            patterns["backend_language"] = "rust"
         
         if "react" in prompt_lower:
             patterns["frontend"] = "React"

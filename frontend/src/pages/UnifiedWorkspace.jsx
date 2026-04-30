@@ -22,6 +22,7 @@ import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
+import EnhancedProofPanel from '../components/Proof/EnhancedProofPanel';
 import { workspaceZipQuery } from '../lib/workspaceZip';
 import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
@@ -2117,17 +2118,61 @@ export default function App() {
                     connectionMode={connectionMode}
                   />
                 )}
-                {activePane === 'proof' && (
-                  <ProofPanel
-                    proof={proof}
-                    jobId={effectiveJobId}
-                    jobStatus={job?.status}
-                    onExport={() => {}}
-                    openWorkspacePath={openWorkspacePath}
-                    milestoneBatch={milestoneBatch}
-                    repairQueueLen={repairQueueLen}
-                  />
-                )}
+                {activePane === 'proof' && (() => {
+                  // Progressive enhancement: use EnhancedProofPanel when proof has the new artifact format
+                  const hasEnhancedProof = proof && (proof.final_status || proof.selected_stack || proof.generated_files?.count !== undefined);
+                  if (hasEnhancedProof) {
+                    return (
+                      <EnhancedProofPanel
+                        proof={proof}
+                        jobId={effectiveJobId}
+                        jobStatus={job?.status}
+                        openWorkspacePath={openWorkspacePath}
+                        onRepair={async () => {
+                          if (!token || !API || !effectiveJobId) return;
+                          try {
+                            const res = await axios.post(
+                              `${API}/jobs/${encodeURIComponent(effectiveJobId)}/repair-from-proof`,
+                              { job_id: effectiveJobId, selected_repair_target: 'validation' },
+                              { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 },
+                            );
+                            if (res.data?.success) {
+                              refresh && refresh();
+                            }
+                          } catch (e) {
+                            console.error('Repair from proof failed:', e);
+                          }
+                        }}
+                        onReplay={async () => {
+                          if (!token || !API || !effectiveJobId) return;
+                          try {
+                            const res = await axios.post(
+                              `${API}/jobs/${encodeURIComponent(effectiveJobId)}/replay`,
+                              {},
+                              { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 },
+                            );
+                            if (res.data?.replay_job_id) {
+                              navigate(`/app/workspace?jobId=${encodeURIComponent(res.data.replay_job_id)}`);
+                            }
+                          } catch (e) {
+                            console.error('Replay failed:', e);
+                          }
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <ProofPanel
+                      proof={proof}
+                      jobId={effectiveJobId}
+                      jobStatus={job?.status}
+                      onExport={() => {}}
+                      openWorkspacePath={openWorkspacePath}
+                      milestoneBatch={milestoneBatch}
+                      repairQueueLen={repairQueueLen}
+                    />
+                  );
+                })()}
                 {activePane === 'systems' && uxMode === 'pro' && (
                   <WorkspaceSystemsPanel
                     jobId={effectiveJobId}

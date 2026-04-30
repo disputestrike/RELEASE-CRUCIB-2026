@@ -1,67 +1,94 @@
-"""WS-C smoke tests for the repair_loop orchestration."""
-import ast
-
+"""Tests for the repair_loop orchestration module."""
 import pytest
 
-from backend.orchestration.repair_loop import is_enabled, run_repair_loop
+from backend.orchestration.repair_loop import (
+    RepairLoop,
+    RepairResult,
+    RepairAgentInterface,
+    SyntaxRepairAgent,
+    ImportRepairAgent,
+)
 
 
-async def _ast_verify(code: str):
-    try:
-        ast.parse(code)
-    except SyntaxError as e:
-        return {"ok": False, "error": str(e), "evidence": {"lineno": e.lineno}}
-    return {"ok": True, "error": None, "evidence": None}
+class TestRepairResult:
+    """Test RepairResult dataclass."""
+
+    def test_repair_result_defaults(self):
+        result = RepairResult(
+            success=False,
+            contract_item_id="required_files:main.py",
+            repair_agents_executed=[],
+            files_modified=[],
+        )
+        assert result.success is False
+        assert result.error is None
+        assert result.requires_human is False
+
+    def test_repair_result_with_error(self):
+        result = RepairResult(
+            success=False,
+            contract_item_id="required_files:main.py",
+            repair_agents_executed=["syntax"],
+            files_modified=[],
+            error="Could not fix syntax",
+            requires_human=True,
+        )
+        assert result.requires_human is True
+        assert len(result.repair_agents_executed) == 1
 
 
-def test_feature_flag_default_off(monkeypatch):
-    monkeypatch.delenv("FEATURE_REPAIR_V2", raising=False)
-    assert is_enabled() is False
+class TestRepairLoop:
+    """Test RepairLoop orchestrator."""
+
+    def test_repair_loop_init(self):
+        loop = RepairLoop(
+            agent_pool={"syntax": SyntaxRepairAgent()},
+            workspace_path="/tmp/test_workspace",
+        )
+        assert loop.workspace_path == "/tmp/test_workspace"
+        assert "syntax" in loop.agent_pool
+
+    def test_repair_loop_has_circuit_breaker(self):
+        loop = RepairLoop(
+            agent_pool={},
+            workspace_path="/tmp/test_workspace",
+        )
+        assert loop.circuit_breaker is not None
+        assert loop.error_parser is not None
 
 
-def test_feature_flag_on(monkeypatch):
-    monkeypatch.setenv("FEATURE_REPAIR_V2", "1")
-    assert is_enabled() is True
+class TestRepairAgentInterface:
+    """Test that repair agents implement the interface."""
 
+    @pytest.mark.asyncio
+    async def test_syntax_repair_agent_returns_success(self):
+        agent = SyntaxRepairAgent()
+        result = await agent.repair(
+            contract_item_id="required_files:main.py",
+            contract=None,
+            workspace_path="/tmp/test",
+            error_context={},
+            priority="high",
+        )
+        assert result["success"] is True
+        assert "main.py" in result["files_modified"]
 
-@pytest.mark.asyncio
-async def test_repair_loop_converges_in_two_rounds():
-    async def attempt(code, notes):
-        # round 1: still broken; round 2: fix it
-        if "round 1" in " ".join(notes):
-            return "x = 1\n"
-        return "x = 1 =\n"
+    @pytest.mark.asyncio
+    async def test_import_repair_agent_returns_success(self):
+        agent = ImportRepairAgent()
+        result = await agent.repair(
+            contract_item_id="required_files:utils.py",
+            contract=None,
+            workspace_path="/tmp/test",
+            error_context={"missing_import": "os"},
+            priority="medium",
+        )
+        assert result["success"] is True
 
-    res = await run_repair_loop("x =\n", attempt, _ast_verify, max_rounds=5)
-    assert res.ok
-    assert res.rounds == 2
-    assert res.final_code.strip() == "x = 1"
-
-
-@pytest.mark.asyncio
-async def test_repair_loop_gives_up():
-    async def attempt(code, notes):
-        return "def (:\n"  # permanently broken
-
-    res = await run_repair_loop("def (:\n", attempt, _ast_verify, max_rounds=3)
-    assert not res.ok
-    assert res.rounds == 3
-    assert len(res.scratchpad) == 3
-
-
-@pytest.mark.asyncio
-async def test_events_emitted():
-    events = []
-
-    async def emit(name, payload):
-        events.append((name, payload))
-
-    async def attempt(code, notes):
-        return "a = 1\n"
-
-    res = await run_repair_loop("a =\n", attempt, _ast_verify, max_rounds=2, emit=emit)
-    assert res.ok
-    names = [e[0] for e in events]
-    assert "repair.round.start" in names
-    assert "repair.round.end" in names
-    assert "repair.final" in names
+    def test_base_interface_raises_not_implemented(self):
+        agent = RepairAgentInterface()
+        with pytest.raises(NotImplementedError):
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(
+                agent.repair("", None, "", {}, "")
+            )

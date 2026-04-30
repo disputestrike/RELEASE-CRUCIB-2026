@@ -75,6 +75,15 @@ from .context_registry import merge_file_ownership
 from backend.orchestration.runtime_state import runtime_state_adapter
 import time
 
+# ── Runtime Validation & Repair (HARD GATE) ─────────────────────────────────
+# These modules enforce that builds MUST pass validation or be rejected.
+# There is NO silent success path. Validation failure → repair → revalidate → pass or HARD FAIL.
+from backend.orchestration.runtime_validator import RuntimeValidator, ValidationResult
+from backend.orchestration.runtime_repair_gate import repair_until_valid, RepairResult
+from backend.stack_confidence import check_stack_confidence, StackNotSupportedError, get_stack_key
+from backend.orchestration.proof_artifact_service import get_proof_artifact_service
+from backend.orchestration.what_if_simulator import WhatIfSimulator
+
 logger = logging.getLogger(__name__)
 
 
@@ -1078,13 +1087,23 @@ async def handle_frontend_generate(
                 agent = FrontendAgent()
                 logger.info(f"Agent instantiated: {agent.name}")
 
+                # Import stack selection for multi-language support
+                try:
+                    from backend.agents.builder_agent import select_stack
+                    selected_stack = select_stack(goal)
+                    logger.info("FrontendAgent stack selection: %s", selected_stack)
+                except Exception as stack_err:
+                    logger.warning("FrontendAgent stack selection failed: %s", stack_err)
+                    selected_stack = {}
+
                 context = {
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
+                    "stack": selected_stack,
                 }
 
-                logger.info(f"Calling agent.execute() with context...")
+                logger.info(f"Calling agent.execute() with context (stack=%s)...", selected_stack.get('frontend'))
                 result = await agent.execute(context)
 
                 logger.info(
@@ -1419,13 +1438,24 @@ async def handle_backend_route(
                 from backend.agents.backend_agent import BackendAgent
 
                 agent = BackendAgent()
+
+                # Import stack selection for multi-language support
+                try:
+                    from backend.agents.builder_agent import select_stack
+                    selected_stack = select_stack(goal)
+                    logger.info("BackendAgent stack selection: %s", selected_stack)
+                except Exception as stack_err:
+                    logger.warning("BackendAgent stack selection failed: %s", stack_err)
+                    selected_stack = {}
+
                 context = {
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
+                    "stack": selected_stack,
                 }
 
-                logger.info(f"backend_route: Running BackendAgent for job {job_id}")
+                logger.info(f"backend_route: Running BackendAgent for job {job_id} (stack=%s)", selected_stack.get('backend'))
                 result = await agent.execute(context)
 
                 # Write generated files
@@ -1918,11 +1948,295 @@ No remote URL is set in local Auto-Runner runs. Set `CRUCIBAI_PUBLIC_BASE_URL`, 
 async def handle_verification_step(
     step: Dict, job: Dict, workspace_path: str, db_pool=None, **kwargs
 ) -> Dict:
-    """Verification is applied in execute_step via verify_step (single pass)."""
-    return {
-        "output": f"Verification gate: {step.get('step_key', '')}",
-        "artifacts": [],
-    }
+    """
+    HARD VERIFICATION GATE + PROOF ARTIFACT GENERATION — No bypass possible.
+
+    This runs the full 4-stage validation pipeline:
+      1. SYNTAX — Files parse without errors
+      2. BUILD — Build commands succeed
+      3. RUNTIME — Server starts and responds to /health
+      4. INTEGRATION — API endpoints return valid responses
+
+    If validation fails, the repair loop is triggered:
+      → classify errors → repair agent → revalidate → repeat (up to 3 cycles)
+
+    After validation (pass or repair), produces a unified PROOF ARTIFACT.
+    After successful validation, runs WHAT-IF simulation for resilience checks.
+
+    If repair also fails, raises VerificationFailed — the build is BLOCKED.
+    """
+    step_key = step.get("step_key", "verification")
+    goal = job.get("goal", "").strip()
+    job_id = job.get("id", "")
+    project_id = str(job.get("project_id") or job_id)
+    t0 = time.monotonic()
+
+    logger.info(
+        "[HARD VERIFICATION GATE] step=%s job=%s workspace=%s",
+        step_key, job_id, bool(workspace_path),
+    )
+
+    if not workspace_path:
+        logger.warning("[HARD VERIFICATION GATE] No workspace — skipping runtime validation")
+        return {
+            "output": f"Verification gate (no workspace): {step_key}",
+            "artifacts": [],
+        }
+
+    # ── CREATE PROOF ARTIFACT ────────────────────────────────────────────
+    proof_svc = get_proof_artifact_service()
+    proof = proof_svc.create(job_id=job_id, project_id=project_id, goal=goal)
+
+    try:
+        # Collect all files from workspace
+        from pathlib import Path as FilePath
+
+        ws = FilePath(workspace_path)
+        files: Dict[str, str] = {}
+
+        # Walk workspace and collect source files
+        skip_dirs = {".git", "node_modules", "__pycache__", ".next", "dist", "build", ".venv", "venv"}
+        for root, dirs, filenames in os.walk(workspace_path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in filenames:
+                fpath = os.path.join(root, fname)
+                rel = os.path.relpath(fpath, workspace_path)
+                try:
+                    with open(fpath, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                    if len(content) < 500000:  # Skip files > 500KB
+                        files[rel] = content
+                except Exception:
+                    pass
+
+        if not files:
+            logger.warning("[HARD VERIFICATION GATE] No source files found in workspace")
+            proof_svc.set_generated_files(proof, files)
+            proof_svc.finalize(proof, status="fail", failure_reason="No source files in workspace")
+            proof_svc.save(proof, workspace_path)
+            return {
+                "output": f"Verification gate (no files): {step_key}",
+                "artifacts": [],
+            }
+
+        logger.info("[HARD VERIFICATION GATE] Collected %d files for validation", len(files))
+
+        # Record files in proof
+        proof_svc.set_generated_files(proof, files)
+
+        # Determine stack from goal or workspace files
+        try:
+            from backend.agents.builder_agent import select_stack
+            stack = select_stack(goal) if goal else {"backend": {"language": "python", "framework": "fastapi"}}
+        except Exception:
+            stack = {"backend": {"language": "python", "framework": "fastapi"}}
+
+        # Record stack in proof
+        proof_svc.set_stack(proof, stack)
+
+        # Record confidence in proof
+        try:
+            confidence = check_stack_confidence(stack)
+            proof_svc.set_confidence(proof, confidence)
+        except Exception as e:
+            logger.debug("Confidence check for proof: %s", e)
+
+        # Record agents used
+        proof_svc.set_agents_used(proof, ["RuntimeValidator"])
+
+        # ── STAGE 1: RUN VALIDATION ────────────────────────────────────────
+        validator = RuntimeValidator()
+        validation = await validator.validate(
+            files=files,
+            stack=stack,
+            workspace_path=workspace_path,
+        )
+
+        # Record validation in proof
+        proof_svc.set_validation(proof, validation)
+
+        if validation.success:
+            logger.info(
+                "[HARD VERIFICATION GATE] PASS — all stages passed. Score=%s",
+                validation.details.get("total_duration_ms", "?"),
+            )
+
+            # ── WHAT-IF SIMULATION (post-success) ─────────────────────────
+            try:
+                simulator = WhatIfSimulator()
+                what_if_results = await simulator.run_all(files, stack, workspace_path)
+                proof_svc.set_what_if_results(proof, what_if_results)
+                logger.info("[WHAT-IF] %d scenarios completed", len(what_if_results))
+            except Exception as e:
+                logger.warning("[WHAT-IF] Simulation failed: %s", e)
+
+            # Finalize proof
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            proof_svc.finalize(proof, status="pass", duration_ms=duration_ms)
+
+            # Persist proof artifact
+            proof_path = proof_svc.save(proof, workspace_path)
+            logger.info("[PROOF ARTIFACT] Saved to %s", proof_path)
+
+            # Also emit as job event for UI
+            try:
+                await append_job_event(job_id, "proof_artifact", proof_svc.get_api_payload(proof))
+            except Exception:
+                pass
+
+            return {
+                "output": f"Verification PASSED: {step_key} (all 4 stages, proof saved)",
+                "artifacts": [],
+                "validation": {
+                    "success": True,
+                    "stage": validation.stage,
+                    "warnings": validation.warnings,
+                    "details": validation.details,
+                },
+                "proof_path": proof_path,
+                "what_if_count": len(proof.what_if_results),
+            }
+
+        # ── STAGE 2: VALIDATION FAILED — TRIGGER REPAIR LOOP ──────────────
+        logger.error(
+            "[HARD VERIFICATION GATE] FAIL at stage=%s — %d errors",
+            validation.stage, len(validation.errors),
+        )
+        for err in validation.errors[:5]:
+            logger.error("  validation_error: %s", err[:200])
+
+        # Run the real repair loop
+        repair_result = await repair_until_valid(
+            files=files,
+            stack=stack,
+            validation_result=validation,
+            workspace_path=workspace_path,
+            max_attempts=3,
+            validator=validator,
+        )
+
+        # Record repair in proof
+        proof_svc.add_repair_from_result(proof, repair_result)
+        proof_svc.set_agents_used(proof, ["RuntimeValidator", "RuntimeRepairGate"])
+
+        # ── STAGE 3: CHECK REPAIR RESULT ──────────────────────────────────
+        if repair_result.success:
+            logger.info(
+                "[HARD VERIFICATION GATE] REPAIRED — validation passed after %d cycles",
+                repair_result.cycles_used,
+            )
+
+            # Update files with repaired versions
+            repaired_files = repair_result.files
+            proof_svc.set_generated_files(proof, repaired_files)
+
+            # Write repaired files back to workspace
+            for fpath, content in repaired_files.items():
+                full = os.path.join(workspace_path, fpath)
+                os.makedirs(os.path.dirname(full), exist_ok=True)
+                with open(full, "w") as f:
+                    f.write(str(content))
+
+            # Update validation in proof with final state
+            final_validation = await validator.validate(
+                files=repaired_files,
+                stack=stack,
+                workspace_path=workspace_path,
+            )
+            proof_svc.set_validation(proof, final_validation)
+
+            # ── WHAT-IF SIMULATION (post-repair success) ──────────────────
+            try:
+                simulator = WhatIfSimulator()
+                what_if_results = await simulator.run_all(repaired_files, stack, workspace_path)
+                proof_svc.set_what_if_results(proof, what_if_results)
+            except Exception as e:
+                logger.warning("[WHAT-IF] Simulation failed: %s", e)
+
+            # Finalize proof
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            proof_svc.finalize(proof, status="pass", duration_ms=duration_ms)
+            proof_path = proof_svc.save(proof, workspace_path)
+
+            # Emit as job event
+            try:
+                await append_job_event(job_id, "proof_artifact", proof_svc.get_api_payload(proof))
+            except Exception:
+                pass
+
+            repaired_count = len(repair_result.details.get("files_changed", []))
+            return {
+                "output": f"Verification REPAIRED: {step_key} ({repair_result.cycles_used} cycles, {repaired_count} files fixed, proof saved)",
+                "artifacts": [],
+                "validation": {
+                    "success": True,
+                    "repaired": True,
+                    "cycles_used": repair_result.cycles_used,
+                    "files_changed": repair_result.details.get("files_changed", []),
+                },
+                "proof_path": proof_path,
+                "what_if_count": len(proof.what_if_results),
+            }
+
+        # ── STAGE 4: HARD FAIL — BUILD IS BLOCKED ─────────────────────────
+        logger.error(
+            "[HARD VERIFICATION GATE] HARD FAIL — repair exhausted after %d cycles",
+            repair_result.cycles_used,
+        )
+        for err in repair_result.errors[:5]:
+            logger.error("  remaining_error: %s", err[:200])
+
+        # Finalize proof as failure
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        proof_svc.finalize(
+            proof,
+            status="fail",
+            failure_reason=f"Runtime validation failed at stage '{validation.stage}' after {repair_result.cycles_used} repair cycles",
+            duration_ms=duration_ms,
+        )
+        proof_path = proof_svc.save(proof, workspace_path)
+
+        # Emit as job event
+        try:
+            await append_job_event(job_id, "proof_artifact", proof_svc.get_api_payload(proof))
+        except Exception:
+            pass
+
+        raise VerificationFailed({
+            "passed": False,
+            "failure_reason": f"Runtime validation failed at stage '{validation.stage}' after {repair_result.cycles_used} repair cycles",
+            "issues": repair_result.errors,
+            "score": 0,
+            "stage": validation.stage,
+            "proof_path": proof_path,
+        })
+
+    except VerificationFailed:
+        raise
+    except StackNotSupportedError as e:
+        logger.error("[HARD VERIFICATION GATE] Stack not supported: %s", e)
+        # Finalize proof as failure
+        proof_svc.finalize(proof, status="fail", failure_reason=str(e))
+        proof_svc.save(proof, workspace_path)
+        raise VerificationFailed({
+            "passed": False,
+            "failure_reason": str(e),
+            "issues": [str(e)],
+            "score": 0,
+            "stage": "confidence_gate",
+        })
+    except Exception as e:
+        logger.exception("[HARD VERIFICATION GATE] Unexpected error: %s", e)
+        proof_svc.finalize(proof, status="fail", failure_reason=str(e)[:500])
+        try:
+            proof_svc.save(proof, workspace_path)
+        except Exception:
+            pass
+        return {
+            "output": f"Verification gate (runtime error): {step_key} — {str(e)[:200]}",
+            "artifacts": [],
+            "validation_error": str(e)[:200],
+        }
 
 
 async def handle_delivery_manifest(

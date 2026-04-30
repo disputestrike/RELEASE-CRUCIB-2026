@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -75,6 +76,14 @@ class TranscriptAppend(BaseModel):
 
     role: Literal["user", "assistant"] = "user"
     body: str = Field(..., min_length=1, max_length=32000)
+
+
+class RepairFromProofRequest(BaseModel):
+    """Repair a build from its proof artifact."""
+    job_id: str = ""
+    proof_snapshot: Dict[str, Any] = {}
+    error_context: str = ""
+    selected_repair_target: Optional[str] = "validation"  # validation|runtime|integration|what_if
 
 
 def _event_payload(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -1013,3 +1022,177 @@ async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         logger.warning("resume_job: %s", e)
         return {"resumed": False, "job_id": job_id, "error": str(e)}
+
+
+@router.post("/{job_id}/repair-from-proof")
+async def repair_from_proof(
+    job_id: str,
+    body: RepairFromProofRequest,
+    user: dict = Depends(_get_auth()),
+):
+    """Repair a build using its existing proof artifact and the runtime repair gate.
+
+    Reuses the existing repair pipeline:
+    1. Load proof artifact
+    2. Extract failure context
+    3. Call RuntimeRepairGate.repair_until_valid()
+    4. Re-run runtime validation
+    5. Return updated proof payload
+    """
+    try:
+        job = await _resolve_job(job_id, user)
+        if job.get("status") not in ("failed", "error", "completed"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only failed/completed jobs can be repaired (current: {job.get('status')})",
+            )
+
+        from ..orchestration.proof_artifact_service import get_proof_artifact_service
+        proof_svc = get_proof_artifact_service()
+        proof = proof_svc.get(job_id)
+
+        if not proof:
+            # Try loading from workspace
+            project_id = str(job.get("project_id") or job_id).strip()
+            from ..server import _project_workspace_path
+            workspace_path = _project_workspace_path(project_id)
+            proof = proof_svc.load(job_id, str(workspace_path))
+
+        if not proof:
+            raise HTTPException(status_code=404, detail="No proof artifact found for this job. Repair from proof requires an existing proof artifact.")
+
+        # Get workspace files
+        project_id = str(job.get("project_id") or job_id).strip()
+        from ..server import _project_workspace_path
+        workspace_path = _project_workspace_path(project_id)
+
+        import glob as _glob
+        files = {}
+        for fp in _glob.glob(str(workspace_path) + "/**/*", recursive=True):
+            p = Path(fp)
+            if p.is_file() and not p.name.startswith("."):
+                try:
+                    files[str(p.relative_to(workspace_path))] = p.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
+
+        if not files:
+            raise HTTPException(status_code=422, detail="No workspace files found to repair.")
+
+        # Use existing repair gate
+        from ..orchestration.runtime_repair_gate import RuntimeRepairGate
+        from ..orchestration.runtime_validator import RuntimeValidator
+
+        validator = RuntimeValidator()
+        repair_gate = RuntimeRepairGate(validator)
+
+        stack_key = (proof.confidence or {}).get("stack_key", "python_fastapi")
+
+        # Run validation first
+        validation = await validator.validate(files, stack_key)
+
+        if validation.success:
+            return {
+                "success": True,
+                "message": "Build already passes validation. No repair needed.",
+                "job_id": job_id,
+                "validation_passed": True,
+                "repairs_needed": 0,
+            }
+
+        # Run repair loop
+        repair_result = await repair_gate.repair_until_valid(
+            files=files,
+            stack=stack_key,
+            validation_result=validation,
+            max_attempts=3,
+        )
+
+        # Update proof
+        if repair_result.success:
+            proof_svc.set_validation(proof, repair_result.validation)
+            proof_svc.add_repair_from_result(proof, repair_result)
+            explanations = proof_svc.generate_deterministic_explanations(proof)
+            proof_svc.set_explanations(proof, explanations)
+            proof_svc.finalize(proof, status="pass", duration_ms=proof.duration_ms)
+
+        return {
+            "success": repair_result.success,
+            "job_id": job_id,
+            "repairs_needed": getattr(repair_result, 'cycles_used', 0),
+            "validation_passed": repair_result.success,
+            "errors": getattr(repair_result, 'errors', []),
+            "updated_proof": proof_svc.get_api_payload(proof) if repair_result.success else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("POST /api/jobs/%s/repair-from-proof error", job_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ReplayBuildRequest(BaseModel):
+    """Replay a build."""
+    goal: Optional[str] = None
+    stack_override: Optional[str] = None
+
+
+@router.post("/{job_id}/replay")
+async def replay_build(
+    job_id: str,
+    body: ReplayBuildRequest = ReplayBuildRequest(),
+    user: dict = Depends(_get_auth()),
+):
+    """Replay a build, creating a new job with the same intent.
+
+    Preserves the old proof artifact and creates a new one for the replay.
+    """
+    try:
+        original_job = await _resolve_job(job_id, user)
+
+        # Get original goal
+        goal = body.goal or original_job.get("goal", "")
+        if not goal:
+            raise HTTPException(status_code=400, detail="Original job has no goal to replay.")
+
+        project_id = original_job.get("project_id")
+
+        # Load original proof for comparison
+        from ..orchestration.proof_artifact_service import get_proof_artifact_service
+        proof_svc = get_proof_artifact_service()
+        original_proof = proof_svc.get(job_id)
+        original_stack_key = (original_proof.confidence or {}).get("stack_key", "unknown") if original_proof else "unknown"
+        original_file_count = (original_proof.generated_files or {}).get("count", 0) if original_proof else 0
+
+        # Create new job
+        from ..orchestration.planner import generate_plan
+        result = await create_job_service(
+            body=JobCreateRequest(goal=goal, project_id=project_id, mode="guided"),
+            user=user,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+            generate_plan=generate_plan,
+        )
+
+        new_job = (result or {}).get("job") or {}
+        new_job_id = new_job.get("id") or new_job.get("job_id")
+
+        if not new_job_id:
+            raise HTTPException(status_code=500, detail="Failed to create replay job.")
+
+        return {
+            "success": True,
+            "original_job_id": job_id,
+            "replay_job_id": new_job_id,
+            "same_stack": True,  # Will be determined by the builder
+            "original_stack": original_stack_key,
+            "original_file_count": original_file_count,
+            "validation_passed": None,  # Not yet known
+            "runtime_passed": None,
+            "message": f"Replay job created. New job ID: {new_job_id}",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("POST /api/jobs/%s/replay error", job_id)
+        raise HTTPException(status_code=500, detail=str(e))
