@@ -5,8 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
-from domain.agent_state import AGENT_STATUS_COMPLETED, AGENT_STATUS_RUNNING, AGENT_STATUS_SKIPPED, normalize_agent_status, assert_agent_transition
-from domain.run_state import RUN_STATUS_COMPLETED, RUN_STATUS_FAILED, RUN_STATUS_RUNNING, assert_run_transition
+from backend.domain.agent_state import AGENT_STATUS_COMPLETED, AGENT_STATUS_RUNNING, AGENT_STATUS_SKIPPED, normalize_agent_status, assert_agent_transition
+from backend.domain.run_state import RUN_STATUS_COMPLETED, RUN_STATUS_FAILED, RUN_STATUS_RUNNING, assert_run_transition
 
 
 async def set_project_run_status_service(*, db: Any, project_id: str, current_status: Optional[str], next_status: str, extra_fields: Optional[Dict[str, Any]] = None) -> str:

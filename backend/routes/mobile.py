@@ -25,7 +25,7 @@ import os
 from typing import Optional
 
 import httpx
-from deps import get_current_user, get_db
+from backend.deps import get_current_user
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -90,6 +90,7 @@ async def get_mobile_qr(
     The QR code points to the project's Expo Go deep link.  Users can scan it
     with the Expo Go app on their phone to see the generated mobile app live.
     """
+    from backend.deps import get_db
     db = get_db()
     project = await db.projects.find_one(
         {"id": project_id, "user_id": user["id"]}, {"_id": 0}
@@ -140,6 +141,7 @@ async def trigger_eas_update(
     Requires ``EAS_TOKEN`` env var and ``project.eas_project_id`` to be set.
     After publishing, scanning the QR code will load the latest version.
     """
+    from backend.deps import get_db
     db = get_db()
     project = await db.projects.find_one(
         {"id": project_id, "user_id": user["id"]}, {"_id": 0}
@@ -230,6 +232,7 @@ async def get_store_checklist(
     This is a comprehensive pre-submission guide that CrucibAI generates
     based on the project's build outputs.
     """
+    from backend.deps import get_db
     db = get_db()
     project = await db.projects.find_one(
         {"id": project_id, "user_id": user["id"]}, {"_id": 0}

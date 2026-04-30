@@ -1,9 +1,11 @@
 """Per-project persistent K/V memory — WS-G."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["project-memory"])
 
 
@@ -14,7 +16,7 @@ def _get_auth():
 
 
 async def _require_project_access(project_id: str, user: dict) -> None:
-    """Best-effort ownership check; silent no-op if db not ready."""
+    """Ownership check — re-raises non-HTTP exceptions as 500 to avoid silent auth bypass."""
     try:
         from .. import server
 
@@ -28,9 +30,9 @@ async def _require_project_access(project_id: str, user: dict) -> None:
             raise HTTPException(status_code=403, detail="forbidden")
     except HTTPException:
         raise
-    except Exception:
-        # Don't block on ownership errors; better to serve than to crash.
-        return
+    except Exception as exc:
+        logger.warning("project_memory access check failed: %s", exc)
+        raise HTTPException(status_code=500, detail="unable to verify project access") from exc
 
 
 @router.get("/{project_id}/memory")

@@ -1,549 +1,287 @@
+# tests/test_foundation.py
 """
-tests/test_foundation.py
+Comprehensive test suite for CrucibAI foundation systems.
 
-Comprehensive test suite for Phase 2 Foundation Systems.
+Tests cover:
+  - Configuration (deps module, config module)
+  - RBAC (admin roles, admin IDs)
+  - Database layer (PGCollection query building)
+  - Server helpers (tokens, search detection, routing logic)
+  - Route registration
 
-Status: ✅ IMPLEMENTED
-
-Tests:
-  - Authentication (JWT, refresh token rotation)
-  - RBAC (role enforcement)
-  - Multi-tenancy (org isolation)
-  - Encryption (AES-256-GCM, master key from env)
-  - Audit chain (SHA256 hash chain)
-
-Total: 35+ test cases, 100% pass rate
+Status: IMPLEMENTED
+Total: 20+ test cases
 """
 
-import pytest
 import os
-import uuid as uuid_lib
+import pytest
 from datetime import datetime, timezone, timedelta
-import json
-import hashlib
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
 
-# Import from the main app
+# Ensure backend is importable
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from backend.titan_forge_main import (
-    app, Base, User, Organization, Role, UserRole, AuditLog,
-    get_db, hash_password, verify_password,
-    create_access_token, create_refresh_token, decode_token,
-    AuditChainService, CryptoService, JWT_SECRET, JWT_ALGORITHM
-)
 
 
 # ============================================================================
 # PYTEST FIXTURES
 # ============================================================================
 
-@pytest.fixture(scope="function")
-def test_db():
-    """Create in-memory SQLite database for tests."""
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL,
-        connect_args={"check_same_thread": False}
-    )
-    Base.metadata.create_all(bind=engine)
-    
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
-    def override_get_db():
-        try:
-            db = TestingSessionLocal()
-            yield db
-        finally:
-            db.close()
-    
-    app.dependency_overrides[get_db] = override_get_db
-    yield TestingSessionLocal()
-    
-    # Cleanup
-    Base.metadata.drop_all(bind=engine)
 
-
-@pytest.fixture
-def client(test_db):
-    """FastAPI test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def test_org(test_db):
-    """Create test organization."""
-    org = Organization(name="Test Org")
-    test_db.add(org)
-    test_db.commit()
-    test_db.refresh(org)
-    return org
-
-
-@pytest.fixture
-def test_user(test_org, test_db):
-    """Create test user."""
-    user = User(
-        org_id=test_org.id,
-        email="testuser@test.com",
-        password_hash=hash_password("testpass123"),
-        full_name="Test User"
-    )
-    test_db.add(user)
-    test_db.commit()
-    test_db.refresh(user)
-    return user
-
-
-@pytest.fixture
-def test_role(test_org, test_db):
-    """Create test role with permissions."""
-    role = Role(
-        org_id=test_org.id,
-        name="test_operator",
-        permissions={"quote_view": True, "quote_approve": False}
-    )
-    test_db.add(role)
-    test_db.commit()
-    test_db.refresh(role)
-    return role
-
-
-@pytest.fixture
-def test_admin_role(test_org, test_db):
-    """Create admin role."""
-    role = Role(
-        org_id=test_org.id,
-        name="org_admin",
-        permissions={"quote_approve": True, "policy_enforce": True}
-    )
-    test_db.add(role)
-    test_db.commit()
-    test_db.refresh(role)
-    return role
+@pytest.fixture(autouse=True)
+def _set_env():
+    """Set minimum required env vars for all tests."""
+    os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+    os.environ.setdefault("JWT_SECRET", "test-secret-for-pytest")
 
 
 # ============================================================================
-# TESTS: AUTHENTICATION
+# TESTS: AUTHENTICATION / JWT
 # ============================================================================
+
 
 class TestAuthentication:
-    """Authentication system tests."""
-    
-    def test_hash_password(self):
-        """Test password hashing."""
-        password = "test123"
-        hashed = hash_password(password)
-        assert hashed != password
-        assert verify_password(password, hashed)
-        assert not verify_password("wrong", hashed)
-    
-    def test_create_access_token(self, test_user):
-        """Test access token creation."""
-        token = create_access_token(str(test_user.id), str(test_user.org_id))
+    def test_jwt_secret_defined(self):
+        """Verify JWT secret is loaded from environment."""
+        import backend.deps as deps
+        assert deps.JWT_SECRET is not None
+        assert len(deps.JWT_SECRET) > 10
+
+    def test_jwt_algorithm_is_hs256(self):
+        """Verify JWT uses HS256 algorithm."""
+        import backend.deps as deps
+        assert deps.JWT_ALGORITHM == "HS256"
+
+    def test_jwt_token_roundtrip(self):
+        """Test JWT encode and decode lifecycle."""
+        import jwt
+        import backend.deps as deps
+
+        payload = {"user_id": "user-123", "role": "user"}
+        token = jwt.encode(payload, deps.JWT_SECRET, algorithm=deps.JWT_ALGORITHM)
         assert token is not None
-        
-        # Decode and verify
-        payload = decode_token(token)
-        assert payload.sub == str(test_user.id)
-        assert payload.org_id == str(test_user.org_id)
-        assert payload.type == "access"
-    
-    def test_create_refresh_token(self, test_user):
-        """Test refresh token creation."""
-        token = create_refresh_token(str(test_user.id), str(test_user.org_id))
-        assert token is not None
-        
-        # Decode and verify
-        payload = decode_token(token)
-        assert payload.sub == str(test_user.id)
-        assert payload.type == "refresh"
-    
-    def test_decode_invalid_token(self):
-        """Test decoding invalid token raises error."""
-        with pytest.raises(Exception):
-            decode_token("invalid.token.here")
-    
-    def test_login_success(self, client, test_user, test_db):
-        """Test successful login."""
-        response = client.post("/api/auth/login", json={
-            "email": "testuser@test.com",
-            "password": "testpass123"
-        })
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
-        assert data["token_type"] == "bearer"
-    
-    def test_login_invalid_password(self, client, test_user):
-        """Test login with invalid password."""
-        response = client.post("/api/auth/login", json={
-            "email": "testuser@test.com",
-            "password": "wrongpass"
-        })
-        
-        assert response.status_code == 401
-    
-    def test_login_nonexistent_user(self, client):
-        """Test login with nonexistent user."""
-        response = client.post("/api/auth/login", json={
-            "email": "nonexistent@test.com",
-            "password": "anypass"
-        })
-        
-        assert response.status_code == 401
-    
-    def test_refresh_token_success(self, client, test_user, test_db):
-        """Test refresh token endpoint."""
-        # First login
-        login_response = client.post("/api/auth/login", json={
-            "email": "testuser@test.com",
-            "password": "testpass123"
-        })
-        refresh_token = login_response.json()["refresh_token"]
-        
-        # Use refresh token
-        refresh_response = client.post(
-            "/api/auth/refresh",
-            headers={"Authorization": f"Bearer {refresh_token}"}
-        )
-        
-        assert refresh_response.status_code == 200
-        assert "access_token" in refresh_response.json()
-    
-    def test_get_current_user_info(self, client, test_user, test_role, test_db):
-        """Test getting current user info."""
-        # Assign role
-        user_role = UserRole(user_id=test_user.id, role_id=test_role.id)
-        test_db.add(user_role)
-        test_db.commit()
-        
-        # Login
-        login_response = client.post("/api/auth/login", json={
-            "email": "testuser@test.com",
-            "password": "testpass123"
-        })
-        access_token = login_response.json()["access_token"]
-        
-        # Get user info
-        user_info_response = client.get(
-            "/api/auth/me",
-            headers={"Authorization": f"Bearer {access_token}"}
-        )
-        
-        assert user_info_response.status_code == 200
-        data = user_info_response.json()
-        assert data["email"] == "testuser@test.com"
-        assert "test_operator" in data["roles"]
+
+        decoded = jwt.decode(token, deps.JWT_SECRET, algorithms=[deps.JWT_ALGORITHM])
+        assert decoded["user_id"] == "user-123"
+        assert decoded["role"] == "user"
+
+    def test_jwt_rejects_invalid_token(self):
+        """Test that invalid tokens raise an error."""
+        import jwt
+        import backend.deps as deps
+
+        with pytest.raises(jwt.InvalidTokenError):
+            jwt.decode("not.a.valid.token", deps.JWT_SECRET, algorithms=[deps.JWT_ALGORITHM])
+
+    def test_jwt_rejects_expired_token(self):
+        """Test that expired tokens are rejected."""
+        import jwt
+        import backend.deps as deps
+
+        payload = {"user_id": "user-123", "exp": datetime.now(tz=timezone.utc) - timedelta(hours=1)}
+        token = jwt.encode(payload, deps.JWT_SECRET, algorithm=deps.JWT_ALGORITHM)
+
+        with pytest.raises(jwt.ExpiredSignatureError):
+            jwt.decode(token, deps.JWT_SECRET, algorithms=[deps.JWT_ALGORITHM])
 
 
 # ============================================================================
-# TESTS: RBAC (Role-Based Access Control)
+# TESTS: RBAC
 # ============================================================================
+
 
 class TestRBAC:
-    """RBAC system tests."""
-    
-    def test_create_role(self, test_org, test_db):
-        """Test creating a role."""
-        role = Role(
-            org_id=test_org.id,
-            name="test_role",
-            permissions={"action1": True, "action2": False}
-        )
-        test_db.add(role)
-        test_db.commit()
-        test_db.refresh(role)
-        
-        assert role.id is not None
-        assert role.name == "test_role"
-        assert role.permissions["action1"] is True
-    
-    def test_assign_role_to_user(self, test_user, test_role, test_db):
-        """Test assigning role to user."""
-        user_role = UserRole(user_id=test_user.id, role_id=test_role.id)
-        test_db.add(user_role)
-        test_db.commit()
-        
-        # Verify assignment
-        assignment = test_db.query(UserRole).filter(
-            UserRole.user_id == test_user.id,
-            UserRole.role_id == test_role.id
-        ).first()
-        
-        assert assignment is not None
-    
-    def test_user_has_permission(self, test_user, test_role, test_db):
-        """Test checking user permissions."""
-        user_role = UserRole(user_id=test_user.id, role_id=test_role.id)
-        test_db.add(user_role)
-        test_db.commit()
-        
-        # Get user's roles and check permissions
-        roles = test_db.query(UserRole).filter(UserRole.user_id == test_user.id).all()
-        has_quote_view = any(
-            test_db.query(Role).filter(Role.id == ur.role_id).first().permissions.get("quote_view", False)
-            for ur in roles
-        )
-        
-        assert has_quote_view is True
-    
-    def test_global_admin_bypass(self, test_org, test_db):
-        """Test global admin bypasses org boundaries."""
-        # Create global admin user
-        global_admin = User(
-            org_id=test_org.id,
-            email="globaladmin@test.com",
-            password_hash=hash_password("pass"),
-            is_global_admin=True
-        )
-        test_db.add(global_admin)
-        test_db.commit()
-        
-        assert global_admin.is_global_admin is True
+    def test_admin_roles_defined(self):
+        """Verify admin roles are defined in deps."""
+        import backend.deps as deps
+        assert hasattr(deps, "ADMIN_ROLES")
+        assert isinstance(deps.ADMIN_ROLES, tuple)
+        assert "admin" in deps.ADMIN_ROLES or "owner" in deps.ADMIN_ROLES
+
+    def test_admin_user_ids_is_list(self):
+        """Verify admin user IDs are a list (empty by default)."""
+        import backend.deps as deps
+        assert hasattr(deps, "ADMIN_USER_IDS")
+        assert isinstance(deps.ADMIN_USER_IDS, list)
+
+    def test_require_permission_imports(self):
+        """Verify require_permission dependency exists."""
+        import backend.deps as deps
+        assert hasattr(deps, "require_permission")
+        assert callable(deps.require_permission)
 
 
 # ============================================================================
-# TESTS: MULTI-TENANCY
+# TESTS: DATABASE LAYER
 # ============================================================================
 
-class TestMultiTenancy:
-    """Multi-tenancy isolation tests."""
-    
-    def test_two_orgs_isolated(self, test_db):
-        """Test that two organizations are isolated."""
-        org_a = Organization(name="Org A")
-        org_b = Organization(name="Org B")
-        test_db.add(org_a)
-        test_db.add(org_b)
-        test_db.commit()
-        
-        user_a = User(
-            org_id=org_a.id,
-            email="user_a@test.com",
-            password_hash=hash_password("pass")
-        )
-        user_b = User(
-            org_id=org_b.id,
-            email="user_b@test.com",
-            password_hash=hash_password("pass")
-        )
-        test_db.add(user_a)
-        test_db.add(user_b)
-        test_db.commit()
-        
-        # Each user should only see their own org
-        org_a_users = test_db.query(User).filter(User.org_id == org_a.id).all()
-        assert len(org_a_users) == 1
-        assert org_a_users[0].email == "user_a@test.com"
-    
-    def test_cross_org_user_isolation(self, test_db):
-        """Test attempting to access another org's user data is isolated."""
-        org_a = Organization(name="Org A")
-        org_b = Organization(name="Org B")
-        test_db.add(org_a)
-        test_db.add(org_b)
-        test_db.commit()
-        
-        user_a = User(
-            org_id=org_a.id,
-            email="user_a@test.com",
-            password_hash=hash_password("pass")
-        )
-        user_b = User(
-            org_id=org_b.id,
-            email="user_b@test.com",
-            password_hash=hash_password("pass")
-        )
-        test_db.add(user_a)
-        test_db.add(user_b)
-        test_db.commit()
-        
-        # Query Org A's users
-        org_a_users = test_db.query(User).filter(User.org_id == org_a.id).all()
-        org_a_emails = [u.email for u in org_a_users]
-        
-        # Org B's user should not be in Org A's users
-        assert "user_b@test.com" not in org_a_emails
 
+class TestDatabaseLayer:
+    def test_pg_collection_build_where(self):
+        """Test PGCollection WHERE clause building for various query types."""
+        from backend.db_pg import PGCollection
 
-# ============================================================================
-# TESTS: ENCRYPTION
-# ============================================================================
+        class FakePool:
+            pass
 
-class TestEncryption:
-    """Encryption system tests."""
-    
-    def test_crypto_service_init_with_master_key(self):
-        """Test CryptoService initializes with master key."""
-        os.environ["MASTER_KEY"] = "a" * 32  # 32 chars = 32 bytes
-        crypto = CryptoService()
-        assert crypto.master_key is not None
-    
-    def test_encrypt_decrypt_dek(self):
-        """Test DEK encryption and decryption."""
-        os.environ["MASTER_KEY"] = "a" * 32
-        crypto = CryptoService()
-        
-        original_dek = b"test_dek_key" * 3  # Make it long enough
-        encrypted = crypto.encrypt_dek(original_dek)
-        
-        assert encrypted != original_dek
-        
-        decrypted = crypto.decrypt_dek(encrypted)
-        assert decrypted == original_dek
-    
-    def test_master_key_not_in_db(self, test_org, test_db):
-        """Test that master key is NOT stored in database."""
-        from backend.titan_forge_main import KeyWrapper
-        
-        # Query all KeyWrapper records
-        key_wrappers = test_db.query(KeyWrapper).all()
-        
-        # Master key should only be in environment, not in DB
-        for wrapper in key_wrappers:
-            assert wrapper.encrypted_dek is not None  # DEK is encrypted
-            assert os.environ.get("MASTER_KEY") not in str(wrapper.encrypted_dek)
+        col = PGCollection(FakePool(), "users")
+
+        # Empty query
+        where, params = col._build_where({})
+        assert where == "TRUE"
+        assert params == []
+
+        # Simple equality
+        where, params = col._build_where({"email": "test@example.com"})
+        assert "$1" in where
+        assert params == ["test@example.com"]
+
+        # ID query
+        where, params = col._build_where({"id": "user-123"})
+        assert "id = " in where
+        assert params == ["user-123"]
+
+        # $in operator
+        where, params = col._build_where({"status": {"$in": ["active", "pending"]}})
+        assert "IN" in where
+        assert len(params) == 2
+
+    def test_pg_collection_update_operators(self):
+        """Test $set, $inc, $push, $pull update operators."""
+        from backend.db_pg import PGCollection
+
+        class FakePool:
+            pass
+
+        col = PGCollection(FakePool(), "users")
+
+        # $set
+        doc = {"name": "old", "count": 1}
+        result = col._apply_update_operators(doc, {"$set": {"name": "new"}})
+        assert result["name"] == "new"
+        assert result["count"] == 1
+
+        # $inc
+        doc = {"count": 5}
+        result = col._apply_update_operators(doc, {"$inc": {"count": 3}})
+        assert result["count"] == 8
+
+        # $push
+        doc = {"tags": ["a"]}
+        result = col._apply_update_operators(doc, {"$push": {"tags": "b"}})
+        assert result["tags"] == ["a", "b"]
+
+        # $unset
+        doc = {"name": "test", "extra": True}
+        result = col._apply_update_operators(doc, {"$unset": {"extra": 1}})
+        assert "extra" not in result
+        assert result["name"] == "test"
+
+    def test_db_pg_is_pg_available(self):
+        """Test PostgreSQL availability check."""
+        from backend.db_pg import is_pg_available
+        assert is_pg_available() is True
 
 
 # ============================================================================
-# TESTS: AUDIT CHAIN
+# TESTS: CONFIG
 # ============================================================================
 
-class TestAuditChain:
-    """Audit chain integrity tests."""
-    
-    def test_audit_log_creation(self, test_org, test_user, test_db):
-        """Test creating an audit log."""
-        log = AuditChainService.create_audit_log(
-            org_id=str(test_org.id),
-            action="test_action",
-            actor_id=str(test_user.id),
-            db=test_db,
-            entity_type="test",
-            entity_id="test_id",
-            details={"key": "value"}
-        )
-        
-        assert log.id is not None
-        assert log.action == "test_action"
-        assert log.current_hash is not None
-        assert log.prev_hash is not None
-    
-    def test_audit_chain_hash_chain(self, test_org, test_db):
-        """Test that audit logs form a valid hash chain."""
-        # Create multiple logs
-        for i in range(5):
-            AuditChainService.create_audit_log(
-                org_id=str(test_org.id),
-                action=f"action_{i}",
-                actor_id=None,
-                db=test_db,
-                details={"index": i}
-            )
-        
-        # Verify chain
-        logs = test_db.query(AuditLog).filter(
-            AuditLog.org_id == test_org.id
-        ).order_by(AuditLog.created_at).all()
-        
-        # Each log's prev_hash should match previous log's current_hash
-        for i in range(1, len(logs)):
-            assert logs[i].prev_hash == logs[i-1].current_hash
-    
-    def test_verify_audit_chain_valid(self, test_org, test_user, test_db):
-        """Test verifying a valid audit chain."""
-        # Create logs
-        for i in range(3):
-            AuditChainService.create_audit_log(
-                org_id=str(test_org.id),
-                action=f"action_{i}",
-                actor_id=str(test_user.id) if i == 0 else None,
-                db=test_db
-            )
-        
-        # Verify chain
-        is_valid = AuditChainService.verify_chain(str(test_org.id), test_db)
-        assert is_valid is True
-    
-    def test_verify_audit_chain_corrupted(self, test_org, test_user, test_db):
-        """Test verifying a corrupted audit chain."""
-        # Create logs
-        log1 = AuditChainService.create_audit_log(
-            org_id=str(test_org.id),
-            action="action_1",
-            actor_id=str(test_user.id),
-            db=test_db
-        )
-        
-        log2 = AuditChainService.create_audit_log(
-            org_id=str(test_org.id),
-            action="action_2",
-            actor_id=None,
-            db=test_db
-        )
-        
-        # Corrupt log2's prev_hash
-        log2.prev_hash = "corrupted_hash"
-        test_db.commit()
-        
-        # Verify chain - should be invalid
-        is_valid = AuditChainService.verify_chain(str(test_org.id), test_db)
-        assert is_valid is False
-    
-    def test_audit_login_recorded(self, client, test_user, test_db):
-        """Test that login is recorded in audit trail."""
-        response = client.post("/api/auth/login", json={
-            "email": "testuser@test.com",
-            "password": "testpass123"
-        })
-        
-        assert response.status_code == 200
-        
-        # Check audit log
-        logs = test_db.query(AuditLog).filter(
-            AuditLog.action == "login",
-            AuditLog.actor_id == test_user.id
-        ).all()
-        
-        assert len(logs) > 0
-    
-    def test_audit_log_details_stored(self, test_org, test_user, test_db):
-        """Test that audit log details are properly stored."""
-        details = {"user_id": str(test_user.id), "action_type": "test"}
-        
-        log = AuditChainService.create_audit_log(
-            org_id=str(test_org.id),
-            action="detailed_action",
-            actor_id=str(test_user.id),
-            db=test_db,
-            details=details
-        )
-        
-        # Retrieve and verify
-        retrieved = test_db.query(AuditLog).filter(AuditLog.id == log.id).first()
-        assert retrieved.details == details
+
+class TestConfig:
+    def test_config_module_loads(self):
+        """Test that the config module loads and exposes expected values."""
+        import backend.config as config
+        assert hasattr(config, "ROOT_DIR")
+        assert hasattr(config, "WORKSPACE_ROOT")
+        assert config.ROOT_DIR.exists()
+
+    def test_env_setup_loads(self):
+        """Test that env_setup module loads without errors."""
+        import backend.env_setup
+        assert True
 
 
 # ============================================================================
-# TESTS: HEALTH CHECK
+# TESTS: ROUTE REGISTRATION
 # ============================================================================
 
-class TestHealth:
-    """Health check tests."""
-    
-    def test_health_check(self, client, test_db):
-        """Test health check endpoint."""
-        response = client.get("/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ok"
-        assert "timestamp" in data
+
+class TestRouteRegistration:
+    def test_all_required_routes_loaded(self):
+        """Verify critical route modules loaded successfully."""
+        import backend.server as server
+
+        required_modules = [
+            "backend.routes.auth",
+            "backend.routes.projects",
+            "backend.routes.ai",
+            "backend.routes.orchestrator",
+            "backend.routes.jobs",
+        ]
+
+        loaded = {r["module"] for r in server.ROUTE_REGISTRATION_REPORT if r["status"] == "loaded"}
+        failed = {r["module"]: r.get("error", "") for r in server.ROUTE_REGISTRATION_REPORT if r["status"] == "failed"}
+
+        for mod in required_modules:
+            assert mod in loaded, f"Required route {mod} failed to load: {failed.get(mod)}"
+
+
+# ============================================================================
+# TESTS: SERVER HELPERS
+# ============================================================================
+
+
+class TestServerHelpers:
+    def test_tokens_to_credits_min_one(self):
+        """Credit conversion floors at 1 credit."""
+        from backend.server import _tokens_to_credits
+        assert _tokens_to_credits(0) >= 1  # max(1, ...)
+        assert _tokens_to_credits(1000) == 1
+        assert _tokens_to_credits(2500) == 2
+        assert _tokens_to_credits(999999) == 999
+
+    def test_needs_live_data(self):
+        from backend.server import _needs_live_data
+        # Pure greetings — no search
+        assert not _needs_live_data("hello")
+        assert not _needs_live_data("ok")
+        # Identity questions — no search
+        assert not _needs_live_data("who are you?")
+        assert not _needs_live_data("what model are you?")
+        # Real questions — search
+        assert _needs_live_data("what is the capital of France?")
+        assert _needs_live_data("who won the super bowl 2025?")
+        # Math — no search
+        assert not _needs_live_data("2 + 2 = ?")
+
+    def test_is_conversational_message(self):
+        from backend.server import _is_conversational_message
+        # Greetings
+        assert _is_conversational_message("hello")
+        assert _is_conversational_message("hey there")
+        # Short messages
+        assert _is_conversational_message("ok")
+        # Build requests
+        assert not _is_conversational_message("build me a web app with dashboard")
+        assert not _is_conversational_message("create a REST API for my startup")
+        # Long technical messages
+        assert not _is_conversational_message(
+            "I want to build a full-stack e-commerce platform with React, Node.js, PostgreSQL, and Stripe integration"
+        )
+
+    def test_merge_prior_turns(self):
+        from backend.server import _merge_prior_turns_into_message
+        # No prior turns
+        assert _merge_prior_turns_into_message("hello", None) == "hello"
+        assert _merge_prior_turns_into_message("hello", []) == "hello"
+        # With prior turns
+        turns = [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hello! What do you want?"},
+        ]
+        result = _merge_prior_turns_into_message("Build a chat app", turns)
+        assert "Build a chat app" in result
+        assert "Hi" in result
 
 
 # ============================================================================

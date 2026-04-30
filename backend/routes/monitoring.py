@@ -91,7 +91,7 @@ async def track_event(body: TrackEventRequest):
                 )
     except Exception as exc:
         logger.warning("track_event: DB insert failed — %s", exc)
-    return {"status": "ok", "event_id": event_id}
+        return {"status": "error", "event_id": event_id, "detail": str(exc)[:200]}
 
 
 @router.get("/events")
