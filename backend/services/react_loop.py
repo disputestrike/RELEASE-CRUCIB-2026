@@ -34,8 +34,10 @@ def get_client() -> AsyncOpenAI:
     if _client is None:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            # Fallback for startup/validation if key is missing
-            api_key = "sk-placeholder-for-startup"
+            raise RuntimeError(
+                "OPENAI_API_KEY environment variable is required but not set. "
+                "The ReAct loop cannot initialize without a valid API key."
+            )
         _client = AsyncOpenAI(
             base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
             api_key=api_key,

@@ -12,6 +12,7 @@ migrations/006_complete_schema.sql).  Reads and writes go through
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Any, Dict, List, Literal, Optional
@@ -98,8 +99,10 @@ async def run_benchmark_job_fallback(
     """
     Fallback benchmark endpoint in jobs router.
     """
-    BENCHMARK_SECRET = "crucibai_benchmark_2026_secret_key"
-    if body.secret != BENCHMARK_SECRET:
+    benchmark_secret = os.environ.get("CRUCIBAI_BENCHMARK_SECRET")
+    if not benchmark_secret:
+        raise HTTPException(status_code=500, detail="Benchmark secret not configured (set CRUCIBAI_BENCHMARK_SECRET)")
+    if body.secret != benchmark_secret:
         raise HTTPException(status_code=401, detail="Invalid benchmark secret")
         
     try:
