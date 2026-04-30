@@ -1742,7 +1742,24 @@ export default function App() {
     [openWorkspacePath],
   );
 
-  const activeAgentCount = [...new Set(steps.filter((s) => s.status === 'running').map((s) => s.agent_name))].length;
+  const activeAgentCount = useMemo(() => {
+    const activeStatuses = new Set(['running', 'verifying', 'queued', 'pending', 'retrying']);
+    const labelFor = (s) => s?.agent_name || s?.agent || s?.step_key || s?.key || '';
+    const liveAgents = steps
+      .filter((s) => activeStatuses.has(String(s?.status || '').toLowerCase()))
+      .map(labelFor)
+      .filter(Boolean);
+    if (liveAgents.length) return new Set(liveAgents).size;
+
+    if (job?.status === 'running') {
+      const recentAgents = steps
+        .slice(-16)
+        .map(labelFor)
+        .filter(Boolean);
+      return Math.min(new Set(recentAgents).size, 16);
+    }
+    return 0;
+  }, [steps, job?.status]);
 
   const visibleRightPanes = RIGHT_ORDER.filter((p) => {
     if (uxMode === 'beginner' && (p === 'systems' || p === 'explorer' || p === 'replay' || p === 'code')) return false;

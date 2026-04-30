@@ -996,7 +996,11 @@ async def _execute_job_loop(
             },
         )
     else:
-        pv = await verify_preview_workspace(ws)
+        pv = await verify_preview_workspace(
+            ws,
+            goal=(job or {}).get("goal") or "",
+            build_profile=(job or {}).get("build_kind") or (job or {}).get("build_profile") or "",
+        )
 
     if not pv["passed"]:
         await update_job_state(

@@ -781,7 +781,11 @@ async def verify_step(
             if step_key == "verification.preview":
                 from .preview_gate import verify_preview_workspace
 
-                pr = await verify_preview_workspace(workspace_path or "")
+                pr = await verify_preview_workspace(
+                    workspace_path or "",
+                    goal=step.get("job_goal") or step.get("goal") or "",
+                    build_profile=step.get("build_profile") or step.get("build_kind") or "",
+                )
                 return _gate_result(pr, stage="preview_boot")
             if step_key == "verification.compile":
                 return await verify_compile_workspace(workspace_path or "")

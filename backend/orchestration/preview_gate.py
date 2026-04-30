@@ -8,6 +8,8 @@ import logging
 import os
 from typing import Any, Dict, List, Tuple
 
+from .build_integrity_validator import detect_build_profile
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,26 +57,81 @@ def _has_file(files: Dict[str, str], *needles: str) -> bool:
     return any(any(needle.lower() in rel for rel in rels) for needle in needles)
 
 
-def _detect_saas_product_intent(files: Dict[str, str], combined: str) -> bool:
-    # Only check file PATHS (not generated code content) to avoid false-positives.
-    # Generated React code always contains words like "settings", "dashboard", "analytics"
-    # in imports/comments — scanning file contents causes every build to trigger the
-    # strict SaaS contract gate, even for chatbots, automation tools, etc.
+def _detect_saas_product_intent(
+    files: Dict[str, str],
+    combined: str,
+    *,
+    goal: str = "",
+    build_profile: str = "",
+) -> bool:
+    profile = build_profile or detect_build_profile(goal or combined, files)
+    if profile == "web_site":
+        return False
+    if profile == "saas_ui":
+        return True
+
+    # Fall back to file PATHS only for legacy callers. Generic preview bundles
+    # often contain Home/Dashboard/Team/Shell paths, so those are not enough to
+    # trigger the strict SaaS contract by themselves.
     rel_joined = " ".join(files.keys()).lower()
     path_markers = (
         "saas",
-        "pricing",
         "analytics",
         "settings",
         "billing",
         "subscription",
-        "team",
-        "dashboard",
-        "home",
-        "shell",
+        "marketingnav",
+        "dashboardlayout",
+        "pricingpage",
+        "analyticspage",
+        "settingspage",
     )
-    # Require at least 4 of the SaaS-specific page/route paths to exist
-    return sum(1 for marker in path_markers if marker in rel_joined) >= 4
+    return sum(1 for marker in path_markers if marker in rel_joined) >= 2
+
+
+def _verify_website_contract(
+    files: Dict[str, str],
+    combined: str,
+) -> Tuple[List[str], List[Dict[str, Any]]]:
+    issues: List[str] = []
+    proof: List[Dict[str, Any]] = []
+    lower = combined.lower()
+    rels = " ".join(files.keys()).lower()
+
+    section_terms = {
+        "hero": ("hero", "headline", "h1"),
+        "features": ("feature", "benefit", "capability"),
+        "pricing": ("pricing", "plan", "price"),
+        "testimonials": ("testimonial", "quote", "customer"),
+        "footer": ("footer", "copyright", "contact"),
+    }
+    missing = [
+        label
+        for label, needles in section_terms.items()
+        if not any(needle in lower for needle in needles)
+    ]
+    if missing:
+        issues.append("Website contract missing public-site sections: " + ", ".join(missing))
+    else:
+        proof.append(
+            _proof(
+                "verification",
+                "Website section contract passed",
+                {"sections": sorted(section_terms)},
+                verification_class="experience",
+            )
+        )
+
+    if "src/pages/home" not in rels and "src/app" not in rels:
+        proof.append(
+            _proof(
+                "verification",
+                "Website served from root app surface",
+                {"surface": "src/App or equivalent"},
+            )
+        )
+
+    return issues, proof
 
 
 def _verify_saas_product_contract(
@@ -208,7 +265,12 @@ def _verify_saas_product_contract(
     return issues, proof
 
 
-async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
+async def verify_preview_workspace(
+    workspace_path: str,
+    *,
+    goal: str = "",
+    build_profile: str = "",
+) -> Dict[str, Any]:
     """
     Depth checks for a runnable preview bundle (not just file existence).
     Returns { passed, score, issues, proof, failure_reason }.
@@ -232,6 +294,7 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     files = _walk_source_files(workspace_path)
     combined = "\n".join(files.values()).lower()
     rel_joined = " ".join(files.keys()).lower()
+    profile = build_profile or detect_build_profile(goal, files)
 
     failure_reason = None
 
@@ -305,7 +368,7 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
                 **(pkg.get("dependencies") or {}),
                 **(pkg.get("devDependencies") or {}),
             }
-            need = ("react", "react-dom", "react-router-dom", "zustand")
+            need = ("react", "react-dom") if profile == "web_site" else ("react", "react-dom", "react-router-dom", "zustand")
             missing = [k for k in need if k not in deps]
             if missing:
                 failure_reason = "missing_dependencies"
@@ -345,47 +408,49 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
         failure_reason = "no_entry_point"
         issues.append("No index/main entry with ReactDOM.createRoot (or render) found.")
 
-    # Router
-    router_ok = any(
-        x in combined
-        for x in ("memoryrouter", "browserrouter", "routes", "<route", "react-router")
-    )
-    if not router_ok:
-        failure_reason = "no_router"
-        issues.append("No react-router usage detected (MemoryRouter/Routes/Route).")
-    else:
-        proof.append(
-            _proof("verification", "Routing primitives present", {"hint": "router"})
+    if profile != "web_site":
+        router_ok = any(
+            x in combined
+            for x in ("memoryrouter", "browserrouter", "routes", "<route", "react-router")
         )
+        if not router_ok:
+            failure_reason = "no_router"
+            issues.append("No react-router usage detected (MemoryRouter/Routes/Route).")
+        else:
+            proof.append(
+                _proof("verification", "Routing primitives present", {"hint": "router"})
+            )
 
-    # Auth pattern (context or explicit)
-    auth_ok = (
-        "authcontext" in combined or "authprovider" in combined or "useauth" in combined
-    )
-    if not auth_ok:
-        failure_reason = "no_auth"
-        issues.append(
-            "No auth context pattern (AuthContext / useAuth) found in sources."
+    if profile != "web_site":
+        # Auth pattern (context or explicit)
+        auth_ok = (
+            "authcontext" in combined or "authprovider" in combined or "useauth" in combined
         )
-    else:
-        proof.append(_proof("verification", "Auth context pattern present", {}))
+        if not auth_ok:
+            failure_reason = "no_auth"
+            issues.append(
+                "No auth context pattern (AuthContext / useAuth) found in sources."
+            )
+        else:
+            proof.append(_proof("verification", "Auth context pattern present", {}))
 
-    # Persistence
-    storage_ok = "localstorage" in combined or "sessionstorage" in combined
-    persist_ok = "persist" in combined and "zustand" in combined
-    if not storage_ok and not persist_ok:
-        failure_reason = "no_persistence"
-        issues.append(
-            "No localStorage/sessionStorage or zustand persist usage detected."
-        )
-    else:
-        proof.append(
-            _proof(
-                "verification",
-                "Client persistence present",
-                {"storage": storage_ok, "zustand_persist": persist_ok},
-            ),
-        )
+    if profile != "web_site":
+        # Persistence
+        storage_ok = "localstorage" in combined or "sessionstorage" in combined
+        persist_ok = "persist" in combined and "zustand" in combined
+        if not storage_ok and not persist_ok:
+            failure_reason = "no_persistence"
+            issues.append(
+                "No localStorage/sessionStorage or zustand persist usage detected."
+            )
+        else:
+            proof.append(
+                _proof(
+                    "verification",
+                    "Client persistence present",
+                    {"storage": storage_ok, "zustand_persist": persist_ok},
+                ),
+            )
 
     # Reusable components (multiple under src/components or components/)
     comp_dirs = sum(
@@ -417,12 +482,18 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
             _proof("file", f"Root app file: {app_like[0]}", {"path": app_like[0]})
         )
 
-    if _detect_saas_product_intent(files, combined):
+    if _detect_saas_product_intent(files, combined, goal=goal, build_profile=profile):
         saas_issues, saas_proof = _verify_saas_product_contract(files, combined)
         proof.extend(saas_proof)
         if saas_issues:
             failure_reason = "saas_product_contract_failed"
             issues.extend(saas_issues)
+    elif profile == "web_site":
+        website_issues, website_proof = _verify_website_contract(files, combined)
+        proof.extend(website_proof)
+        if website_issues:
+            failure_reason = "website_contract_failed"
+            issues.extend(website_issues)
 
     static_passed = len(issues) == 0
     if static_passed:

@@ -4,6 +4,7 @@ from backend.orchestration.enterprise_command_pack import enterprise_command_int
 from backend.orchestration.generated_app_template import build_frontend_file_set
 from backend.orchestration.preview_gate import (
     _detect_saas_product_intent,
+    _verify_website_contract,
     _verify_saas_product_contract,
 )
 
@@ -64,6 +65,21 @@ def test_saas_ui_goal_uses_manus_parity_template():
     assert "piechart" in combined
     assert "crucib_incomplete" not in combined
     assert "sample team page" not in combined
+
+
+def test_public_website_goal_uses_website_template_not_saas_gate():
+    goal = "Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer"
+    files = dict(build_frontend_file_set({"goal": goal}))
+    combined = _combined(files)
+
+    assert "src/pages/HomePage.jsx" in files
+    assert "src/pages/DashboardPage.jsx" not in files
+    assert "Generated workspace aligned to:" not in combined
+    assert _detect_saas_product_intent(files, combined, goal=goal) is False
+
+    issues, proof = _verify_website_contract(files, combined)
+    assert issues == []
+    assert any("Website section contract passed" in p["title"] for p in proof)
 
 
 def test_saas_product_gate_rejects_thin_scaffold():

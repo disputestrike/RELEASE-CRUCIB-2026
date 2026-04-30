@@ -255,23 +255,73 @@ def _find_client_exposed_secrets(files: Mapping[str, str], *, max_items: int = 8
     return exposed
 
 
+_PUBLIC_SITE_MARKERS = (
+    "website",
+    "web site",
+    "marketing site",
+    "multi-page website",
+    "multipage website",
+    "public site",
+    "landing page",
+    "portfolio",
+    "e-commerce",
+    "ecommerce",
+    "storefront",
+    "homepage",
+)
+
+_SAAS_UI_MARKERS = (
+    "saas",
+    "product ui",
+    "app shell",
+    "admin dashboard",
+    "customer dashboard",
+    "dashboard app",
+    "analytics dashboard",
+    "settings page",
+    "billing settings",
+    "subscription management",
+    "team management",
+    "user management",
+    "multi-tenant",
+    "multitenant",
+)
+
+
+def _looks_like_public_site_goal(text: str) -> bool:
+    if not text:
+        return False
+    return _has_any_text(text, _PUBLIC_SITE_MARKERS)
+
+
+def _looks_like_saas_ui_goal(text: str) -> bool:
+    if not text:
+        return False
+    if _has_any_text(text, ("saas", "product ui", "multi-tenant", "multitenant")):
+        return True
+    marker_hits = sum(1 for marker in _SAAS_UI_MARKERS if marker in text)
+    # Pricing/testimonials/landing-page language is common for ordinary
+    # websites, so require at least two app/product markers before SaaS gates.
+    return marker_hits >= 2
+
+
 def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -> str:
     # Use goal-only text for intent detection — scanning file contents causes
     # false positives (e.g. any file mentioning "app.json" triggers "mobile").
     text = (goal or "").lower()
     file_paths = " ".join(files.keys()).lower() if files else ""
 
+    public_site_goal = _looks_like_public_site_goal(text)
+    saas_goal = _looks_like_saas_ui_goal(text)
+
     # Web escape hatch: if vite.config or index.html exist as file keys,
     # this is definitely a web/SaaS build — classify before mobile check.
     if files and any(k in file_paths for k in ("vite.config", "index.html", "src/app.jsx", "src/app.tsx")):
-        if _has_any_text(text, ("saas", "dashboard", "analytics", "pricing")):
-            return "saas_ui"
         # Marketing / public-site goals must stay `web_site` (no mandatory SPA router wiring)
-        if _has_any_text(text, ("website", "marketing site", "portfolio", "e-commerce", "ecommerce", "storefront", "landing page")) and not _has_any_text(
-            text,
-            ("saas", "dashboard", "analytics", "settings", "team page", "product ui", "subscription"),
-        ):
+        if public_site_goal and not saas_goal:
             return "web_site"
+        if saas_goal:
+            return "saas_ui"
         return "web"
 
     if re.search(
@@ -281,12 +331,9 @@ def detect_build_profile(goal: str, files: Optional[Mapping[str, str]] = None) -
         return "mobile"
     if _has_any_text(text, ("automation", "workflow", "trigger", "run_agent", "scheduled", "agent workflow")):
         return "automation"
-    if _has_any_text(text, ("website", "marketing site", "portfolio", "e-commerce", "ecommerce", "storefront", "landing page")) and not _has_any_text(
-        text,
-        ("saas", "dashboard", "analytics", "settings", "team page", "product ui", "subscription"),
-    ):
+    if public_site_goal and not saas_goal:
         return "web_site"
-    if _has_any_text(text, ("saas", "product ui", "dashboard", "analytics", "pricing", "settings", "team page", "landing page")):
+    if saas_goal:
         return "saas_ui"
     if _has_any_text(text, ("api", "backend", "fastapi", "openapi", "rest", "graphql")) and not _has_any_text(
         text, ("react", "frontend", "landing", "dashboard")

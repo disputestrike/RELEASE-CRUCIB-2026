@@ -483,18 +483,12 @@
 .uw-root .uw-status-chip--running .uw-status-dot {
   background: var(--text-strong);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--text-strong) 12%, transparent);
-  animation: uw-status-pulse 1.6s ease-in-out infinite;
 }
 
 .uw-root .uw-status-chip--success .uw-status-dot { background: var(--text-strong); }
 .uw-root .uw-status-chip--failed  .uw-status-dot { background: var(--text-muted); }
 .uw-root .uw-status-chip--warn    .uw-status-dot { background: var(--text-secondary); }
 .uw-root .uw-status-chip--idle    .uw-status-dot { background: #a1a1aa; }
-
-@keyframes uw-status-pulse {
-  0%, 100% { opacity: 0.85; }
-  50% { opacity: 1; }
-}
 
 .uw-root .uw-status-overflow {
   font-size: 9px;

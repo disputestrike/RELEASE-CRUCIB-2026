@@ -17,17 +17,17 @@ from .code_generation_standard import STANDARD_DOC, STANDARD_VERSION
 _SAAS_INTENT_MARKERS = (
     "saas",
     "product ui",
-    "dashboard",
-    "analytics",
-    "pricing",
-    "settings",
-    "team",
+    "admin dashboard",
+    "customer dashboard",
+    "analytics dashboard",
+    "settings page",
+    "team management",
+    "billing settings",
+    "subscription management",
     "modern ui",
     "design system",
     "multiple pages",
     "responsive layout",
-    "landing page",
-    "marketing page",
 )
 
 
@@ -42,6 +42,10 @@ def is_saas_ui_goal(job: Dict, target: str = "") -> bool:
     ).lower()
     if target == "static_site" and any(m in goal for m in ("saas", "product", "dashboard", "app")):
         return True
+    if any(marker in goal for marker in ("saas", "product ui", "multi-tenant", "multitenant")):
+        return True
+    # Pricing/landing/testimonials are common public-site sections, so they do
+    # not count as SaaS intent unless paired with explicit app/product markers.
     return sum(1 for marker in _SAAS_INTENT_MARKERS if marker in goal) >= 2
 
 

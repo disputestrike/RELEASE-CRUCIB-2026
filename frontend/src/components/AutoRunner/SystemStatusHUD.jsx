@@ -1,5 +1,5 @@
 /**
- * SystemStatusHUD — real API latency + stream stats (no random/mock metrics).
+ * SystemStatusHUD - real API latency + stream stats.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import AgentActivityPanel from './AgentActivityPanel';
@@ -19,7 +19,7 @@ export default function SystemStatusHUD({
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!showPanel) return;
+    if (!showPanel) return undefined;
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowPanel(false);
@@ -30,7 +30,8 @@ export default function SystemStatusHUD({
   }, [showPanel]);
 
   const isActive = jobStatus === 'running';
-  // Show the real agent count — no artificial min of 1. If fanout=0, that's truth.
+  // Show backend-derived activity. The workspace keeps this stable across
+  // short verify/repair transitions so it does not flicker to 0 mid-run.
   const agentsLive = Math.max(0, Number(activeAgentCount) || 0);
   const opsLabel =
     connectionMode === 'stream'
@@ -43,12 +44,12 @@ export default function SystemStatusHUD({
     healthLatencyMs == null
       ? 'var(--text-muted)'
       : healthLatencyMs < 200
-        ? 'var(--state-success)'
+        ? 'var(--text-secondary)'
         : healthLatencyMs < 600
-          ? 'var(--state-warning)'
-          : 'var(--state-error)';
+          ? 'var(--text-muted)'
+          : 'var(--text-secondary)';
 
-  const latencyLabel = healthLatencyMs != null ? `${healthLatencyMs}ms` : '—';
+  const latencyLabel = healthLatencyMs != null ? `${healthLatencyMs}ms` : '-';
 
   return (
     <div
@@ -64,11 +65,11 @@ export default function SystemStatusHUD({
       <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : connectionMode !== 'offline' ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
       <span className="ssh-text">
         {opsLabel}
-        {' · '}
+        {' / '}
         {agentsLive} agent{agentsLive !== 1 ? 's' : ''} live
-        {' · '}
+        {' / '}
         <span style={{ color: latencyColor }}>{latencyLabel}</span>
-        {isActive && ' · Auto'}
+        {isActive && ' / Auto'}
       </span>
 
       {showTooltip && !showPanel && (

@@ -191,17 +191,6 @@
   background: color-mix(in srgb, var(--bg-1) 92%, transparent);
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--border-1) 42%, transparent);
-  animation: pp-idle-breathe 3.2s ease-in-out infinite;
-}
-
-@keyframes pp-idle-breathe {
-  0%,
-  100% {
-    opacity: 0.88;
-  }
-  50% {
-    opacity: 1;
-  }
 }
 
 .pp-preview-building {
@@ -237,12 +226,6 @@
     var(--border-1) 100%
   );
   background-size: 200% 100%;
-  animation: pp-shimmer 1.85s ease-in-out infinite;
-}
-
-@keyframes pp-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 
 .pp-preview-building-text {
@@ -260,7 +243,6 @@
   padding: 10px 12px;
   font-size: 11px;
   color: var(--text-secondary);
-  animation: pp-idle-breathe 2.4s ease-in-out infinite;
 }
 
 .pp-build-activity-head {

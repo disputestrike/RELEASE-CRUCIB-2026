@@ -244,6 +244,21 @@ def test_detects_saas_profile_from_goal():
     assert detect_build_profile("Build a modern SaaS product UI with dashboard, analytics and pricing") == "saas_ui"
 
 
+def test_pricing_website_stays_public_website_profile():
+    files = {
+        "package.json": "{}",
+        "index.html": "<div id='root'></div>",
+        "src/App.jsx": "export default function App(){return null}",
+    }
+
+    profile = detect_build_profile(
+        "Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer",
+        files,
+    )
+
+    assert profile == "web_site"
+
+
 def test_plan_validation_requires_design_options_for_ui():
     result = validate_plan_integrity("Pages: home. Components: card. Dependencies: react.", goal="Build a SaaS dashboard")
     assert not result["passed"]
