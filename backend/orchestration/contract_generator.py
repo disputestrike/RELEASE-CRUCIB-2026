@@ -104,6 +104,8 @@ class BuildContractGenerator:
     
     def _determine_build_class(self, dims: Dict) -> str:
         """Determine build class from dimensions (emergent, not from registry)."""
+        if dims.get("marketing_site"):
+            return "web_marketing_site"
         if dims.get("game"):
             return "game_2d" if dims.get("2d") else "game_3d"
         elif dims.get("cli"):
@@ -143,6 +145,13 @@ class BuildContractGenerator:
     def _synthesize_stack(self, dims: Dict) -> Dict[str, str]:
         """Synthesize stack from dimensions."""
         stack = {}
+
+        if dims.get("marketing_site"):
+            return {
+                "frontend": "React+Vite",
+                "styling": "CSS tokens",
+                "routing": "browser-addressable public routes",
+            }
         
         # Frontend
         if dims.get("frontend"):
@@ -171,9 +180,59 @@ class BuildContractGenerator:
     def _synthesize_files(self, dims: Dict) -> List[str]:
         """Synthesize required files from dimensions."""
         files = []
+
+        if dims.get("marketing_site"):
+            sections = set(dims.get("marketing_sections") or [])
+            files.extend([
+                "package.json",
+                "index.html",
+                "vite.config.js",
+                "README.md",
+                "ideas.md",
+                "src/main.jsx",
+                "src/App.jsx",
+                "src/routes.jsx",
+                "src/styles/tokens.css",
+                "src/styles/global.css",
+                "src/design/tokens.json",
+                "src/data/siteContent.js",
+                "src/layouts/MarketingLayout.jsx",
+                "src/components/navigation/MarketingNav.jsx",
+                "src/components/marketing/Footer.jsx",
+                "src/components/marketing/CTASection.jsx",
+                "src/pages/HomePage.jsx",
+                "src/pages/FeaturesPage.jsx",
+                "src/pages/PricingPage.jsx",
+                "src/pages/TestimonialsPage.jsx",
+                "src/pages/NotFoundPage.jsx",
+            ])
+            if "hero" in sections or not sections:
+                files.append("src/components/marketing/HeroSection.jsx")
+            if "features" in sections or not sections:
+                files.append("src/components/marketing/FeatureGrid.jsx")
+            if "pricing" in sections or not sections:
+                files.append("src/components/marketing/PricingCards.jsx")
+            if "testimonials" in sections or not sections:
+                files.append("src/components/marketing/TestimonialGrid.jsx")
+            files.extend([
+                "src/components/ui/Button.jsx",
+                "src/components/ui/Card.jsx",
+                "src/components/ui/Container.jsx",
+                "src/components/ui/Section.jsx",
+            ])
+            if not (
+                dims.get("backend")
+                or dims.get("api")
+                or dims.get("database")
+                or dims.get("workers")
+                or dims.get("integrations")
+                or dims.get("deployment")
+                or dims.get("docker")
+            ):
+                return files
         
         # Entry points
-        if dims.get("frontend"):
+        if dims.get("frontend") and not dims.get("marketing_site"):
             files.extend([
                 "client/src/main.tsx",
                 "client/src/App.tsx",
@@ -222,6 +281,19 @@ class BuildContractGenerator:
     
     def _synthesize_folders(self, dims: Dict) -> List[str]:
         """Synthesize required folder structure."""
+        if dims.get("marketing_site"):
+            return [
+                "src/components/ui",
+                "src/components/navigation",
+                "src/components/marketing",
+                "src/pages",
+                "src/layouts",
+                "src/styles",
+                "src/design",
+                "src/data",
+                "proof/screenshots",
+            ]
+
         folders = [
             "client/src/components",
             "client/src/pages",
@@ -245,6 +317,9 @@ class BuildContractGenerator:
     
     def _synthesize_routes(self, dims: Dict) -> List[str]:
         """Synthesize required routes."""
+        if dims.get("marketing_site"):
+            return ["/", "/features", "/pricing", "/testimonials", "/404"]
+
         routes = ["/", "/404"]
         
         if dims.get("auth"):
@@ -266,6 +341,9 @@ class BuildContractGenerator:
     
     def _synthesize_pages(self, dims: Dict) -> List[str]:
         """Synthesize required page components."""
+        if dims.get("marketing_site"):
+            return ["Home", "Features", "Pricing", "Testimonials", "NotFound"]
+
         pages = ["Home", "NotFound"]
         
         if dims.get("auth"):
@@ -290,7 +368,12 @@ class BuildContractGenerator:
     
     def _synthesize_backend_modules(self, dims: Dict) -> List[str]:
         """Synthesize required backend modules."""
+        if dims.get("marketing_site") and not (dims.get("backend") or dims.get("api")):
+            return []
+
         modules = ["auth", "health"]
+        if dims.get("marketing_site"):
+            modules = ["health", "lead_capture"]
         
         if dims.get("tenancy"):
             modules.append("tenancy")
@@ -317,6 +400,9 @@ class BuildContractGenerator:
     
     def _synthesize_api_endpoints(self, dims: Dict) -> List[str]:
         """Synthesize required API endpoints."""
+        if dims.get("marketing_site") and not (dims.get("backend") or dims.get("api")):
+            return []
+
         endpoints = ["/api/health"]
         
         if dims.get("auth"):
@@ -345,7 +431,14 @@ class BuildContractGenerator:
     
     def _synthesize_database_tables(self, dims: Dict) -> List[str]:
         """Synthesize required database tables."""
-        tables = ["users"]
+        if dims.get("marketing_site") and not dims.get("database"):
+            return []
+        if not (
+            dims.get("database") or dims.get("auth") or dims.get("tenancy") or dims.get("crm") or dims.get("compliance")
+        ):
+            return []
+
+        tables = ["form_submissions", "subscribers"] if dims.get("marketing_site") else ["users"]
         
         if dims.get("tenancy"):
             tables.extend(["organizations", "workspaces", "projects"])
@@ -366,6 +459,9 @@ class BuildContractGenerator:
     
     def _synthesize_migrations(self, dims: Dict) -> List[str]:
         """Synthesize required migration files."""
+        if not self._synthesize_database_tables(dims):
+            return []
+
         # One per major table group
         migrations = ["001_initial.sql", "002_users.sql"]
         
@@ -404,6 +500,9 @@ class BuildContractGenerator:
     
     def _synthesize_tests(self, dims: Dict) -> List[str]:
         """Synthesize required tests."""
+        if dims.get("marketing_site"):
+            return ["test_build", "test_routes", "test_visual_sections"]
+
         tests = ["test_health"]
         
         if dims.get("auth"):
@@ -419,10 +518,16 @@ class BuildContractGenerator:
     
     def _synthesize_docs(self, dims: Dict) -> List[str]:
         """Synthesize required documentation."""
+        if dims.get("marketing_site"):
+            return ["README.md", "ideas.md"]
+
         return ["README.md", "ARCHITECTURE.md", ".env.example"]
     
     def _synthesize_preview_routes(self, dims: Dict) -> List[str]:
         """Synthesize routes that need screenshot/preview."""
+        if dims.get("marketing_site"):
+            return ["/", "/features", "/pricing", "/testimonials", "/404"]
+
         routes = ["/"]
         
         if dims.get("auth"):
@@ -438,6 +543,19 @@ class BuildContractGenerator:
     
     def _synthesize_visual_checks(self, dims: Dict) -> List[str]:
         """Synthesize visual QA checks."""
+        if dims.get("marketing_site"):
+            return [
+                "no_blank_screen",
+                "nav_visible",
+                "hero_visible",
+                "features_visible",
+                "pricing_visible",
+                "testimonials_visible",
+                "footer_visible",
+                "monochrome_tokens_only",
+                "mobile_viewport_ok",
+            ]
+
         return [
             "no_blank_screen",
             "nav_visible",
@@ -465,6 +583,15 @@ class BuildContractGenerator:
     
     def _synthesize_proof_types(self, dims: Dict) -> List[str]:
         """Synthesize required proof types."""
+        if dims.get("marketing_site"):
+            return [
+                "build_pass",
+                "preview_pass",
+                "routes_proven",
+                "screenshot_valid",
+                "goal_satisfied",
+            ]
+
         proofs = ["build_pass", "syntax_ok"]
         
         if dims.get("frontend"):
@@ -567,6 +694,17 @@ class BuildContractGenerator:
     def _synthesize_goal_criteria(self, dims: Dict, prompt: str) -> List[Dict]:
         """Synthesize goal success criteria from dimensions."""
         criteria = []
+
+        if dims.get("marketing_site"):
+            sections = dims.get("marketing_sections") or ["hero", "features", "pricing", "testimonials", "footer"]
+            return [
+                {
+                    "criterion": f"section_{section}",
+                    "test": f"{section} content is present, visible, and styled with shared tokens",
+                    "priority": "high",
+                }
+                for section in sections
+            ]
         
         if dims.get("tenancy"):
             criteria.append({
@@ -596,7 +734,10 @@ class BuildContractGenerator:
         progress = {
             "required_files": {"done": [], "missing": [], "percent": 0},
             "required_routes": {"done": [], "missing": [], "percent": 0},
+            "required_backend_modules": {"done": [], "missing": [], "percent": 0},
             "required_database_tables": {"done": [], "missing": [], "percent": 0},
+            "required_workers": {"done": [], "missing": [], "percent": 0},
+            "required_integrations": {"done": [], "missing": [], "percent": 0},
             "required_tests": {"done": [], "missing": [], "percent": 0},
             "required_preview_routes": {"done": [], "missing": [], "percent": 0}
         }
@@ -610,5 +751,20 @@ class BuildContractGenerator:
         
         for table in self._synthesize_database_tables(dims):
             progress["required_database_tables"]["missing"].append(table)
+
+        for route in self._synthesize_preview_routes(dims):
+            progress["required_preview_routes"]["missing"].append(route)
+
+        for module in self._synthesize_backend_modules(dims):
+            progress["required_backend_modules"]["missing"].append(module)
+
+        for worker in self._synthesize_workers(dims):
+            progress["required_workers"]["missing"].append(worker)
+
+        for integration in self._synthesize_integrations(dims):
+            progress["required_integrations"]["missing"].append(integration)
+
+        for test in self._synthesize_tests(dims):
+            progress["required_tests"]["missing"].append(test)
         
         return progress

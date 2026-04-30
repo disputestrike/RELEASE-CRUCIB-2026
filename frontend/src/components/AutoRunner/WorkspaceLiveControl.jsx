@@ -197,9 +197,9 @@ export default function WorkspaceLiveControl({
         <LiveRow
           icon={<Download size={15} />}
           label="Export"
-          value={hasFiles ? 'Download Code ZIP ready when authenticated' : 'Waiting for files'}
-          status={hasFiles ? 'ok' : hasJob ? 'waiting' : 'idle'}
-          detail="Handoff export should include source, context, and proof artifacts."
+          value={hasFiles ? (jobStatus === 'completed' ? 'Verified ZIP available' : 'Draft workspace available') : 'Waiting for files'}
+          status={hasFiles && jobStatus === 'completed' ? 'ok' : hasJob ? 'waiting' : 'idle'}
+          detail={jobStatus === 'completed' ? 'Final handoff export includes source, context, and proof artifacts.' : 'Final export is gated until contract, preview, and proof checks pass.'}
         />
         <LiveRow
           icon={<TerminalSquare size={15} />}

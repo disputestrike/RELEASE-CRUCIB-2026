@@ -815,7 +815,7 @@ async def estimate_job_cost(
 @router.post("/{job_id}/steer")
 async def steer_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Inject a steering instruction into a running job."""
-    await _resolve_job(job_id, user)
+    job = await _resolve_job(job_id, user)
     try:
         body = await request.json()
     except Exception:
@@ -834,10 +834,50 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
                 job_id,
             )
         rs = _get_runtime_state()
+        steering_payload = {"message": message, "resume": bool(resume), "source": "workspace"}
+        try:
+            from ..server import _project_workspace_path
+            from ..orchestration.contract_artifacts import persist_steering_contract_delta
+
+            project_id = str(job.get("project_id") or job.get("id") or job_id).strip()
+            workspace_path = _project_workspace_path(project_id)
+            workspace_path.mkdir(parents=True, exist_ok=True)
+            delta_result = persist_steering_contract_delta(
+                str(workspace_path),
+                job,
+                message,
+                approved_by=str((user or {}).get("id") or "human_user"),
+            )
+            steering_payload["contract_delta"] = delta_result.get("delta")
+            steering_payload["active_goal"] = delta_result.get("active_goal")
+            await rs.save_checkpoint(
+                job_id,
+                "steering_context",
+                {
+                    "active_goal": delta_result.get("active_goal"),
+                    "latest_instruction": message,
+                    "latest_delta": delta_result.get("delta"),
+                    "contract_missing": delta_result.get("missing"),
+                    "contract_satisfied": delta_result.get("satisfied"),
+                },
+            )
+        except Exception:
+            logger.exception("steer_job: contract delta persistence failed")
+            await rs.save_checkpoint(
+                job_id,
+                "steering_context",
+                {
+                    "active_goal": f"{job.get('goal') or ''}\n\nUser steering request:\n{message}".strip(),
+                    "latest_instruction": message,
+                    "latest_delta": None,
+                    "contract_missing": {},
+                    "contract_satisfied": False,
+                },
+            )
         await rs.append_job_event(
             job_id,
             "workspace_steer_queued",
-            {"message": message, "resume": bool(resume), "source": "workspace"},
+            steering_payload,
         )
         try:
             from ..orchestration.event_bus import publish
@@ -845,7 +885,7 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
             await publish(
                 job_id,
                 "workspace_steer_queued",
-                {"message": message, "resume": bool(resume), "source": "workspace"},
+                steering_payload,
             )
         except Exception:
             pass

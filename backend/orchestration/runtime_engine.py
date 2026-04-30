@@ -13,8 +13,10 @@ Replaces one-shot LLM calls with a while(True) tool-use loop:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -336,6 +338,31 @@ def _accumulate_usage(
             totals[key] = totals.get(key, 0) + val
 
 
+def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Parse a provider-neutral JSON tool envelope from plain model text."""
+
+    if not text or not str(text).strip():
+        return None
+    raw = str(text).strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        raw = re.sub(r"^(json|javascript|js)\s*", "", raw, flags=re.IGNORECASE).strip()
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        pass
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(raw[start : end + 1])
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+    return None
+
+
 # ─── Core agentic loop ────────────────────────────────────────────────────────
 
 async def run_agent_loop(
@@ -447,6 +474,117 @@ async def run_agent_loop(
         "elapsed_seconds": round(time.time() - start_time, 2),
         "messages": messages,
         "usage": usage_totals if usage_totals else None,
+    }
+
+
+async def run_text_agent_loop(
+    agent_name: str,
+    system_prompt: str,
+    user_message: str,
+    workspace_path: str,
+    call_text_llm: Callable,
+    max_iterations: int = 5,
+) -> Dict[str, Any]:
+    """Provider-neutral tool loop for non-native tool-calling models.
+
+    Models such as Cerebras may only return text through our fallback path. This
+    loop gives them a small JSON tool protocol so they can still inspect and
+    mutate the workspace over multiple turns.
+    """
+
+    protocol = """
+You can use workspace tools by returning ONLY valid JSON:
+{
+  "tool_calls": [
+    {"name": "list_files", "input": {"subdir": ""}},
+    {"name": "read_file", "input": {"path": "src/App.jsx"}},
+    {"name": "write_file", "input": {"path": "src/App.jsx", "content": "..."}},
+    {"name": "edit_file", "input": {"path": "src/App.jsx", "old_str": "...", "new_str": "..."}},
+    {"name": "run_command", "input": {"argv": ["npm", "run", "build"]}}
+  ],
+  "continue": true,
+  "final": ""
+}
+When finished, return {"tool_calls": [], "continue": false, "final": "short summary"}.
+Do not wrap JSON in markdown.
+"""
+    messages: List[Dict[str, Any]] = [
+        {"role": "user", "content": user_message},
+        {"role": "user", "content": "First inspect the workspace, then write or repair files as needed."},
+    ]
+    files_written: List[str] = []
+    iterations = 0
+    start_time = time.time()
+    final_text = ""
+
+    for index in range(max_iterations):
+        iterations = index + 1
+        prompt = (
+            "\n\n".join(str(m.get("content") or "") for m in messages[-6:])
+            + "\n\nReturn the next JSON tool envelope now."
+        )
+        try:
+            response = await call_text_llm(
+                message=prompt,
+                system_message=(system_prompt or "") + "\n\n" + protocol,
+                session_id=f"{agent_name}:provider_neutral_loop",
+            )
+        except Exception as exc:
+            logger.warning("runtime_engine: provider-neutral loop LLM error for %s: %s", agent_name, exc)
+            break
+
+        text = response.get("text", "") if isinstance(response, dict) else str(response or "")
+        envelope = _extract_json_object(text)
+        if not envelope:
+            final_text = text.strip()
+            messages.append({"role": "assistant", "content": final_text})
+            break
+
+        calls = envelope.get("tool_calls") or envelope.get("tools") or []
+        if not isinstance(calls, list):
+            calls = []
+        tool_uses: List[Dict[str, Any]] = []
+        for i, call in enumerate(calls):
+            if not isinstance(call, dict):
+                continue
+            name = str(call.get("name") or call.get("tool") or "").strip()
+            if not name:
+                continue
+            tool_uses.append(
+                {
+                    "id": f"text-loop-{iterations}-{i}",
+                    "name": name,
+                    "input": call.get("input") if isinstance(call.get("input"), dict) else {},
+                }
+            )
+
+        final_text = str(envelope.get("final") or "").strip()
+        if not tool_uses:
+            messages.append({"role": "assistant", "content": final_text})
+            if not bool(envelope.get("continue")):
+                break
+            continue
+
+        results = await _execute_tools_batch(tool_uses, workspace_path)
+        for result in results:
+            content_str = str(result.get("content") or "")
+            if content_str.startswith("[written:") or content_str.startswith("[edited:"):
+                rel = content_str.split(":", 1)[1].rstrip("]").strip()
+                if rel and rel not in files_written:
+                    files_written.append(rel)
+        messages.append({"role": "assistant", "content": json.dumps(envelope)})
+        messages.append({"role": "user", "content": json.dumps(results)})
+        if not bool(envelope.get("continue", True)):
+            break
+
+    return {
+        "agent_name": agent_name,
+        "iterations": iterations,
+        "files_written": files_written,
+        "elapsed_seconds": round(time.time() - start_time, 2),
+        "messages": messages,
+        "final_text": final_text,
+        "provider_neutral_tool_loop": True,
     }
 
 

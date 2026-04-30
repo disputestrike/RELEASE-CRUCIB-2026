@@ -93,6 +93,13 @@ export default function ProofPanel({
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [scoreExpanded, setScoreExpanded] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
+  const normalizedJobStatus = String(jobStatus || '').trim().toLowerCase();
+  const isVerifiedStatus = ['completed', 'success', 'done'].includes(normalizedJobStatus);
+  const workspaceZipLabel = isVerifiedStatus
+    ? 'Download Code'
+    : normalizedJobStatus === 'failed'
+      ? 'Download Failed Workspace'
+      : 'Download Draft Workspace';
 
   const handleExport = useCallback(() => {
     if (!proof) return;
@@ -227,9 +234,13 @@ export default function ProofPanel({
               className="pp-export-btn"
               onClick={handleDownloadWorkspaceZip}
               disabled={zipBusy}
-              title="Download all generated code and workspace files as a ZIP."
+              title={
+                isVerifiedStatus
+                  ? 'Download verified generated code and workspace files as a ZIP.'
+                  : 'Download an interim workspace ZIP. Final export stays gated until the build passes.'
+              }
             >
-              <FileArchive size={12} /> {zipBusy ? 'Downloading...' : 'Download Code'}
+              <FileArchive size={12} /> {zipBusy ? 'Downloading...' : workspaceZipLabel}
             </button>
           ) : null}
           <button type="button" className="pp-export-btn" onClick={handleExport}>

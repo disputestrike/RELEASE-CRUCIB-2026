@@ -896,6 +896,7 @@ async def _run_single_agent_with_context(
     output: Any = ""
     _meta: Any = {}
     completed_anthropic_tool_loop = False
+    completed_provider_tool_loop = False
 
     if use_workspace_tool_loop:
         try:
@@ -967,18 +968,71 @@ async def _run_single_agent_with_context(
     else:
         if workspace_fs and not anthropic_key:
             logger.warning(
-                "workspace path set but no Anthropic API key — agent %s uses single-shot "
-                "(tool loop requires ANTHROPIC_API_KEY)",
+                "workspace path set but no Anthropic API key — agent %s uses provider-neutral "
+                "text tool loop",
                 agent_name,
             )
-        output, _meta = await _call_llm_with_fallback(
-            message=enriched_prompt,
-            system_message=system_message,
-            session_id=f"{project_id}:{agent_name}",
-            model_chain=model_chain,
-            api_keys=effective,
-            agent_name=agent_name,
-        )
+            try:
+                try:
+                    from .orchestration.runtime_engine import run_text_agent_loop
+                except ImportError:
+                    from backend.orchestration.runtime_engine import run_text_agent_loop
+
+                async def _call_text_llm(*, message, system_message, session_id):
+                    resp, model_used = await _call_llm_with_fallback(
+                        message=message,
+                        system_message=system_message,
+                        session_id=session_id,
+                        model_chain=model_chain,
+                        api_keys=effective,
+                        agent_name=agent_name,
+                    )
+                    return {
+                        "text": resp.get("text", "") if isinstance(resp, dict) else str(resp or ""),
+                        "model": model_used,
+                        "tokens_used": resp.get("tokens_used", 0) if isinstance(resp, dict) else 0,
+                    }
+
+                loop_out = await run_text_agent_loop(
+                    agent_name=agent_name,
+                    system_prompt=system_message,
+                    user_message=enriched_prompt,
+                    workspace_path=workspace_fs,
+                    call_text_llm=_call_text_llm,
+                )
+                output = loop_out.get("final_text") or "[agent completed provider-neutral tool loop]"
+                _meta = {
+                    "model": "provider_neutral_tool_loop",
+                    "tool_loop": True,
+                    "provider_neutral_tool_loop": True,
+                    "iterations": loop_out.get("iterations"),
+                    "files_written": loop_out.get("files_written"),
+                    "elapsed_seconds": loop_out.get("elapsed_seconds"),
+                }
+                completed_provider_tool_loop = True
+            except Exception as exc:
+                logger.warning(
+                    "provider-neutral workspace tool loop failed for %s — falling back to single-shot LLM: %s",
+                    agent_name,
+                    exc,
+                )
+                output, _meta = await _call_llm_with_fallback(
+                    message=enriched_prompt,
+                    system_message=system_message,
+                    session_id=f"{project_id}:{agent_name}",
+                    model_chain=model_chain,
+                    api_keys=effective,
+                    agent_name=agent_name,
+                )
+        else:
+            output, _meta = await _call_llm_with_fallback(
+                message=enriched_prompt,
+                system_message=system_message,
+                session_id=f"{project_id}:{agent_name}",
+                model_chain=model_chain,
+                api_keys=effective,
+                agent_name=agent_name,
+            )
 
     est_tokens = max(100, len(str(output or "")) // 4)
     if completed_anthropic_tool_loop and isinstance(_meta, dict):
@@ -1011,6 +1065,12 @@ async def _run_single_agent_with_context(
             result["tool_loop_files_written"] = _meta.get("files_written")
             if isinstance(_meta.get("anthropic_usage"), dict):
                 result["anthropic_usage"] = _meta["anthropic_usage"]
+    if completed_provider_tool_loop:
+        result["tool_loop"] = True
+        result["provider_neutral_tool_loop"] = True
+        if isinstance(_meta, dict):
+            result["tool_loop_iterations"] = _meta.get("iterations")
+            result["tool_loop_files_written"] = _meta.get("files_written")
     return await run_real_post_step(agent_name, project_id, previous_outputs, result)
 
 

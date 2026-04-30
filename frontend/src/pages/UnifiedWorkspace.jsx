@@ -2159,11 +2159,21 @@ export default function App() {
                           className="arp-topbar-btn"
                           style={{ fontSize: 11 }}
                           disabled={zipBusy}
-                          title="Download all generated code and workspace files as a ZIP."
+                          title={
+                            ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
+                              ? 'Download verified generated code and workspace files as a ZIP.'
+                              : 'Download an interim workspace ZIP. Final export stays gated until the build passes.'
+                          }
                           onClick={handleDownloadWorkspaceZip}
                         >
                           <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                          {zipBusy ? 'Downloading...' : 'Download Code'}
+                          {zipBusy
+                            ? 'Downloading...'
+                            : ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
+                              ? 'Download Code'
+                              : String(job?.status || '').toLowerCase() === 'failed'
+                                ? 'Download Failed Workspace'
+                                : 'Download Draft Workspace'}
                         </button>
                       ) : null}
                       <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>

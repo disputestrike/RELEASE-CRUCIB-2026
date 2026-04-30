@@ -815,12 +815,19 @@ def _score_completeness(
                 "crucib_incomplete",
                 "TODO: replace this with real",
                 "your_app_name_here",
+                "agent completed tool loop with no assistant text",
+                "sample team page",
+                "included in the scaffold",
+                "generated module placeholder",
+                "\"_placeholder\": \"generated\"",
+                "real test placeholder",
+                "fake ci",
             )
             if p.lower() in text.lower()
         ]
         if placeholder_hits:
-            issues.append(_issue("placeholder_language", "Final output contains scaffold placeholders: " + ", ".join(placeholder_hits), phase, severity="warning", retry_targets=("integration", "frontend")))
-            score = max(0, score - 3)
+            issues.append(_issue("placeholder_language", "Final output contains scaffold placeholders: " + ", ".join(placeholder_hits), phase, severity="blocker", retry_targets=("integration", "frontend")))
+            score = 0
 
     scores["completeness"] = min(SCORE_WEIGHTS["completeness"], score)
     proof.append({"proof_type": "product", "title": "Completeness inspected", "payload": {"profile": profile, "score": scores["completeness"]}})

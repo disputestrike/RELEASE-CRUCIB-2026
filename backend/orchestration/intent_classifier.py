@@ -73,12 +73,32 @@ class IntentClassifier:
         
         # Frontend
         "frontend": ["react", "vue", "angular", "frontend", "spa", "ui", "dashboard"],
+
+        # Public / marketing websites
+        "marketing_site": [
+            "website",
+            "web site",
+            "multi-page website",
+            "multipage website",
+            "marketing site",
+            "landing page",
+            "homepage",
+            "hero",
+            "features grid",
+            "feature grid",
+            "pricing",
+            "testimonials",
+            "footer",
+            "public site",
+            "portfolio",
+            "storefront",
+        ],
         
         # Backend
-        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql"],
+        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql", "collect emails", "newsletter signup", "form submission"],
         
         # Database
-        "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis"],
+        "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis", "store signups", "collect data", "save emails", "subscribers"],
         
         # Mobile
         "mobile": ["mobile", "ios", "android", "react native", "flutter", "expo"],
@@ -179,6 +199,22 @@ class IntentClassifier:
             patterns["frontend"] = "Angular"
         
         # Specific feature patterns
+        marketing_sections = []
+        for label, needles in {
+            "hero": ("hero", "headline"),
+            "features": ("features grid", "feature grid", "features", "benefits"),
+            "pricing": ("pricing", "plans", "price"),
+            "testimonials": ("testimonials", "testimonial", "customer quotes"),
+            "footer": ("footer", "contact"),
+            "cta": ("cta", "call to action", "conversion"),
+        }.items():
+            if any(needle in prompt_lower for needle in needles):
+                marketing_sections.append(label)
+        if marketing_sections:
+            patterns["marketing_sections"] = sorted(set(marketing_sections))
+            patterns["frontend"] = patterns.get("frontend") or "React"
+            patterns["marketing_site"] = True
+
         if "quote workflow" in prompt_lower or "approval" in prompt_lower:
             patterns["workflow_engine"] = True
         
@@ -214,7 +250,12 @@ class IntentClassifier:
         uncertainties = []
         
         # Check for missing stack specification
-        if not any(word in prompt.lower() for word in ["react", "vue", "angular", "fastapi", "express", "django"]):
+        prompt_lower = prompt.lower()
+        is_public_site = any(
+            word in prompt_lower
+            for word in ["website", "web site", "landing page", "hero", "features", "pricing", "testimonials"]
+        )
+        if not is_public_site and not any(word in prompt_lower for word in ["react", "vue", "angular", "fastapi", "express", "django"]):
             uncertainties.append("frontend_framework_not_specified")
             uncertainties.append("backend_framework_not_specified")
         
@@ -223,7 +264,7 @@ class IntentClassifier:
             uncertainties.append("prompt_too_short")
         
         # Check for missing auth specification
-        if "auth" not in prompt.lower() and "login" not in prompt.lower():
+        if not is_public_site and "auth" not in prompt_lower and "login" not in prompt_lower:
             uncertainties.append("auth_requirement_unclear")
         
         return uncertainties

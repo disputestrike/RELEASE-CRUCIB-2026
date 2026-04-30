@@ -115,9 +115,9 @@ def _extract_artifact_from_llm_output(
             except json.JSONDecodeError:
                 pass
         
-        # Last resort: return minimal valid JSON
-        logger.warning("Unable to extract JSON from LLM output, using placeholder")
-        return '{"_placeholder": "generated"}'
+        # Last resort: return minimal valid JSON without scaffold markers.
+        logger.warning("Unable to extract JSON from LLM output, using empty object")
+        return "{}"
     
     elif ext in (".js", ".jsx", ".ts", ".tsx"):
         # Extract ```javascript...``` or ```js...``` or just ```...```

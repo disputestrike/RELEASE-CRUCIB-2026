@@ -169,17 +169,29 @@ def build_honest_scorecard(
     production_readiness: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Single object for API/UI — no single '100% verified' claim."""
-    pr = production_readiness.get("production_readiness_score", 0.0)
+    raw_pr = float(production_readiness.get("production_readiness_score", 0.0) or 0.0)
+    blocked = pipeline_quality_score <= 40.0
+    pr = min(raw_pr, 40.0) if blocked else raw_pr
+    readiness_label = "not eligible" if blocked else f"~{pr:.0f}"
+    if blocked:
+        factors = list(production_readiness.get("production_readiness_factors") or [])
+        if "build_or_preview_not_verified" not in factors:
+            factors.insert(0, "build_or_preview_not_verified")
+        production_readiness["production_readiness_factors"] = factors
+        production_readiness["production_readiness_cap_note"] = (
+            "Production readiness is capped because the final build/preview was not verified. "
+            "Passing artifacts, route proof, and live preview are required before readiness can rise."
+        )
     return {
         "pipeline_quality_score": round(pipeline_quality_score, 1),
         "trust_evidence_score": round(trust_score, 1),
         "spec_compliance_percent": round(spec_compliance_percent, 1),
-        "production_readiness_score": pr,
+        "production_readiness_score": round(pr, 1),
         "honest_summary": (
             f"Pipeline quality (proof density): ~{pipeline_quality_score:.0f}. "
             f"Trust-weighted evidence: ~{trust_score:.0f}. "
             f"Spec compliance vs stated goal: ~{spec_compliance_percent:.0f}%. "
-            f"Production readiness (heuristic): ~{pr:.0f}. "
-            "These are different axes; high pipeline score does not mean enterprise spec was met."
+            f"Production readiness: {readiness_label}. "
+            "Export/deploy are only safe after the contract, build, preview, and proof gates pass."
         ),
     }

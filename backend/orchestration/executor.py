@@ -790,22 +790,47 @@ def _ensure_preview_contract_files(
         if _safe_write(workspace_path, package_rel, merged_package):
             written.append(package_rel)
 
-    required_paths = [
-        "index.html",
-        "vite.config.js",
-        "src/store/useAppStore.js",
-        "src/context/AuthContext.jsx",
-        "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/TeamPage.jsx",
-        "src/preview/PreviewContract.jsx",
-        "src/styles/global.css",
-        "src/main.jsx",
-        "src/index.js",
-    ]
+    try:
+        from .build_integrity_validator import detect_build_profile
+
+        profile = detect_build_profile(
+            " ".join(str(job.get(k) or "") for k in ("goal", "prompt", "description", "build_kind")),
+            None,
+        )
+    except Exception:
+        profile = ""
+
+    if profile == "web_site":
+        required_paths = [
+            rel
+            for rel in template_map
+            if isinstance(rel, str)
+            and not rel.startswith("next-app-stub/")
+            and rel
+            not in {
+                "Dockerfile",
+                "deploy/PRODUCTION_SKETCH.md",
+                "deploy/PUBLISH.md",
+                "proof/DELIVERY_CLASSIFICATION.md",
+            }
+        ]
+    else:
+        required_paths = [
+            "index.html",
+            "vite.config.js",
+            "src/store/useAppStore.js",
+            "src/context/AuthContext.jsx",
+            "src/components/ErrorBoundary.jsx",
+            "src/components/ShellLayout.jsx",
+            "src/pages/HomePage.jsx",
+            "src/pages/LoginPage.jsx",
+            "src/pages/DashboardPage.jsx",
+            "src/pages/TeamPage.jsx",
+            "src/preview/PreviewContract.jsx",
+            "src/styles/global.css",
+            "src/main.jsx",
+            "src/index.js",
+        ]
     for rel in required_paths:
         if _read_text(workspace_path, rel):
             continue

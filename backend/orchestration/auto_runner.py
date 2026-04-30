@@ -86,6 +86,25 @@ def _max_concurrent_steps(load_factor: float = 1.0) -> int:
     return max(1, min(32, adjusted_concurrency))
 
 
+async def _job_with_steering_context(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply latest user steering to the in-memory job without erasing the original goal."""
+
+    try:
+        steering = await load_checkpoint(job_id, "steering_context") or {}
+    except Exception:
+        steering = {}
+    active_goal = str((steering or {}).get("active_goal") or "").strip()
+    if not active_goal:
+        return job
+    merged = dict(job or {})
+    meta = dict(merged.get("metadata") or {})
+    meta["original_goal"] = meta.get("original_goal") or merged.get("goal") or ""
+    meta["steering_context"] = steering
+    merged["metadata"] = meta
+    merged["goal"] = active_goal
+    return merged
+
+
 def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
     """
     Optional local-dev escape hatch only.
@@ -418,6 +437,7 @@ async def _execute_job_loop(
         if job["status"] == "cancelled":
             logger.info("auto_runner: job %s cancelled", job_id)
             return {"success": False, "status": "cancelled"}
+        job = await _job_with_steering_context(job_id, job)
 
         # Get ready steps (deps satisfied, status=pending)
         ready = await get_ready_steps(job_id)
@@ -1097,6 +1117,72 @@ async def _execute_job_loop(
     )
 
     goal_text = (job_latest or {}).get("goal") or ""
+    contract_artifacts = None
+    try:
+        from .contract_artifacts import persist_contract_artifacts
+
+        contract_artifacts = persist_contract_artifacts(ws, job_latest or job or {})
+        contract_dict = contract_artifacts.get("contract_dict") or {}
+        await append_job_event(
+            job_id,
+            "build_contract_reconciled",
+            {
+                "build_class": contract_dict.get("build_class"),
+                "satisfied": bool(contract_artifacts.get("satisfied")),
+                "missing": contract_artifacts.get("missing") or {},
+                "route_map": contract_artifacts.get("route_map") or {},
+                "dependency_edge_count": sum(
+                    len(v) for v in (contract_artifacts.get("dependency_graph") or {}).values()
+                ),
+            },
+        )
+        if contract_dict.get("build_class") == "web_marketing_site" and not contract_artifacts.get("satisfied"):
+            missing = contract_artifacts.get("missing") or {}
+            await update_job_state(
+                job_id,
+                "failed",
+                {
+                    "current_phase": "contract_coverage_failed",
+                    "quality_score": min(quality_score, 40),
+                    "failure_reason": "contract_coverage_failed",
+                    "failure_details": json.dumps(missing)[:1000],
+                },
+            )
+            await append_job_event(
+                job_id,
+                "job_failed",
+                {
+                    "reason": "contract_coverage_failed",
+                    "build_class": contract_dict.get("build_class"),
+                    "missing": missing,
+                },
+            )
+            await publish(
+                job_id,
+                "job_failed",
+                {
+                    "reason": "contract_coverage_failed",
+                    "quality_score": min(quality_score, 40),
+                    "missing": missing,
+                },
+            )
+            await _write_blueprint(
+                ws,
+                job_id,
+                "contract_coverage_failed",
+                open_gates=["build_contract", "final_assembly", "route_map"],
+                notes=json.dumps(missing)[:1000],
+            )
+            return {
+                "success": False,
+                "status": "failed",
+                "quality_score": min(quality_score, 40),
+                "reason": "contract_coverage_failed",
+                "missing": missing,
+            }
+    except Exception as contract_exc:
+        logger.warning("build contract reconciliation skipped: %s", contract_exc)
+
     from .build_integrity_validator import validate_workspace_integrity
 
     biv = validate_workspace_integrity(
