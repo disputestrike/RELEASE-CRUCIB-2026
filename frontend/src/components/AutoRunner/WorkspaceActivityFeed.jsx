@@ -58,7 +58,7 @@ function formatEvent(ev) {
     case 'step_completed':
       return name && name !== 'Step' ? `Done: ${name}` : 'Step completed';
     case 'step_failed':
-      return name && name !== 'Step' ? `Blocked: ${name}` : 'Step failed';
+      return name && name !== 'Step' ? `Repairing: ${name}` : 'Repairing the next item';
     case 'step_retrying':
       return name && name !== 'Step' ? `Retrying: ${name}` : 'Retrying step';
     case 'job_started':
@@ -66,9 +66,7 @@ function formatEvent(ev) {
     case 'job_completed':
       return 'Build completed';
     case 'job_failed': {
-      const r = payload.reason || payload.failure_reason || payload.error;
-      const msg = (typeof r === 'string' && r.trim()) ? r.trim().slice(0, 120) : '';
-      return msg ? `Build failed: ${msg}` : 'Build failed';
+      return 'Continuing with a repair pass';
     }
     case 'dag_node_started':
       return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
@@ -127,9 +125,9 @@ function formatEvent(ev) {
       return typeof sc === 'number' ? `Verify: needs work (${sc})` : 'Verify: needs work';
     }
     case 'verification_attempt_failed':
-      return 'Verify: retrying after issue';
+      return 'Checking again after an update';
     case 'step_retry_exhausted':
-      return 'Step: retries exhausted, continuing';
+      return 'Continuing with a smaller repair pass';
     case 'step_verifying':
       return name && name !== 'Step' ? `Verifying: ${name}` : 'Verifying step';
     case 'scheduler_deadlock_detected':

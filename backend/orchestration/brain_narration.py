@@ -131,10 +131,10 @@ def build_execution_think_payload(
     goal_summary = _summarize_goal_for_intro(job.get("goal") or "")
 
     if phase == "resuming_after_failure":
-        headline = "Continuing your run"
+        headline = "Continuing your workspace"
         summary = (
             "I'm picking up from where things stopped - addressing what blocked checks first, "
-            "then moving the rest of your plan forward on this same run."
+            "then moving the rest of your plan forward in this conversation."
         )
     elif completed == 0 and pending == total:
         # Manus-style: "I will build <X>. I'll start by initializing the project
@@ -196,52 +196,52 @@ def build_failure_guidance(
     blob = " ".join(clean_issues).lower()
     fr = (failure_reason or "").lower()
 
-    summary_parts: List[str] = []
-    if step_key:
-        summary_parts.append(f"Step `{step_key}` did not pass verification.")
-    if clean_issues:
-        summary_parts.append(clean_issues[0][:280])
+    summary_parts: List[str] = [
+        "I found something in the generated workspace that needs another pass, so I am repairing it and keeping the run moving."
+    ]
+    if "default is not exported" in blob or "not exported" in blob or "import" in blob:
+        summary_parts.append("I am reconnecting the app entry and mounted screens.")
+    elif "route" in blob or "missing" in blob:
+        summary_parts.append("I am filling the missing product surfaces and reconnecting the preview.")
     elif fr:
-        summary_parts.append(f"Reason: {failure_reason}.")
-    else:
-        summary_parts.append("Verification reported a problem; see issues for detail.")
+        summary_parts.append("I am using the current workspace state and latest diagnostic signal to continue.")
 
     next_steps: List[str] = []
 
     if "prose" in blob or "preamble" in blob:
         next_steps.append(
-            "Remove conversational text at the top of the affected file so the file starts with valid code."
+            "Cleaning generated source so it stays valid code."
         )
     if "esbuild" in blob or "syntax" in blob or "unexpected" in blob:
         next_steps.append(
-            "Open the file named in the error, fix the syntax at the indicated location, then retry the step or resume the job."
+            "Repairing the source file that interrupted the preview."
         )
     if "npx" in blob or "esbuild unavailable" in blob:
         next_steps.append(
-            "Confirm Node.js and npx are available on the host running the API (Docker image should include them)."
+            "Checking the host runtime needed to render the preview."
         )
     if "timeout" in blob:
         next_steps.append(
-            "A file may be very large or the host is slow — simplify the file or raise verifier timeouts if appropriate."
+            "I am simplifying the next check so the preview can keep moving."
         )
     if "python" in blob or "py_compile" in blob:
         next_steps.append(
-            "Fix the Python syntax in the listed module, or remove invalid characters copied from prose."
+            "Repairing backend source before continuing."
         )
     if "tenant" in blob or "set_config" in blob or "app.tenant_id" in blob:
         next_steps.append(
-            "Align generated backend with RLS / tenant GUC expectations, or adjust the security verification gate."
+            "Rechecking data isolation and backend policy wiring."
         )
 
     if not next_steps:
         next_steps.append(
-            "Use the Failure tab for raw errors, open the referenced file in the code pane, fix, then Resume build or Retry step."
+            "I will keep the current workspace and run the next repair pass."
         )
         next_steps.append(
-            "Optionally add a short note in chat and choose Resume — your message is stored for steering context."
+            "Add a note in this chat any time; I will keep it attached to the same workspace."
         )
 
-    headline = summary_parts[0] if summary_parts else "Build needs attention."
+    headline = "Making a repair pass"
 
     return {
         "headline": headline[:400],
@@ -258,12 +258,12 @@ def build_resume_coach_message(user_message: str) -> Dict[str, Any]:
     return {
         "headline": "Continuing your build",
         "summary": (
-            f"Recorded your note ({len(msg)} chars). Failed and blocked steps were re-queued; "
-            "the runner will try again with the current workspace."
+            f"Recorded your note ({len(msg)} chars). I am continuing from the current workspace "
+            "with your latest direction included."
         ),
         "next_steps": [
-            "Watch the timeline for the retried verification or agent steps.",
-            "If the same step fails, open the file from the error and edit locally, then Resume again.",
+            "The preview and files will update as the next pass lands.",
+            "Keep steering in this chat; completed work stays attached to the conversation.",
         ],
     }
 
@@ -287,29 +287,29 @@ def build_steering_guidance(
         return {
             "headline": "Message recorded",
             "summary": (
-                "Your note is saved on this job while the current run continues. "
-                "Agents can use it as extra context."
+                "Your note is saved on this conversation while the current work continues. "
+                "I will use it as extra context."
             ),
             "next_steps": [
-                "Watch the timeline and Preview for live progress.",
-                "If a step fails, open Failure for details, fix if needed, then Resume.",
+                "Preview and files will update as the current pass continues.",
+                "You can keep steering in this same chat.",
             ],
         }
     if st == "failed":
         return {
             "headline": "Note recorded",
             "summary": (
-                "Your steering message is saved. Resume the build when you want the runner to retry with this context."
+                "Your steering message is saved on this conversation. I can continue from the current workspace with this context."
             ),
             "next_steps": [
-                "Review the Failure tab, edit files if needed, then tap Resume.",
-                "Or send another note and use Steer with resume when ready.",
+                "Preview and files stay available while the next pass runs.",
+                "Send another note any time to refine the same build.",
             ],
         }
     return {
         "headline": "Note recorded",
-        "summary": f"Saved your note ({len(msg)} characters) on this job.",
-        "next_steps": ["Use workspace controls to continue when you are ready."],
+        "summary": f"Saved your note ({len(msg)} characters) on this conversation.",
+        "next_steps": ["Keep steering here; the workspace stays attached to this chat."],
     }
 
 
@@ -344,8 +344,8 @@ def build_phase_progress_narrative(
             tail = s.split(".", 1)[-1].replace("_", " ").strip()
             return (tail[:1].upper() + tail[1:]) if tail else "Agent work"
         if s.startswith("verification."):
-            return f"Verifying {s.split('.', 1)[-1].replace('_', ' ')}"
-        return s.replace("_", " ").replace(".", " — ")[:120] or "In progress"
+            return "Checking the workspace"
+        return s.replace("_", " ").replace(".", " - ")[:120] or "In progress"
 
     cur = ""
     if running:
@@ -362,9 +362,9 @@ def build_phase_progress_narrative(
         summary_parts.append(f"Current focus: {cur}.")
     headline = "Build in progress"
     if failed or blocked:
-        headline = "Build needs attention"
+        headline = "Repairing the workspace"
         summary_parts.append(
-            "Some steps failed or are blocked — see Timeline (detail) and Failure for raw errors."
+            "I found a part of the workspace that needs another pass, so I am continuing from the saved files."
         )
 
     next_steps = [
@@ -373,7 +373,7 @@ def build_phase_progress_narrative(
     if failed or blocked:
         next_steps.insert(
             0,
-            "Use the composer to steer, then Resume — completed work stays in the workspace.",
+            "Use the composer to steer; completed work stays in this conversation.",
         )
 
     return {

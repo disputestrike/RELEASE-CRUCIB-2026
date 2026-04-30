@@ -72,7 +72,23 @@ class IntentClassifier:
         "billing": ["billing", "payment", "subscription", "stripe", "invoice", "pricing"],
         
         # Frontend
-        "frontend": ["react", "vue", "angular", "frontend", "spa", "ui", "dashboard"],
+        "frontend": ["react", "vue", "angular", "frontend", "spa", "ui", "dashboard", "admin panel", "admin tool"],
+
+        # Internal operations/admin tools
+        "internal_admin": [
+            "internal admin",
+            "admin tool",
+            "admin panel",
+            "back office",
+            "backoffice",
+            "operations tool",
+            "internal tool",
+            "approval workflow",
+            "approval workflows",
+            "data tables",
+            "table management",
+            "forms",
+        ],
 
         # Public / marketing websites
         "marketing_site": [
@@ -95,16 +111,16 @@ class IntentClassifier:
         ],
         
         # Backend
-        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql", "collect emails", "newsletter signup", "form submission"],
+        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql", "collect emails", "newsletter signup", "form submission", "admin tool", "approval workflow", "approval workflows"],
         
         # Database
-        "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis", "store signups", "collect data", "save emails", "subscribers"],
+        "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis", "store signups", "collect data", "save emails", "subscribers", "data tables", "admin records", "form submissions"],
         
         # Mobile
         "mobile": ["mobile", "ios", "android", "react native", "flutter", "expo"],
         
-        # CLI
-        "cli": ["cli", "command line", "terminal", "script", "tool"],
+        # CLI. Keep this narrow: "tool" alone can mean a web/admin product.
+        "cli": ["cli", "command line", "terminal", "shell script", "command-line tool"],
         
         # Game
         "game": ["game", "unity", "unreal", "godot", "phaser", "2d", "3d"],
@@ -215,6 +231,27 @@ class IntentClassifier:
             patterns["frontend"] = patterns.get("frontend") or "React"
             patterns["marketing_site"] = True
 
+        if any(
+            needle in prompt_lower
+            for needle in (
+                "internal admin",
+                "admin tool",
+                "admin panel",
+                "internal tool",
+                "back office",
+                "backoffice",
+                "data tables",
+                "approval workflow",
+                "approval workflows",
+            )
+        ):
+            patterns["internal_admin"] = True
+            patterns["frontend"] = patterns.get("frontend") or "React"
+            patterns["backend"] = patterns.get("backend") or "FastAPI"
+            patterns["database"] = patterns.get("database") or "PostgreSQL"
+        if "form" in prompt_lower and patterns.get("internal_admin"):
+            patterns["forms"] = True
+
         if "quote workflow" in prompt_lower or "approval" in prompt_lower:
             patterns["workflow_engine"] = True
         
@@ -255,7 +292,11 @@ class IntentClassifier:
             word in prompt_lower
             for word in ["website", "web site", "landing page", "hero", "features", "pricing", "testimonials"]
         )
-        if not is_public_site and not any(word in prompt_lower for word in ["react", "vue", "angular", "fastapi", "express", "django"]):
+        is_internal_admin = any(
+            word in prompt_lower
+            for word in ["internal admin", "admin tool", "admin panel", "internal tool", "back office", "data tables"]
+        )
+        if not is_public_site and not is_internal_admin and not any(word in prompt_lower for word in ["react", "vue", "angular", "fastapi", "express", "django"]):
             uncertainties.append("frontend_framework_not_specified")
             uncertainties.append("backend_framework_not_specified")
         
@@ -264,7 +305,7 @@ class IntentClassifier:
             uncertainties.append("prompt_too_short")
         
         # Check for missing auth specification
-        if not is_public_site and "auth" not in prompt_lower and "login" not in prompt_lower:
+        if not is_public_site and not is_internal_admin and "auth" not in prompt_lower and "login" not in prompt_lower:
             uncertainties.append("auth_requirement_unclear")
         
         return uncertainties

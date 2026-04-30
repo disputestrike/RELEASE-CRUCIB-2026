@@ -104,6 +104,8 @@ class BuildContractGenerator:
     
     def _determine_build_class(self, dims: Dict) -> str:
         """Determine build class from dimensions (emergent, not from registry)."""
+        if dims.get("internal_admin"):
+            return "internal_admin_tool"
         if dims.get("marketing_site"):
             return "web_marketing_site"
         if dims.get("game"):
@@ -129,6 +131,12 @@ class BuildContractGenerator:
         """Extract product name from prompt, or generate default."""
         # Look for quoted names or "Name - description" pattern
         import re
+        lower = (prompt or "").lower()
+
+        if any(k in lower for k in ("internal admin", "admin tool", "admin panel", "internal tool")):
+            return "Internal Admin Tool"
+        if any(k in lower for k in ("marketing site", "landing page", "website", "hero", "features", "testimonials")):
+            return "Marketing Website"
         
         # Try "Name - " or "Name — " pattern
         match = re.search(r'^([\w\s]+)[\-—]', prompt)
@@ -151,6 +159,14 @@ class BuildContractGenerator:
                 "frontend": "React+Vite",
                 "styling": "CSS tokens",
                 "routing": "browser-addressable public routes",
+            }
+        if dims.get("internal_admin"):
+            return {
+                "frontend": "React+Vite",
+                "backend": dims.get("backend") if isinstance(dims.get("backend"), str) else "FastAPI",
+                "database": dims.get("database") if isinstance(dims.get("database"), str) else "PostgreSQL",
+                "styling": "CSS tokens",
+                "routing": "browser-addressable admin routes",
             }
         
         # Frontend
@@ -230,6 +246,37 @@ class BuildContractGenerator:
                 or dims.get("docker")
             ):
                 return files
+
+        if dims.get("internal_admin"):
+            return [
+                "package.json",
+                "index.html",
+                "vite.config.js",
+                "README.md",
+                "src/main.jsx",
+                "src/App.jsx",
+                "src/styles/tokens.css",
+                "src/styles/global.css",
+                "src/data/adminData.js",
+                "src/components/layout/AdminShell.jsx",
+                "src/components/tables/DataTable.jsx",
+                "src/components/forms/AdminRecordForm.jsx",
+                "src/components/approvals/ApprovalQueue.jsx",
+                "src/components/ui/Button.jsx",
+                "src/components/ui/Card.jsx",
+                "src/components/ui/Input.jsx",
+                "src/components/ui/Select.jsx",
+                "src/pages/AdminDashboardPage.jsx",
+                "src/pages/RecordsPage.jsx",
+                "src/pages/FormsPage.jsx",
+                "src/pages/ApprovalsPage.jsx",
+                "src/pages/SettingsPage.jsx",
+                "src/pages/NotFoundPage.jsx",
+                "backend/main.py",
+                "backend/requirements.txt",
+                "db/migrations/001_initial.sql",
+                "tests/test_app.py",
+            ]
         
         # Entry points
         if dims.get("frontend") and not dims.get("marketing_site"):
@@ -294,6 +341,22 @@ class BuildContractGenerator:
                 "proof/screenshots",
             ]
 
+        if dims.get("internal_admin"):
+            return [
+                "src/components/layout",
+                "src/components/tables",
+                "src/components/forms",
+                "src/components/approvals",
+                "src/components/ui",
+                "src/pages",
+                "src/styles",
+                "src/data",
+                "backend",
+                "db/migrations",
+                "tests",
+                "proof/screenshots",
+            ]
+
         folders = [
             "client/src/components",
             "client/src/pages",
@@ -319,6 +382,8 @@ class BuildContractGenerator:
         """Synthesize required routes."""
         if dims.get("marketing_site"):
             return ["/", "/features", "/pricing", "/testimonials", "/404"]
+        if dims.get("internal_admin"):
+            return ["/", "/records", "/forms", "/approvals", "/settings", "/404"]
 
         routes = ["/", "/404"]
         
@@ -343,6 +408,8 @@ class BuildContractGenerator:
         """Synthesize required page components."""
         if dims.get("marketing_site"):
             return ["Home", "Features", "Pricing", "Testimonials", "NotFound"]
+        if dims.get("internal_admin"):
+            return ["AdminDashboard", "Records", "Forms", "Approvals", "Settings", "NotFound"]
 
         pages = ["Home", "NotFound"]
         
@@ -370,6 +437,8 @@ class BuildContractGenerator:
         """Synthesize required backend modules."""
         if dims.get("marketing_site") and not (dims.get("backend") or dims.get("api")):
             return []
+        if dims.get("internal_admin"):
+            return ["health", "records", "forms", "approvals"]
 
         modules = ["auth", "health"]
         if dims.get("marketing_site"):
@@ -402,6 +471,14 @@ class BuildContractGenerator:
         """Synthesize required API endpoints."""
         if dims.get("marketing_site") and not (dims.get("backend") or dims.get("api")):
             return []
+        if dims.get("internal_admin"):
+            return [
+                "/api/health",
+                "/api/records",
+                "/api/forms",
+                "/api/approvals",
+                "/api/audit-events",
+            ]
 
         endpoints = ["/api/health"]
         
@@ -433,6 +510,15 @@ class BuildContractGenerator:
         """Synthesize required database tables."""
         if dims.get("marketing_site") and not dims.get("database"):
             return []
+        if dims.get("internal_admin"):
+            return [
+                "users",
+                "records",
+                "form_submissions",
+                "approval_workflows",
+                "approval_requests",
+                "audit_events",
+            ]
         if not (
             dims.get("database") or dims.get("auth") or dims.get("tenancy") or dims.get("crm") or dims.get("compliance")
         ):
@@ -502,6 +588,8 @@ class BuildContractGenerator:
         """Synthesize required tests."""
         if dims.get("marketing_site"):
             return ["test_build", "test_routes", "test_visual_sections"]
+        if dims.get("internal_admin"):
+            return ["test_build", "test_admin_routes", "test_api_contract", "test_database_schema"]
 
         tests = ["test_health"]
         
@@ -520,6 +608,8 @@ class BuildContractGenerator:
         """Synthesize required documentation."""
         if dims.get("marketing_site"):
             return ["README.md", "ideas.md"]
+        if dims.get("internal_admin"):
+            return ["README.md", "ARCHITECTURE.md", "DATA_MODEL.md"]
 
         return ["README.md", "ARCHITECTURE.md", ".env.example"]
     
@@ -527,6 +617,8 @@ class BuildContractGenerator:
         """Synthesize routes that need screenshot/preview."""
         if dims.get("marketing_site"):
             return ["/", "/features", "/pricing", "/testimonials", "/404"]
+        if dims.get("internal_admin"):
+            return ["/", "/records", "/forms", "/approvals", "/settings"]
 
         routes = ["/"]
         
@@ -554,6 +646,15 @@ class BuildContractGenerator:
                 "footer_visible",
                 "monochrome_tokens_only",
                 "mobile_viewport_ok",
+            ]
+        if dims.get("internal_admin"):
+            return [
+                "no_blank_screen",
+                "admin_nav_visible",
+                "data_table_visible",
+                "form_visible",
+                "approval_queue_visible",
+                "monochrome_tokens_only",
             ]
 
         return [
@@ -589,6 +690,15 @@ class BuildContractGenerator:
                 "preview_pass",
                 "routes_proven",
                 "screenshot_valid",
+                "goal_satisfied",
+            ]
+        if dims.get("internal_admin"):
+            return [
+                "build_pass",
+                "preview_pass",
+                "routes_proven",
+                "database_schema_present",
+                "admin_sections_present",
                 "goal_satisfied",
             ]
 
@@ -704,6 +814,29 @@ class BuildContractGenerator:
                     "priority": "high",
                 }
                 for section in sections
+            ]
+        if dims.get("internal_admin"):
+            return [
+                {
+                    "criterion": "records_table",
+                    "test": "Records/data table is mounted and visible from a browser route",
+                    "priority": "high",
+                },
+                {
+                    "criterion": "admin_form",
+                    "test": "A working data-entry form surface is mounted and visible",
+                    "priority": "high",
+                },
+                {
+                    "criterion": "approval_workflow",
+                    "test": "Approval queue/workflow surface is mounted and visible",
+                    "priority": "high",
+                },
+                {
+                    "criterion": "database_contract",
+                    "test": "Database tables/migration exist for records, submissions, approvals, and audit events",
+                    "priority": "high",
+                },
             ]
         
         if dims.get("tenancy"):

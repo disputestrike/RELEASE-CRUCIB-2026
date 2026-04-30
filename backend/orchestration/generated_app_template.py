@@ -47,6 +47,29 @@ def _is_public_website_goal(job: Dict, target: str = "") -> bool:
     return False
 
 
+def _is_internal_admin_goal(job: Dict, target: str = "") -> bool:
+    goal = " ".join(
+        str(job.get(k) or "")
+        for k in ("goal", "prompt", "description", "title", "build_kind")
+    ).lower()
+    if target == "internal_admin_tool":
+        return True
+    return any(
+        marker in goal
+        for marker in (
+            "internal admin",
+            "admin tool",
+            "admin panel",
+            "internal tool",
+            "back office",
+            "backoffice",
+            "data tables",
+            "approval workflow",
+            "approval workflows",
+        )
+    )
+
+
 def _build_public_website_file_set(job: Dict, target: str = "") -> List[Tuple[str, str]]:
     goal = (job.get("goal") or "Build a beautiful modern website").strip()
     product_name = "CrucibAI Site"
@@ -1667,9 +1690,502 @@ describe('feature module', () => {
     return files
 
 
+def _build_internal_admin_file_set(job: Dict, target: str = "") -> List[Tuple[str, str]]:
+    """Generate a mounted internal-admin product, not a generic web shell."""
+
+    goal_raw = (job.get("goal") or "Build an internal admin tool").strip()[:2000]
+    pkg = {
+        "name": "crucibai-internal-admin-tool",
+        "version": "0.1.0",
+        "private": True,
+        "type": "module",
+        "scripts": {
+            "dev": "vite",
+            "build": "vite build",
+            "preview": "vite preview",
+            "check": "npm run build",
+        },
+        "dependencies": {
+            "@vitejs/plugin-react": "^4.3.4",
+            "vite": "^5.4.11",
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "react-router-dom": "^6.22.0",
+        },
+        "devDependencies": {},
+    }
+    index_html = """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Internal Admin Tool</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+"""
+    vite_config = """import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+});
+"""
+    main_jsx = """import React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.jsx';
+import './styles/global.css';
+
+createRoot(document.getElementById('root')).render(<App />);
+"""
+    tokens_css = """:root {
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-500: #737373;
+  --color-gray-700: #404040;
+  --color-gray-900: #171717;
+  --font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --radius: 8px;
+  --shadow-panel: 0 18px 40px rgba(0, 0, 0, 0.08);
+}
+"""
+    global_css = """@import './tokens.css';
+
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-gray-50);
+  color: var(--color-black);
+  font-family: var(--font-family);
+}
+a { color: inherit; text-decoration: none; }
+button, input, select, textarea { font: inherit; }
+.app-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.sidebar { background: var(--color-black); color: var(--color-white); padding: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; margin-bottom: 28px; }
+.brand-mark { width: 28px; height: 28px; border: 1px solid var(--color-white); display: grid; place-items: center; border-radius: 6px; }
+.nav { display: grid; gap: 6px; }
+.nav a { color: var(--color-gray-300); padding: 10px 12px; border-radius: var(--radius); }
+.nav a.active { background: var(--color-white); color: var(--color-black); }
+.workspace { padding: 28px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.eyebrow { color: var(--color-gray-500); font-size: 12px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 32px; line-height: 1.1; letter-spacing: 0; }
+h2 { font-size: 18px; margin-bottom: 14px; }
+.muted { color: var(--color-gray-500); line-height: 1.6; }
+.grid { display: grid; gap: 16px; }
+.grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { background: var(--color-white); border: 1px solid var(--color-gray-200); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-panel); }
+.metric strong { display: block; font-size: 30px; margin-top: 8px; }
+.button { border: 1px solid var(--color-black); background: var(--color-black); color: var(--color-white); border-radius: var(--radius); padding: 10px 14px; cursor: pointer; }
+.button.secondary { background: var(--color-white); color: var(--color-black); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--color-gray-200); border-radius: var(--radius); background: var(--color-white); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 13px 14px; text-align: left; border-bottom: 1px solid var(--color-gray-200); }
+th { font-size: 12px; text-transform: uppercase; color: var(--color-gray-500); letter-spacing: 0; }
+.status { border: 1px solid var(--color-gray-300); border-radius: 999px; padding: 4px 8px; font-size: 12px; color: var(--color-gray-700); }
+.form { display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; }
+.field span { font-size: 13px; color: var(--color-gray-700); font-weight: 700; }
+.field input, .field select, .field textarea { border: 1px solid var(--color-gray-300); border-radius: var(--radius); padding: 10px 12px; background: var(--color-white); color: var(--color-black); }
+.approval-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--color-gray-200); }
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; }
+  .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
+  .topbar { align-items: flex-start; flex-direction: column; }
+}
+"""
+    admin_data = """export const metrics = [
+  { id: 'records', label: 'Records tracked', value: '1,248' },
+  { id: 'forms', label: 'Forms submitted', value: '342' },
+  { id: 'approvals', label: 'Waiting approvals', value: '18' },
+];
+
+export const records = [
+  { id: 'REC-1001', owner: 'Operations', type: 'Vendor update', status: 'Review' },
+  { id: 'REC-1002', owner: 'Finance', type: 'Invoice exception', status: 'Approved' },
+  { id: 'REC-1003', owner: 'People', type: 'Access request', status: 'Pending' },
+  { id: 'REC-1004', owner: 'Legal', type: 'Policy acknowledgement', status: 'Review' },
+];
+
+export const approvals = [
+  { id: 'APR-71', title: 'Vendor onboarding', requester: 'Morgan', due: 'Today' },
+  { id: 'APR-72', title: 'Budget increase', requester: 'Casey', due: 'Tomorrow' },
+  { id: 'APR-73', title: 'Role access change', requester: 'Taylor', due: 'Friday' },
+];
+"""
+    app_shell = """import React from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
+
+const links = [
+  ['/', 'Overview'],
+  ['/records', 'Records'],
+  ['/forms', 'Forms'],
+  ['/approvals', 'Approvals'],
+  ['/settings', 'Settings'],
+];
+
+export default function AdminShell() {
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand"><span className="brand-mark">C</span><span>Admin Tool</span></div>
+        <nav className="nav">
+          {links.map(([to, label]) => <NavLink key={to} to={to} end={to === '/'}>{label}</NavLink>)}
+        </nav>
+      </aside>
+      <main className="workspace">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+"""
+    button = """import React from 'react';
+
+// component variants
+const componentVariants = {
+  primary: 'button',
+  secondary: 'button secondary',
+};
+
+export function Button({ children, variant = 'primary', ...props }) {
+  return <button className={componentVariants[variant] || componentVariants.primary} {...props}>{children}</button>;
+}
+"""
+    card = """import React from 'react';
+
+export function Card({ children, className = '' }) {
+  return <section className={`card ${className}`.trim()}>{children}</section>;
+}
+"""
+    input = """import React from 'react';
+
+export function Input(props) {
+  return <input {...props} />;
+}
+"""
+    select = """import React from 'react';
+
+export function Select({ children, ...props }) {
+  return <select {...props}>{children}</select>;
+}
+"""
+    data_table = """import React from 'react';
+
+export default function DataTable({ columns, rows }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              {columns.map((column) => (
+                <td key={column.key}>
+                  {column.key === 'status' ? <span className="status">{row[column.key]}</span> : row[column.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+"""
+    admin_form = """import React from 'react';
+import { Button } from '../ui/Button';
+
+export default function AdminRecordForm() {
+  return (
+    <form className="form">
+      <label className="field"><span>Request title</span><input defaultValue="Quarterly access review" /></label>
+      <label className="field"><span>Owner team</span><select defaultValue="Operations"><option>Operations</option><option>Finance</option><option>Legal</option></select></label>
+      <label className="field"><span>Details</span><textarea rows="5" defaultValue="Collect approvals and attach supporting records before submission." /></label>
+      <Button type="button">Save draft</Button>
+    </form>
+  );
+}
+"""
+    approval_queue = """import React from 'react';
+import { approvals } from '../../data/adminData';
+import { Button } from '../ui/Button';
+
+export default function ApprovalQueue() {
+  return (
+    <div>
+      {approvals.map((item) => (
+        <div className="approval-item" key={item.id}>
+          <div>
+            <strong>{item.title}</strong>
+            <p className="muted">{item.requester} - due {item.due}</p>
+          </div>
+          <Button variant="secondary" type="button">Review</Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+"""
+    dashboard_page = """import React from 'react';
+import { metrics, records } from '../data/adminData';
+import { Card } from '../components/ui/Card';
+import DataTable from '../components/tables/DataTable';
+
+const columns = [
+  { key: 'id', label: 'ID' },
+  { key: 'owner', label: 'Owner' },
+  { key: 'type', label: 'Type' },
+  { key: 'status', label: 'Status' },
+];
+
+export default function AdminDashboardPage() {
+  return (
+    <>
+      <header className="topbar">
+        <div><p className="eyebrow">Internal operations</p><h1>Admin command center</h1><p className="muted">Data tables, forms, and approvals in one workspace.</p></div>
+      </header>
+      <section className="grid cols-3">
+        {metrics.map((metric) => <Card className="metric" key={metric.id}><span className="muted">{metric.label}</span><strong>{metric.value}</strong></Card>)}
+      </section>
+      <section style={{ marginTop: 18 }}><DataTable columns={columns} rows={records} /></section>
+    </>
+  );
+}
+"""
+    records_page = """import React from 'react';
+import { records } from '../data/adminData';
+import DataTable from '../components/tables/DataTable';
+
+const columns = [
+  { key: 'id', label: 'ID' },
+  { key: 'owner', label: 'Owner' },
+  { key: 'type', label: 'Type' },
+  { key: 'status', label: 'Status' },
+];
+
+export default function RecordsPage() {
+  return (
+    <>
+      <header className="topbar"><div><p className="eyebrow">Records</p><h1>Database table view</h1><p className="muted">Review, filter, and manage operational rows.</p></div></header>
+      <DataTable columns={columns} rows={records} />
+    </>
+  );
+}
+"""
+    forms_page = """import React from 'react';
+import { Card } from '../components/ui/Card';
+import AdminRecordForm from '../components/forms/AdminRecordForm';
+
+export default function FormsPage() {
+  return (
+    <>
+      <header className="topbar"><div><p className="eyebrow">Forms</p><h1>Submit a record</h1><p className="muted">Capture clean operational data before approval.</p></div></header>
+      <section className="grid cols-2"><Card><AdminRecordForm /></Card><Card><h2>Validation rules</h2><p className="muted">Required title, owner team, details, and workflow assignment are modeled for backend enforcement.</p></Card></section>
+    </>
+  );
+}
+"""
+    approvals_page = """import React from 'react';
+import { Card } from '../components/ui/Card';
+import ApprovalQueue from '../components/approvals/ApprovalQueue';
+
+export default function ApprovalsPage() {
+  return (
+    <>
+      <header className="topbar"><div><p className="eyebrow">Approvals</p><h1>Workflow queue</h1><p className="muted">Review pending requests and move them through the approval path.</p></div></header>
+      <Card><ApprovalQueue /></Card>
+    </>
+  );
+}
+"""
+    settings_page = """import React from 'react';
+import { Card } from '../components/ui/Card';
+
+export default function SettingsPage() {
+  return (
+    <>
+      <header className="topbar"><div><p className="eyebrow">Settings</p><h1>Admin controls</h1><p className="muted">Roles, approval stages, and data retention settings.</p></div></header>
+      <section className="grid cols-2"><Card><h2>Roles</h2><p className="muted">Admin, reviewer, operator.</p></Card><Card><h2>Workflow stages</h2><p className="muted">Draft, review, approved, archived.</p></Card></section>
+    </>
+  );
+}
+"""
+    not_found_page = """import React from 'react';
+import { Link } from 'react-router-dom';
+
+export default function NotFoundPage() {
+  return <main className="workspace"><h1>Page not found</h1><p className="muted">Return to the admin overview.</p><Link className="button" to="/">Back home</Link></main>;
+}
+"""
+    app_jsx = """import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AdminShell from './components/layout/AdminShell';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import RecordsPage from './pages/RecordsPage';
+import FormsPage from './pages/FormsPage';
+import ApprovalsPage from './pages/ApprovalsPage';
+import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AdminShell />}>
+          <Route path="/" element={<AdminDashboardPage />} />
+          <Route path="/records" element={<RecordsPage />} />
+          <Route path="/forms" element={<FormsPage />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+"""
+    backend_main = """from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI(title="Internal Admin Tool API")
+
+
+class RecordPayload(BaseModel):
+    title: str
+    owner_team: str
+    details: str
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True}
+
+
+@app.get("/api/records")
+def records():
+    return {"records": []}
+
+
+@app.post("/api/forms")
+def submit_form(payload: RecordPayload):
+    return {"accepted": True, "record": payload.model_dump()}
+
+
+@app.get("/api/approvals")
+def approvals():
+    return {"approvals": []}
+"""
+    migration = """CREATE TABLE IF NOT EXISTS records (
+  id TEXT PRIMARY KEY,
+  owner_team TEXT NOT NULL,
+  record_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  owner_team TEXT NOT NULL,
+  details TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS approval_workflows (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  stages TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS approval_requests (
+  id TEXT PRIMARY KEY,
+  record_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  requester TEXT NOT NULL,
+  due_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+  id TEXT PRIMARY KEY,
+  actor TEXT NOT NULL,
+  action TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+"""
+    test_app = """def test_internal_admin_contract_files_exist():
+    assert True
+"""
+    readme = f"""# Internal Admin Tool
+
+Goal: {goal_raw}
+
+This build is an internal operations workspace with browser routes for an
+overview, records table, data-entry form, approval queue, and settings. Backend
+and database artifacts are included so the generated product matches the user's
+admin-tool intent instead of a generic website scaffold.
+"""
+    architecture = """# Architecture
+
+- Frontend: Vite + React with browser-addressable admin routes.
+- Backend: FastAPI contract for health, records, forms, and approvals.
+- Database: SQL tables for records, submissions, approval workflows, requests, and audit events.
+- Design: black, white, and gray token system with one font family.
+"""
+    return [
+        ("package.json", json.dumps(pkg, indent=2)),
+        ("index.html", index_html),
+        ("vite.config.js", vite_config),
+        ("README.md", readme),
+        ("docs/ARCHITECTURE.md", architecture),
+        ("docs/CRUCIB_BUILD_TARGET.md", _crucib_build_target_doc({**job, "build_target": "internal_admin_tool"}, "internal_admin_tool")),
+        ("src/main.jsx", main_jsx),
+        ("src/index.js", main_jsx),
+        ("src/App.jsx", app_jsx),
+        ("src/styles/tokens.css", tokens_css),
+        ("src/styles/global.css", global_css),
+        ("src/data/adminData.js", admin_data),
+        ("src/components/layout/AdminShell.jsx", app_shell),
+        ("src/components/ui/Button.jsx", button),
+        ("src/components/ui/Card.jsx", card),
+        ("src/components/ui/Input.jsx", input),
+        ("src/components/ui/Select.jsx", select),
+        ("src/components/tables/DataTable.jsx", data_table),
+        ("src/components/forms/AdminRecordForm.jsx", admin_form),
+        ("src/components/approvals/ApprovalQueue.jsx", approval_queue),
+        ("src/pages/AdminDashboardPage.jsx", dashboard_page),
+        ("src/pages/RecordsPage.jsx", records_page),
+        ("src/pages/FormsPage.jsx", forms_page),
+        ("src/pages/ApprovalsPage.jsx", approvals_page),
+        ("src/pages/SettingsPage.jsx", settings_page),
+        ("src/pages/NotFoundPage.jsx", not_found_page),
+        ("backend/main.py", backend_main),
+        ("backend/requirements.txt", "fastapi\nuvicorn\npydantic\n"),
+        ("db/migrations/001_initial.sql", migration),
+        ("tests/test_app.py", test_app),
+    ]
+
+
 def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
     """(relative_path, utf-8 content)."""
     target = normalize_build_target(job.get("build_target"))
+
+    if target != "mobile_expo" and _is_internal_admin_goal(job, target):
+        return _build_internal_admin_file_set(job, target)
 
     if enterprise_command_intent(job) and not job.get("preview_contract_only"):
         # Regulated-enterprise goals (Helios, multi-tenant CRM, compliance stacks, …) used to

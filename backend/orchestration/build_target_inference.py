@@ -86,6 +86,20 @@ TARGET_KEYWORDS = {
         "routes",
         "endpoints",
     ],
+    "internal_admin_tool": [
+        "internal admin",
+        "admin tool",
+        "admin panel",
+        "internal tool",
+        "back office",
+        "backoffice",
+        "operations tool",
+        "data tables",
+        "approval workflow",
+        "approval workflows",
+        "form workflow",
+        "forms",
+    ],
     "agent_workflow": [
         "agent",
         "automation",
@@ -117,7 +131,6 @@ TARGET_KEYWORDS = {
         "component",
         "website",
         "web",
-        "tool",
         "client",
     ],
 }
@@ -126,6 +139,7 @@ TARGET_KEYWORDS = {
 EXCLUSION_KEYWORDS = {
     "api_backend": ["ui", "interface", "component", "page", "layout", "react", "frontend"],
     "static_site": ["interactive", "app", "application", "dashboard", "api", "backend"],
+    "internal_admin_tool": ["marketing", "landing page", "portfolio", "brochure"],
     "agent_workflow": ["ui", "interface", "frontend", "component", "visual"],
 }
 
@@ -139,6 +153,8 @@ PATTERN_INDICATORS = [
     (r"landing\s+page|marketing\s+site|static\s+site|brochure|portfolio|showcase", "static_site"),
     # Mobile / Expo
     (r"mobile\s+app|native\s+app|react\s+native|react-native|expo|ios\s+app|android\s+app|app\s+store|google\s+play|testflight|eas\s+build", "mobile_expo"),
+    # Internal admin / back-office tools
+    (r"internal\s+admin|admin\s+tool|admin\s+panel|internal\s+tool|back\s*office|data\s+tables|approval\s+workflows?", "internal_admin_tool"),
     # API/Backend
     (r"api\s+only|backend\s+only|rest\s+api|fastapi|express|python\s+server|database", "api_backend"),
     # Agents/Automation
@@ -269,7 +285,7 @@ def ask_for_build_target(goal: str) -> dict:
                 "tagline": target["tagline"],
                 "description": f"{target['label']}: {target['tagline']}",
             }
-            for target_id in ["full_system_generator", "vite_react", "next_app_router", "static_site", "mobile_expo", "api_backend", "agent_workflow"]
+            for target_id in ["full_system_generator", "vite_react", "next_app_router", "static_site", "internal_admin_tool", "mobile_expo", "api_backend", "agent_workflow"]
         ],
     }
 

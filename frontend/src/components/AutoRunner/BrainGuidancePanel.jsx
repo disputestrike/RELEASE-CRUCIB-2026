@@ -63,6 +63,7 @@ const targetLabel = (meta, id) => {
   if (meta?.label) return meta.label;
   if (meta?.name) return meta.name;
   const k = String(id || '').toLowerCase();
+  if (/internal_admin|admin_tool|admin_panel|backoffice|back_office/.test(k)) return 'Internal Admin Tool';
   if (/react_native|expo/.test(k)) return 'Mobile App';
   if (/next/.test(k)) return 'Next.js';
   if (/vite/.test(k)) return 'Website';
@@ -127,17 +128,17 @@ function ThreadOverflow({ jobStatus, onPause, onResume, onCancel, onSync, canSyn
         <div className="p4-overflow-menu" role="menu">
           {isRunning ? (
             <button type="button" className="p4-overflow-item" onClick={() => { setOpen(false); onPause?.(); }}>
-              <PauseIcon size={12} /> Pause run
+              <PauseIcon size={12} /> Pause
             </button>
           ) : null}
           {canResume ? (
             <button type="button" className="p4-overflow-item" onClick={() => { setOpen(false); onResume?.(); }}>
-              <PlayIcon size={12} /> Resume run
+              <PlayIcon size={12} /> Continue
             </button>
           ) : null}
           {showCancel ? (
             <button type="button" className="p4-overflow-item p4-overflow-item--danger" onClick={() => { setOpen(false); onCancel?.(); }}>
-              <XIcon size={12} /> Cancel run
+              <XIcon size={12} /> Stop
             </button>
           ) : null}
           {canSync ? (
@@ -182,7 +183,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--running">
         <Loader2 size={11} className="p4-spin" />
-        <span>Working on your build...</span>
+        <span>Working</span>
       </div>
     );
   }
@@ -190,7 +191,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Repairing and iterating...</span>
+        <span>Repairing</span>
       </div>
     );
   }
@@ -198,14 +199,14 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--success">
         <CheckCircle2 size={11} />
-        <span>Build complete</span>
+        <span>Workspace ready</span>
       </div>
     );
   }
   return (
     <div className="p4-status-pill p4-status-pill--queued">
       <Loader2 size={11} className="p4-spin" />
-      <span>Reviewing your request...</span>
+      <span>Thinking</span>
     </div>
   );
 }
@@ -302,12 +303,12 @@ function FailureBlock({ item }) {
   const friendlyReason =
     niceReason && !/orchestrator_error/i.test(niceReason)
       ? niceReason
-      : 'The build stopped before verification could finish. I can pick up where it left off - send a fix instruction below or use Resume on the right.';
+      : 'I need another pass to finish this workspace. Send a note below and I will keep going from the saved files.';
   return (
     <div className="p4-chapter p4-chapter--diagnostic">
       <div className="p4-chapter-head p4-chapter-head--static">
         <AlertTriangle size={13} className="p4-bad" />
-        <span className="p4-chapter-title">{item.title || 'Diagnosing the build'}</span>
+        <span className="p4-chapter-title">{item.title || 'Checking the workspace'}</span>
         <span className="p4-chapter-status p4-chapter-status--failed">Needs attention</span>
       </div>
       <p className="p4-chapter-desc">{friendlyReason}</p>
@@ -328,12 +329,12 @@ function FailureBlock({ item }) {
 function RepairBlock({ item }) {
   const stateLabel =
     item.status === 'success' ? 'Repaired'
-    : item.status === 'failed' ? 'Failed'
+    : item.status === 'failed' ? 'Another pass needed'
     : `Attempt ${item.attempt || 1}`;
   const headTitle =
     item.status === 'success' ? 'Repair complete'
-    : item.status === 'failed' ? 'Repair attempt failed'
-    : 'Repairing the build';
+    : item.status === 'failed' ? 'Repair needs another pass'
+    : 'Repairing the workspace';
   return (
     <div className={`p4-inline-card p4-card-repair p4-card-repair--${item.status || 'running'}`}>
       <div className="p4-inline-head">

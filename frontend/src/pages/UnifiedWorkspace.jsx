@@ -420,7 +420,7 @@ export default function UnifiedWorkspace() {
   const sessionProjectId = activeWorkspaceSession?.projectId || null;
   const sessionTaskId = activeWorkspaceSession?.taskId || null;
 
-  const effectiveJobId = sessionJobId || jobIdFromUrl || jobId;
+  const effectiveJobId = jobIdFromUrl || sessionJobId || jobId;
 
   useEffect(() => {
     transcriptRebuiltForJobRef.current = null;
@@ -1756,10 +1756,18 @@ export default function App() {
         .slice(-16)
         .map(labelFor)
         .filter(Boolean);
-      return Math.min(new Set(recentAgents).size, 16);
+      if (recentAgents.length) return Math.min(new Set(recentAgents).size, 16);
+
+      const eventAgents = (events || [])
+        .slice(-80)
+        .map((ev) => ev?.agent_name || ev?.agent || ev?.agent_id || ev?.step_key || ev?.type || '')
+        .filter(Boolean);
+      if (eventAgents.length) return Math.min(new Set(eventAgents).size, 16);
+
+      return 1;
     }
     return 0;
-  }, [steps, job?.status]);
+  }, [steps, events, job?.status]);
 
   const visibleRightPanes = RIGHT_ORDER.filter((p) => {
     if (uxMode === 'beginner' && (p === 'systems' || p === 'explorer' || p === 'replay' || p === 'code')) return false;
@@ -1822,6 +1830,9 @@ export default function App() {
   }, [job?.status, failureCalloutDismissed, activePane, failureStep, latestFailure]);
 
   const previewBlockedDetail = useMemo(() => {
+    if (latestFailure || failureStep) {
+      return 'I found something to repair in the workspace. The current files are saved, and you can steer below while I continue.';
+    }
     const fromStep = failureStep?.error_message || failureStep?.step_key;
     if (latestFailure && typeof latestFailure === 'object') {
       const issues = Array.isArray(latestFailure.issues) ? latestFailure.issues : [];
@@ -1943,12 +1954,12 @@ export default function App() {
               composerSubtitle={null}
               inputPlaceholder={
                 job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Tell us the fix — Enter sends; we continue this same run.'
+                  ? 'Tell me what to change - Enter sends in this conversation.'
                   : job?.status === 'blocked'
                     ? 'What should we do next? Enter sends and moves us forward.'
                     : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
-                      ? 'Steer anytime — Enter sends on this same run.'
-                      : 'Goal or follow-up — Enter to send, Shift+Enter for a new line.'
+                      ? 'Steer anytime - Enter sends in this conversation.'
+                      : 'Goal or follow-up - Enter to send, Shift+Enter for a new line.'
               }
               composerVariant="workspace"
             />
@@ -1980,8 +1991,8 @@ export default function App() {
                 <button
                   type="button"
                   className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Deploy — open preview when ready"
-                  aria-label="Deploy"
+                  title="Open preview when ready"
+                  aria-label="Open preview"
                   onClick={() => {
                     setActivePane('preview');
                     setRightCollapsed(false);

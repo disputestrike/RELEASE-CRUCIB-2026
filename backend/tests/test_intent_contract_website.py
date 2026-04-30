@@ -10,12 +10,16 @@ from backend.orchestration.contract_artifacts import (
 from backend.orchestration.contract_generator import BuildContractGenerator
 from backend.orchestration.generated_app_template import build_frontend_file_set
 from backend.orchestration.intent_classifier import IntentClassifier
+from backend.orchestration.build_integrity_validator import validate_workspace_integrity
+from backend.orchestration.build_target_inference import infer_build_target
 
 
 WEBSITE_PROMPT = (
     "Build me a stunning multi-page website with hero, features grid, "
     "pricing, testimonials, and footer — beautiful modern design"
 )
+
+INTERNAL_ADMIN_PROMPT = "Build an internal admin tool with data tables, forms, and approval workflows"
 
 
 def _write_file_set(root: Path, files):
@@ -59,6 +63,70 @@ def test_website_template_is_product_folder_not_app_scaffold():
     assert "CRUCIB_INCOMPLETE" not in joined
     assert "agent completed tool loop" not in joined
     assert '"_placeholder": "generated"' not in joined
+
+
+def test_internal_admin_prompt_uses_admin_contract_not_generic_web():
+    target, _candidates, _reason = infer_build_target(INTERNAL_ADMIN_PROMPT)
+    dimensions = IntentClassifier().classify(INTERNAL_ADMIN_PROMPT)
+    contract = BuildContractGenerator().generate(dimensions, INTERNAL_ADMIN_PROMPT, "job-admin")
+
+    assert target == "internal_admin_tool"
+    assert dimensions.values["internal_admin"] is True
+    assert dimensions.values["cli"] is False
+    assert contract.build_class == "internal_admin_tool"
+    assert "/records" in contract.required_routes
+    assert "/forms" in contract.required_routes
+    assert "/approvals" in contract.required_routes
+    assert "src/components/tables/DataTable.jsx" in contract.required_files
+    assert "db/migrations/001_initial.sql" in contract.required_files
+    assert "records" in contract.required_database_tables
+    assert "approval_requests" in contract.required_database_tables
+
+
+def test_internal_admin_template_builds_real_admin_surface():
+    files = dict(build_frontend_file_set({"id": "job-admin", "goal": INTERNAL_ADMIN_PROMPT, "build_target": "internal_admin_tool"}))
+    joined = "\n".join(files.values())
+
+    assert "export default function App" in files["src/App.jsx"]
+    assert "BrowserRouter" in files["src/App.jsx"]
+    assert "/records" in files["src/App.jsx"]
+    assert "/forms" in files["src/App.jsx"]
+    assert "/approvals" in files["src/App.jsx"]
+    assert "src/components/tables/DataTable.jsx" in files
+    assert "src/components/forms/AdminRecordForm.jsx" in files
+    assert "src/components/approvals/ApprovalQueue.jsx" in files
+    assert "backend/main.py" in files
+    assert "db/migrations/001_initial.sql" in files
+    assert "Application is being generated" not in joined
+    assert "Generated workspace aligned to:" not in joined
+
+
+def test_internal_admin_biv_blocks_placeholder_app():
+    scratch = Path(tempfile.mkdtemp(prefix="crucibai_admin_bad_", dir="C:\\tmp"))
+    try:
+        workspace = scratch / "bad"
+        (workspace / "src").mkdir(parents=True)
+        (workspace / "src" / "App.jsx").write_text(
+            "export default function App(){return <div><h1>Loading...</h1><p>Application is being generated. Please wait.</p></div>}",
+            encoding="utf-8",
+        )
+        (workspace / "src" / "main.jsx").write_text(
+            "import App from './App.jsx';\nconsole.log(App);",
+            encoding="utf-8",
+        )
+
+        result = validate_workspace_integrity(
+            str(workspace),
+            goal=INTERNAL_ADMIN_PROMPT,
+            build_target="internal_admin_tool",
+            phase="final",
+        )
+
+        assert result["passed"] is False
+        assert result["hard_block"] is True
+        assert any("scaffold placeholders" in issue.lower() for issue in result["issues"])
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def test_contract_artifacts_reconcile_routes_and_dependencies():

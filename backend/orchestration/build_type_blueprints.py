@@ -52,6 +52,27 @@ BLUEPRINTS: Dict[str, Dict[str, Any]] = {
         "routes": ["/", "/dashboard", "/analytics", "/team", "/pricing", "/settings", "/404"],
         "required_sections": ["marketing hero", "dashboard KPIs", "analytics charts", "team management", "settings"],
     },
+    "internal_admin_tool": {
+        "label": "Internal admin tool",
+        "folders": [
+            "src/components/layout",
+            "src/components/tables",
+            "src/components/forms",
+            "src/components/approvals",
+            "src/components/ui",
+            "src/pages",
+            "src/styles",
+            "src/data",
+            "backend",
+            "db/migrations",
+            "tests",
+            "proof/screenshots",
+        ],
+        "routes": ["/", "/records", "/forms", "/approvals", "/settings", "/404"],
+        "required_sections": ["admin overview", "data table", "data-entry form", "approval queue", "settings"],
+        "backend": ["health", "records", "forms", "approvals"],
+        "database": ["records", "form_submissions", "approval_workflows", "approval_requests", "audit_events"],
+    },
     "fullstack_saas": {
         "label": "Full-stack SaaS",
         "routes": ["/", "/dashboard", "/analytics", "/team", "/pricing", "/settings", "/404"],
@@ -84,4 +105,3 @@ def get_blueprint(build_class: str) -> Dict[str, Any]:
     """Return a defensive copy of the blueprint for ``build_class``."""
 
     return deepcopy(BLUEPRINTS.get(build_class) or {})
-

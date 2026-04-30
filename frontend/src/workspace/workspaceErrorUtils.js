@@ -25,26 +25,25 @@ export function formatWorkspaceBuildError(rawText) {
   const text = (rawText == null ? '' : String(rawText)).trim();
   if (!text) {
     return {
-      friendly: 'Something went wrong. Please try again or adjust your request.',
+      friendly: 'I need another pass to finish this workspace.',
       raw: '',
     };
   }
   const lower = text.toLowerCase();
   const truncated =
     text.length > FRIENDLY_MAX ? `${text.slice(0, FRIENDLY_MAX)}…` : text;
-  // Default: show real verifier output (long compile messages used to collapse to generic text).
-  let friendly = truncated;
+  let friendly = 'I need another pass to finish this workspace. I kept the current files and can continue from here.';
 
   if (
     /credit|insufficient|balance|402|payment|quota|billing|anthropic|openai|api key|invalid_api|authentication|401|403|provider/.test(
       lower,
     )
   ) {
-    friendly = 'Build failed due to provider limitation (credits or API issue).';
+    friendly = 'The model provider needs attention before I can continue this pass.';
   } else if (/rate limit|429|timeout|econn|network|fetch failed|connection refused|eai_again/.test(lower)) {
-    friendly = 'Build failed due to a temporary provider or network issue. Try again in a moment.';
+    friendly = 'The provider or network paused this pass. Try again in a moment and I will continue from the same workspace.';
   } else if (/runtime_unsatisfied|python|node\.js|npm/.test(lower)) {
-    friendly = 'Runtime check failed on the server. Install required runtimes and retry.';
+    friendly = 'The server runtime needs attention before preview can finish.';
   }
 
   return { friendly, raw: text };

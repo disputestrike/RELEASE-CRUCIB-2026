@@ -127,7 +127,7 @@ async def run_full_brain_repair(
 
                 payload = {
                     "kind": "deterministic_repair",
-                    "headline": "Applied an automatic fix",
+                    "headline": "Updated the workspace",
                     "summary": summary,
                     "next_steps": [
                         "Re-running verification on the updated workspace.",

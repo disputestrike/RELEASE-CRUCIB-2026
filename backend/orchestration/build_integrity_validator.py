@@ -425,7 +425,9 @@ def validate_workspace_integrity(
     profile = detect_build_profile(goal, files)
     if build_target:
         target = build_target.lower()
-        if "agent" in target or "automation" in target:
+        if "internal_admin" in target or "admin_tool" in target:
+            profile = "internal_admin"
+        elif "agent" in target or "automation" in target:
             profile = "automation"
         elif "api" in target or "backend" in target:
             profile = "api_backend"
@@ -525,22 +527,22 @@ def _score_architecture(
 
     if _has_file(files, "index.html") or _has_file(files, "client/index.html"):
         score += 3
-    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile", "internal_admin"}:
         issues.append(_issue("missing_html_shell", "Missing browser HTML shell/root.", phase, retry_targets=("frontend", "integration")))
 
     if _has_file(files, "src/main", "client/src/main", "src/index"):
         score += 4
-    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile", "internal_admin"}:
         issues.append(_issue("missing_entry_point", "Missing app entry point.", phase, retry_targets=("frontend", "integration")))
 
     if _has_file(files, "src/App", "client/src/App", "app/page", "app/layout"):
         score += 4
-    elif profile in {"web", "web_site", "saas_ui", "mobile"}:
+    elif profile in {"web", "web_site", "saas_ui", "mobile", "internal_admin"}:
         issues.append(_issue("missing_root_app", "Missing root app component.", phase, retry_targets=("frontend", "integration")))
 
     if _has_any_text(text, ("<route", "routes", "browserrouter", "memoryrouter", "wouter", "createbrowserrouter")):
         score += 3
-    elif profile in {"web", "saas_ui"}:
+    elif profile in {"web", "saas_ui", "internal_admin"}:
         issues.append(_issue("missing_route_map", "Missing route map/router wiring.", phase, retry_targets=("frontend", "integration")))
 
     if profile == "api_backend":
@@ -570,7 +572,7 @@ def _score_design(
     proof: List[Dict[str, Any]],
     scores: Dict[str, int],
 ) -> None:
-    if profile not in {"saas_ui", "web_site", "mobile"}:
+    if profile not in {"saas_ui", "web_site", "mobile", "internal_admin"}:
         scores["design_system"] = SCORE_WEIGHTS["design_system"]
         return
 
@@ -591,11 +593,11 @@ def _score_design(
     score = 0
     if _has_file(files, "ideas.md", "design", "tokens"):
         score += 4
-    elif profile in {"saas_ui", "web_site"}:
+    elif profile in {"saas_ui", "web_site", "internal_admin"}:
         issues.append(_issue("missing_design_artifact", "UI build lacks a concrete design artifact such as ideas.md.", phase, retry_targets=("design",)))
 
     css_text = "\n".join(v for k, v in files.items() if k.endswith((".css", ".md", ".tsx", ".jsx"))).lower()
-    token_needles = ("--primary", "--background", "--foreground", "--chart", "--sidebar", "--radius")
+    token_needles = ("--primary", "--background", "--foreground", "--chart", "--sidebar", "--radius", "--color-black", "--color-white", "--font-family")
     token_hits = [n for n in token_needles if n in css_text]
     if len(token_hits) >= 4:
         score += 6
@@ -605,7 +607,7 @@ def _score_design(
 
     if _has_any_text(text, ("tailwind", "class-variance-authority", "radix", "shadcn", "buttonvariants", "component variants")):
         score += 3
-    elif profile in {"saas_ui", "web_site"}:
+    elif profile in {"saas_ui", "web_site", "internal_admin"}:
         issues.append(_issue("missing_component_variants", "SaaS/product UI lacks component variant system evidence.", phase, severity="warning",
                 retry_targets=("design", "frontend")))
 
@@ -722,6 +724,28 @@ def _validate_visual_contracts(
         )
         return min(4, len(hits) // 2) + (1 if has_visual_asset else 0)
 
+    if profile == "internal_admin":
+        admin_terms = ("admin", "records", "table", "form", "approval", "settings", "database")
+        hits = [term for term in admin_terms if term in text]
+        if len(hits) < 5:
+            issues.append(
+                _issue(
+                    "thin_internal_admin_surface",
+                    "Internal admin build lacks enough mounted admin surfaces: "
+                    + ", ".join(sorted(set(admin_terms) - set(hits))),
+                    phase,
+                    retry_targets=("frontend", "integration"),
+                )
+            )
+        proof.append(
+            {
+                "proof_type": "visual_qa",
+                "title": "Internal admin visual/product contracts inspected",
+                "payload": {"section_hits": hits},
+            }
+        )
+        return min(5, len(hits))
+
     return 4
 
 
@@ -775,6 +799,39 @@ def _score_completeness(
         hits = [n for n in section_needles if n in text]
         score += min(8, len(hits))
         score += _validate_visual_contracts(files, text, profile, phase, issues, proof)
+    elif profile == "internal_admin":
+        required = {
+            "dashboard": ("src/pages/admindashboard", "/"),
+            "records": ("src/pages/records", "/records"),
+            "forms": ("src/pages/forms", "/forms"),
+            "approvals": ("src/pages/approvals", "/approvals"),
+            "settings": ("src/pages/settings", "/settings"),
+        }
+        present = [name for name, (path_hint, route_hint) in required.items() if path_hint in text and route_hint in text]
+        score += int(12 * len(present) / max(1, len(required)))
+        missing = sorted(set(required) - set(present))
+        if missing:
+            issues.append(
+                _issue(
+                    "missing_internal_admin_routes",
+                    "Internal admin build missing mounted routes: " + ", ".join(missing),
+                    phase,
+                    retry_targets=("frontend", "integration"),
+                )
+            )
+        data_terms = ("datatable", "adminrecordform", "approvalqueue", "create table", "/api/records", "/api/forms", "/api/approvals")
+        hits = [term for term in data_terms if term in text]
+        score += min(8, len(hits))
+        if len(hits) < 5:
+            issues.append(
+                _issue(
+                    "thin_internal_admin_contract",
+                    "Internal admin build lacks real table/form/approval/database contract evidence.",
+                    phase,
+                    retry_targets=("frontend", "backend", "database", "integration"),
+                )
+            )
+        score += _validate_visual_contracts(files, text, profile, phase, issues, proof)
     elif profile == "mobile":
         if _has_any_text(text, ("expo", "react-native", "react native")):
             score += 8
@@ -805,7 +862,7 @@ def _score_completeness(
     else:
         score = 16 if _has_file(files, "src", "backend", "server") else 8
 
-    if profile in {"web", "web_site", "saas_ui", "api_backend"}:
+    if profile in {"web", "web_site", "saas_ui", "api_backend", "internal_admin"}:
         # Only flag truly unfinished scaffold markers — not "placeholder" which is a common
         # CSS attribute (input placeholder), HTML attribute, or variable name
         placeholder_hits = [
@@ -822,6 +879,8 @@ def _score_completeness(
                 "\"_placeholder\": \"generated\"",
                 "real test placeholder",
                 "fake ci",
+                "application is being generated. please wait",
+                "generated workspace aligned to:",
             )
             if p.lower() in text.lower()
         ]
@@ -867,7 +926,7 @@ def _score_runtime(
     if isinstance(scripts, Mapping) and (scripts.get("test") or scripts.get("check")):
         score += 4
 
-    if phase in {"runtime", "final"} and profile in {"web", "web_site", "saas_ui"}:
+    if phase in {"runtime", "final"} and profile in {"web", "web_site", "saas_ui", "internal_admin"}:
         if _has_file(files, "dist/index.html", "build/index.html"):
             score += 7
         else:

@@ -274,15 +274,15 @@
 
 .p4-avatar-fallback { font-size: 10.5px; }
 
-/* USER prompt - slightly elevated from thread surface (same tokens as shell) */
+/* USER prompt - plain conversational text, same feel as assistant. */
 .p4-user-bubble {
   max-width: 78%;
-  padding: 10px 14px;
+  padding: 0;
   font-size: 13px;
   line-height: 1.55;
   color: var(--crucibai-text);
-  background: var(--crucibai-panel-soft);
-  border: 1px solid var(--crucibai-border);
+  background: transparent;
+  border: 0;
   border-radius: 0;
   box-shadow: none;
 }
@@ -703,25 +703,24 @@
   to { transform: rotate(360deg); }
 }
 
-/* Typing dots */
+/* Thinking indicator */
 .p4-typing-dots {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  height: 14px;
-  margin-top: 6px;
+  height: 18px;
+  margin-top: 4px;
+  color: var(--crucibai-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .p4-typing-dots span {
-  width: 4px;
-  height: 4px;
-  border-radius: 0;
-  background: var(--crucibai-muted);
-  animation: p4-bounce 1.4s ease-in-out infinite both;
+  display: none;
 }
 
-.p4-typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-.p4-typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+.p4-typing-dots::before {
+  content: "Thinking";
+}
 
 @keyframes p4-bounce {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.6; }

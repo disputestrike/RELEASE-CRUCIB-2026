@@ -26,6 +26,12 @@ _ALIASES = {
     "app_router": "next_app_router",
     "api": "api_backend",
     "backend": "api_backend",
+    "internal": "internal_admin_tool",
+    "internal_admin": "internal_admin_tool",
+    "internal_tool": "internal_admin_tool",
+    "admin": "internal_admin_tool",
+    "admin_tool": "internal_admin_tool",
+    "admin_panel": "internal_admin_tool",
     "agents": "agent_workflow",
     "automation": "agent_workflow",
     "mobile": "mobile_expo",
@@ -66,6 +72,7 @@ DISPLAY_ORDER = [
     "vite_react",
     "next_app_router",
     "static_site",
+    "internal_admin_tool",
     "mobile_expo",
     "api_backend",
     "agent_workflow",
@@ -135,6 +142,23 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
         ],
         "roadmap": [
             "Dedicated Astro/11ty track, CMS hooks, and edge deploy packs.",
+        ],
+    },
+    "internal_admin_tool": {
+        "id": "internal_admin_tool",
+        "label": "Internal admin tool",
+        "tagline": "Back-office workspace with data tables, forms, approval workflows, API contracts, and database schema.",
+        "guarantees": [
+            "Generates an admin/work-ops interface instead of a marketing site or generic full-stack shell.",
+            "Includes browser-addressable admin routes for dashboard, records, forms, approvals, and settings.",
+            "Adds API and database contract artifacts for records, form submissions, approval requests, and audit events.",
+        ],
+        "on_this_run": [
+            "Root workspace remains a Vite + React preview so the existing preview gate can render it.",
+            "Backend/database files are generated as contract-backed artifacts and validated by the final gates.",
+        ],
+        "roadmap": [
+            "Provider-specific database provisioning and live migration execution when credentials are configured.",
         ],
     },
     "mobile_expo": {
