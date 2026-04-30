@@ -211,8 +211,13 @@ def _extract_artifact_from_llm_output(
         # Generic: return response stripped
         return llm_response.strip() if llm_response.strip() else ""
 
-from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
-from backend.agent_resilience import get_criticality
+try:
+    from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
+    from backend.agent_resilience import get_criticality
+except ImportError:
+    # Fallback for direct execution
+    from agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
+    from agent_resilience import get_criticality
 
 from .agent_selection_logic import (
     BASE_AGENTS,
@@ -342,6 +347,20 @@ AGENT_MODEL_TIER: Dict[str, str] = {
 }
 
 
+def _primary_llm_is_cerebras() -> bool:
+    """When True, Cerebras is tried before Anthropic for every agent (testing / free tier).
+
+    Set PRIMARY_LLM_PROVIDER=cerebras (or CRUCIB_PRIMARY_LLM=cerebras). Default is
+    task-tier routing (Anthropic first for deep-reasoning agents when keys exist).
+    Remove or set to anthropic to restore normal production order.
+    """
+    v = (
+        os.environ.get("PRIMARY_LLM_PROVIDER", "")
+        or os.environ.get("CRUCIB_PRIMARY_LLM", "")
+    ).strip().lower()
+    return v in ("cerebras", "cerebra", "cb")
+
+
 def _get_agent_model_chain(
     agent_name: str,
     effective: Dict[str, Any],
@@ -354,6 +373,9 @@ def _get_agent_model_chain(
 
     IMPORTANT: Anthropic has NO credits on Railway. If Anthropic fails, Cerebras
     MUST be in the chain so the build continues. Never return an Anthropic-only chain.
+
+    PRIMARY_LLM_PROVIDER=cerebras — put Cerebras first for *all* tiers (free testing;
+    Anthropic remains as fallback when the key is set).
     """
     from ..llm_router import CEREBRAS_MODEL
     from ..anthropic_models import ANTHROPIC_HAIKU_MODEL
@@ -365,6 +387,16 @@ def _get_agent_model_chain(
     anthropic_entry = {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}
 
     tier = AGENT_MODEL_TIER.get(agent_name, "cerebras")  # default to fast
+    force_cerebras_first = _primary_llm_is_cerebras()
+
+    if force_cerebras_first:
+        # Same order as "cerebras tier": fast first, Claude when needed / on failure
+        chain = []
+        if cerebras_key:
+            chain.append(cerebras_entry)
+        if anthropic_key:
+            chain.append(anthropic_entry)
+        return chain if chain else [anthropic_entry]
 
     if tier == "anthropic":
         # Anthropic primary — but always include Cerebras as fallback

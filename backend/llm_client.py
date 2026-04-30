@@ -65,17 +65,38 @@ class LLMConfig:
     temperature: float = 0.7
 
 
+def _primary_llm_is_cerebras() -> bool:
+    v = (
+        os.environ.get("PRIMARY_LLM_PROVIDER", "")
+        or os.environ.get("CRUCIB_PRIMARY_LLM", "")
+    ).strip().lower()
+    return v in ("cerebras", "cerebra", "cb")
+
+
 def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
     """
     Load LLM config with smart model routing based on task type.
 
     Large/complex tasks → Anthropic (200K context, superior reasoning)
     Small/fast tasks → Cerebras (if available, avoids 8K limit issues)
+
+    Set PRIMARY_LLM_PROVIDER=cerebras to prefer Cerebras for all task types
+    (free testing). call_llm() still falls back to Anthropic if Cerebras fails.
     """
     task_lower = task_type.lower()
 
     claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+
+    # Testing / cost mode: Cerebras first everywhere when key is present.
+    if cerebras_key and _primary_llm_is_cerebras():
+        model = os.environ.get("CEREBRAS_MODEL", "llama3.1-8b")
+        logger.debug(
+            "LLM routing (PRIMARY=cerebras): task=%s → cerebras/%s",
+            task_type or "default",
+            model,
+        )
+        return LLMConfig(provider="cerebras", api_key=cerebras_key, model=model)
 
     # Determine if this task REQUIRES Anthropic
     needs_anthropic = any(t in task_lower for t in ANTHROPIC_REQUIRED_TASKS)
