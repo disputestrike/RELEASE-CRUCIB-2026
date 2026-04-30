@@ -603,7 +603,7 @@ def _get_server_helpers():
     return (
         _user_credits,
         _assert_job_owner_match,   # FIX: was _ensure_credit_balance — wrong function,
-        _resolve_job_project_id_for_user,  # wrong signature → TypeError on every run-auto call
+        _resolve_job_project_id_for_user,
         _project_workspace_path,
     )
 
@@ -1844,13 +1844,13 @@ async def lifespan(app: FastAPI):
         await run_migrations_idempotent()
         logger.info("Startup migrations complete.")
     except Exception as _mig_err:
-        logger.warning("Startup migration failed (non-fatal): %s", _mig_err)
+        logger.error("Startup migration failed (non-fatal): %s", _mig_err, exc_info=True)
     try:
         from .db_pg import ensure_all_tables
         await ensure_all_tables()
         logger.info("ensure_all_tables complete.")
     except Exception as _tbl_err:
-        logger.warning("ensure_all_tables failed (non-fatal): %s", _tbl_err)
+        logger.error("ensure_all_tables failed (non-fatal): %s", _tbl_err, exc_info=True)
     yield
     # shutdown
     logger.info("shutdown")
@@ -1936,8 +1936,10 @@ async def run_benchmark_job_direct(
     """
     Direct benchmark endpoint in server.py.
     """
-    BENCHMARK_SECRET = os.environ.get("BENCHMARK_SECRET", "crucibai_benchmark_2026_secret_key")
-    if body.secret != BENCHMARK_SECRET:
+    benchmark_secret = os.environ.get("BENCHMARK_SECRET") or os.environ.get("CRUCIBAI_BENCHMARK_SECRET")
+    if not benchmark_secret:
+        raise HTTPException(status_code=500, detail="Benchmark secret not configured (set BENCHMARK_SECRET or CRUCIBAI_BENCHMARK_SECRET)")
+    if body.secret != benchmark_secret:
         raise HTTPException(status_code=401, detail="Invalid benchmark secret")
         
     try:
@@ -2121,6 +2123,7 @@ for _module_name, _attr_name, _optional in _ALL_ROUTES:
             }
         )
         if not _optional:
+            logger.error("Required router failed to load: %s.%s: %s", _module_name, _attr_name, e, exc_info=True)
             raise RuntimeError(
                 f"Required router failed to load: {_module_name}.{_attr_name}: {e}"
             ) from e

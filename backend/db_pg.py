@@ -208,14 +208,16 @@ class PGCollection:
         if isinstance(raw, str):
             try:
                 return json.loads(raw)
-            except Exception:
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning("_parse_doc: failed to decode JSON string: %s", e)
                 return {}
         if isinstance(raw, dict):
             return raw
         # asyncpg Record or other mapping
         try:
             return dict(raw)
-        except Exception:
+        except (TypeError, ValueError) as e:
+            logger.warning("_parse_doc: failed to convert raw to dict: %s", e)
             return {}
 
     def _build_where(self, query: Dict[str, Any]) -> tuple:

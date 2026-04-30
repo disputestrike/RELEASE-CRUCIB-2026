@@ -17,8 +17,12 @@ it is safe to call repeatedly (later calls overwrite the state).
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
+
+logger = logging.getLogger(__name__)
+
 from typing import Optional
 
 import jwt
@@ -55,7 +59,8 @@ async def get_documents_db_async():
         from .db_pg import get_db as _pg
 
         return await _pg()
-    except Exception:
+    except Exception as e:
+        logger.warning("get_documents_db_async: failed to get PG database: %s", e)
         return None
 
 
@@ -224,7 +229,7 @@ def require_permission(permission):
     async def _dep(user: dict = Depends(get_current_user)) -> dict:
         if permission is not None:
             try:
-                from utils.rbac import has_permission
+                from .utils.rbac import has_permission
 
                 if not has_permission(user, permission):
                     raise HTTPException(
