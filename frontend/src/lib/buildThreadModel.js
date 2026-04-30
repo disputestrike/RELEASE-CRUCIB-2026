@@ -22,7 +22,7 @@
  * "Active step" banner pinned above the composer.
  */
 
-import { narrateBuildEvent } from './narrateBuildEvent';
+import { narrateBuildEvent, fileBasename } from './narrateBuildEvent';
 
 const readPayload = (event) => {
   if (event?.payload && typeof event.payload === 'object') return event.payload;
@@ -86,23 +86,23 @@ const PHASE_FRIENDLY = {
  * step headers. */
 const CHAPTER_DESCRIPTIONS = {
   'Planning the build':
-    'Extracting your requirements, the pages and routes you need, the data model, and the verification criteria before any code is generated.',
+    'Locking scope: routes, data shape, and how we will prove the build before you ship.',
   'Setting up the project':
-    'Creating the project scaffold, package files, and base configuration so the rest of the build has a clean foundation.',
+    'Scaffold, packages, and baseline config so everything downstream has a stable base.',
   'Building the frontend':
-    "Generating the pages, layout, navigation, forms, and dashboard UI for what you asked for.",
+    'Pages, layout, navigation, and UI wiring aligned to your goal.',
   'Building the backend':
-    'Wiring API routes, persistence, and server-side logic for the data flows you described.',
+    'APIs and server logic for the flows you described.',
   'Setting up the database':
-    'Designing the schema and seed data for the entities the app needs to store.',
+    'Schema and seeds for what this app needs to persist.',
   'Verifying the build':
-    'Running build, import, route, and preview checks to catch broken pieces before you see them.',
+    'Compile, routes, imports, and preview checks before you rely on the artifact.',
   'Finalizing the app':
-    'Assembling the final artifact and confirming every required file, route, and contract item is present.',
+    'Assembly pass: required files, routes, and contract items accounted for.',
   'Preparing delivery':
-    'Capturing proof items and running the export gate so the build is verifiable, not just trusted.',
+    'Proof capture and export gate so the result is checkable, not hand-waved.',
   'Repairing the build':
-    'Applying a targeted fix to the issue found by verification instead of restarting from scratch.',
+    'Targeted fix for what verification caught—without restarting the whole run.',
 };
 
 const stripAgentPrefix = (s) =>
@@ -170,16 +170,21 @@ const deriveToolTitle = (ev) => {
   const p = readPayload(ev);
   const agent = getAgent(ev);
   const phase = prettyPhase(getPhase(ev));
-  if (t === 'file_written' || t === 'file_write')
-    return `Write ${p.file || p.path || 'file'}`;
-  if (t === 'workspace_files_updated') return 'Update workspace files';
+  if (t === 'file_written' || t === 'file_write') {
+    const base = fileBasename(p.file || p.path);
+    return base ? `Write ${base}` : 'Write file';
+  }
+  if (t === 'workspace_files_updated') return 'Sync workspace files';
   if (t === 'tool_call') return `Run ${agent || p.name || 'tool'}`;
   if (t === 'tool_result') return `${agent || 'Tool'} returned`;
   if (t === 'verifier_started') return `Verify ${phase || ''}`.trim();
   if (t === 'verifier_passed') return `${phase || 'Verification'} passed`;
   if (t === 'step_started' || t === 'dag_node_started') return p.name || phase || 'Step started';
   if (t === 'step_completed' || t === 'dag_node_completed') return p.name || phase || 'Step completed';
-  if (t === 'code_mutation') return p.file ? `Edit ${p.file}` : 'Apply edit';
+  if (t === 'code_mutation') {
+    const base = fileBasename(p.file || p.path);
+    return base ? `Edit ${base}` : 'Apply edit';
+  }
   return phase || (t ? t.replace(/_/g, ' ') : 'Activity');
 };
 
@@ -341,12 +346,25 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       continue;
     }
 
-    if (/^(verifier_failed|assembly_failed|export_gate_blocked|error)$/.test(t)) {
+    if (/^(verifier_failed|assembly_failed|export_gate_blocked|error|step_failed|job_failed)$/.test(t)) {
       const p = readPayload(ev);
+      const phaseLabel = prettyPhase(getPhase(ev));
+      const titleForFailure = () => {
+        if (t === 'job_failed') return p.summary || p.message || 'Build stopped';
+        if (t === 'step_failed') return p.name || p.step_key || phaseLabel || 'Step did not complete';
+        return p.summary || p.message || `Verification failed at ${phaseLabel}`;
+      };
       restItems.push({
         kind: 'failure_block',
-        title: p.summary || p.message || `Verification failed at ${prettyPhase(getPhase(ev))}`,
-        reason: p.error || p.detail || narrateBuildEvent(ev) || '',
+        title: titleForFailure(),
+        reason:
+          p.error ||
+          p.error_message ||
+          p.detail ||
+          p.reason ||
+          p.failure_reason ||
+          narrateBuildEvent(ev) ||
+          '',
         missingItems: p.missing || p.missing_routes || p.missing_items || [],
         actions: ['Retry', 'Add instruction', 'Branch'],
         ts,
@@ -519,7 +537,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
   const latest = sorted[0]?.ev;
   if (latest) {
     const lt = latest.type || latest.event_type || '';
-    if (/^(export_gate_ready|run_snapshot|done)$/.test(lt)) {
+    if (/^(export_gate_ready|run_snapshot|done|job_completed)$/.test(lt)) {
       runningTitle = runningTitle || 'Build complete';
       runningStatus = 'success';
     } else if (/(failed|blocked|error)$/.test(lt)) {

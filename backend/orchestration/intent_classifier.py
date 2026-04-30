@@ -1,0 +1,277 @@
+"""
+IntentClassifier - Decomposes user prompts into dimensions.
+
+No domain registry lookups.
+No template selection.
+Pure synthesis from intent.
+"""
+
+from dataclasses import dataclass
+from typing import Dict, List, Any, Optional
+import json
+import re
+
+
+@dataclass
+class IntentDimensions:
+    """
+    Multi-dimensional decomposition of user intent.
+    
+    This is NOT a domain_id. It is a vector of capabilities.
+    """
+    values: Dict[str, Any]
+    auto_approve: bool = False
+    risk_factors: List[str] = None
+    uncertainty_flags: List[str] = None
+    suggested_clarifications: List[str] = None
+    
+    def __post_init__(self):
+        if self.risk_factors is None:
+            self.risk_factors = []
+        if self.uncertainty_flags is None:
+            self.uncertainty_flags = []
+        if self.suggested_clarifications is None:
+            self.suggested_clarifications = []
+
+
+class IntentClassifier:
+    """
+    Classifies intent by decomposing into dimensions.
+    
+    Does not select from a domain registry.
+    Generates dimensions from prompt analysis.
+    """
+    
+    # Keywords that map to dimensions
+    DIMENSION_KEYWORDS = {
+        # Tenancy
+        "tenancy": ["multi-tenant", "multitenant", "tenant isolation", "org", "workspace", "organization"],
+        
+        # CRM
+        "crm": ["crm", "customer", "contact", "lead", "deal", "account", "pipeline", "opportunity"],
+        
+        # Compliance
+        "compliance": ["gdpr", "hipaa", "soc2", "audit", "compliance", "regulatory", "policy"],
+        
+        # Workers/Background Jobs
+        "workers": ["worker", "job queue", "background", "async", "scheduled", "cron", "batch"],
+        
+        # Real-time
+        "real_time": ["websocket", "sse", "real-time", "live updates", "streaming"],
+        
+        # Integrations
+        "integrations": ["integration", "api connector", "webhook", "oauth", "adapter"],
+        
+        # Analytics
+        "analytics": ["analytics", "dashboard", "metrics", "reporting", "charts", "kpi"],
+        
+        # Auth
+        "auth": ["auth", "login", "authentication", "jwt", "session", "sso", "oauth"],
+        
+        # Billing
+        "billing": ["billing", "payment", "subscription", "stripe", "invoice", "pricing"],
+        
+        # Frontend
+        "frontend": ["react", "vue", "angular", "frontend", "spa", "ui", "dashboard"],
+        
+        # Backend
+        "backend": ["fastapi", "express", "django", "backend", "api", "rest", "graphql"],
+        
+        # Database
+        "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis"],
+        
+        # Mobile
+        "mobile": ["mobile", "ios", "android", "react native", "flutter", "expo"],
+        
+        # CLI
+        "cli": ["cli", "command line", "terminal", "script", "tool"],
+        
+        # Game
+        "game": ["game", "unity", "unreal", "godot", "phaser", "2d", "3d"],
+        
+        # Data Pipeline
+        "data_pipeline": ["etl", "pipeline", "airflow", "spark", "data processing"]
+    }
+    
+    # Risk factors that require human approval
+    RISK_KEYWORDS = {
+        "payment": ["payment", "billing", "stripe", "braintree", "transaction", "money"],
+        "compliance": ["gdpr", "hipaa", "pci", "soc2", "regulatory", "audit"],
+        "production_deploy": ["production", "deploy", "live", "customer-facing"],
+        "security_critical": ["auth", "encryption", "security", "sensitive data"],
+        "high_scale": ["million users", "enterprise", "scale", "high traffic"]
+    }
+    
+    def __init__(self, llm_client=None):
+        self.llm = llm_client
+    
+    def classify(self, prompt: str) -> IntentDimensions:
+        """
+        Decompose prompt into dimensions.
+        
+        Returns IntentDimensions, not a domain_id.
+        """
+        prompt_lower = prompt.lower()
+        
+        # Extract dimensions from keywords
+        dimensions = {}
+        for dimension, keywords in self.DIMENSION_KEYWORDS.items():
+            dimensions[dimension] = any(kw in prompt_lower for kw in keywords)
+        
+        # Detect specific patterns for richer dimensions
+        dimensions.update(self._extract_specific_patterns(prompt))
+        
+        # Detect risk factors
+        risk_factors = self._detect_risk_factors(prompt_lower)
+        
+        # Determine auto-approval
+        auto_approve = len(risk_factors) == 0 and self._is_low_complexity(dimensions)
+        
+        # Detect uncertainties
+        uncertainties = self._detect_uncertainties(prompt)
+        
+        return IntentDimensions(
+            values=dimensions,
+            auto_approve=auto_approve,
+            risk_factors=risk_factors,
+            uncertainty_flags=uncertainties,
+            suggested_clarifications=self._generate_clarifications(dimensions, uncertainties)
+        )
+    
+    def _extract_specific_patterns(self, prompt: str) -> Dict[str, Any]:
+        """
+        Extract specific patterns that enrich dimensions.
+        """
+        prompt_lower = prompt.lower()
+        patterns = {}
+        
+        # Tenancy patterns
+        if "org → workspace → project" in prompt_lower or "organization" in prompt_lower:
+            patterns["tenancy_model"] = "org_workspace_project"
+        elif "tenant" in prompt_lower:
+            patterns["tenancy_model"] = "simple_tenant"
+        
+        # Database patterns
+        if "postgres" in prompt_lower:
+            patterns["database"] = "postgresql"
+        elif "mysql" in prompt_lower:
+            patterns["database"] = "mysql"
+        elif "mongodb" in prompt_lower:
+            patterns["database"] = "mongodb"
+        elif "redis" in prompt_lower:
+            patterns["queue"] = "redis"
+        
+        # Stack patterns
+        if "fastapi" in prompt_lower:
+            patterns["backend"] = "FastAPI"
+        elif "express" in prompt_lower or "node" in prompt_lower:
+            patterns["backend"] = "Express"
+        elif "django" in prompt_lower:
+            patterns["backend"] = "Django"
+        
+        if "react" in prompt_lower:
+            patterns["frontend"] = "React"
+            if "typescript" in prompt_lower or "ts" in prompt_lower:
+                patterns["frontend"] = "React+TypeScript"
+        elif "vue" in prompt_lower:
+            patterns["frontend"] = "Vue"
+        elif "angular" in prompt_lower:
+            patterns["frontend"] = "Angular"
+        
+        # Specific feature patterns
+        if "quote workflow" in prompt_lower or "approval" in prompt_lower:
+            patterns["workflow_engine"] = True
+        
+        if "audit trail" in prompt_lower or "immutable" in prompt_lower:
+            patterns["audit_system"] = True
+        
+        if "policy engine" in prompt_lower or "role-based" in prompt_lower:
+            patterns["policy_engine"] = True
+        
+        if "mock erp" in prompt_lower or "integration adapter" in prompt_lower:
+            patterns["integration_framework"] = True
+        
+        return patterns
+    
+    def _detect_risk_factors(self, prompt_lower: str) -> List[str]:
+        """Detect risk factors that require human approval."""
+        risks = []
+        for risk_type, keywords in self.RISK_KEYWORDS.items():
+            if any(kw in prompt_lower for kw in keywords):
+                risks.append(risk_type)
+        return risks
+    
+    def _is_low_complexity(self, dimensions: Dict[str, Any]) -> bool:
+        """Determine if build is low complexity enough for auto-approval."""
+        # Count enabled dimensions
+        enabled = sum(1 for v in dimensions.values() if v is True)
+        
+        # Auto-approve if fewer than 5 major dimensions
+        return enabled < 5
+    
+    def _detect_uncertainties(self, prompt: str) -> List[str]:
+        """Detect ambiguous or missing information."""
+        uncertainties = []
+        
+        # Check for missing stack specification
+        if not any(word in prompt.lower() for word in ["react", "vue", "angular", "fastapi", "express", "django"]):
+            uncertainties.append("frontend_framework_not_specified")
+            uncertainties.append("backend_framework_not_specified")
+        
+        # Check for vague requirements
+        if len(prompt.split()) < 20:
+            uncertainties.append("prompt_too_short")
+        
+        # Check for missing auth specification
+        if "auth" not in prompt.lower() and "login" not in prompt.lower():
+            uncertainties.append("auth_requirement_unclear")
+        
+        return uncertainties
+    
+    def _generate_clarifications(self, dimensions: Dict, uncertainties: List[str]) -> List[str]:
+        """Generate clarifying questions for uncertainties."""
+        questions = []
+        
+        if "frontend_framework_not_specified" in uncertainties:
+            questions.append("What frontend framework? (React, Vue, Angular)")
+        
+        if "backend_framework_not_specified" in uncertainties:
+            questions.append("What backend framework? (FastAPI, Express, Django)")
+        
+        if "auth_requirement_unclear" in uncertainties:
+            questions.append("What authentication method? (email/password, OAuth, SSO)")
+        
+        if dimensions.get("tenancy") and not dimensions.get("tenancy_model"):
+            questions.append("What tenancy model? (org/workspace/project, simple multi-tenant)")
+        
+        return questions
+
+
+# Example classification for testing
+if __name__ == "__main__":
+    classifier = IntentClassifier()
+    
+    # Test Helios prompt
+    helios_prompt = """Build Helios Operations Cloud — an elite autonomous multi-tenant B2B SaaS for regulated teams.
+
+MULTI-TENANT & ISOLATION: Strict tenant isolation per organization (Org → Workspace → Project).
+CRM & PIPELINES: Full CRM module (accounts, contacts, deals, activities, tasks).
+COMPLIANCE & AUDIT: Immutable audit trail for security-relevant actions.
+BACKGROUND JOBS & WORKERS: Worker/job system for long tasks.
+INTEGRATION ADAPTERS: Pluggable integration adapters — REST connector framework.
+ANALYTICS & REPORTING: Analytics/reporting dashboards.
+PRODUCT SURFACES: React + TypeScript SPA, FastAPI backend, PostgreSQL, Redis.
+DEPLOYMENT & OPS: Dockerized services."""
+    
+    result = classifier.classify(helios_prompt)
+    print("Helios Classification:")
+    print(f"  Dimensions: {result.values}")
+    print(f"  Risk Factors: {result.risk_factors}")
+    print(f"  Auto Approve: {result.auto_approve}")
+    
+    # Test API-only prompt
+    api_prompt = "Build a REST API for user management with FastAPI and PostgreSQL"
+    result2 = classifier.classify(api_prompt)
+    print("\nAPI Classification:")
+    print(f"  Dimensions: {result2.values}")
+    print(f"  Auto Approve: {result2.auto_approve}")

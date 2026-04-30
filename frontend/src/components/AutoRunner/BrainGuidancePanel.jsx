@@ -310,7 +310,7 @@ function FailureBlock({ item }) {
   const friendlyReason =
     niceReason && !/orchestrator_error/i.test(niceReason)
       ? niceReason
-      : 'The build stopped before verification could finish. I can pick up where it left off ó send a fix instruction below or use Resume on the right.';
+      : 'The build stopped before verification could finish. I can pick up where it left off ù send a fix instruction below or use Resume on the right.';
   return (
     <div className="p4-chapter p4-chapter--diagnostic">
       <div className="p4-chapter-head p4-chapter-head--static">
@@ -404,6 +404,10 @@ export default function BrainGuidancePanel({
   jobId = null,
   buildTargetMeta = null,
   buildTargetId = null,
+  /** Same job stream as Preview / Proof / Timeline (single effectiveJobId in workspace) */
+  streamConnected = false,
+  connectionMode = 'sse',
+  eventCount = 0,
   onScroll,
   onPause,
   onResume,
@@ -457,7 +461,7 @@ export default function BrainGuidancePanel({
       <div className="bgp-thread-empty">
         <div className="bgp-empty-inner">
           <p className="bgp-empty-text">
-            Describe what you want to build in the composer below. Iùll plan, build, and verify it live.
+            {`Describe what you want to build in the composer below. I'll plan, build, and verify it live.`}
           </p>
         </div>
       </div>
@@ -470,6 +474,14 @@ export default function BrainGuidancePanel({
         {(buildTargetMeta || buildTargetId) ? (
           <BuildTargetChip meta={buildTargetMeta} id={buildTargetId} />
         ) : <span />}
+        {jobId ? (
+          <span
+            className={`p4-stream-badge ${streamConnected ? 'p4-stream-badge--live' : 'p4-stream-badge--wait'}`}
+            title={`Job stream (${connectionMode || 'sse'}) ù ${eventCount} events`}
+          >
+            {streamConnected ? 'Live' : 'ConnectingÖ'}
+          </span>
+        ) : null}
         <ThreadOverflow
           jobStatus={jobStatus}
           onPause={onPause}

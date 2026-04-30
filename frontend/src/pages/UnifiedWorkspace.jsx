@@ -1858,6 +1858,9 @@ export default function App() {
               buildTargetMeta={buildTargetMeta}
               buildTargetId={buildTarget}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
+              streamConnected={isConnected}
+              connectionMode={connectionMode}
+              eventCount={Array.isArray(events) ? events.length : 0}
               onPause={handleCancel}
               onResume={handleResume}
               onCancel={handleCancel}

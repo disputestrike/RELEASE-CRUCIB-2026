@@ -1,34 +1,25 @@
 /**
- * Phase4 LiveExecutionSurface — Manus/Kimi-style conversational thread
- * with CrucibAI brand tokens. Assistant prose is plain text (no bubble),
- * phase sections collapse with a chevron, tool runs render as inline chips.
+ * Phase4 LiveExecutionSurface — center pane matches Unified Workspace tokens
+ * (.uw-root / unified-workspace-tokens.css): monochrome surfaces + green accent
+ * only (no purple). Geometry: sharp rectangles (border-radius: 0).
  */
 
-:root {
-  --crucibai-bg: #ffffff;
-  --crucibai-panel: #ffffff;
-  --crucibai-panel-soft: #f7f7f9;
-  --crucibai-text: #0f172a;
-  --crucibai-muted: #64748b;
-  --crucibai-border: rgba(15, 23, 42, 0.08);
-  --crucibai-border-strong: rgba(15, 23, 42, 0.16);
-  --crucibai-accent: #6366f1;
-  --crucibai-accent-soft: rgba(99, 102, 241, 0.08);
-  --crucibai-success: #16a34a;
-  --crucibai-warning: #d97706;
-  --crucibai-danger: #dc2626;
-}
-
-[data-theme='dark'] {
-  --crucibai-bg: #0b0c10;
-  --crucibai-panel: #14161c;
-  --crucibai-panel-soft: #1a1d25;
-  --crucibai-text: #e6e7ea;
-  --crucibai-muted: #8b8f98;
-  --crucibai-border: rgba(255, 255, 255, 0.06);
-  --crucibai-border-strong: rgba(255, 255, 255, 0.14);
-  --crucibai-accent: #818cf8;
-  --crucibai-accent-soft: rgba(129, 140, 248, 0.12);
+/* Map legacy --crucibai-* names to the same variables the shell already uses. */
+.uw-root .bgp-thread-only,
+.uw-root .bgp-thread-empty {
+  --crucibai-bg: var(--uw-bg-root);
+  --crucibai-panel: var(--uw-bg-surface);
+  --crucibai-panel-soft: var(--uw-bg-elevated);
+  --crucibai-text: var(--uw-text);
+  --crucibai-muted: var(--uw-text-muted);
+  --crucibai-border: var(--uw-border-subtle);
+  --crucibai-border-strong: var(--uw-border-strong);
+  /* Accent = product green only (same as tabs / success), never purple */
+  --crucibai-accent: var(--uw-accent-success);
+  --crucibai-accent-soft: var(--uw-accent-success-dim);
+  --crucibai-success: var(--uw-accent-success);
+  --crucibai-warning: var(--uw-accent-warn);
+  --crucibai-danger: var(--uw-accent-error);
 }
 
 /* Outer thread container.
@@ -75,7 +66,7 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--crucibai-panel-soft);
   border: 1px solid var(--crucibai-border);
   font-size: 11px;
@@ -83,6 +74,27 @@
 }
 
 .p4-target-chip svg { color: var(--crucibai-accent); }
+
+.p4-stream-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--crucibai-border);
+  border-radius: 0;
+  color: var(--crucibai-muted);
+  background: var(--crucibai-panel-soft);
+  margin-left: 8px;
+}
+.p4-stream-badge--live {
+  color: var(--crucibai-accent);
+  border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
+  background: var(--crucibai-accent-soft);
+}
+.p4-stream-badge--wait {
+  color: var(--crucibai-warning);
+}
 
 /* Inline overflow menu (Pause / Resume / Cancel / Sync) */
 .p4-overflow-wrap {
@@ -96,7 +108,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   border: 1px solid transparent;
   color: var(--crucibai-muted);
@@ -115,7 +127,7 @@
   right: 0;
   min-width: 180px;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--crucibai-panel);
   border: 1px solid var(--crucibai-border);
   box-shadow: 0 10px 32px rgba(15, 23, 42, 0.14);
@@ -134,13 +146,13 @@
   background: transparent;
   text-align: left;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 12.5px;
   color: var(--crucibai-text);
   cursor: pointer;
 }
 
-.p4-overflow-item:hover { background: var(--crucibai-accent-soft); }
+.p4-overflow-item:hover { background: var(--crucibai-panel-soft); }
 
 .p4-overflow-item--danger { color: var(--crucibai-danger); }
 .p4-overflow-item--danger:hover { background: rgba(220, 38, 38, 0.08); }
@@ -165,7 +177,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 11.5px;
   border: 1px solid var(--crucibai-border);
   background: var(--crucibai-panel-soft);
@@ -175,7 +187,7 @@
 
 .p4-status-pill--running {
   background: var(--crucibai-accent-soft);
-  border-color: rgba(99, 102, 241, 0.22);
+  border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
   color: var(--crucibai-accent);
 }
 
@@ -236,41 +248,43 @@
 .p4-row-assistant,
 .p4-row-typing { justify-content: flex-start; }
 
-/* Avatar */
+/* Avatar — square frame, no circular chrome or purple gradient */
 .p4-avatar {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
+  background: var(--crucibai-panel);
+  border: 1px solid var(--crucibai-border);
+  color: var(--crucibai-text);
   font-size: 10.5px;
   font-weight: 700;
   margin-top: 2px;
 }
 
 .p4-avatar-img {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   display: block;
 }
 
 .p4-avatar-fallback { font-size: 10.5px; }
 
-/* USER prompt — compact dark bubble, right-aligned (Manus style) */
+/* USER prompt — slightly elevated from thread surface (same tokens as shell) */
 .p4-user-bubble {
   max-width: 78%;
   padding: 10px 14px;
   font-size: 13px;
   line-height: 1.55;
-  color: #fff;
-  background: var(--crucibai-text);
-  border-radius: 14px 14px 4px 14px;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  color: var(--crucibai-text);
+  background: var(--crucibai-panel-soft);
+  border: 1px solid var(--crucibai-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .p4-user-text {
@@ -317,7 +331,7 @@
 
 .p4-meta-time {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--crucibai-muted);
   margin-top: 4px;
   text-align: right;
 }
@@ -363,7 +377,7 @@
   background: var(--crucibai-panel-soft);
   border: 1px solid var(--crucibai-border);
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .p4-section-counter {
@@ -414,9 +428,9 @@
 }
 
 .p4-step-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
   background: var(--crucibai-border-strong);
   display: inline-block;
 }
@@ -440,11 +454,14 @@
   color: var(--crucibai-text);
   background: var(--crucibai-panel-soft);
   border: 1px solid var(--crucibai-border);
-  border-radius: 999px;
+  border-radius: 0;
   line-height: 1.4;
 }
 
-.p4-chip:hover { background: var(--crucibai-accent-soft); border-color: rgba(99, 102, 241, 0.18); }
+.p4-chip:hover {
+  background: var(--crucibai-panel-soft);
+  border-color: color-mix(in srgb, var(--crucibai-accent) 28%, var(--crucibai-border));
+}
 
 .p4-chip-title {
   min-width: 0;
@@ -455,10 +472,13 @@
 
 .p4-chip-time {
   font-size: 10px;
-  color: rgba(100, 116, 139, 0.6);
+  color: var(--crucibai-muted);
 }
 
-.p4-chip--running { background: var(--crucibai-accent-soft); border-color: rgba(99, 102, 241, 0.22); }
+.p4-chip--running {
+  background: var(--crucibai-accent-soft);
+  border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
+}
 .p4-chip--failed  { background: rgba(220, 38, 38, 0.06); border-color: rgba(220, 38, 38, 0.18); color: var(--crucibai-danger); }
 
 /* Tool group accent borders (subtle) */
@@ -512,11 +532,15 @@
   font-weight: 500;
   color: var(--crucibai-muted);
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--crucibai-border);
   background: var(--crucibai-panel-soft);
 }
-.p4-chapter-status--running { color: var(--crucibai-accent); border-color: rgba(99, 102, 241, 0.22); background: var(--crucibai-accent-soft); }
+.p4-chapter-status--running {
+  color: var(--crucibai-accent);
+  border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
+  background: var(--crucibai-accent-soft);
+}
 .p4-chapter-status--failed  { color: var(--crucibai-danger); border-color: rgba(220, 38, 38, 0.22); background: rgba(220, 38, 38, 0.05); }
 
 .p4-chapter-desc {
@@ -552,7 +576,7 @@
 .p4-inline-card {
   margin: 4px 0 2px 22px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--crucibai-border);
   background: var(--crucibai-panel);
   font-size: 12px;
@@ -644,7 +668,7 @@
 .p4-action-chip {
   font-size: 11px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--crucibai-panel);
   border: 1px solid var(--crucibai-border-strong);
   color: var(--crucibai-text);
@@ -689,9 +713,9 @@
 }
 
 .p4-typing-dots span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
   background: var(--crucibai-muted);
   animation: p4-bounce 1.4s ease-in-out infinite both;
 }
@@ -716,5 +740,5 @@
 /* Scrollbar */
 .bgp-thread-only::-webkit-scrollbar { width: 6px; }
 .bgp-thread-only::-webkit-scrollbar-track { background: transparent; }
-.bgp-thread-only::-webkit-scrollbar-thumb { background: var(--crucibai-border-strong); border-radius: 3px; }
+.bgp-thread-only::-webkit-scrollbar-thumb { background: var(--crucibai-border-strong); border-radius: 0; }
 .bgp-thread-only::-webkit-scrollbar-thumb:hover { background: var(--crucibai-muted); }

@@ -1,4 +1,19 @@
-/* ActiveStepBanner — pinned "current activity" card above the composer */
+/* ActiveStepBanner — pinned "current activity" card above the composer.
+   Inside Unified Workspace: inherit monochrome shell + green accent (no purple). */
+
+.uw-root .asb-root {
+  --crucibai-bg: var(--uw-bg-root);
+  --crucibai-panel: var(--uw-bg-surface);
+  --crucibai-panel-soft: var(--uw-bg-elevated);
+  --crucibai-text: var(--uw-text);
+  --crucibai-muted: var(--uw-text-muted);
+  --crucibai-border: var(--uw-border-subtle);
+  --crucibai-border-strong: var(--uw-border-strong);
+  --crucibai-accent: var(--uw-accent-success);
+  --crucibai-accent-soft: var(--uw-accent-success-dim);
+  --crucibai-success: var(--uw-accent-success);
+  --crucibai-danger: var(--uw-accent-error);
+}
 
 .asb-root {
   position: relative;
@@ -6,7 +21,7 @@
   margin: 4px auto 8px;
   background: var(--crucibai-panel, #ffffff);
   border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   font-size: 12px;
   color: var(--crucibai-text, #0f172a);
@@ -18,7 +33,9 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.asb-root--running { border-color: rgba(99, 102, 241, 0.22); }
+.asb-root--running {
+  border-color: color-mix(in srgb, var(--crucibai-accent, #4ade80) 35%, var(--crucibai-border, rgba(15, 23, 42, 0.08)));
+}
 .asb-root--success { border-color: rgba(22, 163, 74, 0.22); }
 .asb-root--failed { border-color: rgba(220, 38, 38, 0.24); }
 
@@ -42,9 +59,9 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: var(--crucibai-accent-soft, rgba(99, 102, 241, 0.08));
-  color: var(--crucibai-accent, #6366f1);
+  border-radius: 0;
+  background: var(--crucibai-accent-soft, rgba(74, 222, 128, 0.15));
+  color: var(--crucibai-accent, #4ade80);
 }
 
 .asb-body {
@@ -92,7 +109,7 @@
 
 .asb-files-more {
   margin-left: 4px;
-  color: var(--crucibai-accent, #6366f1);
+  color: var(--crucibai-accent, #4ade80);
 }
 
 .asb-counter {
@@ -100,7 +117,7 @@
   color: var(--crucibai-muted, #64748b);
   font-weight: 500;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--crucibai-panel-soft, #f7f7f9);
   border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
 }
@@ -114,7 +131,7 @@
 
 .asb-icon-spin {
   animation: asb-rotate 1s linear infinite;
-  color: var(--crucibai-accent, #6366f1);
+  color: var(--crucibai-accent, #4ade80);
 }
 
 .asb-icon-ok { color: var(--crucibai-success, #16a34a); }
