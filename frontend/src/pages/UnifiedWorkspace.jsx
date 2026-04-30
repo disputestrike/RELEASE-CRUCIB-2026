@@ -1437,9 +1437,20 @@ export default function App() {
     await runNewPlanAndAuto(submitted);
   };
 
-  /** Unified Handoff: Consume navigate(..., { state: handoff }) from Landing/Dashboard. */
+  /** Unified Handoff: Consume navigate(..., { state: handoff }) from Landing/Dashboard.
+   * Also consumes `crucibai_pending_prompt` left by LandingPage when an unsigned
+   * user submits a build prompt and is bounced through /auth - that key was
+   * previously only consumed by the legacy Workspace.jsx, which broke the
+   * landing -> signup -> workspace auto-start flow. */
   useEffect(() => {
-    // Try unified handoff first (new schema)
+    const stageAutostart = (raw, source) => {
+      try { sessionStorage.setItem('crucibai_autostart_goal', raw); } catch (_) { void 0; }
+      handoffQueuedAutostartRef.current = raw;
+      workspaceAutostartDoneRef.current = false;
+      console.info('[phase4-proof] unified_workspace_autostart', { source });
+    };
+
+    // 1. Unified handoff (new schema)
     const unified = extractWorkspaceHandoff(location.state);
     if (unified && unified.prompt) {
       const raw = unified.prompt.trim();
@@ -1449,10 +1460,7 @@ export default function App() {
         if (processedLocationHandoffRef.current.has(key)) return;
         processedLocationHandoffRef.current.add(key);
 
-        if (unified.autoStart) {
-          workspaceAutostartDoneRef.current = false;
-          console.info('[phase4-proof] unified_workspace_autostart', { source: unified.source || 'unknown' });
-        }
+        if (unified.autoStart) stageAutostart(raw, unified.source || 'unified');
         setGoal(raw);
         navigate(
           { pathname: location.pathname, search: location.search || '' },
@@ -1461,27 +1469,50 @@ export default function App() {
         return;
       }
     }
-    
-    // Legacy fallback: old schema with initialPrompt
-    const st = location.state;
-    if (!st || typeof st.initialPrompt !== 'string') return;
-    const raw = st.initialPrompt.trim();
-    if (!raw) return;
-    const key =
-      typeof st.handoffNonce === 'number'
-        ? `h_${st.handoffNonce}`
-        : `${location.key || 'nav'}_${raw.slice(0, 48)}_${st.autoStart ? '1' : '0'}`;
-    if (processedLocationHandoffRef.current.has(key)) return;
-    processedLocationHandoffRef.current.add(key);
 
-    if (st.autoStart) {
-      workspaceAutostartDoneRef.current = false;
+    // 2. Legacy state with `initialPrompt`
+    const st = location.state;
+    if (st && typeof st.initialPrompt === 'string' && st.initialPrompt.trim()) {
+      const raw = st.initialPrompt.trim();
+      const key =
+        typeof st.handoffNonce === 'number'
+          ? `h_${st.handoffNonce}`
+          : `${location.key || 'nav'}_${raw.slice(0, 48)}_${st.autoStart ? '1' : '0'}`;
+      if (processedLocationHandoffRef.current.has(key)) return;
+      processedLocationHandoffRef.current.add(key);
+
+      if (st.autoStart) stageAutostart(raw, 'legacy');
+      setGoal(raw);
+      navigate(
+        { pathname: location.pathname, search: location.search || '' },
+        { replace: true, state: {} },
+      );
+      return;
     }
-    setGoal(raw);
-    navigate(
-      { pathname: location.pathname, search: location.search || '' },
-      { replace: true, state: {} },
-    );
+
+    // 3. Pending prompt left by Landing page before auth bounce
+    try {
+      const pendingRaw = sessionStorage.getItem('crucibai_pending_prompt');
+      if (pendingRaw) {
+        let parsed = null;
+        try { parsed = JSON.parse(pendingRaw); } catch (_) { parsed = { prompt: pendingRaw, autoStart: true, source: 'landing' }; }
+        const promptText = String(parsed?.prompt || '').trim();
+        if (promptText) {
+          const key = `pp_${promptText.slice(0, 48)}_${parsed?.autoStart ? '1' : '0'}`;
+          if (!processedLocationHandoffRef.current.has(key)) {
+            processedLocationHandoffRef.current.add(key);
+            console.info('[phase4-proof] pending_prompt_restored_after_auth', {
+              source: parsed?.source || 'landing',
+              chars: promptText.length,
+            });
+            sessionStorage.removeItem('crucibai_pending_prompt');
+            sessionStorage.removeItem('crucibai_pending_prompt_hasFiles');
+            if (parsed?.autoStart !== false) stageAutostart(promptText, parsed?.source || 'landing');
+            setGoal(promptText);
+          }
+        }
+      }
+    } catch (_) { void 0; }
   }, [location.key, location.state, location.pathname, location.search, navigate]);
 
   /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
@@ -1490,46 +1521,51 @@ export default function App() {
     if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
-    if (effectiveJobId) {
-      try {
-        sessionStorage.removeItem('crucibai_autostart_goal');
-      } catch (_) { void 0; }
-      return;
-    }
 
     const urlParams = new URLSearchParams(locSearch);
     const autoStartUrl = urlParams.get('autoStart') === '1';
 
+    // First, see if there's an explicit autostart goal staged. If so, we
+    // run it even when the loaded task already had a jobId - the user
+    // explicitly asked for a fresh build (chip click / landing handoff).
     let goalText = '';
+    let goalSource = '';
     try {
       const fromHandoff = (handoffQueuedAutostartRef.current || '').trim();
       if (fromHandoff) {
         goalText = fromHandoff;
+        goalSource = 'handoff_ref';
         handoffQueuedAutostartRef.current = null;
-        try {
-          sessionStorage.removeItem('crucibai_autostart_goal');
-        } catch (_) { void 0; }
+        try { sessionStorage.removeItem('crucibai_autostart_goal'); } catch (_) { void 0; }
       } else {
-        goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
-        if (goalText) {
-          try {
-            sessionStorage.removeItem('crucibai_autostart_goal');
-          } catch (_) { void 0; }
+        const stored = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
+        if (stored) {
+          goalText = stored;
+          goalSource = 'session_storage';
+          try { sessionStorage.removeItem('crucibai_autostart_goal'); } catch (_) { void 0; }
         }
       }
-    } catch (_) {
-      return;
-    }
+    } catch (_) { return; }
+
     if (!goalText && autoStartUrl) {
       const pq = (urlParams.get('prompt') || '').trim();
-      if (pq) goalText = pq;
+      if (pq) { goalText = pq; goalSource = 'url_prompt'; }
     }
     if (!goalText && autoStartUrl && taskIdFromUrl) {
       const t = tasks.find((x) => x.id === taskIdFromUrl);
       const p = t?.prompt != null ? String(t.prompt).trim() : '';
-      if (p && t?.type === 'build') goalText = p;
+      if (p && t?.type === 'build') { goalText = p; goalSource = 'task_prompt'; }
     }
-    if (!goalText) return;
+
+    // No staged goal at all - if there's already a job loaded, just stay on it.
+    if (!goalText) {
+      if (effectiveJobId) {
+        try { sessionStorage.removeItem('crucibai_autostart_goal'); } catch (_) { void 0; }
+      }
+      return;
+    }
+
+    console.info('[phase4-proof] job_started_from_dashboard', { source: goalSource, hasExistingJob: !!effectiveJobId });
 
     workspaceAutostartDoneRef.current = true;
 

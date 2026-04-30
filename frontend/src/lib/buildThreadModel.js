@@ -47,12 +47,56 @@ const parseTs = (event) => {
   return Date.now();
 };
 
+/** Map raw backend phase keys (often "agents.foo" / "Agents Phase 01") to
+ * an activity-oriented label. Agent names are intentionally not surfaced in
+ * the thread - the user does not need to see "Agents X" for every step. */
+const PHASE_FRIENDLY = {
+  planner: 'Planning the build',
+  planning: 'Planning the build',
+  requirements_clarifier: 'Clarifying requirements',
+  requirements: 'Clarifying requirements',
+  scaffold: 'Setting up the project',
+  scaffolding: 'Setting up the project',
+  routing: 'Wiring routes',
+  navigation: 'Wiring navigation',
+  frontend: 'Building the frontend',
+  backend: 'Building the backend',
+  database: 'Setting up the database',
+  styling: 'Styling the app',
+  ui: 'Designing the UI',
+  ux: 'Polishing the experience',
+  testing: 'Running tests',
+  verification: 'Verifying the build',
+  preview_verification: 'Verifying the preview',
+  assembly: 'Assembling the app',
+  final_assembly: 'Finalizing the app',
+  export: 'Preparing the export',
+  export_gate: 'Final export checks',
+  repair: 'Repairing the build',
+  deploy: 'Preparing deployment',
+  deployment: 'Preparing deployment',
+};
+
+const stripAgentPrefix = (s) =>
+  String(s || '')
+    .replace(/^[-_.\s]+|[-_.\s]+$/g, '')
+    // remove a leading "agents", "agent", or trailing "agent" word so we never
+    // surface "Agents Planner" / "Agents Phase 01" / "File Tool Agent"
+    .replace(/^agents?[\s._-]+/i, '')
+    .replace(/[\s._-]+agents?$/i, '')
+    .replace(/[._-]+/g, ' ')
+    .trim();
+
 const prettyPhase = (phase) => {
   if (!phase || typeof phase !== 'string') return 'Execution';
-  return phase
-    .replace(/^[-_.]+|[-_.]+$/g, '')
-    .replace(/[._-]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const stripped = stripAgentPrefix(phase);
+  if (!stripped) return 'Execution';
+  const key = stripped.toLowerCase().replace(/\s+/g, '_');
+  if (PHASE_FRIENDLY[key]) return PHASE_FRIENDLY[key];
+  for (const k of Object.keys(PHASE_FRIENDLY)) {
+    if (key.includes(k)) return PHASE_FRIENDLY[k];
+  }
+  return stripped.replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const getPhase = (ev) => {
@@ -60,10 +104,10 @@ const getPhase = (ev) => {
   return p.phase || p.step || p.step_key || p.node_id || ev.step_key || '';
 };
 
-const getAgent = (ev) => {
-  const p = readPayload(ev);
-  return p.agent || p.agent_name || p.tool || p.agent_id || '';
-};
+/** Intentionally returns empty string. We do not surface agent names in
+ * the thread per product direction; the orchestrator/agent identities stay
+ * in the backend. Kept as a helper so callers stay structurally consistent. */
+const getAgent = () => '';
 
 const deriveStatus = (ev) => {
   const t = ev.type || ev.event_type || '';
@@ -296,12 +340,11 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (isToolEvent(t)) {
       const phase = getPhase(ev);
-      const agent = getAgent(ev);
       if (!bucket || bucket.phase !== phase) {
         flushBucket();
         bucket = {
-          title: prettyPhase(phase) || 'Execution',
-          agent,
+          title: prettyPhase(phase) || 'Working',
+          agent: '',
           phase,
           children: [],
           ts,
@@ -315,7 +358,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
         type: t,
         iconKey: toolIconKey(ev),
         payload: readPayload(ev),
-        agent,
+        agent: '',
       });
       continue;
     }
@@ -362,7 +405,6 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
 
   // Walk back to find the latest meaningful active event.
   let activePhase = null;
-  let activeAgent = null;
   let runningTitle = null;
   let runningStatus = 'running';
   const recentFiles = [];
@@ -376,16 +418,14 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
 
     if (!activePhase && (t === 'phase_started' || t === 'dag_node_started' || t === 'step_started')) {
       activePhase = prettyPhase(getPhase(ev));
-      activeAgent = getAgent(ev);
       runningTitle = p.name || activePhase || 'Working';
       runningStatus = 'running';
     }
 
     if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
       runningTitle = t === 'repair_started'
-        ? `Repairing${p.agent ? ` with ${p.agent}` : ''}`
+        ? 'Repairing the build'
         : `Verifying ${prettyPhase(getPhase(ev)) || ''}`.trim();
-      activeAgent = activeAgent || getAgent(ev);
       runningStatus = 'running';
     }
 
@@ -416,7 +456,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
   return {
     title: runningTitle || activePhase || 'Working',
     phase: activePhase || '',
-    agent: activeAgent || '',
+    agent: '',
     files: recentFiles,
     status: runningStatus,
     stepIndex: stepIndex || 0,

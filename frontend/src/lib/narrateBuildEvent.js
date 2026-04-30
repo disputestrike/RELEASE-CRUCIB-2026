@@ -30,12 +30,13 @@ const list = (xs) => {
   return `${xs.slice(0, 3).join(', ')}, +${xs.length - 3} more`;
 };
 
+/** Narration deliberately avoids surfacing agent names. The thread shows what
+ * is being done, not who is doing it. Agent identities stay in the backend. */
 export function narrateBuildEvent(event) {
   if (!event) return null;
   const type = event.type || event.event_type || '';
   const p = readPayload(event);
   const phase = prettyPhase(p.phase || p.step || p.step_key || '');
-  const agent = p.agent || p.agent_name || p.tool || '';
   const missing = p.missing || p.missing_routes || p.missing_items || [];
 
   switch (type) {
@@ -51,14 +52,14 @@ export function narrateBuildEvent(event) {
       return `Moving on to ${phase || 'the next phase'}.`;
     case 'step_started':
     case 'dag_node_started':
-      return `${agent ? `${agent} is` : 'Starting'} ${p.name || phase || 'a step'} now.`;
+      return `Starting ${p.name || phase || 'a step'} now.`;
     case 'step_completed':
     case 'dag_node_completed':
-      return `${agent ? `${agent}` : 'A step'} completed${p.name ? `: ${p.name}` : ''}.`;
+      return `${p.name || phase || 'A step'} completed.`;
     case 'tool_call':
-      return `Running ${agent || p.name || 'a tool'}.`;
+      return `Running ${p.name || 'a step'}.`;
     case 'tool_result':
-      return `${agent || 'Tool'} returned a result.`;
+      return 'Step returned a result.';
     case 'verifier_started':
       return `Running ${phase || 'verification'} now.`;
     case 'verifier_passed':
@@ -74,11 +75,11 @@ export function narrateBuildEvent(event) {
     case 'export_gate_ready':
       return 'Export gate passed. This build is ready.';
     case 'repair_started':
-      return `Starting repair${agent ? ` with ${agent}` : ''}.`;
+      return 'Starting repair.';
     case 'repair_completed':
-      return `Repair completed${agent ? ` (${agent})` : ''}. Re-running verification.`;
+      return 'Repair completed. Re-running verification.';
     case 'repair_failed':
-      return `Repair failed${agent ? ` (${agent})` : ''}. Trying another approach.`;
+      return 'Repair failed. Trying another approach.';
     case 'circuit_breaker_escalated':
       return 'I tried multiple repairs without success. Escalating for guidance.';
     case 'contract_delta_created':

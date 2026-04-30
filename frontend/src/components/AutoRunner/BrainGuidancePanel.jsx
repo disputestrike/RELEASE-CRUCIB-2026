@@ -325,11 +325,15 @@ function RepairBlock({ item }) {
     item.status === 'success' ? 'Repaired'
     : item.status === 'failed' ? 'Failed'
     : `Attempt ${item.attempt || 1}`;
+  const headTitle =
+    item.status === 'success' ? 'Repair complete'
+    : item.status === 'failed' ? 'Repair attempt failed'
+    : 'Repairing the build';
   return (
     <div className={`p4-inline-card p4-card-repair p4-card-repair--${item.status || 'running'}`}>
       <div className="p4-inline-head">
         <Wrench size={13} className="p4-warn" />
-        <span className="p4-inline-title">{item.agent || 'RepairAgent'}</span>
+        <span className="p4-inline-title">{headTitle}</span>
         <span className="p4-inline-state">{stateLabel}</span>
       </div>
       {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}

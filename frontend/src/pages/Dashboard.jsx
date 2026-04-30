@@ -533,6 +533,9 @@ const Dashboard = () => {
       setChatLoading(false);
       const spec = pendingBuildSpecRef.current;
       pendingBuildSpecRef.current = null;
+      console.info('[phase4-proof] dashboard_input_received', { source: 'dashboard_chat_confirm' });
+      console.info('[phase4-proof] intent_detected_build', { source: 'dashboard_chat_confirm' });
+      clearCanonicalWorkspaceTaskId();
       const taskName = spec.slice(0, 60);
       const taskId = reuseOrCreateWorkspaceBuildTask({
         storeTasks,
@@ -543,13 +546,15 @@ const Dashboard = () => {
         status: 'pending',
       });
       stashWorkspaceAutostartGoal(spec);
+      const handoff = createWorkspaceHandoff({ prompt: spec, autoStart: true, source: 'chat' });
+      console.info('[phase4-proof] workspace_handoff_created', { source: 'dashboard_chat_confirm' });
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
       ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
         search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({ initialPrompt: spec, autoStart: true })
+        state: handoff,
       });
       return;
     }
@@ -688,6 +693,12 @@ const Dashboard = () => {
       return;
     }
     if (chip.prompt) {
+      console.info('[phase4-proof] dashboard_input_received', { source: 'dashboard_chip', label: chip.label });
+      console.info('[phase4-proof] intent_detected_build', { source: 'dashboard_chip' });
+      // Always start a fresh workspace task for a chip click so we never
+      // resurrect a stale jobId from a previous build (which used to block
+      // auto-start). reuse-or-create only kicks in if there is no canonical.
+      clearCanonicalWorkspaceTaskId();
       const p = (chip.prompt || chip.label || '').trim();
       const taskName = p.length <= 60 ? p : (() => {
         const cut = p.slice(0, 60);
@@ -703,13 +714,19 @@ const Dashboard = () => {
         status: 'pending',
       });
       stashWorkspaceAutostartGoal(chip.prompt);
+      const handoff = createWorkspaceHandoff({
+        prompt: chip.prompt,
+        autoStart: true,
+        source: 'chat',
+      });
+      console.info('[phase4-proof] workspace_handoff_created', { source: 'dashboard_chip' });
       const ws = new URLSearchParams();
       if (taskId) ws.set('taskId', taskId);
       ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
         search: `?${ws.toString()}`,
-        state: withWorkspaceHandoffNonce({ initialPrompt: chip.prompt, autoStart: true })
+        state: handoff,
       });
     }
   };
@@ -971,6 +988,9 @@ const Dashboard = () => {
   const handleStartBuilding = (buildOffer) => {
     if (!buildOffer?.spec) return;
     const spec = buildOffer.spec.trim();
+    console.info('[phase4-proof] dashboard_input_received', { source: 'dashboard_start_building' });
+    console.info('[phase4-proof] intent_detected_build', { source: 'dashboard_start_building' });
+    clearCanonicalWorkspaceTaskId();
     const taskName = spec.length <= 60 ? spec : (() => {
       const cut = spec.slice(0, 60);
       const lastSpace = cut.lastIndexOf(' ');
@@ -985,17 +1005,18 @@ const Dashboard = () => {
       status: 'pending',
     });
     stashWorkspaceAutostartGoal(spec);
+    const handoff = createWorkspaceHandoff({ prompt: spec, autoStart: true, source: 'chat' });
+    console.info('[phase4-proof] workspace_handoff_created', { source: 'dashboard_start_building' });
     const ws = new URLSearchParams();
     if (taskId) ws.set('taskId', taskId);
     ws.set('autoStart', '1');
     navigate({
       pathname: '/app/workspace',
       search: `?${ws.toString()}`,
-      state: withWorkspaceHandoffNonce({
-        initialPrompt: spec,
-        autoStart: true,
-        initialAttachedFiles: buildOffer.attachedFiles?.length ? buildOffer.attachedFiles : undefined
-      })
+      state: {
+        ...handoff,
+        initialAttachedFiles: buildOffer.attachedFiles?.length ? buildOffer.attachedFiles : undefined,
+      },
     });
   };
 

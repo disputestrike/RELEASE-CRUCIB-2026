@@ -69,7 +69,6 @@ export default function ActiveStepBanner({ activity, jobStatus }) {
           <div className="asb-title-row">
             {StatusIcon}
             <span className="asb-title">{activity.title}</span>
-            {activity.agent ? <span className="asb-agent">{activity.agent}</span> : null}
           </div>
           {!open && activity.files.length > 0 ? (
             <div className="asb-files-inline">
