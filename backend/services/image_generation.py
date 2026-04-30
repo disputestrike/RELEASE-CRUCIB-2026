@@ -47,7 +47,8 @@ class ImageResult:
 async def _generate_together(prompt: str, model: str) -> Optional[str]:
     """Together.ai FLUX-schnell provider (existing implementation)."""
     try:
-        from ....agents.image_generator import generate_image        return await generate_image(prompt)
+        from backend.agents.image_generator import generate_image
+        return await generate_image(prompt)
     except Exception as exc:
         logger.warning("[image_generation] together failed: %s", exc)
         return None

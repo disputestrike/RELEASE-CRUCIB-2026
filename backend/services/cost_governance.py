@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ....pricing_plans import CREDIT_PLANS, CREDITS_PER_TOKEN
+from backend.pricing_plans import CREDIT_PLANS, CREDITS_PER_TOKEN
+
 
 SIMULATION_DEPTHS: dict[str, dict[str, Any]] = {
     "fast": {

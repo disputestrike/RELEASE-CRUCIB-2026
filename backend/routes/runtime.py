@@ -17,7 +17,8 @@ except ImportError:
     try:
         from services.simulation.evidence_engine import RetrievalGateError
     except ImportError:
-        from ....services.simulation.evidence_engine import RetrievalGateError
+        from backend.services.simulation.evidence_engine import RetrievalGateError
+
 try:
     from ..services.events import event_bus
     from ..services.runtime.task_manager import task_manager
@@ -26,7 +27,9 @@ except ImportError:  # compatibility for legacy tests importing `routes.runtime`
         from services.events import event_bus
         from services.runtime.task_manager import task_manager
     except ImportError:
-        from ....services.events import event_bus        from ....services.runtime.task_manager import task_manager
+        from backend.services.events import event_bus
+        from backend.services.runtime.task_manager import task_manager
+
 router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
 
@@ -34,7 +37,8 @@ def _get_auth():
     try:
         from ..deps import get_current_user
     except ImportError:  # compatibility for legacy tests importing `routes.runtime`
-        from ....deps import get_current_user
+        from backend.deps import get_current_user
+
     return get_current_user
 
 
@@ -42,7 +46,8 @@ def _get_optional_user():
     try:
         from ..deps import get_optional_user
     except ImportError:  # compatibility for legacy tests importing `routes.runtime`
-        from ....deps import get_optional_user
+        from backend.deps import get_optional_user
+
     return get_optional_user
 
 
@@ -51,7 +56,8 @@ def _agent_catalog_count() -> Optional[int]:
         try:
             from ..agent_dag import AGENT_DAG
         except ImportError:  # compatibility for legacy tests importing `routes.runtime`
-            from ....agent_dag import AGENT_DAG
+            from backend.agent_dag import AGENT_DAG
+
         return len(AGENT_DAG)
     except Exception:
         return None
@@ -214,7 +220,10 @@ async def runtime_inspect(
 ):
     """Per-user runtime snapshot aligned with checkpoint/debug inspectors (tasks, costs, graph)."""
     try:
-        from ....services.runtime.cost_tracker import cost_tracker        from ....services.runtime.memory_graph import get_graph        from ....services.runtime.task_manager import task_manager as _tm    except ImportError:
+        from backend.services.runtime.cost_tracker import cost_tracker
+        from backend.services.runtime.memory_graph import get_graph
+        from backend.services.runtime.task_manager import task_manager as _tm
+    except ImportError:
         from services.runtime.cost_tracker import cost_tracker
         from services.runtime.memory_graph import get_graph
         from services.runtime.task_manager import task_manager as _tm

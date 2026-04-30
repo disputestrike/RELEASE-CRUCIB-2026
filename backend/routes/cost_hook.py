@@ -15,7 +15,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ....services.cost_governance import cost_governance_payload, estimate_cost
+from backend.services.cost_governance import cost_governance_payload, estimate_cost
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cost", tags=["cost"])

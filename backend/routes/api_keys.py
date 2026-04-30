@@ -29,7 +29,8 @@ _TABLE_CHECKED = False
 
 def _get_auth():
     try:
-        from ....server import get_current_user  # type: ignore        return get_current_user
+        from backend.server import get_current_user  # type: ignore
+        return get_current_user
     except Exception:
         async def _anon():
             return {"id": "anonymous"}
@@ -38,7 +39,8 @@ def _get_auth():
 
 async def _get_pool():
     try:
-        from ....db_pg import get_db  # type: ignore        return await get_db()
+        from backend.db_pg import get_db  # type: ignore
+        return await get_db()
     except Exception:
         return None
 

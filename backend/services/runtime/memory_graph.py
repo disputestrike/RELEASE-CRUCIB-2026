@@ -15,7 +15,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from .....project_state import WORKSPACE_ROOT
+from backend.project_state import WORKSPACE_ROOT
+
 _LOCKS: dict[str, Lock] = {}
 _LOCKS_LOCK = Lock()
 

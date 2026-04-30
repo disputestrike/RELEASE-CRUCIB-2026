@@ -13,7 +13,8 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 
-from ....deps import get_current_user
+from backend.deps import get_current_user
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 

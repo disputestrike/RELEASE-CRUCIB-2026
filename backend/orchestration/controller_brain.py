@@ -11,14 +11,16 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any, Dict, List
 try:
-    from ....agent_dag import AGENT_DAG, build_dynamic_dagexcept ImportError:
+    from backend.agent_dag import AGENT_DAG, build_dynamic_dag
+except ImportError:
     try:
         from agent_dag import AGENT_DAG, build_dynamic_dag
     except ImportError:
         AGENT_DAG = {}
         def build_dynamic_dag(*a, **kw): return {}
 try:
-    from ....agents.schemas import IntentSchemaexcept ImportError:
+    from backend.agents.schemas import IntentSchema
+except ImportError:
     IntentSchema = None  # pragma: no cover
 
 

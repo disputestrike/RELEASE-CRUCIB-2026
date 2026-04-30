@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from ....anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_modelfrom pydantic import BaseModel, Field
+from backend.anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

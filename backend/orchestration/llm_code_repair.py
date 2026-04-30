@@ -80,7 +80,8 @@ async def _call_anthropic_repair(
     cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
     if cerebras_key:
         try:
-            from ....llm_cerebras import invoke_cerebras_stream            content = ""
+            from backend.llm_cerebras import invoke_cerebras_stream
+            content = ""
             async for chunk in invoke_cerebras_stream(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -244,14 +245,16 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
         return {"fixed": False, "reason": "LLM returned no content"}
 
     # Strip any markdown fences the LLM added despite instructions
-    from ....agents.code_repair_agent import strip_code_fences
+    from backend.agents.code_repair_agent import strip_code_fences
+
     fixed_content = strip_code_fences(fixed_content)
 
     if fixed_content == broken_content:
         return {"fixed": False, "reason": "LLM returned identical content"}
 
     try:
-        from ....orchestration.executor import _safe_write as _exec_safe_write
+        from backend.orchestration.executor import _safe_write as _exec_safe_write
+
         rel_norm = rel_path.replace("\\", "/").lstrip("/")
         if not _exec_safe_write(workspace_path, rel_norm, fixed_content):
             return {

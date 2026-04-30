@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 async def _get_pool():
     """Get Postgres pool."""
     try:
-        from ....db_pg import get_pg_pool
+        from backend.db_pg import get_pg_pool
+
         return await get_pg_pool()
     except Exception:
         return None

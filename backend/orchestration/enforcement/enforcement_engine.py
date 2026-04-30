@@ -408,7 +408,8 @@ async def run_completion_enforcement_gate(
     }
     if db_pool is not None and job_id:
         try:
-            from .....proof import proof_service
+            from backend.proof import proof_service
+
             proof_service.set_pool(db_pool)
             data = await proof_service.get_proof(job_id)
             b = data.get("bundle") or {}
@@ -432,7 +433,8 @@ async def run_completion_enforcement_gate(
         "advisory_would_block": result.get("advisory_would_block"),
     }
     try:
-        from .....orchestration.execution_authority import (            attach_elite_context_to_job,
+        from backend.orchestration.execution_authority import (
+            attach_elite_context_to_job,
             elite_job_metadata,
         )
 

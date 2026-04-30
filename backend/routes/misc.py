@@ -45,11 +45,13 @@ def _get_db():
 
 
 def _get_llm_helpers():
-    from ....server import (        _effective_api_keys,
+    from backend.server import (
+        _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
     )
-    from ....services.runtime.runtime_engine import runtime_engine
+    from backend.services.runtime.runtime_engine import runtime_engine
+
     async def _runtime_call_llm_with_fallback(**kwargs):
         session_id = kwargs.get("session_id") or str(uuid.uuid4())
         project_id = kwargs.get("project_id") or f"misc-{session_id}"
@@ -443,7 +445,8 @@ async def analyze_file(
         get_workspace_api_keys,
         _effective_api_keys,
     ) = _get_llm_helpers()
-    from ....server import ANTHROPIC_API_KEY, ANTHROPIC_HAIKU_MODEL
+    from backend.server import ANTHROPIC_API_KEY, ANTHROPIC_HAIKU_MODEL
+
     try:
         user_keys = await get_workspace_api_keys(user)
         effective = _effective_api_keys(user_keys)
@@ -746,7 +749,8 @@ async def create_example_from_project(body: dict, user: dict = Depends(_get_auth
 async def fork_example(name: str, user: dict = Depends(_get_auth())):
     """Create a new project from an example (copy generated code)."""
     db = _get_db()
-    from ....server import (        CREDITS_PER_TOKEN,
+    from backend.server import (
+        CREDITS_PER_TOKEN,
         _ensure_credit_balance,
         _tokens_to_credits,
         _user_credits,
@@ -861,7 +865,8 @@ async def get_patterns(user: dict = Depends(_get_optional_user())):
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(_get_auth())):
     db = _get_db()
-    from ....server import CREDITS_PER_TOKEN, MAX_USER_PROJECTS_DASHBOARD, _user_credits
+    from backend.server import CREDITS_PER_TOKEN, MAX_USER_PROJECTS_DASHBOARD, _user_credits
+
     projects = await db.projects.find({"user_id": user["id"]}).to_list(
         MAX_USER_PROJECTS_DASHBOARD
     )
@@ -1018,7 +1023,8 @@ async def get_saved_prompts(user: dict = Depends(_get_auth())):
 @router.post("/ai/quality-gate")
 async def quality_gate(data: QualityGateBody):
     """Run code quality score on code or multi-file output. No auth required for UI feedback."""
-    from ....server import score_generated_code
+    from backend.server import score_generated_code
+
     frontend_code = data.code or ""
     if not frontend_code and data.files:
         # Extract frontend code from files (prefer App.js/jsx/tsx, then any .js/.jsx/.tsx/.css)
@@ -1565,7 +1571,8 @@ async def design_from_url(
     url: str = Form(...), user: dict = Depends(_get_authenticated_or_api_user())
 ):
     """Fetch image from URL and run image-to-code."""
-    from ....server import ANTHROPIC_HAIKU_MODEL
+    from backend.server import ANTHROPIC_HAIKU_MODEL
+
     try:
         import httpx
 
@@ -1738,7 +1745,8 @@ async def health_llm(
     available_credits: int = Query(0, ge=0),
 ):
     """Provider readiness probe. Reports key presence/selection only; never returns secrets."""
-    from ....server import build_provider_readiness
+    from backend.server import build_provider_readiness
+
     return build_provider_readiness(
         prompt=prompt,
         agent_name=agent_name,

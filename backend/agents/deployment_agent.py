@@ -4,7 +4,9 @@ DeploymentAgent: Creates deployment configurations for Docker, CI/CD, and cloud 
 
 from typing import Any, Dict
 
-from ....agents.base_agent import AgentValidationError, BaseAgentfrom ....agents.registry import AgentRegistry
+from backend.agents.base_agent import AgentValidationError, BaseAgent
+from backend.agents.registry import AgentRegistry
+
 
 @AgentRegistry.register
 class DeploymentAgent(BaseAgent):

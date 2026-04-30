@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api", tags=["workflows"])
 
 def _get_auth():
     try:
-        from ....server import get_current_user        return get_current_user
+        from backend.server import get_current_user
+        return get_current_user
     except Exception:
         from fastapi import Request
         async def noop(request: Request = None):
@@ -57,7 +58,8 @@ async def run_workflow(
     # Trigger execution via unified runtime engine.
     try:
         import uuid
-        from ....services.runtime.runtime_engine import runtime_engine
+        from backend.services.runtime.runtime_engine import runtime_engine
+
         job_id = str(uuid.uuid4())
         response = await runtime_engine.execute_with_control(
             task_id=job_id,

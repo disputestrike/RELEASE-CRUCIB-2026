@@ -8,7 +8,8 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from ....agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
+
 logger = logging.getLogger(__name__)
 
 TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY")

@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .....services.events.event_bus import EventBus, EventRecord
+    from backend.services.events.event_bus import EventBus, EventRecord
+
 _MAX_EVENTS = int(os.environ.get("CRUCIB_EVENT_LOG_MAX_ENTRIES", "10000"))
 
 

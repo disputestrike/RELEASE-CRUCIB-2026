@@ -13,10 +13,14 @@ import textwrap
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-from ....agents.code_repair_agent import CodeRepairAgentfrom ....agents.database_architect_agent import (    SchemaToSQL,
+from backend.agents.code_repair_agent import CodeRepairAgent
+from backend.agents.database_architect_agent import (
+    SchemaToSQL,
     heuristic_schema_from_requirements,
 )
-from ....anthropic_models import ANTHROPIC_HAIKU_MODELfrom ....llm_router import CEREBRAS_MODEL
+from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
+from backend.llm_router import CEREBRAS_MODEL
+
 from .compliance_sketch import build_compliance_sketch_markdown
 from .domain_packs import compliance_regulated_intent, multitenant_intent, braintree_intent
 from .enterprise_command_pack import (
@@ -68,7 +72,8 @@ from .control_plane_audit import log_write_gate_violation
 from .file_language_sanity import detect_write_time_violations
 from .placeholder_detection import contains_placeholder
 from .context_registry import merge_file_ownership
-from ....orchestration.runtime_state import runtime_state_adapterimport time
+from backend.orchestration.runtime_state import runtime_state_adapter
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -866,7 +871,8 @@ Keeps smoke/security checks deterministic even when agents emit root-level serve
 """
 
 try:
-    from ....server import app as app  # type: ignoreexcept Exception:
+    from backend.server import app as app  # type: ignore
+except Exception:
 {textwrap.indent(fallback, "    ")}
 '''
 
@@ -1001,7 +1007,8 @@ async def handle_frontend_generate(
         ):
             full_system_mode = True
             logger.info("Full-system builder selected for job %s", job_id)
-            from ....agents.builder_agent import BuilderAgent
+            from backend.agents.builder_agent import BuilderAgent
+
             agent = BuilderAgent()
             result = await agent.execute(
                 {
@@ -1056,7 +1063,8 @@ async def handle_frontend_generate(
             try:
                 import json
 
-                from ....agents.frontend_agent import FrontendAgent
+                from backend.agents.frontend_agent import FrontendAgent
+
                 agent = FrontendAgent()
                 logger.info(f"Agent instantiated: {agent.name}")
 
@@ -1375,7 +1383,8 @@ async def handle_backend_route(
             try:
                 import json
 
-                from ....agents.backend_agent import BackendAgent
+                from backend.agents.backend_agent import BackendAgent
+
                 agent = BackendAgent()
                 context = {
                     "user_prompt": goal,

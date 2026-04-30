@@ -133,7 +133,8 @@ async def serve_published_app_response(
         ws_base.relative_to(workspace_root.resolve())
     except ValueError:
         raise HTTPException(status_code=400, detail="Published app path outside workspace")
-    from ....orchestration.delivery_gate import assert_workspace_publish_allowed
+    from backend.orchestration.delivery_gate import assert_workspace_publish_allowed
+
     assert_workspace_publish_allowed(str(ws_base), job)
 
     root = job_dist_root(project_id, project_workspace_path, workspace_root)

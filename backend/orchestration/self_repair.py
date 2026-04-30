@@ -70,7 +70,8 @@ def _safe_write(workspace_path: str, rel_path: str, content: str) -> bool:
     if not workspace_path:
         return False
     try:
-        from ....orchestration.executor import _safe_write as _exec_safe_write
+        from backend.orchestration.executor import _safe_write as _exec_safe_write
+
         rel_norm = rel_path.replace("\\", "/").lstrip("/")
         out = _exec_safe_write(workspace_path, rel_norm, content)
         if out:

@@ -149,7 +149,8 @@ class UiFeedbackMapper:
     ) -> UiFeedbackReport:
         """Validate a live preview by checking expected elements exist."""
         try:
-            from ....agents.preview_validator_agent import PreviewValidatorAgent            agent = PreviewValidatorAgent()
+            from backend.agents.preview_validator_agent import PreviewValidatorAgent
+            agent = PreviewValidatorAgent()
             result = await agent.validate(url=url, expected_elements=expected_elements or [])
             issues = result.get("issues", [])
             score = 1.0 - min(len(issues) * 0.2, 1.0)

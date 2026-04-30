@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from ....agents.registry import AgentRegistryfrom ....services.conversation_manager import ConversationSession, ContextEnricherfrom ....services.events import event_busfrom ....services.runtime.task_manager import task_managerfrom ....services.semantic_router import SemanticRouter
+from backend.agents.registry import AgentRegistry
+from backend.services.conversation_manager import ConversationSession, ContextEnricher
+from backend.services.events import event_bus
+from backend.services.runtime.task_manager import task_manager
+from backend.services.semantic_router import SemanticRouter
+
 logger = logging.getLogger(__name__)
 
 

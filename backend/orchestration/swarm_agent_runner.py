@@ -212,7 +212,9 @@ def _extract_artifact_from_llm_output(
         return llm_response.strip() if llm_response.strip() else ""
 
 try:
-    from ....agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases    from ....agent_resilience import get_criticalityexcept ImportError:
+    from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
+    from backend.agent_resilience import get_criticality
+except ImportError:
     # Fallback for direct execution
     from agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
     from agent_resilience import get_criticality
@@ -757,7 +759,8 @@ async def run_swarm_agent_step(
     )
 
     try:
-        from ....orchestration.workspace_assembly_pipeline import (            assembly_v2_enabled,
+        from backend.orchestration.workspace_assembly_pipeline import (
+            assembly_v2_enabled,
             materialize_swarm_agent_output,
         )
 

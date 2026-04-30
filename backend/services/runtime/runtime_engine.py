@@ -21,23 +21,41 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from .....llm_router import classifier, router as llm_routerfrom .....services.brain_layer import BrainLayerfrom .....services.conversation_manager import ConversationSession
+from backend.llm_router import classifier, router as llm_router
+from backend.services.brain_layer import BrainLayer
+from backend.services.conversation_manager import ConversationSession
+
 try:
     from services.events import event_bus  # same singleton as patches in tests importing services.*
 except ImportError:  # pragma: no cover
-    from .....services.events import event_busfrom .....services.policy.permission_engine import evaluate_tool_callfrom .....services.runtime.context_manager import runtime_context_managerfrom .....services.runtime.cost_tracker import cost_trackerfrom .....services.runtime.execution_context import runtime_execution_scopefrom .....services.runtime.memory_graph import add_edge as memory_add_edgefrom .....services.runtime.memory_graph import add_node as memory_add_nodefrom .....services.runtime.spawn_engine import spawn_enginefrom .....services.runtime.task_manager import task_managerfrom .....services.skills.skill_registry import resolve_skillfrom .....tool_executor import execute_tool
+    from backend.services.events import event_bus
+from backend.services.policy.permission_engine import evaluate_tool_call
+from backend.services.runtime.context_manager import runtime_context_manager
+from backend.services.runtime.cost_tracker import cost_tracker
+from backend.services.runtime.execution_context import runtime_execution_scope
+from backend.services.runtime.memory_graph import add_edge as memory_add_edge
+from backend.services.runtime.memory_graph import add_node as memory_add_node
+from backend.services.runtime.spawn_engine import spawn_engine
+from backend.services.runtime.task_manager import task_manager
+from backend.services.skills.skill_registry import resolve_skill
+from backend.tool_executor import execute_tool
+
 try:
-    from .....services.capability_inspector import capability_inspector  # pragma: no coverexcept Exception:
+    from backend.services.capability_inspector import capability_inspector  # pragma: no cover
+except Exception:
     capability_inspector = None  # type: ignore
 
 try:
-    from .....services.memory_store import MemoryScope, memory_storeexcept Exception:
+    from backend.services.memory_store import MemoryScope, memory_store
+except Exception:
     memory_store = None  # type: ignore
     MemoryScope = None  # type: ignore
 
-from .....project_state import WORKSPACE_ROOT  # noqa: F401 — architecture guardrail / workspace authority
+from backend.project_state import WORKSPACE_ROOT  # noqa: F401 — architecture guardrail / workspace authority
+
 # Execution authority centralized with ``require_runtime_authority`` (see tool_executor, llm_service).
-from .....services.runtime.execution_authority import (  # noqa: F401 — audit/tests expect symbol present    require_runtime_authority,
+from backend.services.runtime.execution_authority import (  # noqa: F401 — audit/tests expect symbol present
+    require_runtime_authority,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,7 +182,8 @@ class RuntimeEngine:
         del project_id, description, skill_hint, _extra
         import uuid as _uuid
 
-        from .....services.llm_service import _call_llm_with_fallback
+        from backend.services.llm_service import _call_llm_with_fallback
+
         sid = session_id or str(_uuid.uuid4())
         return await _call_llm_with_fallback(
             message=message or "",
@@ -969,7 +988,8 @@ class RuntimeEngine:
                     "execution_cancelled",
                 ):
                     try:
-                        from .....db_pg import get_db as _get_db_for_wb
+                        from backend.db_pg import get_db as _get_db_for_wb
+
                         _db_wb = await _get_db_for_wb()
                         wb_content = json.dumps(brain_result.get("execution", {}).get("result", {}))
                         if wb_content and len(wb_content) < 100_000:

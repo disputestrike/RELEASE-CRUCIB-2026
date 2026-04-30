@@ -5,7 +5,8 @@ Agents register themselves using the @AgentRegistry.register decorator.
 
 from typing import Dict, List, Type
 
-from ....agents.base_agent import BaseAgent
+from backend.agents.base_agent import BaseAgent
+
 
 class AgentRegistry:
     """Registry for all specialized agents."""

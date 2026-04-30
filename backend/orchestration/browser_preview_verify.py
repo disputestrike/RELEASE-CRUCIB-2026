@@ -22,9 +22,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
-    from ....orchestration.trust.trust_scoring import sha256_file_previewexcept ImportError:
+    from backend.orchestration.trust.trust_scoring import sha256_file_preview
+except ImportError:
     try:
-        from ....orchestration.trust.trust_scoring import sha256_file_preview    except ImportError:
+        from backend.orchestration.trust.trust_scoring import sha256_file_preview
+    except ImportError:
         def sha256_file_preview(*a, **kw): return ""
 
 logger = logging.getLogger(__name__)
@@ -135,7 +137,8 @@ def _run_build_with_autofix(ws: str, build_timeout: int) -> Tuple[int, str, List
         return code, log, attempts
 
     try:
-        from ....orchestration.npm_build_autofix import repair_npm_build_failure    except Exception as exc:
+        from backend.orchestration.npm_build_autofix import repair_npm_build_failure
+    except Exception as exc:
         attempts.append({"changed_files": [], "reason": "autofix_unavailable", "error": str(exc)[:300]})
         return code, log, attempts
 

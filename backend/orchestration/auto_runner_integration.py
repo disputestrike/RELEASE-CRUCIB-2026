@@ -9,7 +9,8 @@ This shows exactly what to integrate and where
 #
 # At the top of backend/orchestration/auto_runner.py, add:
 #
-# from ....orchestration.auto_runner_fix import prepare_job_failure_state# import json
+# from backend.orchestration.auto_runner_fix import prepare_job_failure_state
+# import json
 #
 # Around line 300, where you have:
 #
@@ -35,7 +36,8 @@ This shows exactly what to integrate and where
 #
 # At the top of backend/orchestration/auto_runner.py, add:
 #
-# from ....orchestration.proof_generator import create_proof_directory_structure#
+# from backend.orchestration.proof_generator import create_proof_directory_structure
+#
 # At the start of run_job_to_completion(), add:
 #
 # async def run_job_to_completion(job_id, workspace_path, db_pool, total_retries):

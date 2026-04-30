@@ -13,7 +13,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from ....proof import proof_service
+from backend.proof import proof_service
+
 from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .dag_engine import (
     block_dependents,
@@ -153,7 +154,9 @@ def _verify_final_preview_servability(
     """
     issues: List[str] = []
     try:
-        from ....routes.preview_serve import _resolve_serve_root        from ....services.workspace_resolver import workspace_resolver    except Exception as exc:
+        from backend.routes.preview_serve import _resolve_serve_root
+        from backend.services.workspace_resolver import workspace_resolver
+    except Exception as exc:
         return {
             "passed": False,
             "failure_reason": "preview_resolver_unavailable",

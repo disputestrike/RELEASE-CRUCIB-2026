@@ -108,7 +108,8 @@ def ensure_proof_files_exist(job_id: str, workspace_path: str) -> bool:
 # In backend/orchestration/auto_runner.py, add to the beginning of job execution:
 #
 # ```python
-# from ....orchestration.proof_generator import create_proof_directory_structure#
+# from backend.orchestration.proof_generator import create_proof_directory_structure
+#
 # async def run_job_to_completion(job_id, workspace_path, db_pool, total_retries):
 #     # Create proof directory at job start
 #     if not create_proof_directory_structure(job_id, workspace_path):

@@ -31,7 +31,8 @@ router = APIRouter(prefix="/api/onboard", tags=["onboard"])
 
 def _get_auth():
     try:
-        from ....server import get_current_user        return get_current_user
+        from backend.server import get_current_user
+        return get_current_user
     except Exception:
         from fastapi import Request
 
@@ -52,7 +53,8 @@ async def _get_db():
     if os.environ.get("CRUCIB_TEST_SQLITE") == "1":
         return None
     try:
-        from ....db_pg import get_db  # type: ignore        return await get_db()
+        from backend.db_pg import get_db  # type: ignore
+        return await get_db()
     except Exception as exc:
         logger.warning("onboard _get_db fell back to None: %s", exc)
         return None

@@ -292,7 +292,8 @@ def collect_assembly_pairs(
 
 
 def _safe_write_workspace(workspace_path: str, rel: str, content: str) -> bool:
-    from ....orchestration.executor import _safe_write
+    from backend.orchestration.executor import _safe_write
+
     return _safe_write(workspace_path, rel, content) is not None
 
 
@@ -300,7 +301,8 @@ def ensure_minimum_preview_tree(
     workspace_path: str, job_stub: Optional[Dict[str, Any]] = None
 ) -> List[str]:
     """Fill missing Vite contract files without clobbering agent output."""
-    from ....orchestration.executor import _ensure_preview_contract_files
+    from backend.orchestration.executor import _ensure_preview_contract_files
+
     job = dict(job_stub or {})
     job.setdefault("goal", "")
     job.setdefault("build_target", "vite_react")
@@ -410,7 +412,8 @@ async def materialize_from_previous_outputs(
     workspace = Path(__file__).resolve().parents[1] / "workspace" / safe_pid
     workspace.mkdir(parents=True, exist_ok=True)
     try:
-        from ....orchestration.workspace_assembly import ensure_standard_workspace_scaffold
+        from backend.orchestration.workspace_assembly import ensure_standard_workspace_scaffold
+
         ensure_standard_workspace_scaffold(workspace)
     except Exception:
         pass
@@ -423,7 +426,9 @@ async def materialize_from_previous_outputs(
 
     preview_bt = "vite_react"
     if (goal_snippet or "").strip():
-        from ....orchestration.build_targets import normalize_build_target        from ....orchestration.generation_contract import parse_generation_contract
+        from backend.orchestration.build_targets import normalize_build_target
+        from backend.orchestration.generation_contract import parse_generation_contract
+
         pc = parse_generation_contract(goal_snippet)
         preview_bt = normalize_build_target(
             pc.get("recommended_build_target") or "vite_react"
@@ -488,7 +493,8 @@ def materialize_swarm_agent_output(
         upsert_assembly_merge_map_paths(workspace_path, subset)
     if written:
         try:
-            from ....orchestration.executor import append_node_artifact_record
+            from backend.orchestration.executor import append_node_artifact_record
+
             append_node_artifact_record(
                 workspace_path,
                 {

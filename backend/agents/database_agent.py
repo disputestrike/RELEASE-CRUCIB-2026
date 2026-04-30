@@ -4,7 +4,9 @@ DatabaseAgent: Designs database schema, migrations, and ORM models.
 
 from typing import Any, Dict
 
-from ....agents.base_agent import AgentValidationError, BaseAgentfrom ....agents.registry import AgentRegistry
+from backend.agents.base_agent import AgentValidationError, BaseAgent
+from backend.agents.registry import AgentRegistry
+
 
 @AgentRegistry.register
 class DatabaseAgent(BaseAgent):

@@ -11,7 +11,8 @@ from fastapi.responses import Response
 async def get_me_service(*, user: dict, db: Any, ensure_credit_balance, user_credits, admin_user_ids, guest_tier_credits: int, credits_per_token: int) -> dict:
     if db is None:
         if os.environ.get("CRUCIBAI_DEV") == "1":
-            from ....services.dev_guest import get_user as _dev_get_user
+            from backend.services.dev_guest import get_user as _dev_get_user
+
             u = _dev_get_user(user["id"])
             if not u:
                 raise HTTPException(status_code=404, detail="User not found")
@@ -48,7 +49,8 @@ async def set_workspace_mode_service(*, body: Any, user: dict, db: Any) -> dict:
         raise HTTPException(status_code=400, detail="mode must be 'simple' or 'developer'")
     if db is None:
         if os.environ.get("CRUCIBAI_DEV") == "1":
-            from ....services.dev_guest import update_user as _dev_update_user
+            from backend.services.dev_guest import update_user as _dev_update_user
+
             if not _dev_update_user(user["id"], {"workspace_mode": body.mode}):
                 raise HTTPException(status_code=404, detail="User not found")
             return {"status": "success", "workspace_mode": body.mode}

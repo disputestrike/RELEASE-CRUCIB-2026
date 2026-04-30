@@ -15,7 +15,8 @@ import httpx
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from ....agents.base_agent import BaseAgentfrom ssrf_url_validator import validate_url_for_request
+from backend.agents.base_agent import BaseAgent
+from ssrf_url_validator import validate_url_for_request
 
 
 class APIAgent(BaseAgent):

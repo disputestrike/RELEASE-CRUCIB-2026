@@ -14,7 +14,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, Iterable, Tuple
 
-from ....agents.database_architect_agent import heuristic_schema_from_requirementsfrom ....agents.preview_validator_agent import PreviewValidatorAgentfrom ....memory.vector_db import get_vector_memory
+from backend.agents.database_architect_agent import heuristic_schema_from_requirements
+from backend.agents.preview_validator_agent import PreviewValidatorAgent
+from backend.memory.vector_db import get_vector_memory
+
 logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parents[1]

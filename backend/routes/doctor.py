@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials
 
-from ....deps import get_current_user, security
+from backend.deps import get_current_user, security
+
 router = APIRouter(prefix="/api/doctor", tags=["doctor"])
 
 CRITICAL_ROUTE_MODULES = {
@@ -86,7 +87,8 @@ def doctor() -> Dict[str, Any]:
 def route_doctor() -> Dict[str, Any]:
     """Startup route audit: critical route failures must be visible."""
     try:
-        from ....server import ROUTE_REGISTRATION_REPORT    except Exception as exc:
+        from backend.server import ROUTE_REGISTRATION_REPORT
+    except Exception as exc:
         return {
             "status": "failed",
             "loaded": [],
@@ -134,7 +136,9 @@ async def preview_doctor(
         return out
 
     try:
-        from ....routes.workspace import _assert_job_access, _collect_job_workspace_files, _workspace_manifest_payload        from ....routes.preview_serve import _resolve_serve_root
+        from backend.routes.workspace import _assert_job_access, _collect_job_workspace_files, _workspace_manifest_payload
+        from backend.routes.preview_serve import _resolve_serve_root
+
         workspace = await _assert_job_access(jobId, current_user)
         files = _collect_job_workspace_files(workspace, jobId)
         manifest = _workspace_manifest_payload(workspace, jobId, files)

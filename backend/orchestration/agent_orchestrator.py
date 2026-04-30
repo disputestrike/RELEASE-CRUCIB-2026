@@ -247,7 +247,8 @@ def _select_crew(goal: str) -> Crew:
 
 
 import time
-from ....orchestration.runtime_state import runtime_state_adapter
+from backend.orchestration.runtime_state import runtime_state_adapter
+
 async def run_crew_for_goal(
     goal: str,
     workspace_path: str,
