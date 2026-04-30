@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   Bot,
   FileCode2,
-  FileTree,
   Activity,
   Server,
   Wrench,
@@ -390,7 +389,7 @@ function FilesTab({ proof, openWorkspacePath }) {
               {highlighted ? (
                 <FileCode2 size={13} className="epp-file-icon highlighted" />
               ) : (
-                <FileTree size={13} className="epp-file-icon" />
+                <FolderTree size={13} className="epp-file-icon" />
               )}
               <span className="epp-file-name">{filePath}</span>
             </li>
