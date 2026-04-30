@@ -609,23 +609,18 @@ async def stop_job(
     job_id: str,
     user: dict = Depends(_get_auth()),
 ):
-    """Immediately cancel a running job and interrupt its background asyncio Task."""
+    """Pause a running job (alias for pause — both buttons pause the job)."""
     try:
         await _resolve_job(job_id, user)
         rs = _get_runtime_state()
-        await rs.update_job_state(job_id, "cancelled")
+        await rs.update_job_state(job_id, "paused")
         try:
             from backend.orchestration.event_bus import publish
 
-            await publish(job_id, "job_cancelled", {"job_id": job_id, "reason": "user_stopped"})
+            await publish(job_id, "job_paused", {"job_id": job_id})
         except Exception:
             pass
-        # Interrupt the running asyncio Task if one exists
-        task = get_running_task(job_id)
-        if task is not None and not task.done():
-            task.cancel()
-            unregister_running_task(job_id)
-        return {"success": True, "job_id": job_id, "status": "cancelled", "interrupted": task is not None}
+        return {"success": True, "job_id": job_id, "status": "paused"}
     except HTTPException:
         raise
     except Exception as e:

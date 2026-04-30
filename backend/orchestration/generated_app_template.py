@@ -95,6 +95,7 @@ def _build_public_website_file_set(job: Dict, target: str = "") -> List[Tuple[st
             "react": "^18.2.0",
             "react-dom": "^18.2.0",
             "react-router-dom": "^6.30.1",
+            "zustand": "^4.5.0",
         },
         "devDependencies": {},
     }
@@ -1711,6 +1712,7 @@ def _build_internal_admin_file_set(job: Dict, target: str = "") -> List[Tuple[st
             "react": "^18.2.0",
             "react-dom": "^18.2.0",
             "react-router-dom": "^6.22.0",
+            "zustand": "^4.5.0",
         },
         "devDependencies": {},
     }

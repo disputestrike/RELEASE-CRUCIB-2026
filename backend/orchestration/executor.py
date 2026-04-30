@@ -786,6 +786,16 @@ def _ensure_preview_contract_files(
     if pkg_tpl is None:
         pkg_tpl = '{"name":"crucibai-generated-app","version":"0.1.0","private":true,"type":"module"}'
     merged_package = _merge_package_dependencies(package_text, pkg_tpl)
+    # Safety net: ensure zustand is present since overlay files (useAppStore.js,
+    # AuthContext.jsx) import it regardless of build profile
+    try:
+        pkg_obj = json.loads(merged_package)
+        deps = pkg_obj.setdefault("dependencies", {})
+        if "zustand" not in deps:
+            deps["zustand"] = "^4.5.0"
+            merged_package = json.dumps(pkg_obj, indent=2)
+    except Exception:
+        pass
     if merged_package != (package_text or ""):
         if _safe_write(workspace_path, package_rel, merged_package):
             written.append(package_rel)
