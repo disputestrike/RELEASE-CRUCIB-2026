@@ -871,7 +871,7 @@ npm run dev
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: 'system-ui', margin: 0, background: '#0f172a', color: '#e2e8f0' }}>
+      <body style={{ fontFamily: 'system-ui', margin: 0, background: '#000000', color: '#ffffff' }}>
         {children}
       </body>
     </html>
@@ -1039,12 +1039,12 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 24, gap: 16 },
-  eyebrow: { color: '#4f46e5', fontWeight: '700', textTransform: 'uppercase' },
+  eyebrow: { color: '#2a2a2a', fontWeight: '700', textTransform: 'uppercase' },
   title: { fontSize: 34, fontWeight: '800', color: '#111827' },
-  body: { color: '#475569', fontSize: 16, lineHeight: 24 },
+  body: { color: '#555555', fontSize: 16, lineHeight: 24 },
   card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#e5e7eb' },
   cardTitle: { color: '#111827', fontSize: 18, fontWeight: '700', marginBottom: 6 },
-  button: { backgroundColor: '#4f46e5', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 14, alignItems: 'center' },
+  button: { backgroundColor: '#000000', paddingVertical: 14, paddingHorizontal: 18, borderRadius: 14, alignItems: 'center' },
   buttonText: { color: '#ffffff', fontWeight: '800' },
 });
 """
@@ -1322,14 +1322,14 @@ export function UserTable() {
 }
 """
     tokens = """:root {
-  --color-bg: #0f172a;
-  --color-surface: #111827;
-  --color-surface-2: #1e293b;
+  --color-bg: #000000;
+  --color-surface: #111111;
+  --color-surface-2: #1a1a1a;
   --color-border: rgba(148, 163, 184, 0.24);
-  --color-text: #e2e8f0;
-  --color-muted: #94a3b8;
-  --color-primary: #3b82f6;
-  --color-success: #22c55e;
+  --color-text: #ffffff;
+  --color-muted: #8a8a8a;
+  --color-primary: #2a2a2a;
+  --color-success: #555555;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -1818,9 +1818,9 @@ export default function ShellLayout() {
         padding: '6px 12px',
         borderRadius: 8,
         textDecoration: 'none',
-        color: isActive ? '#fff' : '#94a3b8',
-        background: isActive ? 'rgba(59,130,246,0.35)' : 'transparent',
-        border: '1px solid rgba(148,163,184,0.25)',
+        color: isActive ? '#fff' : '#8a8a8a',
+        background: isActive ? 'rgba(255,255,255,0.16)' : 'transparent',
+        border: '1px solid rgba(255,255,255,0.22)',
       })}
     >
       {label}
@@ -1828,8 +1828,8 @@ export default function ShellLayout() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid rgba(148,163,184,0.2)' }}>
+    <div style={{ minHeight: '100vh', background: '#000000', color: '#ffffff', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.18)' }}>
         <strong style={{ marginRight: 12 }}>CrucibAI App</strong>
         <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {link('/', 'Home')}
@@ -1862,7 +1862,7 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <main style={{ padding: 24, color: '#e2e8f0', background: '#0f172a', minHeight: '100vh' }}>
+        <main style={{ padding: 24, color: '#ffffff', background: '#000000', minHeight: '100vh' }}>
           <h1>Something needs attention</h1>
           <p>The preview caught a recoverable UI error. Adjust the component and try again.</p>
         </main>
@@ -1886,24 +1886,24 @@ export default function HomePage() {{
   return (
     <div>
       <h1 style={{{{ fontSize: '1.75rem', marginBottom: 12 }}}}>Home</h1>
-      <p style={{{{ color: '#94a3b8', lineHeight: 1.6, marginBottom: 16 }}}}>{{goal}}</p>
+      <p style={{{{ color: '#8a8a8a', lineHeight: 1.6, marginBottom: 16 }}}}>{{goal}}</p>
       <div style={{{{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}}}>
         <button
           type="button"
           onClick={{() => setTheme(theme === 'dark' ? 'light' : 'dark')}}
-          style={{{{ padding: '8px 14px', borderRadius: 8, border: '1px solid #475569', background: '#1e293b', color: '#e2e8f0', cursor: 'pointer' }}}}
+          style={{{{ padding: '8px 14px', borderRadius: 8, border: '1px solid #3a3a3a', background: '#111111', color: '#ffffff', cursor: 'pointer' }}}}
         >
           Toggle theme ({{theme}}) — persisted
         </button>
         <button
           type="button"
           onClick={{() => navigate('/dashboard')}}
-          style={{{{ padding: '8px 14px', borderRadius: 8, background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer' }}}}
+          style={{{{ padding: '8px 14px', borderRadius: 8, background: '#ffffff', color: '#000000', border: 'none', cursor: 'pointer' }}}}
         >
           Go to Dashboard
         </button>
       </div>
-      <p style={{{{ fontSize: 13, color: '#64748b' }}}}>Theme and routes sync to localStorage via Zustand persist.</p>
+      <p style={{{{ fontSize: 13, color: '#737373' }}}}>Theme and routes sync to localStorage via Zustand persist.</p>
     </div>
   );
 }}
@@ -1926,19 +1926,19 @@ export default function LoginPage() {
   return (
     <div style={{ maxWidth: 400 }}>
       <h1 style={{ marginBottom: 12 }}>Login (demo)</h1>
-      <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 16 }}>
+      <p style={{ color: '#8a8a8a', fontSize: 14, marginBottom: 16 }}>
         Client-only token stored in localStorage. Connect this flow to your API for production auth.
       </p>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Display name"
-        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #475569', background: '#1e293b', color: '#fff', marginBottom: 12 }}
+        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #3a3a3a', background: '#111111', color: '#fff', marginBottom: 12 }}
       />
       <button
         type="button"
         onClick={() => { login(name || 'builder'); navigate('/dashboard'); }}
-        style={{ padding: '10px 18px', borderRadius: 8, background: '#22c55e', color: '#0f172a', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+        style={{ padding: '10px 18px', borderRadius: 8, background: '#ffffff', color: '#000000', border: 'none', fontWeight: 600, cursor: 'pointer' }}
       >
         Sign in (demo)
       </button>
@@ -1953,7 +1953,7 @@ export default function TeamPage() {
   return (
     <div>
       <h1 style={{ marginBottom: 12 }}>Team</h1>
-      <p style={{ color: '#94a3b8', lineHeight: 1.6 }}>
+      <p style={{ color: '#8a8a8a', lineHeight: 1.6 }}>
         Team directory route with starter content so routing and preview have a concrete page to render.
       </p>
     </div>
@@ -1978,15 +1978,15 @@ export default function DashboardPage() {
   return (
     <div>
       <h1 style={{ marginBottom: 8 }}>Dashboard</h1>
-      <p style={{ color: '#94a3b8', marginBottom: 16, wordBreak: 'break-all' }}>Token: {token.slice(0, 48)}…</p>
+      <p style={{ color: '#8a8a8a', marginBottom: 16, wordBreak: 'break-all' }}>Token: {token.slice(0, 48)}…</p>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Notes (persisted)"
         rows={4}
-        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #475569', background: '#1e293b', color: '#e2e8f0' }}
+        style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #3a3a3a', background: '#111111', color: '#ffffff' }}
       />
-      <button type="button" onClick={logout} style={{ marginTop: 12, padding: '8px 14px', borderRadius: 8, background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer' }}>
+      <button type="button" onClick={logout} style={{ marginTop: 12, padding: '8px 14px', borderRadius: 8, background: '#2a2a2a', color: '#fff', border: 'none', cursor: 'pointer' }}>
         Log out
       </button>
     </div>
