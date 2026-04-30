@@ -191,11 +191,18 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     # Railway often runs with NODE_ENV=production; npm then omits devDependencies
     # unless we explicitly include them. Vite lives in devDependencies for generated apps.
     code, log = _run_npm(
-        ["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout
+        ["install", "--include=dev", "--no-fund", "--no-audit", "--legacy-peer-deps"], ws, install_timeout
     )
     if code != 0:
-        issues.append(f"npm install failed (exit {code}): {log[:500]}")
-        return {"passed": False, "issues": issues, "proof": proof}
+        # Retry without --legacy-peer-deps as a fallback
+        code2, log2 = _run_npm(
+            ["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout
+        )
+        if code2 == 0:
+            code, log = code2, log2
+        else:
+            issues.append(f"npm install failed (exit {code}): {log[:500]}")
+            return {"passed": False, "issues": issues, "proof": proof}
     proof.append(
         _proof(
             "verification",
@@ -430,13 +437,18 @@ def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
     install_timeout = int(os.environ.get("CRUCIBAI_NPM_INSTALL_TIMEOUT", "300"))
     build_timeout = int(os.environ.get("CRUCIBAI_NPM_BUILD_TIMEOUT", "180"))
 
-    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
+    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit", "--legacy-peer-deps"], ws, install_timeout)
     if code != 0:
-        return {
-            "passed": False,
-            "issues": [f"npm install failed (exit {code}): {log[:500]}"],
-            "proof": proof,
-        }
+        # Retry without --legacy-peer-deps as a fallback
+        code2, log2 = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
+        if code2 == 0:
+            code, log = code2, log2
+        else:
+            return {
+                "passed": False,
+                "issues": [f"npm install failed (exit {code}): {log[:500]}"],
+                "proof": proof,
+            }
     proof.append(
         _proof(
             "verification",

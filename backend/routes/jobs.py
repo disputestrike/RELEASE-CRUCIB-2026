@@ -11,6 +11,7 @@ migrations/006_complete_schema.sql).  Reads and writes go through
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -35,6 +36,27 @@ from pydantic import BaseModel, Field
 from ..deps import get_current_user
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Running-task registry — allows cancel/pause to interrupt live asyncio Tasks
+# ---------------------------------------------------------------------------
+
+_running_tasks: Dict[str, asyncio.Task] = {}
+
+
+def register_running_task(job_id: str, task: asyncio.Task) -> None:
+    """Store a reference to the background asyncio Task for a job."""
+    _running_tasks[job_id] = task
+
+
+def unregister_running_task(job_id: str) -> None:
+    """Remove a completed/cancelled task from the registry."""
+    _running_tasks.pop(job_id, None)
+
+
+def get_running_task(job_id: str) -> Optional[asyncio.Task]:
+    """Return the asyncio Task if the job is currently executing."""
+    return _running_tasks.get(job_id)
 
 # Lazy imports for SSE streaming; kept here so server import graph stays identical.
 import asyncio as _asyncio
@@ -553,6 +575,57 @@ async def cancel_job(
         except Exception:
             pass
         return {"success": True, "job_id": job_id, "status": "cancelled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/pause")
+async def pause_job(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Pause a running job. The auto-runner will check for 'paused' status and suspend."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        await rs.update_job_state(job_id, "paused")
+        try:
+            from backend.orchestration.event_bus import publish
+
+            await publish(job_id, "job_paused", {"job_id": job_id})
+        except Exception:
+            pass
+        return {"success": True, "job_id": job_id, "status": "paused"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/stop")
+async def stop_job(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Immediately cancel a running job and interrupt its background asyncio Task."""
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        await rs.update_job_state(job_id, "cancelled")
+        try:
+            from backend.orchestration.event_bus import publish
+
+            await publish(job_id, "job_cancelled", {"job_id": job_id, "reason": "user_stopped"})
+        except Exception:
+            pass
+        # Interrupt the running asyncio Task if one exists
+        task = get_running_task(job_id)
+        if task is not None and not task.done():
+            task.cancel()
+            unregister_running_task(job_id)
+        return {"success": True, "job_id": job_id, "status": "cancelled", "interrupted": task is not None}
     except HTTPException:
         raise
     except Exception as e:

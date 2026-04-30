@@ -434,9 +434,21 @@ async def _execute_job_loop(
     while True:
         # Check cancellation
         job = await get_job(job_id)
-        if job["status"] == "cancelled":
+        if job["status"] == "cancelled" or job["status"] == "canceled":
             logger.info("auto_runner: job %s cancelled", job_id)
             return {"success": False, "status": "cancelled"}
+        # Check pause — suspend execution until resumed
+        if job["status"] == "paused":
+            logger.info("auto_runner: job %s paused, waiting for resume...", job_id)
+            while True:
+                await asyncio.sleep(POLL_INTERVAL_SEC * 4)
+                job = await get_job(job_id)
+                if job["status"] == "running":
+                    logger.info("auto_runner: job %s resumed", job_id)
+                    break
+                if job["status"] in ("cancelled", "canceled"):
+                    logger.info("auto_runner: job %s cancelled while paused", job_id)
+                    return {"success": False, "status": "cancelled"}
         job = await _job_with_steering_context(job_id, job)
 
         # Get ready steps (deps satisfied, status=pending)

@@ -528,6 +528,15 @@ async def orchestrator_runtime_health():
 async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
     """Runs after HTTP response so the client can open SSE; do not use ensure_future here."""
     try:
+        from .jobs import register_running_task, unregister_running_task
+    except Exception:
+        register_running_task = unregister_running_task = None
+    # Register this task so cancel/stop can interrupt it
+    try:
+        register_running_task(job_id, asyncio.current_task())
+    except Exception:
+        pass
+    try:
         from ..db_pg import get_pg_pool
         from ..orchestration import auto_runner as _orch_ar
         from ..orchestration import runtime_state as _orch_rs
@@ -633,6 +642,12 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
             logger.exception(
                 "auto_runner: could not persist background exception for job %s", job_id
             )
+    finally:
+        # Always unregister the task when the background job finishes
+        try:
+            unregister_running_task(job_id)
+        except Exception:
+            pass
 
 
 async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
