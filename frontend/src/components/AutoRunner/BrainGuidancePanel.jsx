@@ -182,7 +182,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--running">
         <Loader2 size={11} className="p4-spin" />
-        <span>Working on your buildÖ</span>
+        <span>Working on your buildù</span>
       </div>
     );
   }
@@ -190,7 +190,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Build paused ó send a new message to continue</span>
+        <span>Build paused ù send a new message to continue</span>
       </div>
     );
   }
@@ -198,7 +198,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Waiting for your direction ó send a message to continue</span>
+        <span>Waiting for your direction ù send a message to continue</span>
       </div>
     );
   }
@@ -213,7 +213,7 @@ function StatusPill({ jobStatus, isTyping }) {
   return (
     <div className="p4-status-pill p4-status-pill--queued">
       <Loader2 size={11} className="p4-spin" />
-      <span>Reviewing your requestÖ</span>
+      <span>Reviewing your requestù</span>
     </div>
   );
 }
@@ -269,51 +269,64 @@ function PlanBlock({ title, steps }) {
 }
 
 function ToolGroup({ item }) {
-  const [open, setOpen] = useState(item.status === 'running');
+  const [open, setOpen] = useState(false);
   const total = item.children.length;
   const summary =
-    item.status === 'failed' ? 'Failed'
-    : item.status === 'running' ? `${total} step${total === 1 ? '' : 's'} running`
-    : `${total} step${total === 1 ? '' : 's'}`;
+    item.status === 'failed' ? 'Needs attention'
+    : item.status === 'running' ? 'Running'
+    : 'Done';
+  const visibleChips = open ? item.children : item.children.slice(0, 4);
+  const hidden = Math.max(0, total - visibleChips.length);
   return (
-    <div className={`p4-block p4-tool-group p4-tg--${item.status || 'success'}`}>
-      <button type="button" className="p4-section-head" onClick={() => setOpen((v) => !v)}>
+    <div className={`p4-chapter p4-chapter--${item.status || 'success'}`}>
+      <button type="button" className="p4-chapter-head" onClick={() => setOpen((v) => !v)}>
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <span className="p4-section-title">{item.title}</span>
-        {item.agent ? <span className="p4-section-agent">{item.agent}</span> : null}
-        <span className="p4-section-counter">{summary}</span>
+        <span className="p4-chapter-title">{item.title}</span>
+        <span className={`p4-chapter-status p4-chapter-status--${item.status || 'success'}`}>{summary}</span>
       </button>
-      {open && (
+      {item.description ? <p className="p4-chapter-desc">{item.description}</p> : null}
+      {total > 0 ? (
         <div className="p4-chip-list">
-          {item.children.map((c) => (
+          {visibleChips.map((c) => (
             <div key={c.id} className={`p4-chip p4-chip--${c.status}`}>
               <ToolIcon kind={c.iconKey} status={c.status} />
               <span className="p4-chip-title">{c.title}</span>
-              {c.ts ? <span className="p4-chip-time">{formatTime(c.ts)}</span> : null}
             </div>
           ))}
+          {hidden > 0 ? (
+            <button type="button" className="p4-chip p4-chip--more" onClick={() => setOpen(true)}>
+              +{hidden} more
+            </button>
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function FailureBlock({ item }) {
+  // Diagnostic block: title is "what", reason is "why", actions are "what next".
+  const niceReason = (item.reason || '').toString().trim();
+  const friendlyReason =
+    niceReason && !/orchestrator_error/i.test(niceReason)
+      ? niceReason
+      : 'The build stopped before verification could finish. I can pick up where it left off ó send a fix instruction below or use Resume on the right.';
   return (
-    <div className="p4-inline-card p4-card-failure">
-      <div className="p4-inline-head">
+    <div className="p4-chapter p4-chapter--diagnostic">
+      <div className="p4-chapter-head p4-chapter-head--static">
         <AlertTriangle size={13} className="p4-bad" />
-        <span className="p4-inline-title">{item.title}</span>
+        <span className="p4-chapter-title">{item.title || 'Diagnosing the build'}</span>
+        <span className="p4-chapter-status p4-chapter-status--failed">Needs attention</span>
       </div>
-      {item.reason ? <p className="p4-inline-text">{item.reason}</p> : null}
+      <p className="p4-chapter-desc">{friendlyReason}</p>
       {Array.isArray(item.missingItems) && item.missingItems.length > 0 ? (
-        <ul className="p4-inline-list">
-          {item.missingItems.map((m, i) => (<li key={`${i}-${String(m)}`}>{String(m)}</li>))}
-        </ul>
-      ) : null}
-      {Array.isArray(item.actions) && item.actions.length > 0 ? (
-        <div className="p4-inline-actions">
-          {item.actions.map((a) => (<span key={a} className="p4-action-chip">{a}</span>))}
+        <div className="p4-chip-list">
+          {item.missingItems.map((m, i) => (
+            <div key={`${i}-${String(m)}`} className="p4-chip p4-chip--failed">
+              <AlertTriangle size={11} className="p4-bad" />
+              <span className="p4-chip-title">{String(m)}</span>
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
@@ -444,7 +457,7 @@ export default function BrainGuidancePanel({
       <div className="bgp-thread-empty">
         <div className="bgp-empty-inner">
           <p className="bgp-empty-text">
-            Describe what you want to build in the composer below. Iíll plan, build, and verify it live.
+            Describe what you want to build in the composer below. Iùll plan, build, and verify it live.
           </p>
         </div>
       </div>

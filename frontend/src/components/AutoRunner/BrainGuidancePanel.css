@@ -466,6 +466,88 @@
 .p4-tg--running .p4-section-title { color: var(--crucibai-accent); }
 .p4-tg--failed  .p4-section-title { color: var(--crucibai-danger); }
 
+/* ===========================================================================
+ * Manus-style narrative chapter
+ * Each chapter is a tight block with a left rail, bold title, muted
+ * description, and a small wrap of inline pill chips. NOT a card.
+ * ========================================================================== */
+.p4-chapter {
+  margin: 8px 0 6px 34px;
+  width: min(680px, calc(100% - 34px));
+  padding: 6px 0 6px 14px;
+  border-left: 2px solid var(--crucibai-border);
+  animation: p4-fade 0.16s ease;
+}
+.p4-chapter--running   { border-left-color: var(--crucibai-accent); }
+.p4-chapter--failed    { border-left-color: var(--crucibai-danger); }
+.p4-chapter--diagnostic { border-left-color: var(--crucibai-danger); }
+
+.p4-chapter-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--crucibai-text);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-align: left;
+}
+.p4-chapter-head--static { cursor: default; }
+.p4-chapter-head svg { color: var(--crucibai-muted); }
+
+.p4-chapter-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p4-chapter-status {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--crucibai-muted);
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--crucibai-border);
+  background: var(--crucibai-panel-soft);
+}
+.p4-chapter-status--running { color: var(--crucibai-accent); border-color: rgba(99, 102, 241, 0.22); background: var(--crucibai-accent-soft); }
+.p4-chapter-status--failed  { color: var(--crucibai-danger); border-color: rgba(220, 38, 38, 0.22); background: rgba(220, 38, 38, 0.05); }
+
+.p4-chapter-desc {
+  margin: 6px 0 8px;
+  color: var(--crucibai-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* Chip list inside a chapter: wrap as inline pills, not vertical rows. */
+.p4-chapter .p4-chip-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+}
+.p4-chapter .p4-chip {
+  font-size: 11.5px;
+  padding: 3px 9px 3px 7px;
+  max-width: 320px;
+}
+.p4-chip--more {
+  cursor: pointer;
+  background: transparent;
+  border-color: transparent;
+  color: var(--crucibai-accent);
+  padding: 3px 6px;
+}
+.p4-chip--more:hover { background: var(--crucibai-accent-soft); }
+
 /* Inline cards (failure / repair / proof) — small accent strip, NOT a modal */
 .p4-inline-card {
   margin: 4px 0 2px 22px;

@@ -53,28 +53,56 @@ const parseTs = (event) => {
 const PHASE_FRIENDLY = {
   planner: 'Planning the build',
   planning: 'Planning the build',
-  requirements_clarifier: 'Clarifying requirements',
-  requirements: 'Clarifying requirements',
+  requirements_clarifier: 'Planning the build',
+  requirements: 'Planning the build',
+  phase_01: 'Planning the build',
+  phase_02: 'Planning the build',
+  phase_03: 'Setting up the project',
   scaffold: 'Setting up the project',
   scaffolding: 'Setting up the project',
-  routing: 'Wiring routes',
-  navigation: 'Wiring navigation',
+  routing: 'Building the frontend',
+  navigation: 'Building the frontend',
   frontend: 'Building the frontend',
   backend: 'Building the backend',
   database: 'Setting up the database',
-  styling: 'Styling the app',
-  ui: 'Designing the UI',
-  ux: 'Polishing the experience',
-  testing: 'Running tests',
+  styling: 'Building the frontend',
+  ui: 'Building the frontend',
+  ux: 'Building the frontend',
+  testing: 'Verifying the build',
   verification: 'Verifying the build',
-  preview_verification: 'Verifying the preview',
-  assembly: 'Assembling the app',
+  preview_verification: 'Verifying the build',
+  assembly: 'Finalizing the app',
   final_assembly: 'Finalizing the app',
-  export: 'Preparing the export',
-  export_gate: 'Final export checks',
+  export: 'Preparing delivery',
+  export_gate: 'Preparing delivery',
   repair: 'Repairing the build',
-  deploy: 'Preparing deployment',
-  deployment: 'Preparing deployment',
+  deploy: 'Preparing delivery',
+  deployment: 'Preparing delivery',
+  file_tool: 'Building the frontend',
+};
+
+/** One-paragraph human description per chapter title. Each chapter gets a
+ * "what / why / next" sentence the user can read instead of a stack of raw
+ * step headers. */
+const CHAPTER_DESCRIPTIONS = {
+  'Planning the build':
+    'Extracting your requirements, the pages and routes you need, the data model, and the verification criteria before any code is generated.',
+  'Setting up the project':
+    'Creating the project scaffold, package files, and base configuration so the rest of the build has a clean foundation.',
+  'Building the frontend':
+    "Generating the pages, layout, navigation, forms, and dashboard UI for what you asked for.",
+  'Building the backend':
+    'Wiring API routes, persistence, and server-side logic for the data flows you described.',
+  'Setting up the database':
+    'Designing the schema and seed data for the entities the app needs to store.',
+  'Verifying the build':
+    'Running build, import, route, and preview checks to catch broken pieces before you see them.',
+  'Finalizing the app':
+    'Assembling the final artifact and confirming every required file, route, and contract item is present.',
+  'Preparing delivery':
+    'Capturing proof items and running the export gate so the build is verifiable, not just trusted.',
+  'Repairing the build':
+    'Applying a targeted fix to the issue found by verification instead of restarting from scratch.',
 };
 
 const stripAgentPrefix = (s) =>
@@ -256,21 +284,36 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
   }
 
-  let bucket = null;
-  const flushBucket = () => {
-    if (bucket && bucket.children.length) {
-      restItems.push({
-        kind: 'tool_group',
-        title: bucket.title,
-        agent: bucket.agent,
-        phase: bucket.phase,
-        status: deriveGroupStatus(bucket.children),
-        children: bucket.children,
-        ts: bucket.ts,
-        id: newId('tg'),
-      });
-    }
-    bucket = null;
+  /**
+   * Story compiler: instead of one mutable bucket that flushes whenever the
+   * raw phase changes, we keep a Map keyed by FRIENDLY title. Non-consecutive
+   * events that map to the same chapter merge into the same chapter so the
+   * thread reads as a story (Planning -> Setup -> Frontend -> Verification),
+   * not a log (Planning x4, Frontend x4, Verification x4).
+   *
+   * Chapters are inserted into restItems on first appearance so their visual
+   * order matches the moment the activity began. Subsequent chips for the
+   * same chapter are pushed into the existing chapter in place.
+   */
+  const chapters = new Map();
+  const placeChapter = (key, friendlyTitle, ts) => {
+    let ch = chapters.get(key);
+    if (ch) return ch;
+    ch = {
+      id: newId('tg'),
+      kind: 'tool_group',
+      title: friendlyTitle,
+      description: CHAPTER_DESCRIPTIONS[friendlyTitle] || '',
+      agent: '',
+      phase: key,
+      children: [],
+      seen: new Set(),
+      status: 'running',
+      ts,
+    };
+    chapters.set(key, ch);
+    restItems.push(ch);
+    return ch;
   };
 
   const sorted = [...filteredEvents]
@@ -286,7 +329,6 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     if (t === 'brain_guidance' || t === 'message') continue;
 
     if (t === 'plan_created') {
-      flushBucket();
       pushAssistantOnce(
         narrateBuildEvent(ev) || "I've reviewed your request. Here's the plan I'll follow.",
         ts,
@@ -300,7 +342,6 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (/^(verifier_failed|assembly_failed|export_gate_blocked|error)$/.test(t)) {
-      flushBucket();
       const p = readPayload(ev);
       restItems.push({
         kind: 'failure_block',
@@ -315,7 +356,6 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (/^(repair_started|repair_completed|repair_failed)$/.test(t)) {
-      flushBucket();
       const p = readPayload(ev);
       const status = t === 'repair_completed' ? 'success' : t === 'repair_failed' ? 'failed' : 'running';
       restItems.push({
@@ -336,7 +376,6 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
-      flushBucket();
       restItems.push({
         kind: 'proof_block',
         proofType: t,
@@ -351,65 +390,64 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     if (isToolEvent(t)) {
       const phase = getPhase(ev);
       const friendlyTitle = prettyPhase(phase) || 'Working';
-      // Bucket by FRIENDLY title (not raw phase) so consecutive events that
-      // map to the same activity collapse into one section. This prevents
-      // "Planning the build" from appearing 4x because the backend emitted
-      // agents.planner / agents.phase_01 / agents.requirements_clarifier as
-      // separate phase strings.
-      if (!bucket || bucket.title !== friendlyTitle) {
-        flushBucket();
-        bucket = {
-          title: friendlyTitle,
-          agent: '',
-          phase,
-          children: [],
-          ts,
-          seen: new Set(),
-        };
-      }
+      const chapterKey = friendlyTitle.toLowerCase();
+      const ch = placeChapter(chapterKey, friendlyTitle, ts);
+
       const childTitle = deriveToolTitle(ev);
-      // Hide chips that just duplicate the bucket header (e.g. a phase_started
-      // event for "Planning the build" inside the "Planning the build" group).
-      // These add noise without information.
+      const evStatus = deriveStatus(ev);
+      // Hide chips that just duplicate the chapter header (e.g. a phase_started
+      // event for "Planning the build" inside the "Planning the build" chapter).
       const childIsRedundant =
         childTitle === friendlyTitle ||
         childTitle.toLowerCase() === friendlyTitle.toLowerCase();
-      if (childIsRedundant && (t === 'phase_started' || t === 'phase_completed' || t === 'phase_advanced' || t === 'step_started' || t === 'step_completed')) {
-        // Update bucket status from the event status without adding a chip row.
-        const evStatus = deriveStatus(ev);
-        if (evStatus === 'failed') bucket.status = 'failed';
+      if (childIsRedundant && /^(phase|step|dag_node)/.test(t)) {
+        if (evStatus === 'failed') ch.status = 'failed';
+        else if (evStatus === 'running' && ch.status !== 'failed') ch.status = 'running';
+        else if (evStatus === 'success' && ch.status !== 'failed' && ch.status !== 'running') {
+          ch.status = 'success';
+        }
         continue;
       }
-      // Dedupe consecutive identical chips inside a bucket. Backend tends to
-      // emit step_started + step_completed for the same step - keep one row.
       const childKey = `${childTitle}::${readPayload(ev).file || readPayload(ev).path || ''}`;
-      if (bucket.seen.has(childKey)) {
-        const last = bucket.children[bucket.children.length - 1];
-        if (last) last.status = deriveStatus(ev);
+      if (ch.seen.has(childKey)) {
+        const last = ch.children[ch.children.length - 1];
+        if (last) last.status = evStatus;
+        if (evStatus === 'failed') ch.status = 'failed';
         continue;
       }
-      bucket.seen.add(childKey);
-      bucket.children.push({
+      ch.seen.add(childKey);
+      ch.children.push({
         id: newId('tc'),
         title: childTitle,
-        status: deriveStatus(ev),
+        status: evStatus,
         ts,
         type: t,
         iconKey: toolIconKey(ev),
         payload: readPayload(ev),
         agent: '',
       });
+      if (evStatus === 'failed') ch.status = 'failed';
       continue;
     }
 
     const fallback = narrateBuildEvent(ev);
     if (fallback) {
-      flushBucket();
       pushAssistantOnce(fallback, ts, newId('am'));
     }
   }
 
-  flushBucket();
+  // Resolve final chapter status from children (and discard empty chapters
+  // that exist only because of redundant phase_started events).
+  for (const ch of chapters.values()) {
+    delete ch.seen;
+    ch.status = deriveGroupStatus(ch.children);
+  }
+  for (let i = restItems.length - 1; i >= 0; i--) {
+    const item = restItems[i];
+    if (item && item.kind === 'tool_group' && (!item.children || item.children.length === 0)) {
+      restItems.splice(i, 1);
+    }
+  }
 
   // Sort the rest by ts (does NOT touch the pinned first user message)
   restItems.sort((a, b) => (a.ts || 0) - (b.ts || 0));
