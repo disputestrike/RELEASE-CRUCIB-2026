@@ -1,4 +1,4 @@
-/* ActiveStepBanner — pinned "current activity" card above the composer.
+/* ActiveStepBanner - pinned "current activity" card above the composer.
    Inside Unified Workspace: inherit monochrome shell + green accent (no purple). */
 
 .uw-root .asb-root {
@@ -20,11 +20,11 @@
   width: min(560px, calc(100% - 24px));
   margin: 4px auto 8px;
   background: var(--crucibai-panel, #ffffff);
-  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--crucibai-border, rgba(0, 0, 0, 0.08));
   border-radius: 0;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   font-size: 12px;
-  color: var(--crucibai-text, #0f172a);
+  color: var(--crucibai-text, #111111);
   animation: asb-fade 0.18s ease;
 }
 
@@ -34,10 +34,10 @@
 }
 
 .asb-root--running {
-  border-color: color-mix(in srgb, var(--crucibai-accent, #4ade80) 35%, var(--crucibai-border, rgba(15, 23, 42, 0.08)));
+  border-color: color-mix(in srgb, var(--crucibai-accent, #d4d4d4) 35%, var(--crucibai-border, rgba(0, 0, 0, 0.08)));
 }
-.asb-root--success { border-color: rgba(22, 163, 74, 0.22); }
-.asb-root--failed { border-color: rgba(220, 38, 38, 0.24); }
+.asb-root--success { border-color: rgba(102, 102, 102, 0.22); }
+.asb-root--failed { border-color: rgba(82, 82, 82, 0.24); }
 
 .asb-toggle {
   display: grid;
@@ -60,8 +60,8 @@
   width: 28px;
   height: 28px;
   border-radius: 0;
-  background: var(--crucibai-accent-soft, rgba(74, 222, 128, 0.15));
-  color: var(--crucibai-accent, #4ade80);
+  background: var(--crucibai-accent-soft, rgba(102, 102, 102, 0.15));
+  color: var(--crucibai-accent, #d4d4d4);
 }
 
 .asb-body {
@@ -81,7 +81,7 @@
 .asb-title {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--crucibai-text, #0f172a);
+  color: var(--crucibai-text, #111111);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -90,9 +90,9 @@
 
 .asb-agent {
   font-size: 10.5px;
-  color: var(--crucibai-muted, #64748b);
+  color: var(--crucibai-muted, #666666);
   background: var(--crucibai-panel-soft, #f7f7f9);
-  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--crucibai-border, rgba(0, 0, 0, 0.08));
   padding: 1px 7px;
   border-radius: 999px;
   flex: 0 0 auto;
@@ -100,7 +100,7 @@
 
 .asb-files-inline {
   font-size: 11px;
-  color: var(--crucibai-muted, #64748b);
+  color: var(--crucibai-muted, #666666);
   font-family: 'SFMono-Regular', 'Menlo', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -109,33 +109,33 @@
 
 .asb-files-more {
   margin-left: 4px;
-  color: var(--crucibai-accent, #4ade80);
+  color: var(--crucibai-accent, #d4d4d4);
 }
 
 .asb-counter {
   font-size: 11px;
-  color: var(--crucibai-muted, #64748b);
+  color: var(--crucibai-muted, #666666);
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 0;
   background: var(--crucibai-panel-soft, #f7f7f9);
-  border: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--crucibai-border, rgba(0, 0, 0, 0.08));
 }
 
 .asb-chevron {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--crucibai-muted, #64748b);
+  color: var(--crucibai-muted, #666666);
 }
 
 .asb-icon-spin {
   animation: asb-rotate 1s linear infinite;
-  color: var(--crucibai-accent, #4ade80);
+  color: var(--crucibai-accent, #d4d4d4);
 }
 
-.asb-icon-ok { color: var(--crucibai-success, #16a34a); }
-.asb-icon-bad { color: var(--crucibai-danger, #dc2626); }
+.asb-icon-ok { color: var(--crucibai-success, #666666); }
+.asb-icon-bad { color: var(--crucibai-danger, #333333); }
 
 @keyframes asb-rotate {
   from { transform: rotate(0deg); }
@@ -143,7 +143,7 @@
 }
 
 .asb-detail {
-  border-top: 1px solid var(--crucibai-border, rgba(15, 23, 42, 0.08));
+  border-top: 1px solid var(--crucibai-border, rgba(0, 0, 0, 0.08));
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
@@ -155,18 +155,18 @@
   grid-template-columns: 56px 1fr;
   gap: 10px;
   font-size: 11.5px;
-  color: var(--crucibai-text, #0f172a);
+  color: var(--crucibai-text, #111111);
 }
 
 .asb-detail-label {
-  color: var(--crucibai-muted, #64748b);
+  color: var(--crucibai-muted, #666666);
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.4px;
   padding-top: 1px;
 }
 
-.asb-detail-value { color: var(--crucibai-text, #0f172a); }
+.asb-detail-value { color: var(--crucibai-text, #111111); }
 
 .asb-detail-files {
   margin: 0;
@@ -176,5 +176,5 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: var(--crucibai-text, #0f172a);
+  color: var(--crucibai-text, #111111);
 }

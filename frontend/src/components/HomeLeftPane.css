@@ -1,4 +1,4 @@
-/* Home Left Pane — compact widget stack for the Dashboard Home.
+﻿/* Home Left Pane â€” compact widget stack for the Dashboard Home.
    Rendered only on the empty (no-chat) home state. Hides itself on smaller
    viewports so the composer stays centered. */
 
@@ -35,7 +35,7 @@
   gap: 6px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #374151;
+  color: #333333;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -47,11 +47,11 @@
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  color: #6366f1;
+  color: #1a1a1a;
   text-decoration: none;
 }
 .hlp-card-link:hover {
-  color: #4338ca;
+  color: #000000;
   text-decoration: underline;
 }
 
@@ -75,10 +75,10 @@
   padding: 6px 0;
   font-size: 12.5px;
   text-decoration: none;
-  color: #111827;
+  color: #171717;
   border-bottom: 1px solid #f3f4f6;
 }
-.hlp-project-row:hover .hlp-project-name { color: #4f46e5; }
+.hlp-project-row:hover .hlp-project-name { color: #333333; }
 .hlp-projects li:last-child .hlp-project-row { border-bottom: 0; }
 .hlp-project-name {
   max-width: 150px;
@@ -104,9 +104,9 @@
   background: #f3f4f6;
   color: #6b7280;
 }
-.hlp-status-completed, .hlp-status-success { background: #d1fae5; color: #065f46; }
-.hlp-status-running, .hlp-status-active { background: #dbeafe; color: #1e40af; }
-.hlp-status-failed, .hlp-status-error { background: #fee2e2; color: #991b1b; }
+.hlp-status-completed, .hlp-status-success { background: #f5f5f5; color: #333333; }
+.hlp-status-running, .hlp-status-active { background: #f5f5f5; color: #333333; }
+.hlp-status-failed, .hlp-status-error { background: #f5f5f5; color: #333333; }
 
 .hlp-time {
   display: inline-flex;
@@ -128,7 +128,7 @@
 .hlp-stat strong {
   display: block;
   font-size: 15px;
-  color: #111827;
+  color: #171717;
   font-weight: 700;
 }
 .hlp-stat span {
@@ -149,7 +149,7 @@
 .hlp-trust-score strong {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: #171717;
 }
 .hlp-trust-score span {
   font-size: 12px;
@@ -164,7 +164,7 @@
 }
 .hlp-trust-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #666666, #737373);
   border-radius: 999px;
   transition: width 400ms ease;
 }
@@ -182,13 +182,13 @@
 }
 
 .hlp-whatif {
-  background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%);
   border-color: #c7d2fe;
 }
 .hlp-whatif-text {
   margin: 0 0 10px 0;
   font-size: 12px;
-  color: #4338ca;
+  color: #333333;
   line-height: 1.5;
 }
 .hlp-whatif-btn {
@@ -198,15 +198,15 @@
   font-size: 12px;
   font-weight: 600;
   padding: 6px 10px;
-  background: #4f46e5;
+  background: #333333;
   color: white;
   border-radius: 7px;
   text-decoration: none;
   transition: background 120ms;
 }
-.hlp-whatif-btn:hover { background: #4338ca; }
+.hlp-whatif-btn:hover { background: #333333; }
 
-/* Hide the pane on smaller screens — the composer takes priority there. */
+/* Hide the pane on smaller screens â€” the composer takes priority there. */
 @media (max-width: 1024px) {
   .home-left-pane { display: none; }
 }

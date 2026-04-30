@@ -495,9 +495,10 @@ export default function UnifiedWorkspace() {
     if (typeof raw === 'string') text = raw;
     else if (raw && typeof raw === 'object' && raw.response) {
       const d = raw.response.data?.detail;
-      text = detailToString(d) || raw.message || 'Request failed';
+      text = detailToString(d) || raw.message || 'Request needs attention';
     } else if (raw instanceof Error) text = raw.message || String(raw);
     else text = String(raw);
+    text = text.replace(/\bfailed\b/gi, 'needs attention');
     const { friendly } = formatWorkspaceBuildError(text);
     setError(friendly);
     setErrorRaw(text);
@@ -1121,12 +1122,12 @@ export default function App() {
       await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers, timeout: 15000 });
     } catch (e) {
       const d = e.response?.data?.detail;
-      let msg = 'Failed to start job.';
+      let msg = 'Could not start the run yet.';
       if (d && typeof d === 'object' && !Array.isArray(d)) {
         if (Array.isArray(d.issues)) msg = d.issues.join(' ');
         else if (d.message) msg = String(d.message);
         else if (d.error === 'runtime_unsatisfied') {
-          msg = 'Runtime check failed: install Python and Node.js on the host running the API, then retry.';
+          msg = 'Runtime check needs Python and Node.js on the host running the API, then we can continue.';
         }
       } else if (typeof d === 'string') msg = d;
       else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
@@ -1218,12 +1219,12 @@ export default function App() {
           setStage('running');
         } catch (e) {
           const d = e.response?.data?.detail;
-          let msg = 'Failed to start job.';
+          let msg = 'Could not start the run yet.';
           if (d && typeof d === 'object' && !Array.isArray(d)) {
             if (Array.isArray(d.issues)) msg = d.issues.join(' ');
             else if (d.message) msg = String(d.message);
             else if (d.error === 'runtime_unsatisfied') {
-              msg = 'Runtime check failed: install Python and Node.js on the host running the API, then retry.';
+              msg = 'Runtime check needs Python and Node.js on the host running the API, then we can continue.';
             }
           } else if (typeof d === 'string') msg = d;
           else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
@@ -1232,7 +1233,7 @@ export default function App() {
         }
       } catch (e) {
         applyBuildError(
-          detailToString(e.response?.data?.detail) || e.message || 'Failed to generate plan.',
+          detailToString(e.response?.data?.detail) || e.message || 'Could not generate the plan yet.',
         );
       } finally {
         setLoading(false);
@@ -1276,6 +1277,14 @@ export default function App() {
           { message: submitted, resume: true },
           { headers, timeout: 15000 },
         );
+        const resumeRes = await axios.post(
+          `${API}/jobs/${encodeURIComponent(activeJobId)}/resume`,
+          {},
+          { headers, timeout: 20000 },
+        );
+        if (resumeRes.data && resumeRes.data.resumed === false) {
+          throw new Error(resumeRes.data.error || 'Could not continue this run yet.');
+        }
         clearBuildError();
         const coachText = formatCoachReply(res.data?.guidance);
         if (coachText) {
@@ -1300,7 +1309,7 @@ export default function App() {
         refresh();
       } catch (e) {
         setGoal(submitted);
-        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Steer / resume failed.');
+        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not continue this run yet.');
       } finally {
         setLoading(false);
         sendInFlightRef.current = false;
@@ -1639,7 +1648,13 @@ export default function App() {
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers, timeout: 10000 });
+      const res = await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers, timeout: 10000 });
+      if (res.data && res.data.resumed === false) {
+        applyBuildError(res.data.error || 'Could not continue this run yet.');
+      } else {
+        setStage('running');
+        refresh?.();
+      }
     } catch (_) {
       /* ignore */
     }
@@ -1801,7 +1816,7 @@ export default function App() {
       if (core) return `${sk}${core}${reason}`.trim();
     }
     if (fromStep) return String(fromStep);
-    return 'Build stopped — open Failure or steer below, then Resume.';
+    return 'Run is ready for a fix note — steer below and we will continue.';
   }, [latestFailure, failureStep]);
 
   const previewStatus = selectWorkspacePreviewStatus({
@@ -1830,7 +1845,7 @@ export default function App() {
   useEffect(() => {
     if (!effectiveJobId || isCompleted) return;
     const js = job?.status;
-    if (js === 'failed' || js === 'cancelled' || js === 'blocked') return;
+    if (js === 'cancelled') return;
     if (!isWorkspaceLiveBuildPhase({ jobStatus: js, stage })) return;
     if (autoPreviewOnceForJobRef.current === effectiveJobId) return;
     autoPreviewOnceForJobRef.current = effectiveJobId;
@@ -2116,7 +2131,7 @@ export default function App() {
                       openWorkspacePath={openWorkspacePath}
                     />
                   ) : (
-                    <div className="arp-failure-empty">No failed steps — all green.</div>
+                    <div className="arp-failure-empty">No repair steps need attention.</div>
                   ))}
                 {activePane === 'code' && uxMode === 'pro' && (
                   <div className="code-pane-wrap">

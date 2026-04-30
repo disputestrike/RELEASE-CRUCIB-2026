@@ -41,7 +41,7 @@
 }
 
 .wft-row--selected {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(102, 102, 102, 0.12);
   color: var(--text-primary, #f0f0f0);
 }
 

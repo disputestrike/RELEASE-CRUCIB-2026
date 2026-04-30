@@ -1,4 +1,4 @@
-/* Sidebar — dark by default, responds to data-theme */
+﻿/* Sidebar â€” dark by default, responds to data-theme */
 
 .sidebar {
   display: flex;
@@ -25,7 +25,7 @@
   min-width: 0;
 }
 
-/* Align with unified workspace center/right headline (48px) — /app/workspace */
+/* Align with unified workspace center/right headline (48px) â€” /app/workspace */
 .sidebar-header--workspace-headline {
   min-height: 48px;
   padding: 0 12px;
@@ -125,7 +125,7 @@
   overflow: hidden;
 }
 
-/* Top nav group — stays at top */
+/* Top nav group â€” stays at top */
 .sidebar-collapsed-top {
   display: flex;
   flex-direction: column;
@@ -134,13 +134,13 @@
   flex-shrink: 0;
 }
 
-/* Spacer — pushes bottom group to the very bottom (Manus) */
+/* Spacer â€” pushes bottom group to the very bottom (Manus) */
 .sidebar-collapsed-spacer {
   flex: 1;
   min-height: 16px;
 }
 
-/* Bottom group — Engine, Credit, Settings, Account at very bottom (Manus) */
+/* Bottom group â€” Engine, Credit, Settings, Account at very bottom (Manus) */
 .sidebar-collapsed-bottom {
   display: flex;
   flex-direction: column;
@@ -166,7 +166,7 @@
   margin-bottom: 4px;
 }
 
-/* Hover-swap identity: cube at rest → expand-toggle icon on hover.
+/* Hover-swap identity: cube at rest â†’ expand-toggle icon on hover.
    Both children occupy the SAME 36x36 slot; they crossfade via opacity.
    Specificity note: ".sidebar-collapsed-strip .sidebar-collapse-btn"
    (2 classes) sets position:static earlier, so we must match that
@@ -319,7 +319,7 @@
 }
 
 .sidebar-star-pinned {
-  color: #fbbf24;
+  color: var(--theme-text);
   fill: currentColor;
 }
 
@@ -470,7 +470,7 @@
   padding: 6px 8px;
   border-radius: 8px;
   color: var(--theme-muted, #a1a1aa);
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
@@ -489,12 +489,12 @@
 .sidebar-task-row.active { background: color-mix(in srgb, var(--theme-brand, #0f766e) 14%, transparent); color: var(--theme-text, #e4e4e7); font-weight: 600; box-shadow: inset 3px 0 0 var(--theme-brand, #0f766e); }
 
 [data-theme='light'] .sidebar-task-row:hover {
-  background: rgba(15, 23, 42, 0.04);
-  color: var(--theme-text, #111827);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--theme-text, #171717);
 }
 [data-theme='light'] .sidebar-task-row.active {
-  background: rgba(15, 23, 42, 0.06);
-  color: var(--theme-text, #111827);
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--theme-text, #171717);
   font-weight: 500;
 }
 
@@ -661,10 +661,10 @@
 .sidebar-task-dropdown button:disabled { color: var(--theme-muted, #71717a); cursor: not-allowed; }
 .sidebar-task-dropdown button.has-submenu { justify-content: space-between; }
 .sidebar-task-dropdown button.has-submenu svg:last-child { color: var(--theme-muted, #71717a); flex-shrink: 0; }
-.sidebar-task-dropdown button.danger { color: #f87171; }
-.sidebar-task-dropdown button.danger:hover { background: rgba(248, 113, 113, 0.15); }
+.sidebar-task-dropdown button.danger { color: var(--theme-text); }
+.sidebar-task-dropdown button.danger:hover { background: rgba(0, 0, 0, 0.06); }
 
-/* Delete confirmation — fixed overlay */
+/* Delete confirmation â€” fixed overlay */
 .sidebar-delete-overlay {
   position: fixed;
   inset: 0;
@@ -751,8 +751,8 @@
 [data-theme="light"] .sidebar-delete-actions button:not(.danger):hover {
   background: #d4d4d4;
 }
-.sidebar-delete-actions button.danger { background: #dc2626; color: #fff; }
-.sidebar-delete-actions button.danger:hover { background: #b91c1c; }
+.sidebar-delete-actions button.danger { background: var(--theme-text); color: var(--theme-bg); }
+.sidebar-delete-actions button.danger:hover { background: var(--theme-accent-h, #333333); }
 
 .sidebar-task-rename { flex: 1; min-width: 0; }
 .sidebar-task-rename-input {
@@ -794,11 +794,11 @@
 
 .sidebar-item-icon { flex-shrink: 0; color: var(--theme-muted, #71717a); }
 
-.sidebar-item-icon.status-completed { color: #86efac; }
+.sidebar-item-icon.status-completed { color: var(--theme-text, #e4e4e7); }
 .sidebar-item-icon.status-running { color: var(--theme-text, #e4e4e7); animation: pulse 2s infinite; }
-.sidebar-item-icon.status-build-terminal { color: var(--theme-muted, #94a3b8); }
-.sidebar-item-icon.status-simulation { color: #047857; }
-.sidebar-item-icon.status-failed { color: #f87171; }
+.sidebar-item-icon.status-build-terminal { color: var(--theme-muted, #888888); }
+.sidebar-item-icon.status-simulation { color: var(--theme-muted, #71717a); }
+.sidebar-item-icon.status-failed { color: var(--theme-muted, #71717a); }
 .sidebar-item-icon.status-pending { color: var(--theme-muted, #71717a); }
 .sidebar-item-icon.status-chat { color: var(--theme-muted, #a1a1aa); }
 .sidebar-item-icon.status-agent { color: var(--theme-text, #e4e4e7); }
@@ -826,7 +826,7 @@
    SPACER
    ============================================ */
 
-/* Spacer removed — History section flex-grows; credits moved to Layout top bar */
+/* Spacer removed â€” History section flex-grows; credits moved to Layout top bar */
 
 .sidebar-collapsed-account-wrap {
   position: relative;
@@ -927,12 +927,12 @@
 }
 
 /* ============================================
-   FOOTER — Account area (dropdown trigger)
+   FOOTER â€” Account area (dropdown trigger)
    ============================================ */
 
 .sidebar-footer {
   flex-shrink: 0;
-  /* margin-top: auto removed — history section now takes flex:1 so footer is naturally at bottom */
+  /* margin-top: auto removed â€” history section now takes flex:1 so footer is naturally at bottom */
   padding: 12px 12px 12px;
   border-top: 1px solid var(--theme-border);
   display: flex;
@@ -1070,11 +1070,11 @@
 }
 
 .sidebar-account-menu button.sidebar-account-menu-logout {
-  color: #f87171;
+  color: var(--theme-text);
 }
 
 .sidebar-account-menu button.sidebar-account-menu-logout:hover {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .sidebar-logout {
@@ -1094,7 +1094,7 @@
   transition: all 150ms ease;
 }
 
-.sidebar-logout:hover { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.sidebar-logout:hover { background: rgba(0, 0, 0, 0.06); color: var(--theme-text); }
 
 /* ============================================
    SCROLLBAR
@@ -1231,7 +1231,7 @@
   right: 10px;
   width: 8px;
   height: 8px;
-  background: #ef4444;
+  background: var(--theme-text);
   border-radius: 50%;
   border: 2px solid var(--theme-surface, #18181B);
 }
@@ -1239,7 +1239,7 @@
 
 /* Final closure polish */
 .sidebar {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-surface) 92%, #0f172a 8%), var(--theme-surface));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-surface) 92%, #000000 8%), var(--theme-surface));
 }
 .sidebar-header, .sidebar-search-container, .sidebar-section, .sidebar-footer {
   position: relative;

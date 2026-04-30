@@ -66,7 +66,7 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
     <div className="failure-drawer animate-fade-up">
       <div className="fd-header">
         <AlertTriangle size={14} className="fd-alert-icon" />
-        <span className="fd-title">Step Failed</span>
+        <span className="fd-title">Step Needs Repair</span>
         <button className="fd-close" onClick={onClose}><X size={14} /></button>
       </div>
 
@@ -74,7 +74,7 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
         <div className="fd-step-name">{step.step_key}</div>
 
         <div className="fd-row">
-          <span className="fd-label">Failure Type</span>
+          <span className="fd-label">Repair Type</span>
           <span className="fd-failure-badge">{label}</span>
         </div>
 

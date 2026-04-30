@@ -1,4 +1,4 @@
-/* ── FailureDrawer ─────────────────────────────────────────────────── */
+/* -- FailureDrawer --------------------------------------------------- */
 .failure-drawer {
   background: var(--bg-1);
   border: 1px solid rgba(51, 51, 51, 0.3);
@@ -89,7 +89,7 @@
 .fd-raw-details {
   margin-top: 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: var(--bg-0);
   padding: 8px 10px;
 }
@@ -253,13 +253,13 @@ button.fd-file-link:hover {
 }
 
 .fd-diff-before {
-  background: rgba(248, 81, 73, 0.05);
-  border: 1px solid rgba(248, 81, 73, 0.15);
+  background: rgba(82, 82, 82, 0.05);
+  border: 1px solid rgba(82, 82, 82, 0.15);
 }
 
 .fd-diff-after {
-  background: rgba(63, 185, 80, 0.05);
-  border: 1px solid rgba(63, 185, 80, 0.15);
+  background: rgba(102, 102, 102, 0.05);
+  border: 1px solid rgba(102, 102, 102, 0.15);
 }
 
 .fd-diff-label {
@@ -314,17 +314,17 @@ button.fd-file-link:hover {
 
 .fd-recovery-in_progress {
   color: var(--state-info);
-  background: rgba(88, 166, 255, 0.1);
+  background: rgba(102, 102, 102, 0.1);
 }
 
 .fd-recovery-recovered {
   color: var(--state-success);
-  background: rgba(63, 185, 80, 0.1);
+  background: rgba(102, 102, 102, 0.1);
 }
 
 .fd-recovery-exhausted {
   color: var(--state-error);
-  background: rgba(248, 81, 73, 0.1);
+  background: rgba(82, 82, 82, 0.1);
 }
 
 .fd-attempts {

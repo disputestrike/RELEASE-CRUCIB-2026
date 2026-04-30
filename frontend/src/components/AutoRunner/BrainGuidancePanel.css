@@ -1,5 +1,5 @@
 /**
- * Phase4 LiveExecutionSurface — center pane matches Unified Workspace tokens
+ * Phase4 LiveExecutionSurface - center pane matches Unified Workspace tokens
  * (.uw-root / unified-workspace-tokens.css): monochrome surfaces + green accent
  * only (no purple). Geometry: sharp rectangles (border-radius: 0).
  */
@@ -130,7 +130,7 @@
   border-radius: 0;
   background: var(--crucibai-panel);
   border: 1px solid var(--crucibai-border);
-  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -155,7 +155,7 @@
 .p4-overflow-item:hover { background: var(--crucibai-panel-soft); }
 
 .p4-overflow-item--danger { color: var(--crucibai-danger); }
-.p4-overflow-item--danger:hover { background: rgba(220, 38, 38, 0.08); }
+.p4-overflow-item--danger:hover { background: rgba(82, 82, 82, 0.08); }
 
 /* Initial-state assistant handle row (small CrucibAI label, no message body) */
 .p4-row-handle .p4-assist-name--header {
@@ -192,14 +192,14 @@
 }
 
 .p4-status-pill--paused {
-  background: rgba(217, 119, 6, 0.08);
-  border-color: rgba(217, 119, 6, 0.22);
+  background: rgba(115, 115, 115, 0.08);
+  border-color: rgba(115, 115, 115, 0.22);
   color: var(--crucibai-warning);
 }
 
 .p4-status-pill--success {
-  background: rgba(22, 163, 74, 0.08);
-  border-color: rgba(22, 163, 74, 0.22);
+  background: rgba(102, 102, 102, 0.08);
+  border-color: rgba(102, 102, 102, 0.22);
   color: var(--crucibai-success);
 }
 
@@ -248,7 +248,7 @@
 .p4-row-assistant,
 .p4-row-typing { justify-content: flex-start; }
 
-/* Avatar — square frame, no circular chrome or purple gradient */
+/* Avatar - square frame, no circular chrome or purple gradient */
 .p4-avatar {
   width: 24px;
   height: 24px;
@@ -274,7 +274,7 @@
 
 .p4-avatar-fallback { font-size: 10.5px; }
 
-/* USER prompt — slightly elevated from thread surface (same tokens as shell) */
+/* USER prompt - slightly elevated from thread surface (same tokens as shell) */
 .p4-user-bubble {
   max-width: 78%;
   padding: 10px 14px;
@@ -292,7 +292,7 @@
   word-break: break-word;
 }
 
-/* ASSISTANT — plain text, no bubble (Manus style) */
+/* ASSISTANT - plain text, no bubble (Manus style) */
 .p4-assist-col {
   flex: 1;
   min-width: 0;
@@ -343,7 +343,7 @@
   animation: p4-fade 0.16s ease;
 }
 
-/* Section header (used by plan + tool group) — chevron + title + counter
+/* Section header (used by plan + tool group) - chevron + title + counter
    Manus look: plain text with chevron, NO surrounding box. */
 .p4-section-head {
   display: flex;
@@ -423,7 +423,7 @@
 .p4-plan-step--running { background: var(--crucibai-accent-soft); }
 
 .p4-plan-step--failed {
-  background: rgba(220, 38, 38, 0.06);
+  background: rgba(82, 82, 82, 0.06);
   color: var(--crucibai-danger);
 }
 
@@ -435,7 +435,7 @@
   display: inline-block;
 }
 
-/* Tool group — chip list (Manus inline pill rows) */
+/* Tool group - chip list (Manus inline pill rows) */
 .p4-chip-list {
   display: flex;
   flex-direction: column;
@@ -479,7 +479,7 @@
   background: var(--crucibai-accent-soft);
   border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
 }
-.p4-chip--failed  { background: rgba(220, 38, 38, 0.06); border-color: rgba(220, 38, 38, 0.18); color: var(--crucibai-danger); }
+.p4-chip--failed  { background: rgba(82, 82, 82, 0.06); border-color: rgba(82, 82, 82, 0.18); color: var(--crucibai-danger); }
 
 /* Tool group accent borders (subtle) */
 .p4-tool-group { padding: 0; }
@@ -541,7 +541,7 @@
   border-color: color-mix(in srgb, var(--crucibai-accent) 35%, var(--crucibai-border));
   background: var(--crucibai-accent-soft);
 }
-.p4-chapter-status--failed  { color: var(--crucibai-danger); border-color: rgba(220, 38, 38, 0.22); background: rgba(220, 38, 38, 0.05); }
+.p4-chapter-status--failed  { color: var(--crucibai-danger); border-color: rgba(82, 82, 82, 0.22); background: rgba(82, 82, 82, 0.05); }
 
 .p4-chapter-desc {
   margin: 6px 0 8px;
@@ -572,7 +572,7 @@
 }
 .p4-chip--more:hover { background: var(--crucibai-accent-soft); }
 
-/* Inline cards (failure / repair / proof) — small accent strip, NOT a modal */
+/* Inline cards (failure / repair / proof) - small accent strip, NOT a modal */
 .p4-inline-card {
   margin: 4px 0 2px 22px;
   padding: 8px 12px;
@@ -584,28 +584,28 @@
 }
 
 .p4-card-failure {
-  border-color: rgba(220, 38, 38, 0.22);
-  background: rgba(220, 38, 38, 0.04);
+  border-color: rgba(82, 82, 82, 0.22);
+  background: rgba(82, 82, 82, 0.04);
 }
 
 .p4-card-repair {
-  border-color: rgba(217, 119, 6, 0.22);
-  background: rgba(217, 119, 6, 0.04);
+  border-color: rgba(115, 115, 115, 0.22);
+  background: rgba(115, 115, 115, 0.04);
 }
 
 .p4-card-repair--success {
-  border-color: rgba(22, 163, 74, 0.22);
-  background: rgba(22, 163, 74, 0.04);
+  border-color: rgba(102, 102, 102, 0.22);
+  background: rgba(102, 102, 102, 0.04);
 }
 
 .p4-card-repair--failed {
-  border-color: rgba(220, 38, 38, 0.22);
-  background: rgba(220, 38, 38, 0.04);
+  border-color: rgba(82, 82, 82, 0.22);
+  background: rgba(82, 82, 82, 0.04);
 }
 
 .p4-card-proof {
-  border-color: rgba(22, 163, 74, 0.22);
-  background: rgba(22, 163, 74, 0.04);
+  border-color: rgba(102, 102, 102, 0.22);
+  background: rgba(102, 102, 102, 0.04);
 }
 
 .p4-inline-head {
@@ -653,7 +653,7 @@
 }
 
 .p4-inline-list li::before {
-  content: '•';
+  content: '-';
   margin-right: 6px;
   color: var(--crucibai-danger);
 }

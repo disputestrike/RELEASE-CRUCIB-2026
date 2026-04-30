@@ -815,6 +815,7 @@ async def estimate_job_cost(
 @router.post("/{job_id}/steer")
 async def steer_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Inject a steering instruction into a running job."""
+    await _resolve_job(job_id, user)
     try:
         body = await request.json()
     except Exception:
@@ -822,9 +823,8 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
     message = body.get("message") or body.get("instruction") or ""
     resume = body.get("resume", True)
     try:
-        from ..db_pg import get_pg_pool
         import json as _json
-        pool = await get_pg_pool()
+        pool = await _get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """UPDATE jobs SET
@@ -833,6 +833,22 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
                 _json.dumps([{"message": message, "resume": resume}]),
                 job_id,
             )
+        rs = _get_runtime_state()
+        await rs.append_job_event(
+            job_id,
+            "workspace_steer_queued",
+            {"message": message, "resume": bool(resume), "source": "workspace"},
+        )
+        try:
+            from ..orchestration.event_bus import publish
+
+            await publish(
+                job_id,
+                "workspace_steer_queued",
+                {"message": message, "resume": bool(resume), "source": "workspace"},
+            )
+        except Exception:
+            pass
     except Exception as e:
         logger.warning("steer_job db: %s", e)
     return {"accepted": True, "job_id": job_id, "message": message}
@@ -842,13 +858,48 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
 async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
     """Resume a paused or failed job."""
     try:
+        job = await _resolve_job(job_id, user)
         from ..orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
-        from ..db_pg import get_pg_pool
-        pool = await get_pg_pool()
-        await prepare_failed_job_for_rerun(job_id)
         import asyncio
-        asyncio.create_task(_resume(job_id, "", pool))
-        return {"resumed": True, "job_id": job_id}
+
+        pool = await _get_pool()
+        rs = _get_runtime_state()
+        if pool is not None:
+            rs.set_pool(pool)
+
+        project_id = str(job.get("project_id") or job.get("id") or job_id).strip()
+        if not project_id:
+            project_id = job_id
+        from ..server import _project_workspace_path
+
+        workspace_path = _project_workspace_path(project_id)
+        workspace_path.mkdir(parents=True, exist_ok=True)
+        await prepare_failed_job_for_rerun(job_id)
+        await rs.update_job_state(
+            job_id,
+            "running",
+            {"current_phase": "resuming_from_workspace", "resume_requested": True},
+        )
+        await rs.append_job_event(
+            job_id,
+            "job_resume_requested",
+            {"job_id": job_id, "workspace_path": str(workspace_path), "project_id": project_id},
+        )
+        try:
+            from ..orchestration.event_bus import publish
+
+            await publish(
+                job_id,
+                "job_resume_requested",
+                {"job_id": job_id, "workspace_path": str(workspace_path), "project_id": project_id},
+            )
+        except Exception:
+            pass
+
+        asyncio.create_task(_resume(job_id, str(workspace_path), pool))
+        return {"resumed": True, "job_id": job_id, "workspace_path": str(workspace_path)}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning("resume_job: %s", e)
         return {"resumed": False, "job_id": job_id, "error": str(e)}

@@ -1,5 +1,5 @@
 /**
- * BuildCompletionCard — most polished surface. Shown on successful completion.
+ * BuildCompletionCard - most polished surface. Shown on successful completion.
  * GATED by: job.status === 'completed' && proofCount > 0 && qualityScore > 0.8
  * Props: job, summary, proof, onOpenPreview, onOpenProof, onOpenCode, onDeployAgain, apiBase, token
  */
@@ -136,7 +136,7 @@ export default function BuildCompletionCard({
           </div>
         )}
         {deployError && (
-          <div className="bcc-status-row" style={{ color: 'var(--state-error, #f87171)' }}>
+          <div className="bcc-status-row" style={{ color: 'var(--state-error, #737373)' }}>
             <span className="bcc-status-dot bcc-dot-error" />
             <span>Deploy error: {deployError}</span>
           </div>

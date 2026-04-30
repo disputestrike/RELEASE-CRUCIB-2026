@@ -83,7 +83,7 @@ export default function PreviewPanel({
 
     if (previewUrl || !jobId || !token || !apiBase) return undefined;
 
-    const isTerminal = (s) => s === 'failed' || s === 'cancelled' || s === 'blocked';
+    const isTerminal = (s) => s === 'cancelled';
 
     setIsBootingDevPreview(true);
     setDevPreviewError(null);
@@ -163,7 +163,7 @@ export default function PreviewPanel({
   const statusColor = useRemote
     ? 'var(--state-success)'
     : status === 'blocked'
-      ? 'var(--state-error, #f87171)'
+      ? 'var(--text-muted)'
       : status === 'building'
         ? 'var(--state-warning)'
         : hasSandpack
@@ -250,7 +250,7 @@ export default function PreviewPanel({
         {/* TRUTH BANNER: explicit mode indicator */}
         {previewMode === 'sandpack-fallback' && (
           <div className="pp-preview-truth-banner pp-preview-truth-fallback" role="status">
-            <span className="pp-preview-truth-icon">⚠️</span>
+            <span className="pp-preview-truth-icon">!</span>
             <span className="pp-preview-truth-text">
               Preview is a fallback sandbox. Runtime not yet available.
             </span>
@@ -258,7 +258,7 @@ export default function PreviewPanel({
         )}
         {previewMode === 'dev-server' && (
           <div className="pp-preview-truth-banner pp-preview-truth-live" role="status">
-            <span className="pp-preview-truth-icon">✓</span>
+            <span className="pp-preview-truth-icon">OK</span>
             <span className="pp-preview-truth-text">
               Live dev server running
             </span>
@@ -306,7 +306,7 @@ export default function PreviewPanel({
         {status === 'building' && !hasSandpack && (
           <div className="pp-preview-building">
             <div className="pp-preview-shimmer" />
-            <span className="pp-preview-building-text">Assembling your preview…</span>
+            <span className="pp-preview-building-text">Assembling your preview...</span>
             <div className="pp-build-activity" role="status">
               <div className="pp-build-activity-head">Building your app...</div>
               <div className="pp-build-activity-row">Current phase: {activity.phase}</div>

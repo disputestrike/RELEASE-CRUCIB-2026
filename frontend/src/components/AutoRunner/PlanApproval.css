@@ -1,4 +1,4 @@
-/* ── PlanApproval — flight plan review ─────────────────────────────── */
+/* -- PlanApproval - flight plan review ------------------------------- */
 .plan-approval {
   background: var(--bg-1);
   border: 1px solid var(--border-1);
@@ -168,8 +168,8 @@
   gap: 6px;
   font-size: 12px;
   color: var(--state-warning);
-  background: rgba(210,153,34,0.06);
-  border: 1px solid rgba(210,153,34,0.2);
+  background: rgba(115,115,115,0.06);
+  border: 1px solid rgba(115,115,115,0.2);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
@@ -187,7 +187,7 @@
   font-size: 12px;
 }
 .pa-missing-item.blocking {
-  border-color: rgba(248,81,73,0.3);
+  border-color: rgba(82,82,82,0.3);
 }
 .pa-missing-key {
   font-weight: 600;
@@ -200,7 +200,7 @@
   flex: 1;
 }
 .pa-blocking-tag {
-  background: rgba(248,81,73,0.12);
+  background: rgba(82,82,82,0.12);
   color: var(--state-error);
   padding: 2px 7px;
   border-radius: 10px;
@@ -216,12 +216,12 @@
 }
 
 .pa-missing-item.pa-missing-advisory {
-  border-color: rgba(56, 189, 248, 0.22);
-  background: rgba(56, 189, 248, 0.04);
+  border-color: rgba(102, 102, 102, 0.22);
+  background: rgba(102, 102, 102, 0.04);
 }
 
 .pa-advisory-tag {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(102, 102, 102, 0.12);
   color: var(--state-info, #666666);
   padding: 2px 7px;
   border-radius: 10px;
@@ -264,7 +264,7 @@
   overflow: hidden;
 }
 .pa-phase-open {
-  border-color: rgba(96, 165, 250, 0.35);
+  border-color: rgba(102, 102, 102, 0.35);
 }
 
 .pa-phase-head {

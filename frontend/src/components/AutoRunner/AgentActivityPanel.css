@@ -150,12 +150,12 @@
 }
 
 .aap-card-failed {
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: rgba(82, 82, 82, 0.35);
 }
 .aap-dot-failed {
   background: var(--state-error);
 }
 .aap-badge-failed {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(82, 82, 82, 0.15);
   color: var(--state-error);
 }

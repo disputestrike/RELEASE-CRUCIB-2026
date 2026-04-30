@@ -1,5 +1,5 @@
 /**
- * SystemExplorer — full system X-ray panel.
+ * SystemExplorer - full system X-ray panel.
  * Tabs: Agents | DAG | Routes | DB | Env | Deploys
  * Props: steps, proof, job, projectId, token
  */
@@ -119,9 +119,9 @@ const METHOD_COLORS = {
 
 function getNodeFill(status) {
   switch (status) {
-    case 'completed': return 'rgba(63,185,80,0.12)';
-    case 'running':   return 'rgba(88,166,255,0.12)';
-    case 'failed':    return 'rgba(248,81,73,0.12)';
+    case 'completed': return 'rgba(102,102,102,0.12)';
+    case 'running':   return 'rgba(102,102,102,0.12)';
+    case 'failed':    return 'rgba(82,82,82,0.12)';
     default:          return 'transparent';
   }
 }
@@ -233,7 +233,7 @@ export default function SystemExplorer({
           </div>
         )}
 
-        {/* DAG — SVG renderer */}
+        {/* DAG - SVG renderer */}
         {activeTab === 'dag' && (
           <div className="se-dag">
             {dagNodes.length === 0 ? (
@@ -242,7 +242,7 @@ export default function SystemExplorer({
               <>
               <p className="se-dag-caption">
                 Scheduler runs steps whose dependencies are <strong>completed</strong>; independent steps may run in parallel (batch up to 4).
-                Artifact handoff is the <strong>shared workspace folder</strong> on disk — expand a timeline step for <code>dag_node_*</code> events.
+                Artifact handoff is the <strong>shared workspace folder</strong> on disk - expand a timeline step for <code>dag_node_*</code> events.
               </p>
               <svg width={dagSize.w} height={dagSize.h} style={{ background: 'var(--bg-0)', borderRadius: 'var(--radius-md)' }}>
                 {dagNodes.map((node) =>
@@ -410,7 +410,7 @@ export default function SystemExplorer({
               'JWT_SECRET', 'BRAINTREE_MERCHANT_ID', 'GOOGLE_CLIENT_ID'].map(k => (
               <div key={k} className="se-env-item">
                 <span className="se-env-key">{k}</span>
-                <span className="se-env-val">= ••••••••</span>
+                <span className="se-env-val">= --------</span>
                 <span className="se-env-scope">production</span>
               </div>
             ))}

@@ -1,4 +1,4 @@
-/* Dashboard — dark theme to match app sidebar */
+﻿/* Dashboard â€” dark theme to match app sidebar */
 
 .dashboard-redesigned {
   display: flex;
@@ -26,7 +26,7 @@
   }
 }
 
-/* Home screen: fill layout main (avoid 100vh + nested scroll “boxed” feel) */
+/* Home screen: fill layout main (avoid 100vh + nested scroll â€œboxedâ€ feel) */
 .dashboard-redesigned.home-screen {
   display: flex;
   flex-direction: column;
@@ -36,7 +36,7 @@
   max-height: 100%;
   padding: 0;
   overflow: hidden;
-  /* CRITICAL: base .dashboard-redesigned uses align/justify center — that centers the whole chat column */
+  /* CRITICAL: base .dashboard-redesigned uses align/justify center â€” that centers the whole chat column */
   align-items: stretch;
   justify-content: flex-start;
 }
@@ -109,7 +109,7 @@
 }
 
 [data-theme="light"] .home-input-bar--chat {
-  border-top-color: rgba(15, 23, 42, 0.06);
+  border-top-color: rgba(0, 0, 0, 0.06);
 }
 
 .home-prompt-wrapper {
@@ -153,7 +153,7 @@
   width: 100%;
 }
 
-/* Hero content container — centered, aligned with composer (720px) */
+/* Hero content container â€” centered, aligned with composer (720px) */
 .dashboard-center {
   width: 100%;
   max-width: 720px;
@@ -195,7 +195,7 @@
   text-align: center;
 }
 
-/* Prompt form — width from parent (min/max vw), not stretched by viewport alone */
+/* Prompt form â€” width from parent (min/max vw), not stretched by viewport alone */
 .dashboard-prompt-form {
   display: flex;
   flex-direction: column;
@@ -229,12 +229,12 @@
 [data-theme="light"] .dashboard-prompt-container,
 [data-theme="light"] .dashboard-prompt-container--chat {
   background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.1);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="light"] .dashboard-prompt-footer {
-  border-top-color: rgba(15, 23, 42, 0.06);
+  border-top-color: rgba(0, 0, 0, 0.06);
 }
 
 .dashboard-prompt-container--chat {
@@ -388,8 +388,8 @@
 }
 
 .dashboard-prompt-btn.recording {
-  background: rgba(248, 113, 113, 0.2);
-  color: #f87171;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--theme-text, #1a1a1a);
   animation: pulse-recording 1.5s infinite;
 }
 
@@ -417,15 +417,15 @@
   opacity: 1;
 }
 
-/* Default (light): accent blue button */
+/* Default (light): monochrome action button */
 .dashboard-prompt-submit--ready:not(:disabled) {
-  background: var(--theme-accent, #2563eb);
+  background: var(--theme-text, #1a1a1a);
   border-color: transparent;
   color: #ffffff;
   cursor: pointer;
 }
 .dashboard-prompt-submit--ready:not(:disabled):hover {
-  background: var(--theme-accent-h, #1d4ed8);
+  background: var(--theme-accent-h, #333333);
   transform: scale(1.03);
 }
 /* Dark theme: near-black button */
@@ -439,7 +439,7 @@
   border-color: #404040;
 }
 [data-theme="light"] .dashboard-prompt-submit--ready:not(:disabled):hover {
-  background: var(--theme-accent-h, #1d4ed8);
+  background: var(--theme-accent-h, #333333);
   border-color: transparent;
 }
 
@@ -453,7 +453,7 @@
 }
 
 [data-theme="light"] .dashboard-prompt-submit--busy:disabled {
-  background: var(--theme-accent, #2563eb);
+  background: var(--theme-text, #1a1a1a);
   border-color: transparent;
   color: #ffffff;
 }
@@ -470,7 +470,7 @@
   color: var(--theme-muted, #a1a1aa);
 }
 
-/* Attached Files — monochromatic indicator */
+/* Attached Files â€” monochromatic indicator */
 .dashboard-attached-files {
   display: flex;
   flex-wrap: wrap;
@@ -525,7 +525,7 @@
 }
 
 /* ============================================
-   Chat — centered column; rows align user right / assistant left inside column
+   Chat â€” centered column; rows align user right / assistant left inside column
    ============================================ */
 
 .dashboard-chat-shell {
@@ -544,13 +544,13 @@
   font-size: 12px;
   line-height: 1.45;
   color: var(--text-muted, #6b7280);
-  background: color-mix(in srgb, var(--bg-elevated, #f9fafb) 92%, #4f46e5 5%);
+  background: color-mix(in srgb, var(--bg-elevated, #f9fafb) 92%, #333333 5%);
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.07);
 }
 .dashboard-chat-channel-hint a {
   font-weight: 600;
-  color: var(--link-color, #4f46e5);
+  color: var(--link-color, #333333);
   text-decoration: none;
 }
 .dashboard-chat-channel-hint a:hover {
@@ -561,7 +561,7 @@
   font-size: 0.92em;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(15, 23, 42, 0.07);
+  background: rgba(0, 0, 0, 0.07);
   font-family: ui-monospace, "Cascadia Code", monospace;
 }
 
@@ -669,7 +669,7 @@
 }
 
 [data-theme="light"] .dashboard-chat-bubble.user {
-  color: var(--theme-text, #0f172a);
+  color: var(--theme-text, #111111);
 }
 
 .dashboard-chat-bubble.assistant {
@@ -678,7 +678,7 @@
 }
 
 [data-theme="light"] .dashboard-chat-bubble.assistant {
-  color: var(--theme-text, #0f172a);
+  color: var(--theme-text, #111111);
 }
 
 .dashboard-chat-row--user .dashboard-chat-identifier {
@@ -786,7 +786,7 @@
 }
 
 /* Quick Start Chips */
-/* ── Home quick chips: single row, no horizontal scroll — fit via compact type ─────── */
+/* â”€â”€ Home quick chips: single row, no horizontal scroll â€” fit via compact type â”€â”€â”€â”€â”€â”€â”€ */
 .dashboard-chips-row {
   display: flex;
   flex-wrap: wrap;
@@ -796,7 +796,7 @@
   justify-content: center;
 }
 
-/* No horizontal scroll — chips use smaller type/padding so the full row fits the column. */
+/* No horizontal scroll â€” chips use smaller type/padding so the full row fits the column. */
 .dashboard-chips-row--single-line {
   flex-wrap: nowrap;
   align-items: center;
@@ -1216,10 +1216,10 @@
 
 .dashboard-modal-error {
   padding: 10px 14px;
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 8px;
-  color: #f87171;
+  color: var(--theme-text, #1a1a1a);
   font-size: 13px;
 }
 
@@ -1233,7 +1233,7 @@
   color: var(--theme-text-inv, #18181B);
   border: none;
   border-radius: 10px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1309,16 +1309,21 @@
   font-size: 12px;
   font-weight: 700;
 }
-.agentdash-pill--good { background: rgba(16,185,129,.12); color: #059669; }
-.agentdash-pill--warn { background: rgba(245,158,11,.14); color: #d97706; }
-.agentdash-pill--bad { background: rgba(239,68,68,.12); color: #dc2626; }
-.agentdash-bar--good { background: linear-gradient(90deg,#10b981,#34d399); }
-.agentdash-bar--warn { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
-.agentdash-bar--bad { background: linear-gradient(90deg,#ef4444,#f87171); }
+.agentdash-pill--good,
+.agentdash-pill--warn,
+.agentdash-pill--bad {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--theme-text, #1a1a1a);
+}
+.agentdash-bar--good,
+.agentdash-bar--warn,
+.agentdash-bar--bad {
+  background: linear-gradient(90deg, #111111, #737373);
+}
 
 
 /* Hide the <input type="file"> proxied by the paperclip button.
-   Scoped to file inputs only — a global .hidden{display:none!important}
+   Scoped to file inputs only â€” a global .hidden{display:none!important}
    silently broke Tailwind's responsive overrides like `hidden sm:flex`,
    causing the landing/nav header items to stay hidden at every breakpoint. */
 input[type="file"].hidden {

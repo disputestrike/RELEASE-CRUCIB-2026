@@ -88,16 +88,16 @@
 }
 
 .pp-preview-state-strip--ok {
-  border-bottom-color: color-mix(in srgb, var(--state-success, #22c55e) 24%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text-primary) 18%, transparent);
 }
 
 .pp-preview-state-strip--working {
-  border-bottom-color: color-mix(in srgb, var(--state-warning, #f59e0b) 28%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text-secondary) 26%, transparent);
 }
 
 .pp-preview-state-strip--warn,
 .pp-preview-state-strip--error {
-  border-bottom-color: color-mix(in srgb, var(--state-error, #ef4444) 34%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text-muted) 34%, transparent);
 }
 
 .pp-preview-state-label {
@@ -124,8 +124,8 @@
 .pp-preview-blocked-banner {
   flex-shrink: 0;
   padding: 8px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--state-error, #ef4444) 35%, var(--border-1));
-  background: color-mix(in srgb, var(--state-error, #ef4444) 10%, var(--bg-1));
+  border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 35%, var(--border-1));
+  background: color-mix(in srgb, var(--text-muted) 8%, var(--bg-1));
 }
 
 .pp-preview-blocked-full {
@@ -312,13 +312,13 @@
 }
 
 .pp-preview-truth-fallback {
-  background: color-mix(in srgb, #f59e0b 12%, transparent);
-  color: #92400e;
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  color: var(--text-primary);
 }
 
 .pp-preview-truth-live {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #166534;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
 }
 
 .pp-preview-truth-icon {

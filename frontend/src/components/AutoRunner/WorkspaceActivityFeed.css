@@ -1,4 +1,4 @@
-/* WorkspaceActivityFeed — soft elevation, no hard box borders */
+/* WorkspaceActivityFeed - soft elevation, no hard box borders */
 
 .uw-activity-feed {
   width: 100%;
@@ -24,13 +24,13 @@
 
 [data-theme='light'] .uw-af-surface {
   background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 28px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme='light'] .uw-af-surface--secondary {
-  background: color-mix(in srgb, #ffffff 96%, #0f172a 4%);
-  border: 1px solid rgba(15, 23, 42, 0.05);
+  background: color-mix(in srgb, #ffffff 96%, #111111 4%);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: none;
 }
 
@@ -127,7 +127,7 @@
   color: var(--text-muted);
 }
 
-/* Non-collapsed stream of mapped job events (Codex-class “always see the run”) */
+/* Non-collapsed stream of mapped job events (Codex-class "always see the run") */
 .uw-af-live-strip {
   list-style: none;
   margin: 10px 0 0;
@@ -245,7 +245,7 @@
   align-items: center;
   justify-content: center;
   margin-top: 1px;
-  color: var(--uw-accent-success, #4ade80);
+  color: var(--uw-accent-success, #d4d4d4);
 }
 
 .uw-af-check.st-running .uw-af-check-ic,

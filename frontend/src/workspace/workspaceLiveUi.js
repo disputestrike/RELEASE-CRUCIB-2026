@@ -102,7 +102,7 @@ function extractActivityChipsLegacy(events, limit = 10) {
         kind = 'ok';
         break;
       case 'job_failed':
-        label = 'Run stopped';
+        label = 'Run needs repair';
         kind = 'warn';
         break;
       default:
@@ -181,7 +181,7 @@ export function computeDockMeta({ job, steps, stage, events }) {
   if (running) {
     title = humanizeAgentLabel(running.agent_name || running.step_key || '') || 'In progress';
   } else if (failed && (job?.status === 'failed' || job?.status === 'blocked')) {
-    title = humanizeAgentLabel(failed.agent_name || failed.step_key || '') || 'Needs attention';
+    title = humanizeAgentLabel(failed.agent_name || failed.step_key || '') || 'Ready to continue';
   } else if (job?.status === 'approved' && !running) {
     if (!sorted.length) {
       title = 'Starting your run';
@@ -205,12 +205,12 @@ export function computeDockMeta({ job, steps, stage, events }) {
   if (stage === 'plan') {
     stateKey = 'waiting';
     stateLabel = 'Waiting for you';
-  } else if (job?.status === 'failed' || job?.status === 'cancelled') {
+  } else if (job?.status === 'failed' || job?.status === 'blocked') {
+    stateKey = 'working';
+    stateLabel = 'Ready to continue';
+  } else if (job?.status === 'cancelled') {
     stateKey = 'needs_input';
-    stateLabel = 'Needs your note';
-  } else if (job?.status === 'blocked') {
-    stateKey = 'waiting';
-    stateLabel = 'Waiting for you';
+    stateLabel = 'Paused';
   } else if (job?.status === 'approved') {
     stateKey = 'working';
     stateLabel = 'Starting';
@@ -256,7 +256,9 @@ export function isWorkspaceLiveBuildPhase({ jobStatus, stage }) {
     stage === 'running' ||
     jobStatus === 'running' ||
     jobStatus === 'queued' ||
-    jobStatus === 'approved'
+    jobStatus === 'approved' ||
+    jobStatus === 'failed' ||
+    jobStatus === 'blocked'
   );
 }
 
@@ -264,9 +266,7 @@ export function isWorkspaceLiveBuildPhase({ jobStatus, stage }) {
  * PreviewPanel status: keep in sync with workspace run lifecycle (Sandpack / remote URL).
  */
 export function selectWorkspacePreviewStatus({ jobStatus, stage, isCompleted }) {
-  const blocked =
-    jobStatus === 'failed' || jobStatus === 'cancelled' || jobStatus === 'blocked';
-  if (blocked) return 'blocked';
+  if (jobStatus === 'cancelled') return 'blocked';
   if (isCompleted) return 'ready';
   if (isWorkspaceLiveBuildPhase({ jobStatus, stage })) {
     return 'building';
@@ -286,7 +286,7 @@ export function derivePreviewReadiness({
     return {
       state: 'blocked',
       label: 'Paused',
-      detail: devPreviewError || 'Build stopped before preview could be refreshed.',
+      detail: devPreviewError || 'Run paused before preview could be refreshed.',
       severity: 'error',
     };
   }

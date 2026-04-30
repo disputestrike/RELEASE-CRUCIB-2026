@@ -1,6 +1,6 @@
 /**
  * Unified workspace shell — design tokens scoped to .uw-root.
- * Bridges Auto Runner CSS variables to screenshot-aligned palette (#4ade80 success, #0d0d0d base).
+ * Bridges Auto Runner CSS variables to the frozen CrucibAI mono palette.
  * Global :root in index.css remains unchanged; this layer overrides inside the workspace only.
  */
 .uw-root {
@@ -10,13 +10,13 @@
   --uw-bg-elevated: #1a1a1a;
   --uw-border-subtle: rgba(255, 255, 255, 0.08);
   --uw-border-strong: rgba(255, 255, 255, 0.12);
-  --uw-text: #e5e7eb;
-  --uw-text-muted: #9ca3af;
-  --uw-accent-success: #4ade80;
-  --uw-accent-success-dim: rgba(74, 222, 128, 0.15);
-  --uw-accent-error: #f87171;
-  --uw-accent-error-dim: rgba(248, 113, 113, 0.12);
-  --uw-accent-warn: #fbbf24;
+  --uw-text: #f5f5f5;
+  --uw-text-muted: #a3a3a3;
+  --uw-accent-success: #f5f5f5;
+  --uw-accent-success-dim: rgba(255, 255, 255, 0.08);
+  --uw-accent-error: #d4d4d4;
+  --uw-accent-error-dim: rgba(255, 255, 255, 0.06);
+  --uw-accent-warn: #d4d4d4;
   --uw-tab-active-underline: var(--uw-accent-success);
 
   /* Focus ring — keyboard / :focus-visible only (see rules below) */
@@ -31,15 +31,15 @@
   --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
   --border-1: var(--uw-border-subtle);
   --border-2: var(--uw-border-strong);
-  --text-strong: #f3f4f6;
+  --text-strong: #f5f5f5;
   --text-primary: var(--uw-text);
-  --text-secondary: #a1a1aa;
+  --text-secondary: #d4d4d4;
   --text-muted: var(--uw-text-muted);
   --state-success: var(--uw-accent-success);
   --state-error: var(--uw-accent-error);
   --state-warning: var(--uw-accent-warn);
-  --state-info: #60a5fa;
-  --accent: #94a3b8;
+  --state-info: var(--uw-text-muted);
+  --accent: var(--uw-text-muted);
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
@@ -50,16 +50,16 @@
 
   /* Soft elevation (prefer over 1px hairlines inside unified workspace). */
   --uw-activity-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
-  --uw-activity-shadow-light: 0 12px 32px rgba(15, 23, 42, 0.07);
+  --uw-activity-shadow-light: 0 12px 32px rgba(0, 0, 0, 0.07);
   --uw-chrome-shadow-down: 0 14px 36px rgba(0, 0, 0, 0.35);
-  --uw-chrome-shadow-down-light: 0 10px 28px rgba(15, 23, 42, 0.06);
+  --uw-chrome-shadow-down-light: 0 10px 28px rgba(0, 0, 0, 0.06);
   --uw-chrome-sep: 0 1px 0 color-mix(in srgb, var(--uw-text) 9%, transparent);
   --uw-chrome-sep-light: 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 /* Light theme — match global app tokens (data-theme on documentElement) */
 [data-theme="light"] .uw-root {
-  /* ChatGPT-like calm neutrals + minimal green accent */
+  /* Frozen CrucibAI light neutrals: white, black, and one gray scale only. */
   --uw-bg-root: #ffffff;
   --uw-bg-surface: #ffffff;
   --uw-bg-elevated: #f7f7f8;
@@ -69,13 +69,13 @@
   --uw-text-muted: #9a9a9a;
   --uw-chat-assistant-bg: #f7f7f8;
   --uw-border-chat: rgba(0, 0, 0, 0.06);
-  --uw-accent-success: #10a37f;
-  --uw-accent-success-dim: rgba(16, 163, 127, 0.12);
-  --uw-accent-error: #c53b3b;
-  --uw-accent-error-dim: rgba(197, 59, 59, 0.1);
-  --uw-accent-warn: #b45309;
-  --uw-tab-active-underline: #10a37f;
-  --uw-focus-ring-color: #10a37f;
+  --uw-accent-success: #111111;
+  --uw-accent-success-dim: rgba(0, 0, 0, 0.06);
+  --uw-accent-error: #525252;
+  --uw-accent-error-dim: rgba(0, 0, 0, 0.06);
+  --uw-accent-warn: #525252;
+  --uw-tab-active-underline: #111111;
+  --uw-focus-ring-color: #111111;
   --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
 
   /* Bridge vars — base .uw-root used dark-tinted literals; re-map for readable light UI */
@@ -91,22 +91,22 @@
 [data-theme="light"] .uw-root .arp-env-pill {
   background: var(--uw-accent-success-dim);
   color: var(--uw-accent-success);
-  border-color: rgba(22, 163, 74, 0.35);
+  border-color: rgba(0, 0, 0, 0.18);
 }
 
 [data-theme="light"] .uw-root .arp-pane-tab.active {
-  color: var(--theme-accent, #2563eb);
-  border-bottom-color: var(--theme-accent, #2563eb);
-  background: rgba(37, 99, 235, 0.08);
+  color: var(--text-strong);
+  border-bottom-color: var(--text-strong);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="light"] .uw-root .code-pane-tabs button.active {
-  color: var(--theme-accent, #2563eb);
-  border-bottom-color: var(--theme-accent, #2563eb);
+  color: var(--text-strong);
+  border-bottom-color: var(--text-strong);
 }
 
 [data-theme="light"] .uw-root .iterative-strip button.primary {
-  background: var(--theme-accent, #2563eb);
+  background: var(--text-strong);
   color: #ffffff;
 }
 
@@ -169,7 +169,7 @@
   border-radius: 999px;
   color: var(--text-secondary);
   background: #f1f3f7;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 [data-theme='dark'] .uw-build-identity-chip {
@@ -211,12 +211,12 @@
   border-radius: 6px;
   background: var(--uw-accent-success-dim);
   color: var(--uw-accent-success);
-  border: 1px solid rgba(74, 222, 128, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   font-family: ui-monospace, monospace;
 }
 
 .uw-root .arp-topbar-btn-share {
-  border-color: rgba(74, 222, 128, 0.25);
+  border-color: var(--uw-border-strong);
 }
 
 .uw-root .arp-pane-tab.active {
@@ -224,7 +224,7 @@
   border-color: transparent;
   border-bottom: 2px solid var(--uw-tab-active-underline);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: rgba(74, 222, 128, 0.06);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .uw-root .iterative-strip {
@@ -271,7 +271,7 @@
   border-radius: var(--radius-sm);
   border: none;
   background: var(--uw-accent-success);
-  color: #0a0a0a;
+  color: var(--uw-bg-root);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -401,7 +401,7 @@
 }
 
 [data-theme='light'] .uw-root .arp-center-toolbar.uw-center-headline {
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.05);
 }
 
 .uw-root .uw-center-headline-brand {
@@ -468,8 +468,8 @@
 }
 
 .uw-root .uw-status-chip:hover {
-  background: rgba(99, 102, 241, 0.06);
-  border-color: rgba(99, 102, 241, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--uw-border-strong);
   color: var(--text-strong, #18181b);
 }
 
@@ -481,14 +481,14 @@
 }
 
 .uw-root .uw-status-chip--running .uw-status-dot {
-  background: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  background: var(--text-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--text-strong) 12%, transparent);
   animation: uw-status-pulse 1.6s ease-in-out infinite;
 }
 
-.uw-root .uw-status-chip--success .uw-status-dot { background: #16a34a; }
-.uw-root .uw-status-chip--failed  .uw-status-dot { background: #dc2626; }
-.uw-root .uw-status-chip--warn    .uw-status-dot { background: #d97706; }
+.uw-root .uw-status-chip--success .uw-status-dot { background: var(--text-strong); }
+.uw-root .uw-status-chip--failed  .uw-status-dot { background: var(--text-muted); }
+.uw-root .uw-status-chip--warn    .uw-status-dot { background: var(--text-secondary); }
 .uw-root .uw-status-chip--idle    .uw-status-dot { background: #a1a1aa; }
 
 @keyframes uw-status-pulse {
@@ -511,7 +511,7 @@
   border-radius: 10px;
   background: var(--surface-strong, #ffffff);
   border: 1px solid var(--crucibai-border, rgba(24, 24, 27, 0.1));
-  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -531,11 +531,11 @@
 }
 
 .uw-root .uw-status-menu-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(0, 0, 0, 0.06);
 }
 
-.uw-root .uw-status-menu-item--danger { color: #dc2626; }
-.uw-root .uw-status-menu-item--danger:hover { background: rgba(220, 38, 38, 0.08); }
+.uw-root .uw-status-menu-item--danger { color: var(--text-strong); }
+.uw-root .uw-status-menu-item--danger:hover { background: rgba(0, 0, 0, 0.06); }
 
 .uw-root .uw-status-menu-empty {
   padding: 8px 10px;
@@ -560,7 +560,7 @@
 }
 
 [data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {
-  box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.05);
 }
 
 .uw-root .arp-right-pane:not(.collapsed) {
@@ -569,7 +569,7 @@
 }
 
 [data-theme='light'] .uw-root .arp-right-pane:not(.collapsed) {
-  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.06);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.06);
 }
 
 .uw-root .arp-right-toolbar {
@@ -583,7 +583,7 @@
 }
 
 [data-theme='light'] .uw-root .arp-right-toolbar {
-  box-shadow: var(--uw-chrome-sep-light), 0 8px 20px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--uw-chrome-sep-light), 0 8px 20px rgba(0, 0, 0, 0.04);
 }
 
 .uw-root .arp-pane-tabs {
@@ -604,8 +604,8 @@
 /* Light: white shell — do not gray-wash the composer (was color-mix read as “heavy gray”). */
 [data-theme='light'] .uw-root .gc-composer-shell {
   background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .uw-root .gc-composer-footer {
@@ -615,5 +615,10 @@
 
 [data-theme='light'] .uw-root .gc-composer-footer {
   background: #fbfbfc;
-  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
+.uw-root,
+.uw-root * {
+  font-family: inherit;
 }

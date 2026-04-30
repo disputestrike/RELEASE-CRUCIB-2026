@@ -1,4 +1,4 @@
-/* Layout — 3-Column wrapper styles. Responds to data-theme="light"|"dark" */
+﻿/* Layout â€” 3-Column wrapper styles. Responds to data-theme="light"|"dark" */
 
 /* Mobile Header */
 .layout-mobile-header-bar {
@@ -76,7 +76,7 @@
   background: var(--theme-bg);
 }
 
-/* Top bar — no hairline under credits (Manus-like; avoids “grid line” under 200) */
+/* Top bar â€” no hairline under credits (Manus-like; avoids â€œgrid lineâ€ under 200) */
 .layout-topbar {
   display: flex; align-items: center; justify-content: flex-end;
   padding: 8px 20px;
@@ -159,7 +159,7 @@
 
 .layout-page-content--fullbleed { padding: 0; overflow: hidden; }
 
-/* Dashboard home: full main width — no double padding “choking” the chat column */
+/* Dashboard home: full main width â€” no double padding â€œchokingâ€ the chat column */
 .layout-page-content--dash-home {
   padding: 0;
 }
@@ -192,8 +192,8 @@
 
 .layout-footer-links { margin-left: auto; display: flex; gap: 16px; }
 .layout-footer-status { display: flex; align-items: center; gap: 6px; }
-.status-green { color: #16a34a; }
-[data-theme="dark"] .status-green { color: #86efac; }
+.status-green { color: var(--theme-text); }
+[data-theme="dark"] .status-green { color: var(--theme-text); }
 .status-amber { color: var(--theme-text); }
 [data-theme="dark"] .status-amber { color: var(--theme-muted, #a1a1aa); }
 .status-gray { color: var(--theme-muted); }
@@ -216,7 +216,7 @@
   background: var(--theme-bg);
 }
 
-/* Home chat (`/app`): single centered trust line — no links, no status row */
+/* Home chat (`/app`): single centered trust line â€” no links, no status row */
 .layout-footer--chat-trust-only {
   justify-content: center;
   align-items: center;
@@ -243,13 +243,13 @@
 
 /* Light theme: ensure footer text is always legible (dark on light) */
 [data-theme="light"] .layout-footer {
-  color: #374151;
+  color: #333333;
 }
 [data-theme="light"] .layout-footer-links a {
   color: #4b5563;
 }
 [data-theme="light"] .layout-footer-links a:hover {
-  color: #1f2937;
+  color: #171717;
 }
 
 @media (max-width: 1024px) { .layout-mobile-header-bar { display: flex; } }

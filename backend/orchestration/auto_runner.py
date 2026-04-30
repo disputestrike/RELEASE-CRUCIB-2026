@@ -1430,7 +1430,7 @@ async def prepare_failed_job_for_rerun(job_id: str) -> int:
     Returns number of steps reset (0 if job was not failed).
     """
     job = await get_job(job_id)
-    if not job or job.get("status") != "failed":
+    if not job or job.get("status") not in {"failed", "blocked", "cancelled"}:
         return 0
     steps = await get_steps(job_id)
     n = 0

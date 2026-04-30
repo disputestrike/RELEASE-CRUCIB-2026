@@ -14,8 +14,8 @@
   --dvx-hover: rgba(15, 15, 15, 0.04);
   --dvx-hover-2: rgba(15, 15, 15, 0.06);
   --dvx-accent-ink: #0f0f0f;
-  --dvx-upgrade-bg: #F3EEFF;
-  --dvx-upgrade-ink: #6D28D9;
+  --dvx-upgrade-bg: #f3f3f3;
+  --dvx-upgrade-ink: #0f0f0f;
 }
 
 /* ---------- root / layout ---------- */
