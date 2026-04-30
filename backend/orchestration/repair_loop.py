@@ -621,48 +621,34 @@ class RepairAgentInterface:
         raise NotImplementedError
 
 
-# Example repair agent implementations (stubs for reference)
+# ---------------------------------------------------------------------------
+# Real repair agents — imported from backend.agents.repair_agents
+#
+# The stub implementations have been replaced with actual code-fixing agents
+# that read broken files, send errors to LLM, get fixes, validate, and write
+# back.  Every agent returns honest success/failure — none fake success=True.
+# ---------------------------------------------------------------------------
 
-class SyntaxRepairAgent(RepairAgentInterface):
-    """Repairs syntax errors in code files."""
-    
-    async def repair(self, contract_item_id, contract, workspace_path, error_context, priority):
-        # Implementation would fix syntax errors
-        return {"success": True, "files_modified": [contract_item_id.split(":")[1]]}
-
-
-class ImportRepairAgent(RepairAgentInterface):
-    """Repairs missing import errors."""
-    
-    async def repair(self, contract_item_id, contract, workspace_path, error_context, priority):
-        missing_import = error_context.get("missing_import")
-        # Implementation would add missing imports or create stub files
-        return {"success": True, "files_modified": []}
+from backend.agents.repair_agents import (                # noqa: E402  (late import is intentional — avoids circular deps)
+    LLMCodeRepairAgent,
+    NpmDependencyRepairAgent,
+    PythonImportRepairAgent,
+    SyntaxRepairAgent,
+    TemplateRefillAgent,
+)
 
 
-class RouteGenerationAgent(RepairAgentInterface):
-    """Generates missing routes/pages."""
-    
-    async def repair(self, contract_item_id, contract, workspace_path, error_context, priority):
-        # Implementation would generate the missing route/page
-        route = contract_item_id.split(":")[1]
-        # Generate page component
-        return {"success": True, "files_modified": [f"client/src/pages/{route.strip('/').capitalize()}.tsx"]}
+def get_default_repair_agents() -> Dict[str, RepairAgentInterface]:
+    """Return the standard agent pool keyed by the names used in RepairRouter.
 
-
-class ContractRepairAgent(RepairAgentInterface):
-    """Repairs contract violations by generating missing contract items."""
-    
-    async def repair(self, contract_item_id, contract, workspace_path, error_context, priority):
-        # Implementation would generate missing contract items
-        item_type = contract_item_id.split(":")[0]
-        item_name = contract_item_id.split(":")[1]
-        
-        if item_type == "required_files":
-            # Generate the missing file
-            return {"success": True, "files_modified": [item_name]}
-        elif item_type == "required_routes":
-            # Generate the missing route
-            return {"success": True, "files_modified": [f"client/src/pages/{item_name.strip('/').capitalize()}.tsx"]}
-        
-        return {"success": False, "error": f"Unknown contract item type: {item_type}"}
+    These are drop-in replacements for the old stub agents.  Each agent
+    implements ``RepairAgentInterface.repair()`` and returns the standard
+    result dict: ``{success, files_modified, error, repair_strategy}``.
+    """
+    return {
+        "llm_code_repair": LLMCodeRepairAgent(),
+        "npm_dependency_repair": NpmDependencyRepairAgent(),
+        "python_import_repair": PythonImportRepairAgent(),
+        "syntax_repair": SyntaxRepairAgent(),
+        "template_refill": TemplateRefillAgent(),
+    }

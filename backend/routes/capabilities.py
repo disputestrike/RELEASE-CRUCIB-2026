@@ -545,3 +545,32 @@ async def validate_scheduled_task(body: ScheduledTaskValidateBody, user: dict = 
             "audit_log": persisted_audit,
         },
     }
+
+
+# ── Stack Confidence Endpoint ──────────────────────────────────────────────
+
+
+@router.get("/stacks")
+async def list_supported_stacks(user: dict = Depends(_get_optional_user())):
+    """Returns all supported stacks with confidence scores from the template registry."""
+    try:
+        from backend.agents.templates import list_templates
+
+        templates = list_templates()
+        return {
+            "stacks": [
+                {
+                    "id": t["id"],
+                    "language": t["language"],
+                    "framework": t["framework"],
+                    "confidence": t["confidence"],
+                    "build_command": t.get("build_command", ""),
+                    "run_command": t.get("run_command", ""),
+                }
+                for t in templates
+            ],
+            "total": len(templates),
+        }
+    except Exception as e:
+        logger.warning("Failed to list supported stacks: %s", e)
+        return {"stacks": [], "error": str(e), "total": 0}

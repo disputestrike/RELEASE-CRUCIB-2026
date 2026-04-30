@@ -1,8 +1,12 @@
 """
 frontend_agent.py — Frontend code generation agent for CrucibAI.
 
-Generates React/Vite frontend code from a goal description.
-Produces real components, pages, routing, and styling.
+Generates frontend code from a goal description. Currently supports:
+  - React/Vite (default, fully implemented)
+
+Architecture is multi-framework ready — new frontend templates
+(nextjs, vue, etc.) can be added to the template registry and this
+agent will route to them via ``context["frontend_framework"]``.
 """
 
 import json
@@ -14,7 +18,12 @@ from backend.agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """\
+# ---------------------------------------------------------------------------
+# Framework-specific system prompts
+# ---------------------------------------------------------------------------
+
+_SYSTEM_PROMPTS: Dict[str, str] = {
+    "react_vite": """\
 You are a senior React frontend engineer. Given a product goal, generate a COMPLETE working React frontend.
 
 ## CRITICAL RULES
@@ -52,15 +61,81 @@ Return a single JSON object:
 }
 
 Do NOT wrap the JSON in markdown fences. Output raw JSON only.\
-"""
+""",
+
+    # --- Placeholder prompts for future frameworks ---
+    "nextjs": """\
+You are a senior React/Next.js frontend engineer. Given a product goal, generate a COMPLETE working Next.js application.
+
+## CRITICAL RULES
+1. Output ONLY a JSON object with a "files" key mapping file paths to their content.
+2. Every file must contain REAL, WORKING code — no placeholders, no TODO, no "..." stubs.
+3. Use Next.js with App Router.
+4. Use TypeScript (.tsx, .ts).
+5. All pages go under "app/" directory.
+6. Components must be valid React Server Components or Client Components as appropriate.
+
+## OUTPUT FORMAT
+Return a single JSON object with "files" key.
+Do NOT wrap the JSON in markdown fences. Output raw JSON only.\
+""",
+
+    "vue": """\
+You are a senior Vue.js frontend engineer. Given a product goal, generate a COMPLETE working Vue.js application.
+
+## CRITICAL RULES
+1. Output ONLY a JSON object with a "files" key mapping file paths to their content.
+2. Every file must contain REAL, WORKING code — no placeholders, no TODO, no "..." stubs.
+3. Use Vue 3 with Composition API.
+4. Use Vue Router for routing.
+5. Use Pinia for state management.
+
+## OUTPUT FORMAT
+Return a single JSON object with "files" key.
+Do NOT wrap the JSON in markdown fences. Output raw JSON only.\
+""",
+}
+
+# ---------------------------------------------------------------------------
+# Template imports (with safety net)
+# ---------------------------------------------------------------------------
+
+_TEMPLATE_GENERATORS: Dict[str, Any] = {}
+
+try:
+    from backend.agents.templates import generate_react_vite
+    _TEMPLATE_GENERATORS["react_vite"] = generate_react_vite
+    _TEMPLATES_AVAILABLE = True
+except (ImportError, SyntaxError) as exc:
+    logger.warning("FrontendAgent: template import failed — LLM-only mode: %s", exc)
+    _TEMPLATES_AVAILABLE = False
+
+# Mapping of context framework names to template generator keys
+_FRAMEWORK_TO_TEMPLATE: Dict[str, str] = {
+    "react_vite": "react_vite",
+    "react": "react_vite",
+    "react+vite": "react_vite",
+    "nextjs": "nextjs",
+    "vue": "vue",
+}
 
 
 class FrontendAgent(BaseAgent):
-    """Generates React/Vite frontend code from a goal."""
+    """Generates frontend code from a goal.
+
+    Currently supports React/Vite as the primary template. The architecture
+    is multi-framework ready — new frameworks can be added by registering
+    their template generators in the template registry and updating
+    ``_SYSTEM_PROMPTS`` / ``_FRAMEWORK_TO_TEMPLATE`` above.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = "FrontendAgent"
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
 
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
@@ -75,62 +150,243 @@ class FrontendAgent(BaseAgent):
             raise ValueError("FrontendAgent output must contain a 'files' dictionary")
         return True
 
+    # ------------------------------------------------------------------
+    # Main execution
+    # ------------------------------------------------------------------
+
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        logger.info("REAL_FRONTEND_AGENT_USED")
         goal = (context.get("goal") or context.get("user_prompt") or "").strip()
         if not goal:
             return {"status": "error", "reason": "no_goal", "files": {}}
 
-        user_prompt = (
-            f"Build a complete React frontend for this goal:\n\n{goal}\n\n"
-            f"Generate the full JSON with all frontend files. Include at minimum:\n"
-            f"- src/main.jsx (createRoot with StrictMode)\n"
-            f"- src/App.jsx (BrowserRouter with at least 3 routes: /, /dashboard, /login)\n"
-            f"- src/pages/HomePage.jsx (real landing page content about the goal)\n"
-            f"- src/pages/DashboardPage.jsx (real dashboard with cards, stats, data)\n"
-            f"- src/pages/LoginPage.jsx (working login form with email/password)\n"
-            f"- src/store/useAppStore.js (zustand store with user, items, loading state)\n"
-            f"- src/components/ErrorBoundary.jsx (class component error boundary)\n"
-            f"- src/components/ShellLayout.jsx (nav bar + main content area)\n"
-            f"- src/styles/global.css (professional styling with CSS variables)\n"
-            f"Make every page have REAL content — real headings, real descriptions, real data.\n"
-            f"Use inline styles or CSS classes. The app should look like a real product."
-        )
+        # ----------------------------------------------------------------
+        # Step 1: Determine the frontend framework
+        # ----------------------------------------------------------------
+        framework = self._resolve_framework(context)
+        logger.info("FrontendAgent: resolved framework=%s", framework)
 
-        try:
-            raw, tokens = await self.call_llm(
-                user_prompt=user_prompt,
-                system_prompt=_SYSTEM_PROMPT,
-                model="cerebras",
-                temperature=0.4,
-                max_tokens=10000,
-                stream=True,
-            )
-        except Exception as e:
-            logger.error("FrontendAgent LLM call failed: %s", e)
-            return {
-                "status": "error",
-                "reason": f"llm_failure: {e}",
-                "files": {},
-            }
+        # ----------------------------------------------------------------
+        # Step 2: Generate base files using templates
+        # ----------------------------------------------------------------
+        files: Dict[str, str] = {}
+        generation_method = "none"
 
-        files = self._extract_files(raw)
+        if _TEMPLATES_AVAILABLE:
+            template_key = _FRAMEWORK_TO_TEMPLATE.get(framework)
+            if template_key and template_key in _TEMPLATE_GENERATORS:
+                try:
+                    project_name = self._derive_project_name(goal)
+                    files = _TEMPLATE_GENERATORS[template_key](goal, project_name)
+                    generation_method = "templates"
+                    logger.info("FrontendAgent: generated %d files from template %s", len(files), template_key)
+                except Exception as exc:
+                    logger.error("FrontendAgent: template generation failed: %s", exc)
+
+        # ----------------------------------------------------------------
+        # Step 3: If templates produced files, optionally customize via LLM
+        # ----------------------------------------------------------------
+        if files and generation_method == "templates":
+            customize = context.get("customize_with_llm", True)
+            if customize:
+                try:
+                    files = await self._customize_with_llm(files, goal, framework)
+                    generation_method = "templates+llm"
+                    logger.info("FrontendAgent: LLM customization applied")
+                except Exception as exc:
+                    logger.warning("FrontendAgent: LLM customization failed (keeping templates): %s", exc)
+
+        # ----------------------------------------------------------------
+        # Step 4: Fall back to LLM-only if templates unavailable or failed
+        # ----------------------------------------------------------------
         if not files:
-            logger.warning("FrontendAgent: LLM output was not valid file dict, raw=%s...", (raw or "")[:300])
-            return {
-                "status": "error",
-                "reason": "no_files_parsed",
-                "files": {},
-                "_raw": raw,
-            }
+            logger.info("FrontendAgent: falling back to LLM-only generation")
+            try:
+                files = await self._generate_with_llm(goal, framework)
+                generation_method = "llm_fallback"
+            except Exception as exc:
+                logger.error("FrontendAgent: LLM generation failed: %s", exc)
+                return {
+                    "status": "error",
+                    "reason": f"all_generation_failed: {exc}",
+                    "files": {},
+                }
 
-        # Ensure critical frontend files exist
-        files = self._ensure_critical_files(files, goal)
+        # ----------------------------------------------------------------
+        # Step 5: Ensure critical frontend files exist (safety net)
+        # ----------------------------------------------------------------
+        files = self._ensure_critical_files(files, goal, framework)
 
-        return {
+        # ----------------------------------------------------------------
+        # Step 6: Build result
+        # ----------------------------------------------------------------
+        result: Dict[str, Any] = {
             "status": "success",
             "files": files,
             "_agent": "FrontendAgent",
+            "_generation_method": generation_method,
+            "_frontend_framework": framework,
         }
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Framework resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_framework(self, context: Dict[str, Any]) -> str:
+        """Determine the frontend framework from context or defaults.
+
+        Priority:
+        1. Explicit ``frontend_framework`` in context
+        2. Framework embedded in ``selected_stack`` dict
+        3. Auto-detect from goal text (basic keyword matching)
+        4. Default to ``react_vite``
+        """
+        # 1. Explicit framework
+        framework = context.get("frontend_framework")
+        if framework and isinstance(framework, str):
+            fw = framework.lower().strip()
+            if fw in _SYSTEM_PROMPTS or fw in _FRAMEWORK_TO_TEMPLATE:
+                return _FRAMEWORK_TO_TEMPLATE.get(fw, fw)
+
+        # 2. From selected_stack
+        selected_stack = context.get("selected_stack")
+        if selected_stack and isinstance(selected_stack, dict):
+            stack_fw = selected_stack.get("framework", "")
+            if stack_fw:
+                _fw_map = {
+                    "react+vite": "react_vite",
+                    "fastapi": "react_vite",    # backend stack → default frontend
+                    "express": "react_vite",    # backend stack → default frontend
+                }
+                fw = _fw_map.get(stack_fw.lower(), stack_fw.lower())
+                if fw in _SYSTEM_PROMPTS or fw in _FRAMEWORK_TO_TEMPLATE:
+                    return _FRAMEWORK_TO_TEMPLATE.get(fw, fw)
+
+        # 3. Basic keyword auto-detect from goal
+        goal = (context.get("goal") or context.get("user_prompt") or "").lower()
+        if "next.js" in goal or "nextjs" in goal or "next js" in goal:
+            return "nextjs"
+        if "vue" in goal and "vue" not in "preview" and "review" not in goal:
+            return "vue"
+        # React/Vite is the default — any mention of react/vite reinforces it
+
+        # 4. Default
+        return "react_vite"
+
+    # ------------------------------------------------------------------
+    # LLM customization of template output
+    # ------------------------------------------------------------------
+
+    async def _customize_with_llm(
+        self,
+        template_files: Dict[str, str],
+        goal: str,
+        framework: str,
+    ) -> Dict[str, str]:
+        """Call LLM to enhance template output with goal-specific content."""
+        system_prompt = _SYSTEM_PROMPTS.get(framework, _SYSTEM_PROMPTS["react_vite"])
+
+        file_list = "\n".join(f"  - {path}" for path in sorted(template_files.keys()))
+        user_prompt = (
+            f"An application frontend is being built for this goal:\n\n{goal}\n\n"
+            f"Template-generated files (base scaffold):\n{file_list}\n\n"
+            f"Your job is to CUSTOMIZE these files for the specific goal. Output a JSON object "
+            f'with a "files" key. Each key is a file path from the list above, and the value is '
+            f"the ENHANCED content. You may also add NEW files not in the list.\n\n"
+            f"Rules:\n"
+            f"- Keep the same file structure and conventions as the templates.\n"
+            f"- Make content specific to the goal (real headings, real descriptions, real data).\n"
+            f"- Do NOT change imports, framework setup, or configuration that makes the app work.\n"
+            f"- Every page should have REAL content — real headings, real descriptions, real data.\n"
+            f"- Output ONLY the JSON with the \"files\" key. No markdown fences."
+        )
+
+        raw, _tokens = await self.call_llm(
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            model="cerebras",
+            temperature=0.4,
+            max_tokens=10000,
+            stream=True,
+        )
+
+        llm_files = self._extract_files(raw)
+        if llm_files:
+            # Merge: template files form the base, LLM enhancements overlay
+            return {**template_files, **llm_files}
+
+        return template_files
+
+    # ------------------------------------------------------------------
+    # Pure LLM generation (when templates unavailable)
+    # ------------------------------------------------------------------
+
+    async def _generate_with_llm(self, goal: str, framework: str) -> Dict[str, str]:
+        """Generate files entirely via LLM."""
+        system_prompt = _SYSTEM_PROMPTS.get(framework, _SYSTEM_PROMPTS["react_vite"])
+
+        if framework == "react_vite":
+            user_prompt = (
+                f"Build a complete React frontend for this goal:\n\n{goal}\n\n"
+                f"Generate the full JSON with all frontend files. Include at minimum:\n"
+                f"- src/main.jsx (createRoot with StrictMode)\n"
+                f"- src/App.jsx (BrowserRouter with at least 3 routes: /, /dashboard, /login)\n"
+                f"- src/pages/HomePage.jsx (real landing page content about the goal)\n"
+                f"- src/pages/DashboardPage.jsx (real dashboard with cards, stats, data)\n"
+                f"- src/pages/LoginPage.jsx (working login form with email/password)\n"
+                f"- src/store/useAppStore.js (zustand store with user, items, loading state)\n"
+                f"- src/components/ErrorBoundary.jsx (class component error boundary)\n"
+                f"- src/components/ShellLayout.jsx (nav bar + main content area)\n"
+                f"- src/styles/global.css (professional styling with CSS variables)\n"
+                f"Make every page have REAL content — real headings, real descriptions, real data.\n"
+                f"Use inline styles or CSS classes. The app should look like a real product."
+            )
+        elif framework == "nextjs":
+            user_prompt = (
+                f"Build a complete Next.js frontend for this goal:\n\n{goal}\n\n"
+                f"Generate the full JSON with all frontend files. Use App Router with TypeScript.\n"
+                f"Include at minimum: app/layout.tsx, app/page.tsx, and at least 3 more pages.\n"
+                f"Make every page have REAL content related to the goal."
+            )
+        elif framework == "vue":
+            user_prompt = (
+                f"Build a complete Vue.js frontend for this goal:\n\n{goal}\n\n"
+                f"Generate the full JSON with all frontend files. Use Vue 3 with Composition API.\n"
+                f"Include at minimum: src/main.ts, src/App.vue, and at least 3 pages/views.\n"
+                f"Make every page have REAL content related to the goal."
+            )
+        else:
+            user_prompt = (
+                f"Build a complete React frontend for this goal:\n\n{goal}\n\n"
+                f"Generate the full JSON with all frontend files.\n"
+                f"Make every page have REAL content related to the goal."
+            )
+
+        raw, _tokens = await self.call_llm(
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            model="cerebras",
+            temperature=0.4,
+            max_tokens=10000,
+            stream=True,
+        )
+
+        return self._extract_files(raw)
+
+    # ------------------------------------------------------------------
+    # Utility helpers
+    # ------------------------------------------------------------------
+
+    def _derive_project_name(self, goal: str) -> str:
+        """Derive a safe project name from the goal text."""
+        import re
+        words = re.findall(r"[a-zA-Z0-9]+", goal.lower())
+        if not words:
+            return "app"
+        meaningful = [w for w in words if len(w) > 2][:3]
+        return "_".join(meaningful) if meaningful else words[0]
 
     def _extract_files(self, raw: str) -> Dict[str, str]:
         """Extract file dict from LLM response."""
@@ -178,9 +434,35 @@ class FrontendAgent(BaseAgent):
 
         return {}
 
-    def _ensure_critical_files(self, files: Dict[str, str], goal: str) -> Dict[str, str]:
-        """Ensure all required frontend files exist."""
-        goal_escaped = json.dumps(goal[:200])
+    def _ensure_critical_files(
+        self, files: Dict[str, str], goal: str, framework: str = "react_vite",
+    ) -> Dict[str, str]:
+        """Ensure all required frontend files exist.
+
+        Framework-aware — only injects files matching the active framework.
+        Falls back to React/Vite defaults.
+        """
+        if framework in ("react_vite", "react"):
+            self._ensure_react_vite_files(files)
+        elif framework == "nextjs":
+            # Future: add Next.js critical file injection
+            logger.info("FrontendAgent: nextjs critical file checks not yet implemented")
+        elif framework == "vue":
+            # Future: add Vue critical file injection
+            logger.info("FrontendAgent: vue critical file checks not yet implemented")
+        else:
+            self._ensure_react_vite_files(files)
+
+        return files
+
+    # ------------------------------------------------------------------
+    # React/Vite critical file fallback (preserved from original)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _ensure_react_vite_files(files: Dict[str, str]) -> None:
+        """Inject missing React/Vite frontend files."""
+        goal_escaped = "{}"  # Safety escape for f-string templates
 
         if "src/main.jsx" not in files:
             files["src/main.jsx"] = """\
@@ -320,5 +602,3 @@ a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font: inherit; }
 input, textarea { font: inherit; }
 """
-
-        return files

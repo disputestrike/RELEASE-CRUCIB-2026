@@ -1229,6 +1229,29 @@ async def handle_frontend_generate(
         except Exception as e:
             logger.exception("Preview-contract hardening failed: %s", e)
 
+    # ── Runtime validation gate ──────────────────────────────────────────
+    if workspace_path and out:
+        try:
+            from .runtime_validator import validate_generated_workspace
+
+            vr = await validate_generated_workspace(
+                workspace_path=workspace_path,
+                goal=goal,
+                stack_id=job.get("build_target"),
+            )
+            logger.info(
+                "Runtime validation: passed=%s language=%s hints=%s",
+                vr.get("passed"),
+                vr.get("language"),
+                vr.get("repair_hints", [])[:5],
+            )
+            if vr.get("repair_hints"):
+                logger.warning(
+                    "Runtime validation hints: %s", vr.get("repair_hints", [])[:10]
+                )
+        except Exception as exc:
+            logger.debug("Runtime validation skipped: %s", exc)
+
     logger.info(f"=== FRONTEND HANDLER END: {len(out)} files ===")
 
     return {
