@@ -77,6 +77,38 @@ def get_agent_description(agent_key: str) -> str:
     return readable if readable else AGENT_TO_DESCRIPTION["default"]
 
 
+def _summarize_goal_for_intro(goal: str) -> str:
+    """Trim and clean the user goal so it can be embedded inside an intro
+    sentence. Returns '' if the goal isn't suitable (too short, generic)."""
+    if not goal:
+        return ""
+    g = " ".join(str(goal).strip().split())
+    if not g:
+        return ""
+    # Drop a leading imperative ("Build me a ...", "Create an ...") so the
+    # intro reads naturally: "I'll build a ..." rather than "I'll Build me a ...".
+    lowered = g.lower()
+    for prefix in (
+        "build me a ", "build me an ", "build me ",
+        "build a ", "build an ", "build ",
+        "create me a ", "create me an ", "create me ",
+        "create a ", "create an ", "create ",
+        "make me a ", "make me an ", "make ",
+        "design a ", "design an ", "design ",
+        "develop a ", "develop an ", "develop ",
+        "generate a ", "generate an ", "generate ",
+    ):
+        if lowered.startswith(prefix):
+            g = g[len(prefix):]
+            break
+    g = g.strip().rstrip(".!?")
+    if len(g) < 6:
+        return ""
+    if len(g) > 240:
+        g = g[:237].rstrip() + "..."
+    return g
+
+
 def build_execution_think_payload(
     job: Dict[str, Any], steps: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
@@ -96,29 +128,39 @@ def build_execution_think_payload(
 
     completed = sum(1 for s in steps if s.get("status") == "completed")
     pending = sum(1 for s in steps if s.get("status") == "pending")
+    goal_summary = _summarize_goal_for_intro(job.get("goal") or "")
 
     if phase == "resuming_after_failure":
         headline = "Continuing your run"
         summary = (
-            "I'm picking up from where things stopped: addressing what blocked checks first, "
+            "I'm picking up from where things stopped - addressing what blocked checks first, "
             "then moving the rest of your plan forward on this same run."
         )
     elif completed == 0 and pending == total:
-        headline = "Starting your build"
-        summary = (
-            "I've reviewed your approved plan and I'm beginning execution: foundation and dependencies first, "
-            "then features and quality checks in order."
-        )
+        # Manus-style: "I will build <X>. I'll start by initializing the project
+        # and then proceed with the development." Falls back to a generic line
+        # if the goal didn't yield a usable summary.
+        if goal_summary:
+            headline = f"I'll build {goal_summary}"
+            summary = (
+                "I'll start by initializing the project and setting up the foundation, "
+                "then build the screens and features, and finish with verification and a live preview."
+            )
+        else:
+            headline = "Starting your build"
+            summary = (
+                "I'll initialize the project and set up the foundation first, then build the screens and "
+                "features, and finish with verification and a live preview."
+            )
     elif completed > 0:
         headline = "Continuing your build"
         summary = (
-            "I'm resuming this run, building on what's already done and finishing what's left in the plan."
+            "I'm picking this run back up - finishing what's left in the plan and re-running checks "
+            "as needed."
         )
     else:
         headline = "Starting your build"
-        summary = (
-            "I'm moving this plan forward step by step, keeping progress visible in Preview and Proof."
-        )
+        summary = "I'm moving this plan forward step by step. You'll see progress in Preview and Proof."
 
     return {
         "kind": "execution_think",

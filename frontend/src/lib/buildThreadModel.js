@@ -216,24 +216,44 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
   /**
    * HARD GUARANTEE: the first user message renders at index 0.
-   * We split the items into two arrays: [firstUser] and rest. The rest is sorted
-   * by ts, and the first user message is unconditionally prepended.
+   * - We pin the first message whose role is 'user' (assistant brain_guidance
+   *   messages can be timestamped earlier than the goal in some races - they
+   *   must NEVER be promoted to the top user prompt).
+   * - All other messages (subsequent user steering + assistant chat) flow
+   *   through restItems and are sorted by ts.
    */
-  const firstUser = userMsgs.length ? userMsgs[0] : null;
-  const restUserMsgs = userMsgs.slice(1);
+  const firstUserIdx = userMsgs.findIndex((m) => m.role === 'user');
+  const firstUser = firstUserIdx >= 0 ? userMsgs[firstUserIdx] : null;
+  const restUserMsgs = userMsgs.filter((_, i) => i !== firstUserIdx);
 
-  // Process events into thread-rest items
   const restItems = [];
 
-  // Push remaining user messages (steering) into rest by ts
+  /**
+   * Dedupe consecutive assistant messages with identical content. The backend
+   * emits brain_guidance both as a chat message (via UnifiedWorkspace's
+   * brainEvents effect) and as a job event - we only want to surface it once.
+   */
+  const lastAssistantContentRef = { value: null };
+  const pushAssistantOnce = (content, ts, id) => {
+    const trimmed = (content || '').trim();
+    if (!trimmed) return;
+    if (lastAssistantContentRef.value === trimmed) return;
+    lastAssistantContentRef.value = trimmed;
+    restItems.push({ kind: 'assistant_message', role: 'assistant', content: trimmed, ts, id });
+  };
+
   for (const m of restUserMsgs) {
-    restItems.push({
-      kind: m.role === 'assistant' ? 'assistant_message' : 'user_message',
-      role: m.role,
-      content: m.body,
-      ts: m.ts,
-      id: m.id || newId('um'),
-    });
+    if (m.role === 'assistant') {
+      pushAssistantOnce(m.body, m.ts, m.id || newId('am'));
+    } else {
+      restItems.push({
+        kind: 'user_message',
+        role: 'user',
+        content: m.body,
+        ts: m.ts,
+        id: m.id || newId('um'),
+      });
+    }
   }
 
   let bucket = null;
@@ -261,30 +281,20 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     const t = ev.type || ev.event_type || '';
     if (!t) continue;
     if (t === 'user_instruction' || t === 'workspace_transcript') continue;
+    // brain_guidance / generic message events are already pushed into the chat
+    // message stream by UnifiedWorkspace - skip them here so we don't duplicate.
+    if (t === 'brain_guidance' || t === 'message') continue;
 
     if (t === 'plan_created') {
       flushBucket();
-      restItems.push({
-        kind: 'assistant_message',
-        role: 'assistant',
-        content:
-          narrateBuildEvent(ev) ||
-          "I've reviewed your request. Here's the plan I'll follow.",
+      pushAssistantOnce(
+        narrateBuildEvent(ev) || "I've reviewed your request. Here's the plan I'll follow.",
         ts,
-        id: newId('am'),
-      });
+        newId('am'),
+      );
       const steps = extractPlanSteps(ev);
       if (steps.length) {
         restItems.push({ kind: 'plan_block', title: 'Build plan', steps, ts, id: newId('pb') });
-      }
-      continue;
-    }
-
-    if (t === 'brain_guidance' || t === 'message') {
-      flushBucket();
-      const text = narrateBuildEvent(ev);
-      if (text) {
-        restItems.push({ kind: 'assistant_message', role: 'assistant', content: text, ts, id: newId('am') });
       }
       continue;
     }
@@ -310,7 +320,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       const status = t === 'repair_completed' ? 'success' : t === 'repair_failed' ? 'failed' : 'running';
       restItems.push({
         kind: 'repair_block',
-        agent: p.agent || p.agent_name || 'RepairAgent',
+        agent: '',
         attempt: Number(p.attempt || 1),
         filesChanged: Array.isArray(p.files_changed)
           ? p.files_changed
@@ -340,19 +350,48 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (isToolEvent(t)) {
       const phase = getPhase(ev);
-      if (!bucket || bucket.phase !== phase) {
+      const friendlyTitle = prettyPhase(phase) || 'Working';
+      // Bucket by FRIENDLY title (not raw phase) so consecutive events that
+      // map to the same activity collapse into one section. This prevents
+      // "Planning the build" from appearing 4x because the backend emitted
+      // agents.planner / agents.phase_01 / agents.requirements_clarifier as
+      // separate phase strings.
+      if (!bucket || bucket.title !== friendlyTitle) {
         flushBucket();
         bucket = {
-          title: prettyPhase(phase) || 'Working',
+          title: friendlyTitle,
           agent: '',
           phase,
           children: [],
           ts,
+          seen: new Set(),
         };
       }
+      const childTitle = deriveToolTitle(ev);
+      // Hide chips that just duplicate the bucket header (e.g. a phase_started
+      // event for "Planning the build" inside the "Planning the build" group).
+      // These add noise without information.
+      const childIsRedundant =
+        childTitle === friendlyTitle ||
+        childTitle.toLowerCase() === friendlyTitle.toLowerCase();
+      if (childIsRedundant && (t === 'phase_started' || t === 'phase_completed' || t === 'phase_advanced' || t === 'step_started' || t === 'step_completed')) {
+        // Update bucket status from the event status without adding a chip row.
+        const evStatus = deriveStatus(ev);
+        if (evStatus === 'failed') bucket.status = 'failed';
+        continue;
+      }
+      // Dedupe consecutive identical chips inside a bucket. Backend tends to
+      // emit step_started + step_completed for the same step - keep one row.
+      const childKey = `${childTitle}::${readPayload(ev).file || readPayload(ev).path || ''}`;
+      if (bucket.seen.has(childKey)) {
+        const last = bucket.children[bucket.children.length - 1];
+        if (last) last.status = deriveStatus(ev);
+        continue;
+      }
+      bucket.seen.add(childKey);
       bucket.children.push({
         id: newId('tc'),
-        title: deriveToolTitle(ev),
+        title: childTitle,
         status: deriveStatus(ev),
         ts,
         type: t,
@@ -366,7 +405,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     const fallback = narrateBuildEvent(ev);
     if (fallback) {
       flushBucket();
-      restItems.push({ kind: 'assistant_message', role: 'assistant', content: fallback, ts, id: newId('am') });
+      pushAssistantOnce(fallback, ts, newId('am'));
     }
   }
 
