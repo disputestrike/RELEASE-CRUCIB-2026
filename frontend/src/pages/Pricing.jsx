@@ -12,10 +12,10 @@ import { logApiError } from '../utils/apiError';
 // Credit pricing model (capacity-based, no fixed app-count guarantees).
 const DEFAULT_BUNDLES = {
   free:    { credits: 100,  price: 0,   name: 'Free' },
-  builder: { credits: 500,  price: 20,  name: 'Builder' },
-  pro:     { credits: 1500, price: 50,  name: 'Pro' },
-  scale:   { credits: 3000, price: 100, name: 'Scale' },
-  teams:   { credits: 6000, price: 200, name: 'Teams' },
+  builder: { credits: 500,  price: 15,  name: 'Builder' },
+  pro:     { credits: 1000, price: 30,  name: 'Pro' },
+  scale:   { credits: 2000, price: 60,  name: 'Scale' },
+  teams:   { credits: 5000, price: 150, name: 'Teams' },
 };
 const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
@@ -50,8 +50,7 @@ const PLAN_FEATURES = {
   ],
 };
 
-const CREDITS_PER_LANDING = 50;
-const CREDITS_PER_APP = 100;
+// Credit consumption varies by build scope and repair depth.
 const RECOMMEND_ORDER = ['free', 'builder', 'pro', 'scale', 'teams'];
 const CUSTOM_CREDITS_MIN = 500;
 const CUSTOM_CREDITS_MAX = 20000;
@@ -110,62 +109,24 @@ function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api,
 }
 
 function OutcomeCalculator({ bundles, onSelectPlan }) {
-  const [landings, setLandings] = useState(0);
-  const [apps, setApps] = useState(0);
-  const needed = landings * CREDITS_PER_LANDING + apps * CREDITS_PER_APP;
-  let recommended = null;
-  let recommendedCredits = 0;
-  for (const key of RECOMMEND_ORDER) {
-    const b = bundles[key];
-    if (b && b.credits >= needed) {
-      recommended = key;
-      recommendedCredits = b.credits;
-      break;
-    }
-  }
-  if (!recommended && bundles.teams) {
-    recommended = 'teams';
-    recommendedCredits = bundles.teams.credits;
-  }
+  // Credit consumption varies by build scope, repair cycles, and validation depth.
+  // We show plan credits so users can choose based on their expected volume.
+  const plans = RECOMMEND_ORDER.filter((k) => k !== 'free' && bundles[k]);
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-6">
-        <label className="flex items-center gap-2">
-          <span className="text-[#1A1A1A] text-sm">Landing pages:</span>
-          <input
-            type="number"
-            min={0}
-            value={landings}
-            onChange={(e) => setLandings(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1.5 rounded-lg bg-white border border-stone-200 text-[#1A1A1A]"
-          />
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="text-[#1A1A1A] text-sm">Full apps:</span>
-          <input
-            type="number"
-            min={0}
-            value={apps}
-            onChange={(e) => setApps(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1.5 rounded-lg bg-white border border-stone-200 text-[#1A1A1A]"
-          />
-        </label>
+    <div className="space-y-3">
+      <p className="text-sm text-[#1A1A1A]">Credit usage scales with build scope, repair depth, and validation stages. Start with the plan that fits your expected monthly volume.</p>
+      <div className="flex flex-wrap gap-2">
+        {plans.map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelectPlan(key)}
+            className="px-4 py-2 rounded-lg bg-[#1A1A1A] hover:opacity-90 text-white text-sm font-medium"
+          >
+            {bundles[key].name} — {bundles[key].credits} credits/mo
+          </button>
+        ))}
       </div>
-      <p className="text-sm text-[#1A1A1A]">
-        Estimated credits needed: <strong className="text-[#1A1A1A]">{needed}</strong>
-        {recommended && (
-          <> — We recommend <strong className="text-[#1A1A1A]">{bundles[recommended]?.name || recommended}</strong> ({recommendedCredits} credits/mo).</>
-        )}
-      </p>
-      {recommended && (
-        <button
-          type="button"
-          onClick={() => onSelectPlan(recommended)}
-          className="px-4 py-2 rounded-lg bg-[#1A1A1A] hover:opacity-90 text-white text-sm font-medium"
-        >
-          Get {bundles[recommended]?.name || recommended}
-        </button>
-      )}
     </div>
   );
 }
@@ -174,7 +135,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
-  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 199.99, pro: 499.99, scale: 999.99, teams: 1999.99 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 150, pro: 300, scale: 600, teams: 1500 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
   const [customAddon, setCustomAddon] = useState({ min_credits: CUSTOM_CREDITS_MIN, max_credits: CUSTOM_CREDITS_MAX, price_per_credit: PRICE_PER_CREDIT });
 
@@ -185,7 +146,7 @@ export default function Pricing() {
           const b = {};
           for (const [key, val] of Object.entries(r.data.bundles)) {
             if (!BUNDLE_ORDER.includes(key)) continue;
-            const credits = val.credits ?? (val.tokens / 1000);
+            const credits = val.credits ?? Math.floor(val.tokens / 500);
             b[key] = { credits, price: val.price, name: val.name || key };
           }
           if (Object.keys(b).length > 0) setBundles((prev) => ({ ...prev, ...b }));

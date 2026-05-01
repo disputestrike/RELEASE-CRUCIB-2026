@@ -49,7 +49,7 @@ const ENTRIES = [
     tag: 'Feature',
     tagColor: '#3b82f6',
     items: [
-      'Voice input — 9 languages, audio transcription via Whisper',
+      'Voice input — 9 languages, audio transcription',
       'Image-to-code — attach any screenshot or mockup and build from it',
       '12+ file types in the attach button — ZIP, audio, images, PDFs, code files',
       'Mobile app builds — Expo project generation with App Store and Play Store submission guide',

@@ -48,7 +48,7 @@ def get_cerebras_key() -> str:
 # Backwards compat — single key reference (first key or empty)
 CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
 # Cerebras model id (API changes retired llama-3.3-70b). Set CEREBRAS_MODEL on Railway.
-CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
+CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama-3.3-70b").strip()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
