@@ -180,17 +180,6 @@ export const Sidebar = ({
 
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for ordering
   const listItems = useMemo(() => {
-    const fromProjects = (projects || [])
-      .filter((p) => p && !dismissedProjectSet.has(p.id))
-      .map(p => ({
-      id: p.id,
-      name: p.name || p.requirements?.prompt?.slice(0, 80) || 'Project',
-      status: p.status || 'pending',
-      prompt: null,
-      type: 'build',
-      isProject: true,
-      createdAt: p.createdAt ?? Date.now(),
-    }));
     const fromStore = (storeTasks.length > 0 ? storeTasks : propTasks || []).slice(0, 200).map(t => ({
       id: t.id,
       name: t.name || 'Task',
@@ -204,9 +193,35 @@ export const Sidebar = ({
       simulationId: t.simulationId || null,
       runId: t.runId || null,
     }));
+    const latestTaskByProject = new Map();
+    for (const task of fromStore) {
+      if (!task.linkedProjectId || !task.jobId) continue;
+      const prev = latestTaskByProject.get(task.linkedProjectId);
+      const prevTs = Number(prev?.createdAt || 0);
+      const nextTs = Number(task.createdAt || 0);
+      if (!prev || nextTs >= prevTs) latestTaskByProject.set(task.linkedProjectId, task);
+    }
+    const fromProjects = (projects || [])
+      .filter((p) => p && !dismissedProjectSet.has(p.id))
+      .map((p) => {
+        const linked = latestTaskByProject.get(p.id) || null;
+        return {
+          id: p.id,
+          name: p.name || p.requirements?.prompt?.slice(0, 80) || 'Project',
+          status: p.status || 'pending',
+          prompt: null,
+          type: 'build',
+          isProject: true,
+          createdAt: p.createdAt ?? Date.now(),
+          linkedTaskId: linked?.id || null,
+          linkedJobId: linked?.jobId || null,
+        };
+      });
     const projectIds = new Set(fromProjects.map((p) => p.id).filter(Boolean));
     const dedupedStore = fromStore.filter((t) => {
-      if (t.linkedProjectId && projectIds.has(t.linkedProjectId)) return false;
+      // Preserve canonical build rows with jobId; they carry session identity
+      // and must remain clickable in Recent instead of collapsing to project-only.
+      if (t.linkedProjectId && projectIds.has(t.linkedProjectId) && !t.jobId) return false;
       return true;
     });
     return [...fromProjects, ...dedupedStore];
@@ -244,7 +259,10 @@ export const Sidebar = ({
 
   const openTask = (item) => {
     if (item.isProject) {
-      navigate(`/app/workspace?projectId=${encodeURIComponent(item.id)}`);
+      const qs = new URLSearchParams({ projectId: item.id });
+      if (item.linkedTaskId) qs.set('taskId', item.linkedTaskId);
+      if (item.linkedJobId) qs.set('jobId', item.linkedJobId);
+      navigate(`/app/workspace?${qs.toString()}`);
       return;
     }
     if (item.type === 'simulation' && item.simulationId && item.runId) {
@@ -262,7 +280,12 @@ export const Sidebar = ({
   };
 
   const openInNewTab = (item) => {
-    if (item.isProject) window.open(`${window.location.origin}/app/workspace?projectId=${encodeURIComponent(item.id)}`, '_blank');
+    if (item.isProject) {
+      const qs = new URLSearchParams({ projectId: item.id });
+      if (item.linkedTaskId) qs.set('taskId', item.linkedTaskId);
+      if (item.linkedJobId) qs.set('jobId', item.linkedJobId);
+      window.open(`${window.location.origin}/app/workspace?${qs.toString()}`, '_blank');
+    }
     else if (item.type === 'simulation' && item.simulationId && item.runId) {
       window.open(
         `${window.location.origin}/app/what-if?simulationId=${encodeURIComponent(item.simulationId)}&runId=${encodeURIComponent(item.runId)}`,

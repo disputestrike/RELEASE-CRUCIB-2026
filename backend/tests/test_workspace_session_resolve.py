@@ -105,3 +105,58 @@ async def test_preview_project_id_falls_back_to_build_plans(monkeypatch):
 
     pid = await preview_serve._get_project_id_for_job("tsk_anyjobid0001")
     assert pid == "proj-from-build-plan"
+
+
+@pytest.mark.asyncio
+async def test_project_only_resolve_can_recover_latest_job(monkeypatch):
+    class FakeConn:
+        async def fetchrow(self, sql: str, *args):
+            assert "from jobs" in sql.lower()
+            return {
+                "id": "tsk_9ef99f68f89e",
+                "project_id": "proj_123",
+                "user_id": "user_1",
+                "status": "running",
+                "goal": "Build store",
+            }
+
+    class FakePool:
+        @asynccontextmanager
+        async def acquire(self):
+            yield FakeConn()
+
+    async def fake_get_pg_pool():
+        return FakePool()
+
+    def fake_owner_assert(job_user_id, user):
+        assert job_user_id == "user_1"
+        assert user.get("sub") == "user_1"
+
+    monkeypatch.setattr("backend.db_pg.get_pg_pool", fake_get_pg_pool)
+    monkeypatch.setattr("backend.server._assert_job_owner_match", fake_owner_assert)
+
+    job = await workspace._load_latest_job_for_project("proj_123", {"sub": "user_1"})
+    assert job is not None
+    assert job["id"] == "tsk_9ef99f68f89e"
+    assert job["project_id"] == "proj_123"
+
+
+@pytest.mark.asyncio
+async def test_project_only_resolve_latest_job_returns_none_when_missing(monkeypatch):
+    class FakeConn:
+        async def fetchrow(self, sql: str, *args):
+            return None
+
+    class FakePool:
+        @asynccontextmanager
+        async def acquire(self):
+            yield FakeConn()
+
+    async def fake_get_pg_pool():
+        return FakePool()
+
+    monkeypatch.setattr("backend.db_pg.get_pg_pool", fake_get_pg_pool)
+    monkeypatch.setattr("backend.server._assert_job_owner_match", lambda *_: None)
+
+    job = await workspace._load_latest_job_for_project("proj_123", {"sub": "user_1"})
+    assert job is None

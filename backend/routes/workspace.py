@@ -304,6 +304,48 @@ async def _load_job_for_session(job_id: str, user: dict) -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"Workspace session resolver unavailable: {exc}")
 
 
+async def _load_latest_job_for_project(project_id: str, user: dict) -> Optional[Dict[str, Any]]:
+    """Best-effort latest job lookup for project-only workspace reopen."""
+    try:
+        from ..db_pg import get_pg_pool
+        from ..server import _assert_job_owner_match
+    except (ImportError, AttributeError):
+        return None
+
+    try:
+        pool = await get_pg_pool()
+    except Exception as exc:
+        logger.warning("workspace session: latest-job lookup skipped for project %s: %s", project_id, exc)
+        return None
+    if pool is None:
+        return None
+
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, project_id, user_id, status, goal, created_at, updated_at, started_at, completed_at
+                FROM jobs
+                WHERE project_id = $1
+                ORDER BY
+                  COALESCE(updated_at, created_at, started_at, completed_at) DESC NULLS LAST,
+                  created_at DESC NULLS LAST
+                LIMIT 1
+                """,
+                project_id,
+            )
+        if not row:
+            return None
+        job = dict(row)
+        _assert_job_owner_match(job.get("user_id"), user)
+        return job
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.debug("workspace session: latest-job query failed for %s: %s", project_id, exc)
+        return None
+
+
 def _preview_status_for_session(job_id: str, workspace: Path, files: List[Dict[str, Any]]) -> Dict[str, Any]:
     manifest = _workspace_manifest_payload(workspace, job_id, files)
     serve_root: Optional[Path] = None
@@ -420,6 +462,26 @@ async def resolve_workspace_session(
         }
 
     if resolved_project_id:
+        # Sidebar/project reopen often lands with only projectId. Recover latest
+        # authorized job so transcript/proof/files hydrate as the same build.
+        latest_job = await _load_latest_job_for_project(resolved_project_id, user)
+        if latest_job and latest_job.get("id"):
+            latest_job_id = str(latest_job.get("id") or "").strip()
+            workspace = _project_workspace_path(str(latest_job.get("project_id") or resolved_project_id))
+            files = _collect_job_workspace_files(workspace, latest_job_id)
+            return {
+                "success": True,
+                "session": _workspace_session_payload(
+                    job=latest_job,
+                    job_id=latest_job_id,
+                    task_id=taskId,
+                    project_id=str(latest_job.get("project_id") or resolved_project_id),
+                    workspace=workspace,
+                    files=files,
+                    resolved_from="project_latest_job",
+                ),
+            }
+
         workspace = await _assert_project_access(resolved_project_id, user)
         files = _collect_job_workspace_files(workspace, "")
         return {
