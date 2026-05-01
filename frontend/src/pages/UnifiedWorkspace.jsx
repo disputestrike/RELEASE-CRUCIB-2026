@@ -434,6 +434,16 @@ export default function UnifiedWorkspace() {
   );
 
   useEffect(() => {
+    if (!events.length) return;
+    const last = events[events.length - 1];
+    const t = last?.type || last?.event_type;
+    if (t === 'job_failed' || t === 'job_completed') {
+      setWorkspacePullKey((k) => k + 1);
+      transcriptRebuiltForJobRef.current = null;
+    }
+  }, [events]);
+
+  useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
     const last = Array.isArray(events) && events.length ? events[events.length - 1] : null;
     // Temporary Phase 4.1 wiring visibility
@@ -2191,6 +2201,7 @@ export default function App() {
                       openWorkspacePath={openWorkspacePath}
                       milestoneBatch={milestoneBatch}
                       repairQueueLen={repairQueueLen}
+                      onRepairComplete={refresh}
                     />
                   );
                 })()}

@@ -22,6 +22,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
+    from backend.orchestration.package_json_preflight import validate_package_json_for_install
+except ImportError:
+    from .package_json_preflight import validate_package_json_for_install
+
+try:
     from backend.orchestration.trust.trust_scoring import sha256_file_preview
 except ImportError:
     try:
@@ -178,6 +183,11 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
         issues.append(f"Browser preview: package.json invalid JSON: {e}")
         return {"passed": False, "issues": issues, "proof": proof}
 
+    pre_issues = validate_package_json_for_install(pkg)
+    if pre_issues:
+        issues.extend(pre_issues)
+        return {"passed": False, "issues": issues, "proof": proof}
+
     scripts = pkg.get("scripts") or {}
     if not scripts.get("build"):
         issues.append(
@@ -270,6 +280,21 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
 
                 page = browser.new_page()
 
+                failed_asset_loads: List[str] = []
+
+                def on_response(resp) -> None:
+                    try:
+                        if resp.status != 404:
+                            return
+                        u = (resp.url or "").split("?", 1)[0].lower()
+                        if any(
+                            u.endswith(ext)
+                            for ext in (".js", ".mjs", ".cjs", ".css", ".map", ".woff2")
+                        ):
+                            failed_asset_loads.append(f"{resp.status} {resp.url}")
+                    except Exception:
+                        return
+
                 def on_console(msg) -> None:
                     if msg.type == "error":
                         console_errors.append(msg.text)
@@ -277,6 +302,7 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
                 def on_page_error(exc) -> None:
                     page_errors.append(str(exc))
 
+                page.on("response", on_response)
                 page.on("console", on_console)
                 page.on("pageerror", on_page_error)
 
@@ -294,6 +320,12 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
                         {"root_len": len(root_text)},
                     ),
                 )
+
+                if failed_asset_loads:
+                    issues.append(
+                        "Critical asset 404s: "
+                        + "; ".join(failed_asset_loads[:14])
+                    )
 
                 home_links = page.get_by_role("link", name="Home")
                 login_links = page.get_by_role("link", name="Login")
@@ -427,6 +459,10 @@ def _materialize_dist_without_playwright(workspace_path: str) -> Dict[str, Any]:
             "proof": proof,
         }
 
+    pre_issues = validate_package_json_for_install(pkg)
+    if pre_issues:
+        return {"passed": False, "issues": list(pre_issues), "proof": proof}
+
     if not (pkg.get("scripts") or {}).get("build"):
         return {
             "passed": False,
@@ -507,13 +543,25 @@ async def verify_browser_preview(workspace_path: str) -> Dict[str, Any]:
     """
     if skip_browser_preview_env():
         result = await asyncio.to_thread(_materialize_dist_without_playwright, workspace_path)
-        result.setdefault("proof", []).append(
+        proof = list(result.get("proof") or [])
+        issues = list(result.get("issues") or [])
+        material_ok = bool(result.get("passed"))
+        diagnostic = (
+            "DIAGNOSTIC ONLY: Chromium/browser preview skipped (CRUCIBAI_SKIP_BROWSER_PREVIEW). "
+            "Interactive checks (#root, console, CSS/JS 404s) did not run — "
+            "build_verified must not treat this as a passed browser gate."
+        )
+        issues.insert(0, diagnostic)
+        proof.append(
             _proof(
                 "verification",
-                "Chromium browser preview skipped; static preview build still enforced",
-                {"env": "CRUCIBAI_SKIP_BROWSER_PREVIEW"},
+                "Preview mode: diagnostic (browser skipped)",
+                {
+                    "env": "CRUCIBAI_SKIP_BROWSER_PREVIEW",
+                    "dist_materialized": material_ok,
+                },
                 verification_class="runtime",
             )
         )
-        return result
+        return {"passed": False, "issues": issues, "proof": proof}
     return await asyncio.to_thread(_verify_browser_preview_sync, workspace_path)

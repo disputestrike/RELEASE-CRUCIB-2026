@@ -44,6 +44,35 @@ from .brain_narration import clear_progress_narrative_cache, maybe_emit_progress
 logger = logging.getLogger(__name__)
 
 
+async def _persist_preview_gate_proof_rows(job_id: str, pv: Dict[str, Any]) -> None:
+    """Write preview-gate proof rows so failed jobs stay explainable after refresh."""
+    for item in pv.get("proof") or []:
+        if not isinstance(item, dict):
+            continue
+        pt = str(item.get("proof_type") or "verification")[:64]
+        title = str(item.get("title") or "preview_gate")[:500]
+        payload = item.get("payload") if isinstance(item.get("payload"), dict) else {}
+        try:
+            await proof_service.store_proof(job_id, "preview_gate", pt, title, payload)
+        except Exception:
+            logger.exception("store_proof preview item failed job=%s", job_id)
+    issues = pv.get("issues") or []
+    if issues:
+        try:
+            await proof_service.store_proof(
+                job_id,
+                "preview_gate",
+                "verification_failed",
+                "Preview verification failed",
+                {
+                    "issues": [str(x) for x in issues[:50]],
+                    "failure_reason": pv.get("failure_reason"),
+                },
+            )
+        except Exception:
+            logger.exception("store_proof preview failure summary failed job=%s", job_id)
+
+
 async def _write_blueprint(
     workspace_path: str, job_id: str, reason: str, **kwargs
 ) -> None:
@@ -1035,6 +1064,10 @@ async def _execute_job_loop(
         )
 
     if not pv["passed"]:
+        try:
+            await _persist_preview_gate_proof_rows(job_id, pv)
+        except Exception:
+            logger.exception("persist preview gate proof job=%s", job_id)
         await update_job_state(
             job_id,
             "failed",
@@ -1077,6 +1110,21 @@ async def _execute_job_loop(
     job_latest = await get_job(job_id)
     final_preview = _verify_final_preview_servability(job_id, ws, job_latest)
     if not final_preview.get("passed"):
+        try:
+            await proof_service.store_proof(
+                job_id,
+                "preview_gate",
+                "verification_failed",
+                "Final preview not servable",
+                {
+                    "issues": [str(x) for x in (final_preview.get("issues") or [])[:40]],
+                    "failure_reason": final_preview.get("failure_reason")
+                    or "preview_not_servable",
+                    "checked_roots": final_preview.get("checked_roots") or [],
+                },
+            )
+        except Exception:
+            logger.exception("store_proof final preview failure job=%s", job_id)
         await update_job_state(
             job_id,
             "failed",
@@ -1532,7 +1580,7 @@ async def prepare_failed_job_for_rerun(job_id: str) -> int:
     Returns number of steps reset (0 if job was not failed).
     """
     job = await get_job(job_id)
-    if not job or job.get("status") not in {"failed", "blocked", "cancelled"}:
+    if not job or job.get("status") not in {"failed", "blocked", "cancelled", "paused"}:
         return 0
     steps = await get_steps(job_id)
     n = 0

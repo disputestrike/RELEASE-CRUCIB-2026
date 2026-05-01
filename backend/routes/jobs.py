@@ -438,6 +438,15 @@ async def append_job_transcript(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.get("/{job_id}/messages")
+async def get_job_messages(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Alias for ``GET /{job_id}/transcript`` — durable workspace chat lines."""
+    return await get_job_transcript(job_id, user)
+
+
 @router.get("/{job_id}/transcript")
 async def get_job_transcript(
     job_id: str,
@@ -1041,10 +1050,10 @@ async def repair_from_proof(
     """
     try:
         job = await _resolve_job(job_id, user)
-        if job.get("status") not in ("failed", "error", "completed"):
+        if job.get("status") not in ("failed", "error", "completed", "paused"):
             raise HTTPException(
                 status_code=400,
-                detail=f"Only failed/completed jobs can be repaired (current: {job.get('status')})",
+                detail=f"Only failed/paused/completed jobs can be repaired (current: {job.get('status')})",
             )
 
         from ..orchestration.proof_artifact_service import get_proof_artifact_service
@@ -1108,6 +1117,22 @@ async def repair_from_proof(
             max_attempts=3,
         )
 
+        repaired_files = getattr(repair_result, "files", None) or {}
+        if isinstance(repaired_files, dict) and repaired_files:
+            workspace_path.mkdir(parents=True, exist_ok=True)
+            for rel, content in repaired_files.items():
+                if not isinstance(rel, str) or not isinstance(content, str):
+                    continue
+                rel_norm = rel.replace("\\", "/").lstrip("/")
+                if ".." in rel_norm.split("/"):
+                    continue
+                dest = workspace_path / rel_norm
+                try:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_text(content, encoding="utf-8")
+                except OSError as werr:
+                    logger.warning("repair-from-proof: could not write %s: %s", rel_norm, werr)
+
         # Update proof
         if repair_result.success:
             proof_svc.set_validation(proof, repair_result.validation)
@@ -1122,6 +1147,7 @@ async def repair_from_proof(
             "repairs_needed": getattr(repair_result, 'cycles_used', 0),
             "validation_passed": repair_result.success,
             "errors": getattr(repair_result, 'errors', []),
+            "files_written": list(repaired_files.keys()) if isinstance(repaired_files, dict) else [],
             "updated_proof": proof_svc.get_api_payload(proof) if repair_result.success else None,
         }
     except HTTPException:

@@ -215,5 +215,8 @@ def test_skip_browser_preview_still_builds_static_artifact(monkeypatch, workspac
     result = asyncio.run(browser_preview_verify.verify_browser_preview(str(workspace_root)))
 
     assert called["workspace_path"] == str(workspace_root)
-    assert result["passed"] is True
-    assert any("static preview build still enforced" in p["title"] for p in result["proof"])
+    assert result["passed"] is False
+    assert any("DIAGNOSTIC ONLY" in str(x) for x in (result.get("issues") or []))
+    assert any(
+        "diagnostic" in (p.get("title") or "").lower() for p in (result.get("proof") or [])
+    )

@@ -16,6 +16,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["preview-serve"])
@@ -338,6 +339,31 @@ def _preview_public_base(request: Request) -> str:
     )
 
 
+def _rewrite_vite_dist_html_for_preview(html: str, job_id: str, request: Request) -> str:
+    """Prefix root-absolute Vite asset URLs so they load under ``/api/preview/.../serve``."""
+    if not html or "/api/preview/" in html[:2000]:
+        return html
+    if not re.search(
+        r"""=(["'])/(assets/|static/|vite\.svg)""",
+        html,
+        re.IGNORECASE,
+    ):
+        return html
+    base = _preview_public_base(request).rstrip("/")
+    prefix = f"{base}/api/preview/{job_id}/serve" if base else f"/api/preview/{job_id}/serve"
+
+    def _inject_prefix(match: re.Match) -> str:
+        attr, quote, path = match.group(1), match.group(2), match.group(3)
+        return f"{attr}={quote}{prefix}/{path}{quote}"
+
+    return re.sub(
+        r"""\b(href|src)=(["'])/(assets/[^"']*|static/[^"']*|vite\.svg)""",
+        _inject_prefix,
+        html,
+        flags=re.IGNORECASE,
+    )
+
+
 def _safe_join(root: Path, rel: str) -> Optional[Path]:
     """Safely join ``rel`` onto ``root`` guarding against path traversal."""
     cleaned = (rel or "").strip().lstrip("/").replace("\\", "/")
@@ -355,7 +381,7 @@ def _safe_join(root: Path, rel: str) -> Optional[Path]:
 
 
 @router.get("/api/preview/{job_id}/serve/{path:path}")
-async def serve_preview(job_id: str, path: str):
+async def serve_preview(job_id: str, path: str, request: Request):
     """Serve a static file from the job's workspace, falling back to
     ``index.html`` for SPA client-side routes."""
     root = await _resolve_root_for_job(job_id)
@@ -370,24 +396,55 @@ async def serve_preview(job_id: str, path: str):
     if target.exists() and target.is_dir():
         idx = target / "index.html"
         if idx.exists() and idx.is_file():
+            try:
+                raw = idx.read_text(encoding="utf-8", errors="replace")
+                rewritten = _rewrite_vite_dist_html_for_preview(raw, job_id, request)
+                if rewritten != raw:
+                    return Response(
+                        content=rewritten.encode("utf-8"),
+                        media_type=_guess_mime(idx),
+                    )
+            except OSError as exc:
+                logger.debug("preview index read failed: %s", exc)
             return FileResponse(str(idx), media_type=_guess_mime(idx))
         target = None  # fall through to SPA fallback
 
     if target is not None and target.exists() and target.is_file():
+        if target.suffix.lower() in (".html", ".htm"):
+            try:
+                raw = target.read_text(encoding="utf-8", errors="replace")
+                rewritten = _rewrite_vite_dist_html_for_preview(raw, job_id, request)
+                if rewritten != raw:
+                    return Response(
+                        content=rewritten.encode("utf-8"),
+                        media_type=_guess_mime(target),
+                    )
+            except OSError as exc:
+                logger.debug("preview html read failed: %s", exc)
         return FileResponse(str(target), media_type=_guess_mime(target))
 
     # SPA fallback — serve root index.html so client-side routes work.
     fallback = root / "index.html"
     if fallback.exists() and fallback.is_file():
+        try:
+            raw = fallback.read_text(encoding="utf-8", errors="replace")
+            rewritten = _rewrite_vite_dist_html_for_preview(raw, job_id, request)
+            if rewritten != raw:
+                return Response(
+                    content=rewritten.encode("utf-8"),
+                    media_type="text/html; charset=utf-8",
+                )
+        except OSError as exc:
+            logger.debug("preview spa fallback read failed: %s", exc)
         return FileResponse(str(fallback), media_type="text/html; charset=utf-8")
 
     raise HTTPException(status_code=404, detail="File not found")
 
 
 @router.get("/api/preview/{job_id}/serve")
-async def serve_preview_root(job_id: str):
+async def serve_preview_root(job_id: str, request: Request):
     """Convenience alias: ``/api/preview/{job_id}/serve`` → index.html."""
-    return await serve_preview(job_id, "index.html")
+    return await serve_preview(job_id, "index.html", request)
 
 
 @router.get("/api/jobs/{job_id}/dev-preview")

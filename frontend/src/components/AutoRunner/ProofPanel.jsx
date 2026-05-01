@@ -87,12 +87,14 @@ export default function ProofPanel({
   openWorkspacePath,
   milestoneBatch = null,
   repairQueueLen = 0,
+  onRepairComplete = null,
 }) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('files');
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [scoreExpanded, setScoreExpanded] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
+  const [repairBusy, setRepairBusy] = useState(false);
   const normalizedJobStatus = String(jobStatus || '').trim().toLowerCase();
   const isVerifiedStatus = ['completed', 'success', 'done'].includes(normalizedJobStatus);
   const workspaceZipLabel = isVerifiedStatus
@@ -146,6 +148,32 @@ export default function ProofPanel({
       setZipBusy(false);
     }
   }, [jobId, token, jobStatus]);
+
+  const handleRepairThisBuild = useCallback(async () => {
+    if (!jobId || !token || !API) return;
+    setRepairBusy(true);
+    try {
+      const res = await fetch(`${API}/jobs/${encodeURIComponent(jobId)}/repair-from-proof`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job_id: jobId, selected_repair_target: 'validation' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const d = data?.detail;
+        const msg = typeof d === 'string' ? d : JSON.stringify(d || data || res.statusText);
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      if (typeof onRepairComplete === 'function') onRepairComplete();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Repair failed');
+    } finally {
+      setRepairBusy(false);
+    }
+  }, [jobId, token, onRepairComplete]);
 
   const toggleItem = (idx) => {
     setExpandedItems((prev) => {
@@ -228,6 +256,17 @@ export default function ProofPanel({
           {totalItems} stored items · {verificationItems} verification-class
         </div>
         <div className="pp-header-actions">
+          {jobId && token && API && ['failed', 'error', 'paused', 'completed'].includes(normalizedJobStatus) ? (
+            <button
+              type="button"
+              className="pp-export-btn"
+              onClick={handleRepairThisBuild}
+              disabled={repairBusy}
+              title="Run validation repair on files saved in this job workspace"
+            >
+              {repairBusy ? 'Repairing…' : 'Repair this build'}
+            </button>
+          ) : null}
           {jobId && token && API ? (
             <button
               type="button"

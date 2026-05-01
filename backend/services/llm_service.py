@@ -10,7 +10,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from dotenv import load_dotenv
@@ -769,6 +769,76 @@ async def _call_anthropic_messages_with_tools(
     return out
 
 
+def _resolve_cerebras_api_key_for_call(
+    api_keys: Optional[Dict[str, Optional[str]]],
+) -> str:
+    eff = (api_keys or {}).get("cerebras")
+    if isinstance(eff, str) and eff.strip():
+        return eff.strip()
+    return (_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or "").strip()
+
+
+def _resolve_anthropic_api_key_for_call(
+    api_keys: Optional[Dict[str, Optional[str]]],
+) -> str:
+    eff = (api_keys or {}).get("anthropic")
+    if isinstance(eff, str) and eff.strip():
+        return eff.strip()
+    return (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+
+
+def _normalize_explicit_model_chain(
+    model_chain: Optional[list],
+    api_keys: Optional[Dict[str, Optional[str]]],
+) -> Optional[List[Tuple[str, str, str]]]:
+    """Convert explicit ``[{"provider","model"}, ...]`` chains to router tuples.
+
+    Swarm and ``_get_model_chain`` pass ordered provider dicts (often Cerebras
+    first). When this returns ``None``, callers should use
+    ``llm_router.get_model_chain`` instead.
+
+    Tuple chains ``(label, model_id, provider)`` are passed through unchanged.
+    """
+    if not model_chain:
+        return None
+    first = model_chain[0]
+    if isinstance(first, dict):
+        out: List[Tuple[str, str, str]] = []
+        for entry in model_chain:
+            if not isinstance(entry, dict):
+                continue
+            raw_prov = (entry.get("provider") or "").strip().lower()
+            model_id = (entry.get("model") or "").strip()
+            if not model_id:
+                continue
+            provider = raw_prov
+            if provider in ("llama", "togetherai", "together_ai"):
+                provider = "together"
+            if provider == "together":
+                if not (os.environ.get("LLAMA_API_KEY") or "").strip():
+                    continue
+                label = "llama"
+            elif provider == "cerebras":
+                if not _resolve_cerebras_api_key_for_call(api_keys):
+                    continue
+                label = "cerebras"
+            elif provider == "anthropic":
+                if not _resolve_anthropic_api_key_for_call(api_keys):
+                    continue
+                label = "sonnet" if "sonnet" in model_id.lower() else "haiku"
+            else:
+                continue
+            out.append((label, model_id, provider))
+        return out or None
+    if isinstance(first, (list, tuple)) and len(first) >= 3:
+        tuples_out: List[Tuple[str, str, str]] = []
+        for x in model_chain:
+            if isinstance(x, (list, tuple)) and len(x) >= 3:
+                tuples_out.append((str(x[0]), str(x[1]), str(x[2])))
+        return tuples_out or None
+    return None
+
+
 async def _call_llm_with_fallback(
     message: str,
     system_message: str,
@@ -797,12 +867,16 @@ async def _call_llm_with_fallback(
 
     task_complexity = classifier.classify(message, agent_name)
 
-    model_chain = llm_router.get_model_chain(
-        task_complexity=task_complexity,
-        user_tier=user_tier,
-        speed_selector=speed_selector,
-        available_credits=available_credits,
-    )
+    explicit = _normalize_explicit_model_chain(model_chain, api_keys)
+    if explicit is not None:
+        model_chain = explicit
+    else:
+        model_chain = llm_router.get_model_chain(
+            task_complexity=task_complexity,
+            user_tier=user_tier,
+            speed_selector=speed_selector,
+            available_credits=available_credits,
+        )
     try:
         event_bus.emit(
             "provider.chain.selected",
@@ -834,7 +908,15 @@ async def _call_llm_with_fallback(
         model_name, model_id, provider = model_info
 
         try:
-            logger.info(f"Trying {provider}/{model_name} for task: {task_complexity}")
+            logger.info(
+                "provider.fallback.attempt session_id=%s agent=%s task=%s provider=%s model_id=%s label=%s",
+                session_id,
+                agent_name,
+                task_complexity,
+                provider,
+                model_id,
+                model_name,
+            )
             try:
                 event_bus.emit(
                     "provider.call.started",
@@ -881,14 +963,21 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
+                logger.info(
+                    "provider.fallback.succeeded session_id=%s provider=%s model_id=%s",
+                    session_id,
+                    provider,
+                    model_id,
+                )
                 return (response, f"llama/{model_id}")
 
-            elif provider == "cerebras" and llm_router.cerebras_available:
+            elif provider == "cerebras":
+                cerebras_key = _resolve_cerebras_api_key_for_call(api_keys)
                 response = await _call_cerebras_direct(
                     message,
                     system_message,
                     model=model_id,
-                    api_key=_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY"),
+                    api_key=cerebras_key or None,
                 )
                 try:
                     event_bus.emit(
@@ -902,14 +991,21 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
+                logger.info(
+                    "provider.fallback.succeeded session_id=%s provider=%s model_id=%s",
+                    session_id,
+                    provider,
+                    model_id,
+                )
                 return (response, f"cerebras/{model_id}")
 
-            elif provider == "anthropic" and llm_router.haiku_available:
+            elif provider == "anthropic":
+                anthropic_key = _resolve_anthropic_api_key_for_call(api_keys)
                 response = await _call_anthropic_direct(
                     message,
                     system_message,
                     model=model_id,
-                    api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                    api_key=anthropic_key or None,
                 )
                 try:
                     event_bus.emit(
@@ -923,7 +1019,13 @@ async def _call_llm_with_fallback(
                     )
                 except Exception:
                     logger.debug("provider.call.succeeded event emission failed")
-                return (response, f"haiku/{model_id}")
+                logger.info(
+                    "provider.fallback.succeeded session_id=%s provider=%s model_id=%s",
+                    session_id,
+                    provider,
+                    model_id,
+                )
+                return (response, f"{model_name}/{model_id}")
 
         except Exception as e:
             last_error = e
@@ -941,17 +1043,36 @@ async def _call_llm_with_fallback(
                 )
             except Exception:
                 logger.debug("provider.call.failed event emission failed")
-            if (
+            low = err_str.lower()
+            transient = (
                 "RATE_LIMITED" in err_str
-                or "rate limit" in err_str.lower()
+                or "rate limit" in low
                 or "429" in err_str
-            ):
+                or "credit" in low
+                or "billing" in low
+                or "balance" in low
+                or "402" in err_str
+                or "401" in err_str
+                or "403" in err_str
+                or "overloaded" in low
+                or "capacity" in low
+            )
+            if transient:
                 logger.warning(
-                    f"LLM {provider}/{model_name} rate limited — falling back to next model"
+                    "provider.fallback.failed_transient session_id=%s provider=%s model=%s "
+                    "trying_next_in_chain err=%s",
+                    session_id,
+                    provider,
+                    model_id,
+                    err_str[:400],
                 )
             else:
                 logger.warning(
-                    f"LLM {provider}/{model_name} failed: {e}, trying next fallback"
+                    "provider.fallback.failed session_id=%s provider=%s model=%s trying_next err=%s",
+                    session_id,
+                    provider,
+                    model_id,
+                    err_str[:400],
                 )
             continue
 
