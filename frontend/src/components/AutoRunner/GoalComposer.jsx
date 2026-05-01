@@ -5,7 +5,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -146,7 +146,6 @@ export default function GoalComposer({
   }, [goal]);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
-  const [workspaceComposerCollapsed, setWorkspaceComposerCollapsed] = useState(false);
   const recogRef = useRef(null);
 
   const stopVoice = useCallback(() => {
@@ -378,39 +377,8 @@ export default function GoalComposer({
 
       {voiceError && <div className="gc-hint gc-hint-warn">{voiceError}</div>}
 
-      {isWorkspaceShell ? (
-        <div className="gc-workspace-composer-strip">
-          <button
-            type="button"
-            className="gc-workspace-composer-toggle"
-            onClick={() => setWorkspaceComposerCollapsed((v) => !v)}
-            aria-expanded={!workspaceComposerCollapsed}
-          >
-            {workspaceComposerCollapsed ? (
-              <>
-                Expand composer <ChevronUp size={14} aria-hidden />
-              </>
-            ) : (
-              <>
-                Minimize composer <ChevronDown size={14} aria-hidden />
-              </>
-            )}
-          </button>
-        </div>
-      ) : null}
-
-      {isWorkspaceShell && workspaceComposerCollapsed ? (
-        <button
-          type="button"
-          className="gc-workspace-composer-collapsed"
-          onClick={() => setWorkspaceComposerCollapsed(false)}
-        >
-          <span>Ask a follow-up, steer the build, or attach context…</span>
-          <ChevronUp size={16} aria-hidden />
-        </button>
-      ) : (
-        <div className={`gc-composer-shell${isWorkspaceShell ? ' gc-composer-shell--workspace' : ''}`}>
-          <textarea
+      <div className={`gc-composer-shell${isWorkspaceShell ? ' gc-composer-shell--workspace' : ''}`}>
+        <textarea
             className="gc-input"
             placeholder={
               inputPlaceholder ||
@@ -485,8 +453,7 @@ export default function GoalComposer({
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </div>
 
       {hasContinuation && (
         <div className="gc-continuation">

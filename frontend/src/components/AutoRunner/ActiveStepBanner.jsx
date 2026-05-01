@@ -1,11 +1,9 @@
 /**
- * ActiveStepBanner — pinned "current activity" card.
+ * ActiveStepBanner — pinned "current activity" strip above the composer.
  *
- * Renders right above the composer in the workspace, mirroring the small
- * Manus task-state card. It shows the latest active phase, agent, and any
- * recent files touched. If the build is idle it renders nothing.
- *
- * Driven by `deriveCurrentActivity` from `lib/buildThreadModel`.
+ * The whole strip can collapse to a single compact row (chevron) so the
+ * composer stays primary; expanded mode shows title, optional path line, and
+ * optional details (phase / files).
  */
 
 import React, { useState } from 'react';
@@ -14,17 +12,20 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Activity,
 } from 'lucide-react';
 import './ActiveStepBanner.css';
 
 export default function ActiveStepBanner({ activity, jobStatus }) {
-  const [open, setOpen] = useState(false);
+  const [barCollapsed, setBarCollapsed] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
   if (!activity) {
     if (jobStatus === 'completed') {
       return (
-        <div className="asb-root asb-root--success" role="status">
+        <div className="asb-root asb-root--success asb-root--static" role="status">
           <CheckCircle2 size={13} className="asb-icon-ok" />
           <div className="asb-body">
             <span className="asb-title">Build complete</span>
@@ -54,14 +55,16 @@ export default function ActiveStepBanner({ activity, jobStatus }) {
       ? `${Math.max(activity.stepIndex || 1, 1)}/${activity.totalSteps}`
       : null;
 
+  const subline =
+    (activity.detailLine && String(activity.detailLine).trim()) ||
+    (activity.files && activity.files.length > 0 ? activity.files[0] : '');
+
   return (
-    <div className={`asb-root asb-root--${tone}`} role="status">
-      <button
-        type="button"
-        className="asb-toggle"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
+    <div
+      className={`asb-root asb-root--${tone} ${barCollapsed ? 'asb-root--bar-collapsed' : ''}`}
+      role="status"
+    >
+      <div className="asb-main">
         <span className="asb-thumb" aria-hidden>
           <Activity size={12} />
         </span>
@@ -70,17 +73,37 @@ export default function ActiveStepBanner({ activity, jobStatus }) {
             {StatusIcon}
             <span className="asb-title">{activity.title}</span>
           </div>
-          {!open && activity.files.length > 0 ? (
-            <div className="asb-files-inline">
-              {activity.files[0]}
-              {activity.files.length > 1 ? <span className="asb-files-more"> +{activity.files.length - 1}</span> : null}
+          {!barCollapsed && subline ? (
+            <div className="asb-subline" title={subline}>
+              {subline}
+              {activity.files && activity.files.length > 1 ? (
+                <span className="asb-files-more"> +{activity.files.length - 1}</span>
+              ) : null}
             </div>
           ) : null}
         </div>
-        {counter ? <span className="asb-counter">{counter}</span> : null}
-        <span className="asb-chevron">{open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
-      </button>
-      {open && (activity.phase || activity.files.length) ? (
+        {!barCollapsed && counter ? <span className="asb-counter">{counter}</span> : null}
+        {!barCollapsed && (activity.phase || (activity.files && activity.files.length)) ? (
+          <button
+            type="button"
+            className="asb-details-toggle"
+            onClick={() => setDetailsOpen((v) => !v)}
+            aria-expanded={detailsOpen}
+          >
+            {detailsOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="asb-bar-collapse-btn"
+          onClick={() => setBarCollapsed((c) => !c)}
+          aria-expanded={!barCollapsed}
+          aria-label={barCollapsed ? 'Expand status bar' : 'Collapse status bar'}
+        >
+          {barCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
+      </div>
+      {!barCollapsed && detailsOpen && (activity.phase || (activity.files && activity.files.length)) ? (
         <div className="asb-detail">
           {activity.phase ? (
             <div className="asb-detail-row">
@@ -88,7 +111,7 @@ export default function ActiveStepBanner({ activity, jobStatus }) {
               <span className="asb-detail-value">{activity.phase}</span>
             </div>
           ) : null}
-          {activity.files.length ? (
+          {activity.files && activity.files.length ? (
             <div className="asb-detail-row">
               <span className="asb-detail-label">Files</span>
               <ul className="asb-detail-files">

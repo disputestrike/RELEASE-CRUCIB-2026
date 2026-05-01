@@ -122,19 +122,9 @@
   line-height: 1.2;
 }
 
-/* Subtle “alive” pulse on queued / running status */
-@keyframes p4-pill-alive {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--crucibai-accent) 0%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--crucibai-accent) 18%, transparent);
-  }
-}
-
+/* Pulse disabled — streaming updates caused layout noise; spinner only for motion */
 .uw-root .p4-status-pill--alive {
-  animation: p4-pill-alive 1.6s ease-in-out infinite;
+  animation: none;
 }
 
 /* Inline overflow menu (Pause / Resume / Cancel / Sync) */
@@ -375,6 +365,119 @@
   color: var(--crucibai-muted);
   margin-top: 4px;
   text-align: right;
+}
+
+/* High-level build phases (Planning → Delivering) */
+.p4-build-progress {
+  padding: 10px 12px;
+  background: var(--crucibai-panel-soft);
+  border: 1px solid var(--crucibai-border);
+  border-radius: 0;
+  animation: none;
+}
+
+.p4-build-progress-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--crucibai-text);
+  margin-bottom: 8px;
+}
+
+.p4-build-progress-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.p4-build-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--crucibai-text);
+}
+
+.p4-bpr-label {
+  color: var(--crucibai-text);
+  font-weight: 500;
+}
+
+.p4-bpr-status {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--crucibai-muted);
+  flex-shrink: 0;
+}
+
+.p4-bpr-status--running {
+  color: var(--crucibai-accent);
+}
+
+.p4-bpr-status--failed,
+.p4-bpr-status--needs_fix {
+  color: var(--crucibai-danger);
+}
+
+.p4-bpr-status--done {
+  color: var(--crucibai-success);
+}
+
+.p4-build-progress-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--crucibai-muted);
+  cursor: pointer;
+}
+
+.p4-build-progress-details-btn:hover {
+  color: var(--crucibai-text);
+}
+
+.p4-build-progress-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--crucibai-border);
+  font-size: 11px;
+  color: var(--crucibai-text);
+}
+
+.p4-bpd-phase {
+  margin-bottom: 8px;
+}
+
+.p4-bpd-phase-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--crucibai-text);
+}
+
+.p4-bpd-phase ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--crucibai-muted);
+}
+
+.p4-bpd-muted {
+  opacity: 0.92;
+  font-size: 10.5px;
+}
+
+.p4-card-repair--needs_fix {
+  border-color: color-mix(in srgb, var(--crucibai-warning) 40%, var(--crucibai-border));
+}
+
+.p4-repair-meta {
+  font-size: 11px;
+  color: var(--crucibai-muted);
+  margin-top: 4px;
 }
 
 /* Generic block wrapper for plan / tool group / inline cards. */
@@ -884,15 +987,9 @@
   to { transform: rotate(360deg); }
 }
 
-/* Thinking indicator */
+/* Thinking indicator — no opacity pulse (avoids flicker while streaming) */
 .p4-row-typing--alive .p4-typing-dots {
-  animation: p4-typing-alive 1.25s ease-in-out infinite;
-}
-
-@keyframes p4-typing-alive {
-  0%,
-  100% { opacity: 0.65; }
-  50% { opacity: 1; }
+  animation: none;
 }
 
 .p4-typing-dots {

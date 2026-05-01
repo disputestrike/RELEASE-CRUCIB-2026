@@ -1,0 +1,184 @@
+[
+  {
+    "id": "evt_d66c8a1fd04c",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "task_created",
+    "payload_json": "{\"task_id\": \"tsk_27e3fcf0d496\", \"project_id\": \"9d6766e2-1bf5-4f27-ab36-fe6621ebaad7\", \"status\": \"running\", \"description\": \"Build a one-page local test app with a hero title and contact section.\", \"created_at\": 1777516215.646108, \"updated_at\": 1777516215.646108, \"metadata\": {\"mode\": \"auto\", \"goal\": \"Build a one-page local test app with a hero title and contact section.\", \"user_id\": \"9d6766e2-1bf5-4f27-ab36-fe6621ebaad7\", \"source\": \"runtime_state.create_job\", \"intent_schema\": null}, \"intent_schema\": null}",
+    "created_at": 1777516215.652246
+  },
+  {
+    "id": "evt_25136f266e26",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_f474434bc89a\", \"step_key\": \"agents.planner\"}",
+    "created_at": 1777516215.7415333
+  },
+  {
+    "id": "evt_4c14bb4041a7",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_4f71cf1a1c59\", \"step_key\": \"agents.requirements_clarifier\"}",
+    "created_at": 1777516215.8571265
+  },
+  {
+    "id": "evt_2b6274559b89",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_6094f260d63f\", \"step_key\": \"agents.stack_selector\"}",
+    "created_at": 1777516215.9654708
+  },
+  {
+    "id": "evt_b842795b0236",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_8ef27f641e38\", \"step_key\": \"agents.frontend_generation\"}",
+    "created_at": 1777516216.087548
+  },
+  {
+    "id": "evt_9f4d032f0634",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_c6e64d1c832d\", \"step_key\": \"agents.backend_generation\"}",
+    "created_at": 1777516216.1967897
+  },
+  {
+    "id": "evt_f8dd6a6c9e42",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_24a9e97dcaf7\", \"step_key\": \"agents.e2e_test_agent\"}",
+    "created_at": 1777516216.312173
+  },
+  {
+    "id": "evt_2ee5a4155851",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_f9d85802b98e\", \"step_key\": \"agents.database_agent\"}",
+    "created_at": 1777516216.439884
+  },
+  {
+    "id": "evt_543cf115b254",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_5b6eb7b7312e\", \"step_key\": \"agents.test_generation\"}",
+    "created_at": 1777516216.5699353
+  },
+  {
+    "id": "evt_2b63fd734b89",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_1dc5caa781d8\", \"step_key\": \"agents.load_test_agent\"}",
+    "created_at": 1777516216.6921158
+  },
+  {
+    "id": "evt_ed7580c376df",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_385ea07e0699\", \"step_key\": \"agents.integration_test_agent\"}",
+    "created_at": 1777516216.8169575
+  },
+  {
+    "id": "evt_b8abffb15b43",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_1e15184bf720\", \"step_key\": \"agents.performance_test_agent\"}",
+    "created_at": 1777516216.9599516
+  },
+  {
+    "id": "evt_9f2b3d2c6a32",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_bddc6e0ee590\", \"step_key\": \"agents.file_tool_agent\"}",
+    "created_at": 1777516217.077043
+  },
+  {
+    "id": "evt_285c5e462cf2",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_b463d5da1d37\", \"step_key\": \"agents.test_executor\"}",
+    "created_at": 1777516217.189293
+  },
+  {
+    "id": "evt_d4ca84ba5249",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_fc74a6065fd5\", \"step_key\": \"agents.e2e_agent\"}",
+    "created_at": 1777516217.3062227
+  },
+  {
+    "id": "evt_22726d5fbbd1",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_1d042515d870\", \"step_key\": \"agents.unit_test_agent\"}",
+    "created_at": 1777516217.419414
+  },
+  {
+    "id": "evt_ccb55b2e7dcb",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_421abb6ddb17\", \"step_key\": \"implementation.delivery_manifest\"}",
+    "created_at": 1777516217.552331
+  },
+  {
+    "id": "evt_bcc5419880d4",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_497d84384e2d\", \"step_key\": \"verification.compile\"}",
+    "created_at": 1777516217.6530507
+  },
+  {
+    "id": "evt_d4312ff33009",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_477fa0054e14\", \"step_key\": \"verification.api_smoke\"}",
+    "created_at": 1777516217.771151
+  },
+  {
+    "id": "evt_003830e78d4a",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_72b55e86396d\", \"step_key\": \"verification.preview\"}",
+    "created_at": 1777516217.8890662
+  },
+  {
+    "id": "evt_f0cb7454bdc0",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_a762e3d82106\", \"step_key\": \"verification.security\"}",
+    "created_at": 1777516217.9963715
+  },
+  {
+    "id": "evt_7ad5f1655812",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_eeb6a20d8a2e\", \"step_key\": \"verification.elite_builder\"}",
+    "created_at": 1777516218.1078558
+  },
+  {
+    "id": "evt_d5d4f98a4454",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_5446ee6955dd\", \"step_key\": \"deploy.build\"}",
+    "created_at": 1777516218.2190704
+  },
+  {
+    "id": "evt_ffed51b2a0b8",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "step_created",
+    "payload_json": "{\"step_id\": \"stp_a34e223af944\", \"step_key\": \"deploy.publish\"}",
+    "created_at": 1777516218.3293643
+  },
+  {
+    "id": "evt_aa7e66cd3e78",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "preflight_report",
+    "payload_json": "{\"preflight\": {\"schema\": \"crucibai.preflight/v1\", \"passed\": false, \"issues\": [\"Playwright Chromium not available. Run: python -m playwright install chromium\"], \"checks\": [{\"id\": \"python\", \"ok\": true, \"version\": \"3.13.7\", \"executable\": \"C:\\\\Users\\\\benxp\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\", \"recommended_fix\": \"\"}, {\"id\": \"node\", \"ok\": true, \"path\": \"c:\\\\Users\\\\benxp\\\\AppData\\\\Local\\\\Programs\\\\cursor\\\\resources\\\\app\\\\resources\\\\helpers\\\\node.EXE\", \"version\": \"\", \"verify_skipped\": true, \"recommended_fix\": \"\"}, {\"id\": \"npm\", \"ok\": true, \"path\": \"C:\\\\Program Files\\\\nodejs\\\\npm.CMD\", \"recommended_fix\": \"\"}, {\"id\": \"pnpm\", \"ok\": true, \"path\": \"C:\\\\Users\\\\benxp\\\\AppData\\\\Roaming\\\\npm\\\\pnpm.CMD\", \"optional\": true, \"recommended_fix\": \"\"}, {\"id\": \"yarn\", \"ok\": false, \"path\": \"\", \"optional\": true, \"recommended_fix\": \"Optional: npm install -g yarn if your workspace uses yarn.\"}, {\"id\": \"git\", \"ok\": true, \"path\": \"C:\\\\Program Files\\\\Git\\\\cmd\\\\git.EXE\", \"recommended_fix\": \"\"}, {\"id\": \"docker\", \"ok\": true, \"optional\": true, \"recommended_fix\": \"\"}, {\"id\": \"playwright_python\", \"ok\": true, \"browser_preview_skipped\": false, \"recommended_fix\": \"\"}, {\"id\": \"playwright_chromium\", \"ok\": false, \"browser_preview_skipped\": false, \"executable_path\": \"\", \"error\": \"\", \"recommended_fix\": \"pip install playwright && python -m playwright install chromium (or set CRUCIBAI_SKIP_BROWSER_PREVIEW=1 to skip headless UI gate).\"}, {\"id\": \"database_url\", \"ok\": true, \"recommended_fix\": \"\"}], \"env_flags\": {\"CRUCIBAI_DEV\": \"1\", \"CRUCIBAI_SKIP_NODE_VERIFY\": \"1\", \"CRUCIBAI_SKIP_BROWSER_PREVIEW\": \"\", \"CRUCIBAI_SKIP_AUTORUNNER_PREFLIGHT\": \"\"}}, \"kind\": \"preflight_report.json\"}",
+    "created_at": 1777516218.6172376
+  },
+  {
+    "id": "evt_36b99dd7deab",
+    "job_id": "tsk_27e3fcf0d496",
+    "event_type": "spec_guardian",
+    "payload_json": "{\"spec_guard\": {\"schema\": \"crucibai.spec_guard/v1\", \"mode\": \"advisory\", \"runner_truth\": \"CrucibAI now has two build paths: deterministic packs for proven tracks and a direct full-system builder for complex prompts. The direct builder may emit mixed-language workspaces spanning frontend, backend, data, infra, tests, and docs. Verification depth still varies by stack: the web preview gate is deepest for browser-facing apps, while non-web or multi-service stacks may currently rely more on file/proof verification than full runtime execution. Complex tenancy, compliance, infra, and vendor integrations should still be reviewed explicitly before production.\", \"violations\": [], \"spec_compliance_percent\": 100.0, \"blocks_run\": false, \"block_reasons\": []}, \"kind\": \"spec_guardian.json\"}",
+    "created_at": 1777516218.670205
+  }
+]

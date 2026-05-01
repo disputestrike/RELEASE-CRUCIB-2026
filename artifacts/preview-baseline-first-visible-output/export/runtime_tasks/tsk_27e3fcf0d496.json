@@ -1,0 +1,16 @@
+{
+  "task_id": "tsk_27e3fcf0d496",
+  "project_id": "9d6766e2-1bf5-4f27-ab36-fe6621ebaad7",
+  "status": "running",
+  "description": "Build a one-page local test app with a hero title and contact section.",
+  "created_at": 1777516215.646108,
+  "updated_at": 1777516215.646108,
+  "metadata": {
+    "mode": "auto",
+    "goal": "Build a one-page local test app with a hero title and contact section.",
+    "user_id": "9d6766e2-1bf5-4f27-ab36-fe6621ebaad7",
+    "source": "runtime_state.create_job",
+    "intent_schema": null
+  },
+  "intent_schema": null
+}

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "stp_f474434bc89a",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.planner",
+    "agent_name": "Planner",
+    "phase": "agents.phase_01",
+    "depends_on": [],
+    "order_index": 0,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516215.6554596,
+    "updated_at": 1777516215.65546
+  },
+  {
+    "id": "stp_4f71cf1a1c59",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.requirements_clarifier",
+    "agent_name": "Requirements Clarifier",
+    "phase": "agents.phase_02",
+    "depends_on": [
+      "agents.planner"
+    ],
+    "order_index": 1,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516215.7648945,
+    "updated_at": 1777516215.7648947
+  },
+  {
+    "id": "stp_6094f260d63f",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.stack_selector",
+    "agent_name": "Stack Selector",
+    "phase": "agents.phase_03",
+    "depends_on": [
+      "agents.requirements_clarifier"
+    ],
+    "order_index": 2,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516215.8817298,
+    "updated_at": 1777516215.88173
+  },
+  {
+    "id": "stp_8ef27f641e38",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.frontend_generation",
+    "agent_name": "Frontend Generation",
+    "phase": "agents.phase_04",
+    "depends_on": [
+      "agents.stack_selector"
+    ],
+    "order_index": 3,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516215.9880564,
+    "updated_at": 1777516215.9880564
+  },
+  {
+    "id": "stp_c6e64d1c832d",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.backend_generation",
+    "agent_name": "Backend Generation",
+    "phase": "agents.phase_04",
+    "depends_on": [
+      "agents.stack_selector"
+    ],
+    "order_index": 4,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.108877,
+    "updated_at": 1777516216.1088774
+  },
+  {
+    "id": "stp_24a9e97dcaf7",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.e2e_test_agent",
+    "agent_name": "E2E Test Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.frontend_generation"
+    ],
+    "order_index": 5,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.2194965,
+    "updated_at": 1777516216.2194967
+  },
+  {
+    "id": "stp_f9d85802b98e",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.database_agent",
+    "agent_name": "Database Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.backend_generation"
+    ],
+    "order_index": 6,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.3345227,
+    "updated_at": 1777516216.334523
+  },
+  {
+    "id": "stp_5b6eb7b7312e",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.test_generation",
+    "agent_name": "Test Generation",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.backend_generation"
+    ],
+    "order_index": 7,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.469873,
+    "updated_at": 1777516216.4698732
+  },
+  {
+    "id": "stp_1dc5caa781d8",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.load_test_agent",
+    "agent_name": "Load Test Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.backend_generation"
+    ],
+    "order_index": 8,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.593665,
+    "updated_at": 1777516216.593665
+  },
+  {
+    "id": "stp_385ea07e0699",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.integration_test_agent",
+    "agent_name": "Integration Test Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.backend_generation",
+      "agents.frontend_generation"
+    ],
+    "order_index": 9,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.7156155,
+    "updated_at": 1777516216.715616
+  },
+  {
+    "id": "stp_1e15184bf720",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.performance_test_agent",
+    "agent_name": "Performance Test Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.frontend_generation",
+      "agents.backend_generation"
+    ],
+    "order_index": 10,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.8517962,
+    "updated_at": 1777516216.8517964
+  },
+  {
+    "id": "stp_bddc6e0ee590",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.file_tool_agent",
+    "agent_name": "File Tool Agent",
+    "phase": "agents.phase_05",
+    "depends_on": [
+      "agents.frontend_generation",
+      "agents.backend_generation"
+    ],
+    "order_index": 11,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516216.9885364,
+    "updated_at": 1777516216.9885366
+  },
+  {
+    "id": "stp_b463d5da1d37",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.test_executor",
+    "agent_name": "Test Executor",
+    "phase": "agents.phase_06",
+    "depends_on": [
+      "agents.test_generation"
+    ],
+    "order_index": 12,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.0984588,
+    "updated_at": 1777516217.0984588
+  },
+  {
+    "id": "stp_fc74a6065fd5",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.e2e_agent",
+    "agent_name": "E2E Agent",
+    "phase": "agents.phase_06",
+    "depends_on": [
+      "agents.test_generation"
+    ],
+    "order_index": 13,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.212349,
+    "updated_at": 1777516217.212349
+  },
+  {
+    "id": "stp_1d042515d870",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "agents.unit_test_agent",
+    "agent_name": "Unit Test Agent",
+    "phase": "agents.phase_06",
+    "depends_on": [
+      "agents.test_generation"
+    ],
+    "order_index": 14,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.328859,
+    "updated_at": 1777516217.3288593
+  },
+  {
+    "id": "stp_421abb6ddb17",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "implementation.delivery_manifest",
+    "agent_name": "Delivery",
+    "phase": "implementation",
+    "depends_on": [
+      "agents.planner",
+      "agents.requirements_clarifier",
+      "agents.stack_selector",
+      "agents.frontend_generation",
+      "agents.backend_generation",
+      "agents.e2e_test_agent",
+      "agents.database_agent",
+      "agents.test_generation",
+      "agents.load_test_agent",
+      "agents.integration_test_agent",
+      "agents.performance_test_agent",
+      "agents.file_tool_agent",
+      "agents.test_executor",
+      "agents.e2e_agent",
+      "agents.unit_test_agent"
+    ],
+    "order_index": 15,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.4405837,
+    "updated_at": 1777516217.440584
+  },
+  {
+    "id": "stp_497d84384e2d",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "verification.compile",
+    "agent_name": "Verifier",
+    "phase": "verification",
+    "depends_on": [
+      "implementation.delivery_manifest"
+    ],
+    "order_index": 16,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.5723844,
+    "updated_at": 1777516217.5723846
+  },
+  {
+    "id": "stp_477fa0054e14",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "verification.api_smoke",
+    "agent_name": "Verifier",
+    "phase": "verification",
+    "depends_on": [
+      "verification.compile"
+    ],
+    "order_index": 17,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.6765132,
+    "updated_at": 1777516217.6765134
+  },
+  {
+    "id": "stp_72b55e86396d",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "verification.preview",
+    "agent_name": "Verifier",
+    "phase": "verification",
+    "depends_on": [
+      "verification.compile"
+    ],
+    "order_index": 18,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.7925558,
+    "updated_at": 1777516217.7925558
+  },
+  {
+    "id": "stp_a762e3d82106",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "verification.security",
+    "agent_name": "Security Checker",
+    "phase": "verification",
+    "depends_on": [
+      "verification.api_smoke"
+    ],
+    "order_index": 19,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516217.909951,
+    "updated_at": 1777516217.909951
+  },
+  {
+    "id": "stp_eeb6a20d8a2e",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "verification.elite_builder",
+    "agent_name": "Verifier",
+    "phase": "verification",
+    "depends_on": [
+      "verification.api_smoke"
+    ],
+    "order_index": 20,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516218.0201905,
+    "updated_at": 1777516218.0201907
+  },
+  {
+    "id": "stp_5446ee6955dd",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "deploy.build",
+    "agent_name": "Deployment Agent",
+    "phase": "deploy",
+    "depends_on": [
+      "verification.elite_builder"
+    ],
+    "order_index": 21,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516218.1307788,
+    "updated_at": 1777516218.1307788
+  },
+  {
+    "id": "stp_a34e223af944",
+    "job_id": "tsk_27e3fcf0d496",
+    "step_key": "deploy.publish",
+    "agent_name": "Deployment Agent",
+    "phase": "deploy",
+    "depends_on": [
+      "deploy.build"
+    ],
+    "order_index": 22,
+    "status": "pending",
+    "retry_count": 0,
+    "created_at": 1777516218.2397463,
+    "updated_at": 1777516218.2397466
+  }
+]

@@ -19,18 +19,35 @@
   position: relative;
   width: min(560px, calc(100% - 24px));
   margin: 4px auto 8px;
+  min-height: 44px;
+  box-sizing: border-box;
   background: var(--crucibai-panel, #ffffff);
   border: 1px solid var(--crucibai-border, rgba(0, 0, 0, 0.08));
   border-radius: 0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   font-size: 12px;
   color: var(--crucibai-text, #111111);
-  animation: asb-fade 0.18s ease;
 }
 
-@keyframes asb-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+.asb-root--bar-collapsed {
+  min-height: 40px;
+}
+
+.asb-root--static {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.asb-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .asb-root--running {
@@ -39,18 +56,35 @@
 .asb-root--success { border-color: rgba(102, 102, 102, 0.22); }
 .asb-root--failed { border-color: rgba(82, 82, 82, 0.24); }
 
-.asb-toggle {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 10px;
+.asb-subline {
+  font-size: 11px;
+  color: var(--crucibai-muted, #666666);
+  font-family: 'SFMono-Regular', 'Menlo', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.asb-bar-collapse-btn,
+.asb-details-toggle {
+  display: inline-flex;
   align-items: center;
-  width: 100%;
-  background: transparent;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 0;
-  padding: 8px 12px;
-  text-align: left;
+  border-radius: 0;
+  background: transparent;
+  color: var(--crucibai-muted, #666666);
   cursor: pointer;
-  color: inherit;
+}
+
+.asb-bar-collapse-btn:hover,
+.asb-details-toggle:hover {
+  color: var(--crucibai-text, #111111);
+  background: var(--crucibai-panel-soft, #f7f7f9);
 }
 
 .asb-thumb {
@@ -96,15 +130,6 @@
   padding: 1px 7px;
   border-radius: 999px;
   flex: 0 0 auto;
-}
-
-.asb-files-inline {
-  font-size: 11px;
-  color: var(--crucibai-muted, #666666);
-  font-family: 'SFMono-Regular', 'Menlo', monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .asb-files-more {

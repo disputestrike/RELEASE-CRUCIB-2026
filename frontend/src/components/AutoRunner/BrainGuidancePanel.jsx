@@ -43,6 +43,7 @@ import {
   Rocket,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
+import { phaseLabels } from '../../lib/buildMessageReducer';
 import './BrainGuidancePanel.css';
 
 const formatTime = (ts) => {
@@ -183,7 +184,7 @@ function CrucibAIHandle({ logoOk, onLogoFail }) {
 function StatusPill({ jobStatus, isTyping }) {
   if (isTyping || jobStatus === 'running') {
     return (
-      <div className="p4-status-pill p4-status-pill--running p4-status-pill--alive">
+      <div className="p4-status-pill p4-status-pill--running">
         <Loader2 size={11} className="p4-spin" />
         <span>Working</span>
       </div>
@@ -206,7 +207,7 @@ function StatusPill({ jobStatus, isTyping }) {
     );
   }
   return (
-    <div className="p4-status-pill p4-status-pill--queued p4-status-pill--alive">
+    <div className="p4-status-pill p4-status-pill--queued">
       <Loader2 size={11} className="p4-spin" />
       <span>Thinking</span>
     </div>
@@ -235,7 +236,7 @@ function AssistantSay({ content, ts, logoOk, onLogoFail }) {
 }
 
 function PlanBlock({ title, steps }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const stepIcon = (status) => {
     if (status === 'completed' || status === 'success') return <CheckCircle2 size={12} className="p4-ok" />;
     if (status === 'failed') return <AlertTriangle size={12} className="p4-bad" />;
@@ -338,26 +339,117 @@ function FailureBlock({ item }) {
   );
 }
 
-function RepairBlock({ item }) {
-  const stateLabel =
-    item.status === 'success' ? 'Repaired'
-    : item.status === 'failed' ? 'Another pass needed'
-    : `Attempt ${item.attempt || 1}`;
-  const headTitle =
-    item.status === 'success' ? 'Repair complete'
-    : item.status === 'failed' ? 'Repair needs another pass'
-    : 'Repairing the workspace';
+function phaseStatusLabel(st) {
+  if (st === 'done') return 'Done';
+  if (st === 'failed') return 'Needs fix';
+  if (st === 'running') return 'Running';
+  return 'Pending';
+}
+
+function BuildProgressCard({ item }) {
+  const meta = phaseLabels();
+  const order = meta.order;
+  const [detailsOpen, setDetailsOpen] = useState(false);
   return (
-    <div className={`p4-inline-card p4-card-repair p4-card-repair--${item.status || 'running'}`}>
+    <div className="p4-block p4-build-progress">
+      <div className="p4-build-progress-head">Build progress</div>
+      <div className="p4-build-progress-rows">
+        {order.map((key) => {
+          const cell = item.phases[key];
+          const st = cell?.status || 'pending';
+          return (
+            <div key={key} className="p4-build-progress-row">
+              <span className="p4-bpr-label">{meta[key]}</span>
+              <span className={`p4-bpr-status p4-bpr-status--${st}`}>{phaseStatusLabel(st)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        className="p4-build-progress-details-btn"
+        onClick={() => setDetailsOpen((v) => !v)}
+        aria-expanded={detailsOpen}
+      >
+        {detailsOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        Details
+      </button>
+      {detailsOpen ? (
+        <div className="p4-build-progress-details">
+          {order.map((key) => {
+            const cell = item.phases[key];
+            const actions = cell?.actions || [];
+            const details = cell?.details || [];
+            if (!actions.length && !details.length) return null;
+            return (
+              <div key={`d-${key}`} className="p4-bpd-phase">
+                <div className="p4-bpd-phase-name">{meta[key]}</div>
+                {actions.length ? (
+                  <ul>
+                    {actions.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {details.length ? (
+                  <ul className="p4-bpd-muted">
+                    {details.map((d, i) => (
+                      <li key={`${i}-${d}`}>{d}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RepairBlock({ item }) {
+  const isNeedsFix = item.status === 'needs_fix';
+  const stateLabel =
+    item.status === 'success'
+      ? 'Done'
+      : item.status === 'failed'
+      ? 'Needs another pass'
+      : isNeedsFix
+      ? 'Needs fix'
+      : `Pass ${item.attempt || 1}`;
+  const headTitle =
+    item.status === 'success'
+      ? 'Repair complete'
+      : item.status === 'failed'
+      ? 'Repair blocked'
+      : isNeedsFix
+      ? item.title || 'Verification issue'
+      : 'Repair in progress';
+  const detail = (item.technicalDetail || '').trim();
+  return (
+    <div
+      className={`p4-inline-card p4-card-repair p4-card-repair--${isNeedsFix ? 'needs_fix' : item.status || 'running'}`}
+    >
       <div className="p4-inline-head">
         <Wrench size={13} className="p4-warn" />
         <span className="p4-inline-title">{headTitle}</span>
         <span className="p4-inline-state">{stateLabel}</span>
       </div>
       {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}
+      {item.repeatCount > 1 ? (
+        <p className="p4-repair-meta">Same check still failing (×{item.repeatCount})</p>
+      ) : null}
+      {detail ? (
+        <details className="p4-tech-details">
+          <summary className="p4-tech-details-summary">Details</summary>
+          <pre className="p4-tech-details-pre">{detail}</pre>
+        </details>
+      ) : null}
       {Array.isArray(item.filesChanged) && item.filesChanged.length > 0 ? (
         <ul className="p4-inline-files">
-          {item.filesChanged.map((f, i) => (<li key={`${i}-${String(f)}`}>{String(f)}</li>))}
+          {item.filesChanged.map((f, i) => (
+            <li key={`${i}-${String(f)}`}>{String(f)}</li>
+          ))}
         </ul>
       ) : null}
     </div>
@@ -437,6 +529,8 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
       return <AssistantSay content={item.content} ts={item.ts} logoOk={logoOk} onLogoFail={onLogoFail} />;
     case 'plan_block':
       return <PlanBlock title={item.title} steps={item.steps} />;
+    case 'build_progress_card':
+      return <BuildProgressCard item={item} />;
     case 'tool_group':
       return <ToolGroup item={item} />;
     case 'failure_block':
@@ -478,10 +572,11 @@ export default function BrainGuidancePanel({
   const [logoFailed, setLogoFailed] = useState(false);
   const userIsScrollingRef = useRef(false);
 
-  const items = useMemo(
-    () => buildThreadModel({ userMessages, events, activeJobId: jobId }),
-    [userMessages, events, jobId]
-  );
+  const { items, scrollLayoutKey } = useMemo(() => {
+    const list = buildThreadModel({ userMessages, events, activeJobId: jobId });
+    const key = list.map((i) => (i.kind === 'build_progress_card' ? `bpc:${i.id}` : `${i.kind}:${i.id}`)).join('|');
+    return { items: list, scrollLayoutKey: key };
+  }, [userMessages, events, jobId]);
 
   const hasUserPrompt = items.some((i) => i.kind === 'user_message');
   const hasAssistantNarration = items.some((i) => i.kind === 'assistant_message');
@@ -497,7 +592,9 @@ export default function BrainGuidancePanel({
       console.info('[PHASE4_ACTIVE] Phase4LiveExecutionSurface mounted');
       console.info('[PHASE4_ACTIVE] activeJobId=', jobId);
       console.info('[PHASE4_ACTIVE] renderedThreadItems=', items.length);
-    } catch {}
+    } catch {
+      /* ignore console in non-browser */
+    }
   }, [jobId, items.length]);
 
   useEffect(() => {
@@ -509,7 +606,7 @@ export default function BrainGuidancePanel({
     if (distanceFromBottom < 200) {
       scroller.scrollTop = scroller.scrollHeight;
     }
-  }, [items, isTyping]);
+  }, [scrollLayoutKey, isTyping]);
 
   const handleScroll = () => {
     const node = scrollRef.current;
@@ -570,7 +667,7 @@ export default function BrainGuidancePanel({
       ) : null}
 
       {isTyping && (hasAssistantNarration || items.length > 0) ? (
-        <div className={`p4-row p4-row-assistant p4-row-typing${isTyping ? ' p4-row-typing--alive' : ''}`}>
+        <div className={`p4-row p4-row-assistant p4-row-typing${isTyping ? ' p4-row-typing--alive' : ''}`} aria-busy={isTyping}>
           <div className="p4-avatar" aria-hidden>
             {!logoFailed ? (
               <img src="/logo.png" alt="" onError={() => setLogoFailed(true)} className="p4-avatar-img" />

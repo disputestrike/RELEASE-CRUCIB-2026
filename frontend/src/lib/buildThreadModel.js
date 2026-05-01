@@ -6,19 +6,16 @@
  *  - user_message
  *  - assistant_message
  *  - plan_block
- *  - tool_group
- *  - failure_block
- *  - repair_block
- *  - proof_block
- *  - issue_notice (verification / step / job failure — human summary + technical details)
- *  - checkpoint_card (real job_started)
+ *  - build_progress_card (five high-level phases; noisy tool steps folded into Details)
+ *  - repair_block (merged failure + repair pass; deduped by failure key / repair hint)
  *  - delivery_card (real job_completed)
+ *  - issue_notice / tool_group / failure_block / proof_block — legacy; omitted from default compile path
  *
  * Hard guarantees:
  *  - The first user message of the active job ALWAYS appears at index 0.
  *    No backend event, regardless of ts, can render above it.
  *  - Events with a job_id that does not match activeJobId are filtered out.
- *  - Tool/step events are grouped consecutively by phase into a single tool_group.
+ *  - Tool/step events update build_progress_card phases only (no per-event thread rows).
  *  - Failures, repairs, proof events render inline at their actual time.
  *
  * Also exposes deriveCurrentActivity({ events, activeJobId }) used by the
@@ -34,6 +31,14 @@ import {
   technicalDetailLines,
   narrationJobStarted,
 } from './presentBuildThread';
+import {
+  bumpPhaseStatus,
+  createBuildProgressCard,
+  failureDedupeKey,
+  recordPhaseAction,
+  routeEventToHighPhase,
+  repairDedupeKey,
+} from './buildMessageReducer';
 
 const readPayload = (event) => {
   if (event?.payload && typeof event.payload === 'object') return event.payload;
@@ -92,30 +97,6 @@ const PHASE_FRIENDLY = {
   file_tool: 'Building the frontend',
 };
 
-/** One-paragraph human description per chapter title. Each chapter gets a
- * "what / why / next" sentence the user can read instead of a stack of raw
- * step headers. */
-const CHAPTER_DESCRIPTIONS = {
-  'Planning the build':
-    'Locking scope: routes, data shape, and how we will prove the build before you ship.',
-  'Setting up the project':
-    'Scaffold, packages, and baseline config so everything downstream has a stable base.',
-  'Building the frontend':
-    'Pages, layout, navigation, and UI wiring aligned to your goal.',
-  'Building the backend':
-    'APIs and server logic for the flows you described.',
-  'Setting up the database':
-    'Schema and seeds for what this app needs to persist.',
-  'Verifying the build':
-    'Compile, routes, imports, and preview checks before you rely on the artifact.',
-  'Finalizing the app':
-    'Assembly pass: required files, routes, and contract items accounted for.',
-  'Preparing delivery':
-    'Proof capture and export gate so the result is checkable, not hand-waved.',
-  'Repairing the build':
-    'Targeted fix for what verification caught—without restarting the whole run.',
-};
-
 const stripAgentPrefix = (s) =>
   String(s || '')
     .replace(/^[-_.\s]+|[-_.\s]+$/g, '')
@@ -147,14 +128,6 @@ const getPhase = (ev) => {
  * the thread per product direction; the orchestrator/agent identities stay
  * in the backend. Kept as a helper so callers stay structurally consistent. */
 const getAgent = () => '';
-
-const deriveStatus = (ev) => {
-  const t = ev.type || ev.event_type || '';
-  if (/failed|error|blocked/i.test(t)) return 'failed';
-  if (/completed|passed|ready|done/i.test(t)) return 'success';
-  if (/started|running|in_progress|progress/i.test(t)) return 'running';
-  return 'success';
-};
 
 const extractPlanSteps = (ev) => {
   const p = readPayload(ev);
@@ -208,22 +181,6 @@ const deriveToolTitle = (ev) => {
   return phase || (t ? t.replace(/_/g, ' ') : 'Activity');
 };
 
-const toolIconKey = (ev) => {
-  const t = ev.type || ev.event_type || '';
-  if (t === 'file_written' || t === 'file_write' || t === 'code_mutation') return 'edit';
-  if (t === 'workspace_files_updated') return 'sync';
-  if (/^verifier_/.test(t)) return 'check';
-  if (/^step_|^dag_node_|^phase_/.test(t)) return 'spark';
-  if (t === 'tool_call' || t === 'tool_result') return 'tool';
-  return 'dot';
-};
-
-const deriveGroupStatus = (children) => {
-  if (children.some((c) => c.status === 'failed')) return 'failed';
-  if (children.some((c) => c.status === 'running')) return 'running';
-  return 'success';
-};
-
 const isToolEvent = (t) =>
   [
     'tool_call',
@@ -242,6 +199,20 @@ const isToolEvent = (t) =>
     'workspace_files_updated',
     'code_mutation',
   ].includes(t);
+
+const FAILURE_EVENT_TYPES =
+  /^(step_failed|job_failed|verifier_failed|assembly_failed|export_gate_blocked|error)$/;
+
+/** Match an in-flight merged repair card to a repair_started event by step_key. */
+const findFailureCardByStepKey = (frMap, jobId, stepKey) => {
+  const sk = String(stepKey || '').trim();
+  if (!jobId || !sk) return null;
+  const needle = `::${sk}::`;
+  for (const [k, item] of frMap.entries()) {
+    if (String(k).startsWith(`${jobId}::`) && k.includes(needle)) return item;
+  }
+  return null;
+};
 
 const filterEventsForJob = (events, activeJobId) =>
   (events || []).filter((ev) => {
@@ -310,35 +281,97 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
   }
 
   /**
-   * Story compiler: instead of one mutable bucket that flushes whenever the
-   * raw phase changes, we keep a Map keyed by FRIENDLY title. Non-consecutive
-   * events that map to the same chapter merge into the same chapter so the
-   * thread reads as a story (Planning -> Setup -> Frontend -> Verification),
-   * not a log (Planning x4, Frontend x4, Verification x4).
-   *
-   * Chapters are inserted into restItems on first appearance so their visual
-   * order matches the moment the activity began. Subsequent chips for the
-   * same chapter are pushed into the existing chapter in place.
+   * Timeline compiler: one build_progress_card (five phases) plus deduped
+   * repair_block rows keyed by failureDedupeKey / repairDedupeKey. Tool and
+   * phase micro-events update the card only — they are not rendered as pills.
    */
-  const chapters = new Map();
-  const placeChapter = (key, friendlyTitle, ts) => {
-    let ch = chapters.get(key);
-    if (ch) return ch;
-    ch = {
-      id: newId('tg'),
-      kind: 'tool_group',
-      title: friendlyTitle,
-      description: CHAPTER_DESCRIPTIONS[friendlyTitle] || '',
-      agent: '',
-      phase: key,
-      children: [],
-      seen: new Set(),
-      status: 'running',
-      ts,
-    };
-    chapters.set(key, ch);
-    restItems.push(ch);
-    return ch;
+  let progressCard = null;
+  const failureRepairByKey = new Map();
+
+  const ensureProgress = (ts) => {
+    if (!progressCard) {
+      progressCard = createBuildProgressCard(newId('bpc'), ts);
+      restItems.push(progressCard);
+    }
+    return progressCard;
+  };
+
+  const applyProgressForEvent = (ev, ts) => {
+    const t = ev.type || ev.event_type || '';
+    const p = readPayload(ev);
+    const card = ensureProgress(ts);
+    const hi = routeEventToHighPhase(t, p, getPhase(ev));
+
+    if (t === 'job_started') {
+      bumpPhaseStatus(card.phases, 'planning', 'running');
+      recordPhaseAction(card.phases, 'planning', 'Run queued', '');
+      return;
+    }
+    if (t === 'plan_created') {
+      bumpPhaseStatus(card.phases, 'planning', 'done');
+      bumpPhaseStatus(card.phases, 'building', 'running');
+      recordPhaseAction(card.phases, 'planning', 'Plan saved', '');
+      return;
+    }
+    if (t === 'verifier_started') {
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'running');
+      recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), '');
+      return;
+    }
+    if (t === 'verifier_passed') {
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
+      return;
+    }
+    if (FAILURE_EVENT_TYPES.test(t)) {
+      bumpPhaseStatus(card.phases, 'verifying', 'failed');
+      bumpPhaseStatus(card.phases, 'repairing', 'running');
+      return;
+    }
+    if (/^repair_/.test(t)) {
+      if (t === 'repair_started') bumpPhaseStatus(card.phases, 'repairing', 'running');
+      if (t === 'repair_completed') {
+        bumpPhaseStatus(card.phases, 'repairing', 'done');
+        bumpPhaseStatus(card.phases, 'verifying', 'running');
+      }
+      if (t === 'repair_failed') bumpPhaseStatus(card.phases, 'repairing', 'failed');
+      return;
+    }
+    if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
+      bumpPhaseStatus(card.phases, 'delivering', 'running');
+      const delLabel =
+        t === 'export_gate_ready'
+          ? 'Export gate'
+          : t === 'run_snapshot'
+          ? 'Runtime snapshot'
+          : 'Contract update';
+      recordPhaseAction(card.phases, 'delivering', delLabel, '');
+      return;
+    }
+    if (t === 'job_completed') {
+      bumpPhaseStatus(card.phases, 'planning', 'done');
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
+      bumpPhaseStatus(card.phases, 'repairing', 'done');
+      bumpPhaseStatus(card.phases, 'delivering', 'done');
+      return;
+    }
+    if (isToolEvent(t)) {
+      if (hi === 'planning') {
+        bumpPhaseStatus(card.phases, 'planning', 'running');
+        recordPhaseAction(card.phases, 'planning', deriveToolTitle(ev), t);
+        return;
+      }
+      if (hi === 'verifying') {
+        bumpPhaseStatus(card.phases, 'verifying', 'running');
+        recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), t);
+        return;
+      }
+      bumpPhaseStatus(card.phases, 'building', 'running');
+      recordPhaseAction(card.phases, 'building', deriveToolTitle(ev), t);
+    }
   };
 
   const sorted = [...filteredEvents]
@@ -349,33 +382,107 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     const t = ev.type || ev.event_type || '';
     if (!t) continue;
     if (t === 'user_instruction' || t === 'workspace_transcript') continue;
-    // Dag failure is summarized by step_failed / issue_notice; skip duplicate noise.
     if (t === 'dag_node_failed') continue;
-    // brain_guidance / generic message events are already pushed into the chat
-    // message stream by UnifiedWorkspace - skip them here so we don't duplicate.
     if (t === 'brain_guidance' || t === 'message') continue;
+
+    applyProgressForEvent(ev, ts);
 
     if (t === 'job_started') {
       pushAssistantOnce(narrationJobStarted(), ts, newId('am'));
-      restItems.push({
-        kind: 'checkpoint_card',
-        title: 'Run connected',
-        subtitle: 'This workspace is executing against your goal with live job events.',
-        ts,
-        id: newId('ck'),
-      });
       continue;
     }
 
-    if (t === 'step_failed' || t === 'job_failed') {
-      restItems.push({
-        kind: 'issue_notice',
-        title: issueCardTitle(ev),
-        summary: humanIssueSummary(ev),
-        technicalDetail: technicalDetailLines(ev),
-        ts,
-        id: newId('is'),
-      });
+    if (FAILURE_EVENT_TYPES.test(t)) {
+      const key = failureDedupeKey(ev, activeJobId);
+      const title = issueCardTitle(ev);
+      const summary =
+        t === 'verifier_failed'
+          ? humanVerificationFailureSummary(readPayload(ev))
+          : humanIssueSummary(ev);
+      const detail = technicalDetailLines(ev);
+      let item = failureRepairByKey.get(key);
+      if (item) {
+        item.repeatCount = (item.repeatCount || 1) + 1;
+        item.title = title;
+        item.narration = summary;
+        item.technicalDetail = detail;
+        if (item.status === 'success') item.status = 'needs_fix';
+      } else {
+        item = {
+          kind: 'repair_block',
+          id: newId('rb'),
+          ts,
+          agent: '',
+          attempt: 0,
+          filesChanged: [],
+          status: 'needs_fix',
+          narration: summary,
+          title,
+          technicalDetail: detail,
+          repeatCount: 1,
+          dedupeKey: key,
+        };
+        failureRepairByKey.set(key, item);
+        restItems.push(item);
+      }
+      continue;
+    }
+
+    if (t === 'repair_started') {
+      const p = readPayload(ev);
+      const rk = repairDedupeKey(ev, activeJobId);
+      let item =
+        findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target) ||
+        failureRepairByKey.get(rk);
+      const startNarration =
+        'Build verification found an issue. Applying a targeted fix and rerunning the check.';
+      if (!item) {
+        item = {
+          kind: 'repair_block',
+          id: newId('rb'),
+          ts,
+          agent: '',
+          attempt: Number(p.attempt || 1),
+          filesChanged: [],
+          status: 'running',
+          narration: startNarration,
+          title: issueCardTitle(ev) || 'Repair pass',
+          technicalDetail: '',
+          repeatCount: 1,
+          dedupeKey: rk,
+        };
+        failureRepairByKey.set(rk, item);
+        restItems.push(item);
+      } else {
+        if (item.dedupeKey && item.dedupeKey !== rk) failureRepairByKey.set(rk, item);
+        item.status = 'running';
+        const fromPayload = Number(p.attempt);
+        item.attempt = Number.isFinite(fromPayload) && fromPayload > 0
+          ? fromPayload
+          : (item.attempt || 0) + 1;
+        item.narration = item.narration?.trim() ? item.narration : startNarration;
+        failureRepairByKey.set(rk, item);
+      }
+      continue;
+    }
+
+    if (t === 'repair_completed' || t === 'repair_failed') {
+      const p = readPayload(ev);
+      const rk = repairDedupeKey(ev, activeJobId);
+      const fc = Array.isArray(p.files_changed) ? p.files_changed : Array.isArray(p.files) ? p.files : [];
+      let item =
+        failureRepairByKey.get(rk) ||
+        findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target);
+      if (item) {
+        item.status = t === 'repair_completed' ? 'success' : 'failed';
+        if (fc.length) {
+          const prev = new Set((item.filesChanged || []).map(String));
+          for (const f of fc) prev.add(String(f));
+          item.filesChanged = [...prev];
+        }
+        const extra = narrateBuildEvent(ev);
+        if (extra && t === 'repair_completed' && !item.narration?.trim()) item.narration = extra;
+      }
       continue;
     }
 
@@ -404,136 +511,20 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       continue;
     }
 
-    if (/^(verifier_failed|assembly_failed|export_gate_blocked|error)$/.test(t)) {
-      const p = readPayload(ev);
-      const phaseLabel = prettyPhase(getPhase(ev));
-      const titleForFailure = () => {
-        if (t === 'verifier_failed') {
-          return `Verification: ${friendlyStepLabel(p.step_key, p.name || phaseLabel)}`;
-        }
-        if (t === 'job_failed') return p.summary || p.message || 'Build stopped';
-        if (t === 'step_failed') return p.name || p.step_key || phaseLabel || 'Step did not complete';
-        return p.summary || p.message || `Verification failed at ${phaseLabel}`;
-      };
-      const reasonHuman =
-        t === 'verifier_failed'
-          ? humanVerificationFailureSummary(p)
-          : p.error ||
-            p.error_message ||
-            p.detail ||
-            p.reason ||
-            p.failure_reason ||
-            narrateBuildEvent(ev) ||
-            '';
-      const rawDetail = technicalDetailLines(ev);
-      restItems.push({
-        kind: 'failure_block',
-        title: titleForFailure(),
-        reason: reasonHuman,
-        rawDetail: rawDetail && rawDetail !== reasonHuman ? rawDetail : '',
-        missingItems: p.missing || p.missing_routes || p.missing_items || [],
-        actions: ['Retry', 'Add instruction', 'Branch'],
-        ts,
-        id: newId('fb'),
-      });
-      continue;
-    }
-
-    if (/^(repair_started|repair_completed|repair_failed)$/.test(t)) {
-      const p = readPayload(ev);
-      const status = t === 'repair_completed' ? 'success' : t === 'repair_failed' ? 'failed' : 'running';
-      restItems.push({
-        kind: 'repair_block',
-        agent: '',
-        attempt: Number(p.attempt || 1),
-        filesChanged: Array.isArray(p.files_changed)
-          ? p.files_changed
-          : Array.isArray(p.files)
-          ? p.files
-          : [],
-        status,
-        narration: narrateBuildEvent(ev) || '',
-        ts,
-        id: newId('rb'),
-      });
-      continue;
-    }
-
     if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
-      restItems.push({
-        kind: 'proof_block',
-        proofType: t,
-        status: 'success',
-        narration: narrateBuildEvent(ev) || '',
-        ts,
-        id: newId('pr'),
-      });
       continue;
     }
 
     if (isToolEvent(t)) {
-      const phase = getPhase(ev);
-      const friendlyTitle = prettyPhase(phase) || 'Working';
-      const chapterKey = friendlyTitle.toLowerCase();
-      const ch = placeChapter(chapterKey, friendlyTitle, ts);
-
-      const childTitle = deriveToolTitle(ev);
-      const evStatus = deriveStatus(ev);
-      // Hide chips that just duplicate the chapter header (e.g. a phase_started
-      // event for "Planning the build" inside the "Planning the build" chapter).
-      const childIsRedundant =
-        childTitle === friendlyTitle ||
-        childTitle.toLowerCase() === friendlyTitle.toLowerCase();
-      if (childIsRedundant && /^(phase|step|dag_node)/.test(t)) {
-        if (evStatus === 'failed') ch.status = 'failed';
-        else if (evStatus === 'running' && ch.status !== 'failed') ch.status = 'running';
-        else if (evStatus === 'success' && ch.status !== 'failed' && ch.status !== 'running') {
-          ch.status = 'success';
-        }
-        continue;
-      }
-      const childKey = `${childTitle}::${readPayload(ev).file || readPayload(ev).path || ''}`;
-      if (ch.seen.has(childKey)) {
-        const last = ch.children[ch.children.length - 1];
-        if (last) last.status = evStatus;
-        if (evStatus === 'failed') ch.status = 'failed';
-        continue;
-      }
-      ch.seen.add(childKey);
-      ch.children.push({
-        id: newId('tc'),
-        title: childTitle,
-        status: evStatus,
-        ts,
-        type: t,
-        iconKey: toolIconKey(ev),
-        payload: readPayload(ev),
-        agent: '',
-      });
-      if (evStatus === 'failed') ch.status = 'failed';
       continue;
     }
 
     const fallback = narrateBuildEvent(ev);
-    if (fallback) {
+    if (fallback && /^(phase_|workspace_|goal_)/.test(t)) {
       pushAssistantOnce(fallback, ts, newId('am'));
     }
   }
 
-  // Resolve final chapter status from children (and discard empty chapters
-  // that exist only because of redundant phase_started events).
-  for (const ch of chapters.values()) {
-    delete ch.seen;
-    ch.status = deriveGroupStatus(ch.children);
-  }
-  for (let i = restItems.length - 1; i >= 0; i--) {
-    const item = restItems[i];
-    if (item && item.kind === 'tool_group' && (!item.children || item.children.length === 0)) {
-      restItems.splice(i, 1);
-    }
-  }
-
-  // Sort the rest by ts (does NOT touch the pinned first user message)
   restItems.sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
   const out = [];
@@ -571,6 +562,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
   const recentFiles = [];
   let totalSteps = 0;
   let stepIndex = 0;
+  let detailLine = '';
 
   for (const { ev } of sorted) {
     const t = ev.type || ev.event_type || '';
@@ -584,10 +576,13 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     }
 
     if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
-      runningTitle = t === 'repair_started'
-        ? 'Repairing the build'
-        : `Verifying ${prettyPhase(getPhase(ev)) || ''}`.trim();
+      runningTitle = t === 'repair_started' ? 'Repairing the build' : 'Verifying the build';
       runningStatus = 'running';
+    }
+
+    if (t === 'verifier_started' || t === 'verifier_failed') {
+      const hint = String(p.file || p.path || p.proof_path || p.check_id || p.step_key || '').trim();
+      if (hint && !detailLine) detailLine = hint;
     }
 
     if (recentFiles.length < 3 && (t === 'file_written' || t === 'file_write' || t === 'code_mutation')) {
@@ -622,6 +617,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     status: runningStatus,
     stepIndex: stepIndex || 0,
     totalSteps: totalSteps || 0,
+    detailLine,
   };
 }
 
