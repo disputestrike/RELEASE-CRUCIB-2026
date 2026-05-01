@@ -16,6 +16,7 @@ Tests:
 import ast
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -218,6 +219,8 @@ def list_users():
 
     def test_cpp_validator_valid_cmake(self):
         """Valid CMakeLists.txt passes syntax validation."""
+        if not shutil.which("g++"):
+            self.skipTest("g++ not on PATH (install MinGW/MSYS2 or run on Linux CI)")
         from backend.agents.validators.cpp_validator import CppValidator
 
         with tempfile.TemporaryDirectory() as tmpdir:
