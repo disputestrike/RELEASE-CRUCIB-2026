@@ -1,0 +1,18 @@
+{
+  "finished_at": "2026-05-01T13:37:33.668489+00:00",
+  "label": "07_run_auto",
+  "method": "POST",
+  "ok": true,
+  "path": "/api/orchestrator/run-auto",
+  "request_body": {
+    "job_id": "tsk_b9161950b98a"
+  },
+  "response": {
+    "job_id": "tsk_b9161950b98a",
+    "stream_url": "/api/jobs/tsk_b9161950b98a/stream",
+    "success": true,
+    "websocket_url": "/api/job/tsk_b9161950b98a/progress"
+  },
+  "started_at": "2026-05-01T13:37:30.754954+00:00",
+  "status_code": 200
+}

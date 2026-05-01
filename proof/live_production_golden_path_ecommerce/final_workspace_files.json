@@ -1,0 +1,441 @@
+{
+  "finished_at": "2026-05-01T13:38:16.668721+00:00",
+  "label": "final_workspace_files",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/jobs/tsk_b9161950b98a/workspace/files",
+  "request_body": null,
+  "response": {
+    "count": 60,
+    "files": [
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": ".crucib_build_memory.json",
+        "size": 10092
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": ".crucibai/context_registry.json",
+        "size": 11456
+      },
+      {
+        "is_code": false,
+        "is_preview_artifact": false,
+        "kind": "asset",
+        "path": ".crucibai/node_artifacts.jsonl",
+        "size": 10713
+      },
+      {
+        "is_code": false,
+        "is_preview_artifact": false,
+        "kind": "asset",
+        "path": ".crucibai/preview/screenshot.png",
+        "size": 50790
+      },
+      {
+        "is_code": false,
+        "is_preview_artifact": false,
+        "kind": "asset",
+        "path": "Dockerfile",
+        "size": 320
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "PLAN.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "README.md",
+        "size": 288
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "REQUIREMENTS.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "STACK.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "backend/auth.py",
+        "size": 95
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "backend/main.py",
+        "size": 189
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "db/migrations/001_initial.sql",
+        "size": 29
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "deploy/DEPLOY_GUIDE.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "deploy/PRODUCTION_SKETCH.md",
+        "size": 776
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "deploy/PUBLISH.md",
+        "size": 279
+      },
+      {
+        "is_code": false,
+        "is_preview_artifact": false,
+        "kind": "asset",
+        "path": "deploy/healthcheck.sh",
+        "size": 204
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "ideas.md",
+        "size": 296
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "index.html",
+        "size": 653
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "package-lock.json",
+        "size": 53977
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "package.json",
+        "size": 448
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof.json",
+        "size": 3775
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/CONTINUATION_BLUEPRINT.md",
+        "size": 911
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/DELIVERY_CLASSIFICATION.md",
+        "size": 820
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "size": 495
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/PERFORMANCE_REPORT.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/SECURITY_CHECKLIST.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "proof/UX_AUDIT.md",
+        "size": 50
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "runtime_state/tsk_b9161950b98a/checkpoints.json",
+        "size": 46984
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "runtime_state/tsk_b9161950b98a/events.json",
+        "size": 217227
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "runtime_state/tsk_b9161950b98a/steps.json",
+        "size": 14579
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "runtime_tasks/tsk_b9161950b98a.json",
+        "size": 1192
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/App.jsx",
+        "size": 149
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/CTASection.jsx",
+        "size": 427
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/FeatureGrid.jsx",
+        "size": 498
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/Footer.jsx",
+        "size": 540
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/HeroSection.jsx",
+        "size": 698
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/PricingCards.jsx",
+        "size": 695
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/marketing/TestimonialGrid.jsx",
+        "size": 548
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/navigation/MarketingNav.jsx",
+        "size": 651
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/ui/Button.jsx",
+        "size": 247
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/ui/Card.jsx",
+        "size": 243
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/ui/Container.jsx",
+        "size": 171
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/components/ui/Section.jsx",
+        "size": 456
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/data/siteContent.js",
+        "size": 1077
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/design/tokens.json",
+        "size": 349
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/index.js",
+        "size": 210
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/layouts/MarketingLayout.jsx",
+        "size": 351
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/main.jsx",
+        "size": 210
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/pages/FeaturesPage.jsx",
+        "size": 268
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/pages/HomePage.jsx",
+        "size": 534
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/pages/NotFoundPage.jsx",
+        "size": 301
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/pages/PricingPage.jsx",
+        "size": 285
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/pages/TestimonialsPage.jsx",
+        "size": 284
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/routes.jsx",
+        "size": 972
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/styles/global.css",
+        "size": 4021
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "src/styles/tokens.css",
+        "size": 1233
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": false,
+        "kind": "source",
+        "path": "vite.config.js",
+        "size": 178
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": true,
+        "kind": "preview_artifact",
+        "path": "dist/assets/index-CMwZxBNX.css",
+        "size": 4623
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": true,
+        "kind": "preview_artifact",
+        "path": "dist/assets/index-gJIqTiPh.js",
+        "size": 169436
+      },
+      {
+        "is_code": true,
+        "is_preview_artifact": true,
+        "kind": "preview_artifact",
+        "path": "dist/index.html",
+        "size": 751
+      }
+    ],
+    "has_more": false,
+    "job_id": "tsk_b9161950b98a",
+    "limit": 500,
+    "next_offset": null,
+    "offset": 0,
+    "total_count": 60
+  },
+  "started_at": "2026-05-01T13:38:16.387030+00:00",
+  "status_code": 200
+}

@@ -1,0 +1,835 @@
+{
+  "finished_at": "2026-05-01T13:38:04.507387+00:00",
+  "label": "poll_004_job",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/jobs/tsk_b9161950b98a",
+  "request_body": null,
+  "response": {
+    "controller_progress": {
+      "controller": {
+        "active_agent_count": 0,
+        "active_agents": [],
+        "blocker_count": 1,
+        "blockers": [
+          {
+            "agent_name": "Verifier",
+            "error": "verification.elite_builder | elite_checks_failed | failed_checks=error_boundaries,api_error_handling,authentication,security_headers | No Error Boundary component found; API rou...",
+            "step_key": "verification.elite_builder"
+          }
+        ],
+        "completed_steps": 24,
+        "next_actions": [
+          "repair_failed_steps",
+          "rerun_verification",
+          "resume_from_checkpoint"
+        ],
+        "parallel_phase_count": 5,
+        "parallel_phases": [
+          {
+            "active_agents": [],
+            "agent_count": 3,
+            "id": "agents.phase_04"
+          },
+          {
+            "active_agents": [],
+            "agent_count": 9,
+            "id": "agents.phase_05"
+          },
+          {
+            "active_agents": [],
+            "agent_count": 2,
+            "id": "agents.phase_06"
+          },
+          {
+            "active_agents": [],
+            "agent_count": 5,
+            "id": "verification"
+          },
+          {
+            "active_agents": [],
+            "agent_count": 2,
+            "id": "deploy"
+          }
+        ],
+        "queued_agent_count": 0,
+        "queued_agents": [],
+        "recommended_focus": "Unblock Verifier",
+        "repair_plan": [
+          {
+            "action": "run_security_hardening_pass",
+            "agent_name": "Verifier",
+            "step_key": "verification.elite_builder"
+          }
+        ],
+        "status": "attention_required",
+        "total_steps": 25
+      },
+      "current_phase": "verification",
+      "is_running": true,
+      "job_id": "tsk_b9161950b98a",
+      "job_status": "running",
+      "logs": [
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node started",
+          "timestamp": 1777642682.6104033,
+          "type": "dag_node_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642682.7398336,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification result",
+          "timestamp": 1777642682.7500844,
+          "type": "verification_result"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification attempt failed",
+          "timestamp": 1777642682.755698,
+          "type": "verification_attempt_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "brain guidance",
+          "timestamp": 1777642682.7628345,
+          "type": "brain_guidance"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642682.7939618,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step failed",
+          "timestamp": 1777642682.8004682,
+          "type": "step_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node failed",
+          "timestamp": 1777642682.8072631,
+          "type": "dag_node_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "fixer retry queued",
+          "timestamp": 1777642683.6467974,
+          "type": "fixer_retry_queued"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642683.6580882,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "task updated",
+          "timestamp": 1777642683.6696725,
+          "type": "task_updated"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "job status changed",
+          "timestamp": 1777642683.6884215,
+          "type": "job_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642683.703105,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step started",
+          "timestamp": 1777642683.7096577,
+          "type": "step_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node started",
+          "timestamp": 1777642683.7158394,
+          "type": "dag_node_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642683.8566492,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification result",
+          "timestamp": 1777642683.8692417,
+          "type": "verification_result"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification attempt failed",
+          "timestamp": 1777642683.8774452,
+          "type": "verification_attempt_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "brain guidance",
+          "timestamp": 1777642683.885785,
+          "type": "brain_guidance"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642683.915448,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step failed",
+          "timestamp": 1777642683.9228919,
+          "type": "step_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node failed",
+          "timestamp": 1777642683.9300358,
+          "type": "dag_node_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "fixer retry queued",
+          "timestamp": 1777642684.9489021,
+          "type": "fixer_retry_queued"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642684.9589202,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "task updated",
+          "timestamp": 1777642684.9704056,
+          "type": "task_updated"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "job status changed",
+          "timestamp": 1777642684.9903705,
+          "type": "job_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642685.0063007,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step started",
+          "timestamp": 1777642685.0129156,
+          "type": "step_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node started",
+          "timestamp": 1777642685.0192478,
+          "type": "dag_node_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642685.1659303,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification result",
+          "timestamp": 1777642685.1774254,
+          "type": "verification_result"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification attempt failed",
+          "timestamp": 1777642685.185076,
+          "type": "verification_attempt_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "brain guidance",
+          "timestamp": 1777642685.1926594,
+          "type": "brain_guidance"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642685.220691,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step failed",
+          "timestamp": 1777642685.226883,
+          "type": "step_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node failed",
+          "timestamp": 1777642685.2332299,
+          "type": "dag_node_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "fixer retry queued",
+          "timestamp": 1777642686.04802,
+          "type": "fixer_retry_queued"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642686.0557919,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "task updated",
+          "timestamp": 1777642686.0664544,
+          "type": "task_updated"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "job status changed",
+          "timestamp": 1777642686.0903304,
+          "type": "job_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642686.108666,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step started",
+          "timestamp": 1777642686.1179914,
+          "type": "step_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node started",
+          "timestamp": 1777642686.1271107,
+          "type": "dag_node_started"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642686.2908444,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification result",
+          "timestamp": 1777642686.304519,
+          "type": "verification_result"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "verification attempt failed",
+          "timestamp": 1777642686.3126342,
+          "type": "verification_attempt_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "brain guidance",
+          "timestamp": 1777642686.3240633,
+          "type": "brain_guidance"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step status changed",
+          "timestamp": 1777642686.363092,
+          "type": "step_status_changed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "step failed",
+          "timestamp": 1777642686.3700454,
+          "type": "step_failed"
+        },
+        {
+          "agent": "system",
+          "level": "info",
+          "message": "dag node failed",
+          "timestamp": 1777642686.376551,
+          "type": "dag_node_failed"
+        }
+      ],
+      "phases": [
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_92adc554cd88",
+              "name": "Planner",
+              "phase": "agents.phase_01",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.planner"
+            }
+          ],
+          "completed": 1,
+          "id": "agents.phase_01",
+          "name": "Agents.Phase 01",
+          "progress": 100,
+          "status": "complete",
+          "total": 1
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_a84f69a3be1e",
+              "name": "Requirements Clarifier",
+              "phase": "agents.phase_02",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.requirements_clarifier"
+            }
+          ],
+          "completed": 1,
+          "id": "agents.phase_02",
+          "name": "Agents.Phase 02",
+          "progress": 100,
+          "status": "complete",
+          "total": 1
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_e1119e974212",
+              "name": "Stack Selector",
+              "phase": "agents.phase_03",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.stack_selector"
+            }
+          ],
+          "completed": 1,
+          "id": "agents.phase_03",
+          "name": "Agents.Phase 03",
+          "progress": 100,
+          "status": "complete",
+          "total": 1
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_fe3f0f73262c",
+              "name": "Frontend Generation",
+              "phase": "agents.phase_04",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.frontend_generation"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_eb85883730c6",
+              "name": "Backend Generation",
+              "phase": "agents.phase_04",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.backend_generation"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_ef771418983c",
+              "name": "Payment Setup Agent",
+              "phase": "agents.phase_04",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.payment_setup_agent"
+            }
+          ],
+          "completed": 3,
+          "id": "agents.phase_04",
+          "name": "Agents.Phase 04",
+          "progress": 100,
+          "status": "complete",
+          "total": 3
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_f528cbe52b35",
+              "name": "UX Auditor",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.ux_auditor"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_f6e047578ad6",
+              "name": "Database Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.database_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_ecbcef3ed17b",
+              "name": "Security Checker",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.security_checker"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_093f67279d70",
+              "name": "Performance Analyzer",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.performance_analyzer"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_ad970f4b33c4",
+              "name": "Deployment Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.deployment_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_2402af6cf67e",
+              "name": "Code Review Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.code_review_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_d4ac8c523a03",
+              "name": "File Tool Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.file_tool_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_272f3217b1f9",
+              "name": "Braintree Subscription Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.braintree_subscription_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_9b4123438718",
+              "name": "Braintree Integration Agent",
+              "phase": "agents.phase_05",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.braintree_integration_agent"
+            }
+          ],
+          "completed": 9,
+          "id": "agents.phase_05",
+          "name": "Agents.Phase 05",
+          "progress": 100,
+          "status": "complete",
+          "total": 9
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_647f6194d6e4",
+              "name": "Memory Agent",
+              "phase": "agents.phase_06",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.memory_agent"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_1dbb76e047d2",
+              "name": "Subscription Management Agent",
+              "phase": "agents.phase_06",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "agents.subscription_management_agent"
+            }
+          ],
+          "completed": 2,
+          "id": "agents.phase_06",
+          "name": "Agents.Phase 06",
+          "progress": 100,
+          "status": "complete",
+          "total": 2
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_8fe465d93c82",
+              "name": "Delivery",
+              "phase": "implementation",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "implementation.delivery_manifest"
+            }
+          ],
+          "completed": 1,
+          "id": "implementation",
+          "name": "Implementation",
+          "progress": 100,
+          "status": "complete",
+          "total": 1
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_ec14715661db",
+              "name": "Verifier",
+              "phase": "verification",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "verification.compile"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_4b412d9f50c4",
+              "name": "Verifier",
+              "phase": "verification",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "verification.api_smoke"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_b42a3f8975db",
+              "name": "Verifier",
+              "phase": "verification",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "verification.preview"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_d700dbca30e8",
+              "name": "Security Checker",
+              "phase": "verification",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "verification.security"
+            },
+            {
+              "completed_at": null,
+              "error": "verification.elite_builder | elite_checks_failed | failed_checks=error_boundaries,api_error_handling,authentication,security_headers | No Error Boundary component found; API rou...",
+              "id": "stp_7ba169357899",
+              "name": "Verifier",
+              "phase": "verification",
+              "progress": 100,
+              "started_at": null,
+              "status": "failed",
+              "step_key": "verification.elite_builder"
+            }
+          ],
+          "completed": 4,
+          "id": "verification",
+          "name": "Verification",
+          "progress": 80,
+          "status": "error",
+          "total": 5
+        },
+        {
+          "agents": [
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_2c8fe6c6a280",
+              "name": "Deployment Agent",
+              "phase": "deploy",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "deploy.build"
+            },
+            {
+              "completed_at": null,
+              "error": "",
+              "id": "stp_b10ffa5e4502",
+              "name": "Deployment Agent",
+              "phase": "deploy",
+              "progress": 100,
+              "started_at": null,
+              "status": "completed",
+              "step_key": "deploy.publish"
+            }
+          ],
+          "completed": 2,
+          "id": "deploy",
+          "name": "Deploy",
+          "progress": 100,
+          "status": "complete",
+          "total": 2
+        }
+      ],
+      "total_progress": 96
+    },
+    "job": {
+      "created_at": 1777642653.050219,
+      "goal": "Build an e-commerce store with product catalog, cart, and Braintree checkout",
+      "id": "tsk_b9161950b98a",
+      "metadata": {
+        "current_phase": "verification",
+        "goal": "Build an e-commerce store with product catalog, cart, and Braintree checkout",
+        "intent_schema": null,
+        "mode": "auto",
+        "source": "runtime_state.create_job",
+        "user_id": "f65457e1-0e1c-418d-b885-311da69a9590"
+      },
+      "mode": "auto",
+      "project_id": "f65457e1-0e1c-418d-b885-311da69a9590",
+      "status": "running",
+      "updated_at": 1777642686.0623636,
+      "user_id": "f65457e1-0e1c-418d-b885-311da69a9590"
+    },
+    "latest_failure": {
+      "brain_explanation": "Unknown error (attempt 6): reducing to minimal context",
+      "brain_strategy": "unknown_escalating",
+      "duration_ms": 222,
+      "error_message": "verification.elite_builder | elite_checks_failed | failed_checks=error_boundaries,api_error_handling,authentication,security_headers | No Error Boundary component found; API routes lack error handling (try-catch); No authentication/authorization patterns found; Only 0/5 security headers configured",
+      "failure_reason": "elite_checks_failed",
+      "issues": [
+        "No Error Boundary component found",
+        "API routes lack error handling (try-catch)",
+        "No authentication/authorization patterns found",
+        "Only 0/5 security headers configured"
+      ],
+      "recorded_at": "2026-05-01T13:38:06.349046+00:00",
+      "retry_count": 6,
+      "stage": "elite_builder",
+      "status": "failed_verification",
+      "step_id": "stp_7ba169357899",
+      "step_key": "verification.elite_builder",
+      "verifier_score": 60
+    },
+    "success": true
+  },
+  "started_at": "2026-05-01T13:38:03.151968+00:00",
+  "status_code": 200
+}

@@ -1,0 +1,49 @@
+{
+  "finished_at": "2026-05-01T13:59:42.171881+00:00",
+  "label": "02_llm_health",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/health/llm",
+  "request_body": null,
+  "response": {
+    "live_invocation": "not_run",
+    "ok": true,
+    "providers": {
+      "anthropic": {
+        "configured": true,
+        "disabled": false,
+        "key_count": 1,
+        "missing_env": [],
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "cerebras": {
+        "configured": true,
+        "configured_key_envs": [
+          "CEREBRAS_API_KEY",
+          "CEREBRAS_API_KEY_2",
+          "CEREBRAS_API_KEY_3",
+          "CEREBRAS_API_KEY_4",
+          "CEREBRAS_API_KEY_5"
+        ],
+        "disabled": false,
+        "key_count": 5,
+        "missing_env": [],
+        "model": "llama3.1-8b"
+      },
+      "llama": {
+        "configured": false,
+        "disabled": false,
+        "key_count": 0,
+        "missing_env": [
+          "LLAMA_API_KEY"
+        ],
+        "model": "meta-llama/Llama-2-70b-chat-hf"
+      }
+    },
+    "secret_values_included": "<redacted>",
+    "status": "ready",
+    "warnings": []
+  },
+  "started_at": "2026-05-01T13:59:41.881807+00:00",
+  "status_code": 200
+}
