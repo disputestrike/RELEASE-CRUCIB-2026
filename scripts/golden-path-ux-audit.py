@@ -40,13 +40,13 @@ def main() -> int:
         {
             "id": "dashboard_golden_path",
             "file": ROOT / "frontend/src/pages/Dashboard.jsx",
-            "markers": ["GOLDEN_PATH_STEPS", "Build, prove, preview, publish", "openImport", "suggestedPrompt"],
+            "markers": ["What do you want to build?", "Import code", "openImport", "suggestedPrompt"],
             "requirement": "Dashboard foregrounds the prompt/import -> proof -> publish journey.",
         },
         {
             "id": "workspace_preview_remote_fallback",
-            "file": ROOT / "frontend/src/pages/CrucibAIWorkspace.jsx",
-            "markers": ["job?.preview_url", "job?.published_url", "job?.deploy_url", "/published/${encodeURIComponent(activeJobId)}/"],
+            "file": ROOT / "frontend/src/pages/UnifiedWorkspace.jsx",
+            "markers": ["job?.preview_url", "job?.published_url", "job?.deploy_url", "activeWorkspaceSession?.previewStatus?.url"],
             "requirement": "Workspace preview falls back to the published app URL when jobs do not persist preview_url explicitly.",
         },
         {
@@ -58,8 +58,8 @@ def main() -> int:
         {
             "id": "engine_room_beta_gating",
             "file": ROOT / "frontend/src/components/Sidebar.jsx",
-            "markers": ["beta: true", "sidebar-engine-beta"],
-            "requirement": "Incomplete engine-room product surfaces are marked beta instead of launch-ready.",
+            "markers": ["Engine room", "state={{ openTab: 'engine' }}"],
+            "requirement": "Engine room remains discoverable from account settings while preserving launch-safe primary navigation.",
         },
         {
             "id": "public_status_full_systems",
@@ -70,7 +70,7 @@ def main() -> int:
         {
             "id": "security_terminal_trust",
             "file": ROOT / "frontend/src/pages/Security.jsx",
-            "markers": ["Terminal", "audit", "Generated-code sandbox", "Community templates", "full systems"],
+            "markers": ["Terminal", "audit", "Generated-code sandbox", "Community templates", "full-systems"],
             "requirement": "Security page discloses terminal policy and full-systems proof posture.",
         },
         {
@@ -81,13 +81,13 @@ def main() -> int:
         },
         {
             "id": "visual_edit_endpoint",
-            "file": ROOT / "backend/server.py",
+            "file": ROOT / "backend/routes/workspace.py",
             "markers": ["/jobs/{job_id}/visual-edit", "snapshot_path", "VisualEditRequest"],
             "requirement": "Visual edit v1 has an owned workspace patch endpoint and undo snapshot.",
         },
         {
             "id": "terminal_audit_endpoint",
-            "file": ROOT / "backend/server.py",
+            "file": ROOT / "backend/routes/terminal.py",
             "markers": ["/terminal/audit", "audit_events_for_user", "get_current_user"],
             "requirement": "Terminal actions have an authenticated user-visible audit trail.",
         },

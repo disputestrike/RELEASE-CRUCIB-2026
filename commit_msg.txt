@@ -1,0 +1,3 @@
+stabilize full-system test gates and backend contract reliability
+
+Align backend/test gate behavior with current routing, pricing, and contract logic, add missing smoke/release fixtures, and harden scripts so local full-system validation can complete consistently.

@@ -198,7 +198,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Needs attention</span>
+        <span>Repairing</span>
       </div>
     );
   }
@@ -280,7 +280,7 @@ function ToolGroup({ item }) {
   const total = item.children.length;
   const doneCount = item.children.filter((c) => c.status === 'success' || c.status === 'completed').length;
   const summary =
-    item.status === 'failed' ? 'Needs attention'
+    item.status === 'failed' ? 'Repairing'
     : item.status === 'running' ? 'Running'
     : 'Done';
   const progressLabel = total > 0 ? `${doneCount}/${total}` : '';
@@ -327,7 +327,7 @@ function FailureBlock({ item }) {
       <div className="p4-chapter-head p4-chapter-head--static">
         <AlertTriangle size={13} className="p4-bad" />
         <span className="p4-chapter-title">{item.title || 'Checking the workspace'}</span>
-        <span className="p4-chapter-status p4-chapter-status--failed">Needs attention</span>
+        <span className="p4-chapter-status p4-chapter-status--failed">Repairing</span>
       </div>
       <p className="p4-chapter-desc">{friendlyReason}</p>
       {showTechnical ? (
@@ -352,7 +352,7 @@ function FailureBlock({ item }) {
 
 function phaseStatusLabel(st) {
   if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Needs fix';
+  if (st === 'failed') return 'Repairing';
   if (st === 'running') return 'Running';
   return 'Pending';
 }
@@ -424,17 +424,17 @@ function RepairBlock({ item }) {
     item.status === 'success'
       ? 'Done'
       : item.status === 'failed'
-      ? 'Needs another pass'
+      ? 'Repairing'
       : isNeedsFix
-      ? 'Needs fix'
+      ? 'Repairing'
       : `Pass ${item.attempt || 1}`;
   const headTitle =
     item.status === 'success'
       ? 'Repair complete'
       : item.status === 'failed'
-      ? 'Repair blocked'
+      ? 'Continuing repair'
       : isNeedsFix
-      ? item.title || 'Verification issue'
+      ? item.title || 'Repairing verification issue'
       : 'Repair in progress';
   const detail = (item.technicalDetail || '').trim();
   return (

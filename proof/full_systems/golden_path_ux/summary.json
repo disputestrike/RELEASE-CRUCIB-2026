@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-04-08T17:38:42.680183+00:00",
+  "generated_at": "2026-05-01T19:19:46.542578+00:00",
   "passed": true,
-  "passed_count": 10,
-  "total_count": 10,
+  "passed_count": 12,
+  "total_count": 12,
   "results": [
     {
       "id": "onboarding_three_outcomes",
@@ -19,8 +19,22 @@
       "missing": []
     },
     {
+      "id": "workspace_preview_remote_fallback",
+      "requirement": "Workspace preview falls back to the published app URL when jobs do not persist preview_url explicitly.",
+      "file": "frontend\\src\\pages\\UnifiedWorkspace.jsx",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "id": "polling_is_not_misreported_as_reconnecting",
+      "requirement": "Timeline labels polling fallback accurately instead of implying the product is broken.",
+      "file": "frontend\\src\\components\\AutoRunner\\ExecutionTimeline.jsx",
+      "passed": true,
+      "missing": []
+    },
+    {
       "id": "engine_room_beta_gating",
-      "requirement": "Incomplete engine-room product surfaces are marked beta instead of launch-ready.",
+      "requirement": "Engine room remains discoverable from account settings while preserving launch-safe primary navigation.",
       "file": "frontend\\src\\components\\Sidebar.jsx",
       "passed": true,
       "missing": []
@@ -49,14 +63,14 @@
     {
       "id": "visual_edit_endpoint",
       "requirement": "Visual edit v1 has an owned workspace patch endpoint and undo snapshot.",
-      "file": "backend\\server.py",
+      "file": "backend\\routes\\workspace.py",
       "passed": true,
       "missing": []
     },
     {
       "id": "terminal_audit_endpoint",
       "requirement": "Terminal actions have an authenticated user-visible audit trail.",
-      "file": "backend\\server.py",
+      "file": "backend\\routes\\terminal.py",
       "passed": true,
       "missing": []
     },

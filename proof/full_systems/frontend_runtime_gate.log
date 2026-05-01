@@ -1,4 +1,6 @@
-﻿Frontend runtime gate proof: C:\Users\benxp\OneDrive\Documents\New
-project\proof\frontend_runtime_gate\runtime_gate.json
-Frontend runtime matrix: C:\Users\benxp\OneDrive\Documents\New project\proof\frontend_runtime_gate\PASS_FAIL.md
-Active host Node is blocked, but repo now has Node 22 paths (.nvmrc, Dockerfile, CI).
+﻿Frontend runtime gate proof: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE
+2026\RELEASE-CRUCIB-2026\proof\frontend_runtime_gate\runtime_gate.json
+Frontend runtime matrix: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE
+2026\RELEASE-CRUCIB-2026\proof\frontend_runtime_gate\PASS_FAIL.md
+
+ERROR: Docker frontend build failed. See C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 2026\RELEASE-CRUCIB-2026\proof\frontend_runtime_gate\docker_frontend_build.log

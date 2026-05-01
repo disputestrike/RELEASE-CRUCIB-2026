@@ -180,7 +180,7 @@ export default function PreviewPanel({
   const statusLabel = useRemote
     ? 'Live (dev server)'
     : status === 'blocked'
-      ? 'Paused'
+      ? 'Repairing'
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
@@ -275,7 +275,7 @@ export default function PreviewPanel({
         />
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
-            <span className="pp-preview-blocked-title">Preview paused — we&apos;ll continue with you</span>
+            <span className="pp-preview-blocked-title">Preview repairing — continuing automatically</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail.trim()
                 ? blockedDetail
@@ -294,11 +294,11 @@ export default function PreviewPanel({
 
         {status === 'blocked' && !hasSandpack && (
           <div className="pp-preview-blocked-full">
-            <span className="pp-preview-blocked-title">Paused for a moment</span>
+            <span className="pp-preview-blocked-title">Repairing preview now</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail
                 ? blockedDetail
-                : 'Send a quick note below to continue — your files may already be ahead in Code.'}
+                : 'The brain is applying fixes and will keep this run moving automatically.'}
             </p>
           </div>
         )}

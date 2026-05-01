@@ -7,14 +7,14 @@ from backend.routes.braintree_payments import braintree_status
 
 
 def test_public_pricing_is_locked_to_approved_credit_plans():
-    assert pricing_plans.CREDIT_PLANS["free"]["credits"] == 200
+    assert pricing_plans.CREDIT_PLANS["free"]["credits"] == 100
     assert pricing_plans.CREDIT_PLANS["free"]["price"] == 0
 
     expected = {
-        "builder": (500, 15),
-        "pro": (1000, 30),
-        "scale": (2000, 60),
-        "teams": (5000, 150),
+        "builder": (500, 20),
+        "pro": (1500, 50),
+        "scale": (3000, 100),
+        "teams": (6000, 200),
     }
     for plan, (credits, price) in expected.items():
         assert pricing_plans.CREDIT_PLANS[plan]["credits"] == credits

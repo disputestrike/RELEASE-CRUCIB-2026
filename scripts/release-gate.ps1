@@ -15,7 +15,7 @@ function Step($message) {
     Write-Host "==> $message" -ForegroundColor Cyan
 }
 
-function Require-Command($name) {
+function Get-RequiredCommand($name) {
     $cmd = Get-Command $name -ErrorAction SilentlyContinue
     if (-not $cmd) {
         throw "Missing required command: $name"
@@ -32,8 +32,8 @@ function Assert-LastExit($label) {
 Push-Location $root
 try {
     Step "Checking tools"
-    Require-Command git | Out-Null
-    Require-Command python | Out-Null
+    Get-RequiredCommand git | Out-Null
+    Get-RequiredCommand python | Out-Null
 
     Step "Checking backend syntax"
     & python -m py_compile `
@@ -56,9 +56,8 @@ try {
         $env:REDIS_URL = "redis://127.0.0.1:6381/0"
     }
     $env:CRUCIBAI_TEST = "1"
-    & python -m pytest backend\tests\test_smoke.py `
-        -k "phase2 or terminal or visual_edit or template_remix or job_state or job_proof or run_auto or background_runner or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or run_agent_action or health_llm or detect_frameworks or deploy" `
-        -q
+    # Run full smoke module: the prior -k filter can select zero tests and exit 5.
+    & python -m pytest backend\tests\test_smoke.py -q
     Assert-LastExit "backend smoke"
 
     Step "Running late-stage pipeline failure proof tests"
@@ -86,13 +85,13 @@ try {
     Assert-LastExit "automation bridge tests"
 
     Step "Running LLM routing guard tests"
-    & python -m pytest backend\tests\test_tool_agents.py -k "large_cerebras or base_agent" -q
+    & python -m pytest backend\tests\test_runtime_single_brain_guards.py -q
     Assert-LastExit "LLM routing guard tests"
 
     if (-not $BackendOnly) {
         Step "Checking frontend runtime"
-        Require-Command node | Out-Null
-        Require-Command npm | Out-Null
+        Get-RequiredCommand node | Out-Null
+        Get-RequiredCommand npm | Out-Null
         $nodeVersionRaw = (& node --version).Trim()
         $nodeMajor = [int]($nodeVersionRaw.TrimStart("v").Split(".")[0])
         Write-Host "Node: $nodeVersionRaw"

@@ -131,6 +131,7 @@ class BuildContractGenerator:
         """Extract product name from prompt, or generate default."""
         # Look for quoted names or "Name - description" pattern
         import re
+        prompt = re.sub(r"^\s*build\s+", "", prompt or "", flags=re.IGNORECASE).strip()
         lower = (prompt or "").lower()
 
         if any(k in lower for k in ("internal admin", "admin tool", "admin panel", "internal tool")):
@@ -163,25 +164,25 @@ class BuildContractGenerator:
         if dims.get("internal_admin"):
             return {
                 "frontend": "React+Vite",
-                "backend": dims.get("backend") if isinstance(dims.get("backend"), str) else "FastAPI",
-                "database": dims.get("database") if isinstance(dims.get("database"), str) else "PostgreSQL",
+                "backend": dims.get("backend_framework") or "FastAPI",
+                "database": dims.get("database_engine") or "PostgreSQL",
                 "styling": "CSS tokens",
                 "routing": "browser-addressable admin routes",
             }
         
         # Frontend
         if dims.get("frontend"):
-            stack["frontend"] = dims.get("frontend", "React+TypeScript")
+            stack["frontend"] = dims.get("frontend_framework") or "React+TypeScript"
         
         # Backend
         if dims.get("backend"):
-            stack["backend"] = dims.get("backend", "FastAPI")
+            stack["backend"] = dims.get("backend_framework") or "FastAPI"
         elif dims.get("api"):
             stack["backend"] = "FastAPI"
         
         # Database
         if dims.get("database"):
-            stack["database"] = dims.get("database", "PostgreSQL")
+            stack["database"] = dims.get("database_engine") or "PostgreSQL"
         
         # Queue
         if dims.get("workers") or dims.get("real_time"):
@@ -323,6 +324,8 @@ class BuildContractGenerator:
         
         # Documentation
         files.append("README.md")
+        if (dims.get("backend") or dims.get("api")) and "Dockerfile" not in files:
+            files.append("Dockerfile")
         
         return files
     
@@ -615,6 +618,10 @@ class BuildContractGenerator:
     
     def _synthesize_preview_routes(self, dims: Dict) -> List[str]:
         """Synthesize routes that need screenshot/preview."""
+        if dims.get("api") and not dims.get("frontend"):
+            return []
+        if dims.get("cli"):
+            return []
         if dims.get("marketing_site"):
             return ["/", "/features", "/pricing", "/testimonials", "/404"]
         if dims.get("internal_admin"):
@@ -635,6 +642,10 @@ class BuildContractGenerator:
     
     def _synthesize_visual_checks(self, dims: Dict) -> List[str]:
         """Synthesize visual QA checks."""
+        if dims.get("api") and not dims.get("frontend"):
+            return []
+        if dims.get("cli"):
+            return []
         if dims.get("marketing_site"):
             return [
                 "no_blank_screen",

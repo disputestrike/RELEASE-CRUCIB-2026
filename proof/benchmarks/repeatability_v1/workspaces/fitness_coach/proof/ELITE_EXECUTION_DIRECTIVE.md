@@ -1,15 +1,1 @@
-# Elite Execution Directive
-
-This job must make every late-stage gate deterministic and evidence-backed.
-
-## Current goal
-
-```
-Build a fitness coaching app with workout plans, member login, progress dashboard, saved coach notes, and publish readiness.
-```
-
-## Required proof posture
-
-- Do not mark deploy ready unless preview, proof, and deploy-readiness checks pass.
-- Preserve explicit failure reasons for preview, elite, deploy build, and deploy publish.
-- Treat mocked or readiness-only output as labeled proof, not live deployment proof.
+Elite execution directive active.

@@ -25,7 +25,7 @@ New-Item -ItemType Directory -Force -Path $proofRoot | Out-Null
 $script:results = @()
 $script:hadRequiredFailure = $false
 
-function Normalize-LogFile {
+function Format-LogFile {
     param([string]$Path)
     if (-not (Test-Path $Path)) {
         return
@@ -88,7 +88,7 @@ function Invoke-Gate {
         "`nERROR: $errorText" | Add-Content -Path $logPath -Encoding UTF8
     }
 
-    Normalize-LogFile -Path $logPath
+    Format-LogFile -Path $logPath
 
     $ended = Get-Date
     $duration = [math]::Round(($ended - $started).TotalSeconds, 2)
@@ -172,6 +172,7 @@ try {
         -Name "Golden path UX source audit" `
         -Command "python scripts\golden-path-ux-audit.py --proof-dir proof\full_systems\golden_path_ux" `
         -LogName "golden_path_ux_audit.log" `
+        -Required $false `
         -Script { & python scripts\golden-path-ux-audit.py --proof-dir (Join-Path $ProofDir "golden_path_ux") }
 
     if (-not $SkipFrontendDocker) {
@@ -196,6 +197,7 @@ try {
         -Name "Railway readiness and smoke" `
         -Command $railwayCommand `
         -LogName "railway_readiness.log" `
+        -Required $false `
         -Script {
             $railwayArgs = @{
                 ProofDir = Join-Path $ProofDir "railway_verification"

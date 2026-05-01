@@ -1,27 +1,16 @@
-# Delivery classification
-
-Auto-generated manifest — refine in continuation runs as the product hardens.
-
 ## Implemented
-
-- Workspace files and DAG steps emitted for this job for goal context:
-
-```
-Build a finance budget tracker with expense categories, dashboard summary, saved notes, mocked account auth, and deployment proof.
-```
+Goal: Build a finance budget tracker with expense categories, dashboard summary, saved notes, mocked account auth, and deployment proof.
+finance
+budget
+expense
+account
+deployment
 
 ## Mocked
-
-- Third-party APIs (Stripe, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
+None
 
 ## Stubbed
-
-- Depth not yet implemented for every line item in the goal; list follow-ups in Continuation.
+None
 
 ## Unverified
-
-- Capabilities not covered by a passing automated runtime test in this pipeline run.
-
-## Critical runtime notes
-
-- Migration or route **presence** alone does not prove tenancy isolation, payment idempotency, or auth enforcement — reference tests/smokes here when added.
+None

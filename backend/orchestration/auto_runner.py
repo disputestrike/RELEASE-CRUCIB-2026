@@ -554,6 +554,20 @@ async def _execute_job_loop(
                 break
 
             if await has_blocking_failure(job_id):
+                reset_n = await prepare_failed_job_for_rerun(job_id)
+                if reset_n > 0:
+                    await append_job_event(
+                        job_id,
+                        "auto_repair_reactivated",
+                        {"reason": "blocking_failure_detected", "steps_reset": reset_n},
+                    )
+                    await publish(
+                        job_id,
+                        "auto_repair_reactivated",
+                        {"reason": "blocking_failure_detected", "steps_reset": reset_n},
+                    )
+                    await asyncio.sleep(POLL_INTERVAL_SEC)
+                    continue
                 await update_job_state(job_id, "failed", {"current_phase": "blocked"})
                 await publish(
                     job_id,
@@ -935,6 +949,19 @@ async def _execute_job_loop(
 
     # Strict: any failed step means the plan did not complete (no "60% is good enough").
     if failed_steps:
+        reset_n = await prepare_failed_job_for_rerun(job_id)
+        if reset_n > 0 and total_retries < _max_total_retries():
+            await append_job_event(
+                job_id,
+                "auto_repair_reactivated",
+                {"reason": "final_failed_steps_gate", "steps_reset": reset_n},
+            )
+            await publish(
+                job_id,
+                "auto_repair_reactivated",
+                {"reason": "final_failed_steps_gate", "steps_reset": reset_n},
+            )
+            return await _execute_job_loop(job_id, workspace_path, db_pool, total_retries)
         await update_job_state(
             job_id,
             "failed",
@@ -1580,13 +1607,16 @@ async def prepare_failed_job_for_rerun(job_id: str) -> int:
     Returns number of steps reset (0 if job was not failed).
     """
     job = await get_job(job_id)
-    if not job or job.get("status") not in {"failed", "blocked", "cancelled", "paused"}:
+    if not job or job.get("status") not in {"failed", "blocked", "cancelled", "paused", "running"}:
         return 0
     steps = await get_steps(job_id)
     n = 0
     for step in steps:
         st = step.get("status")
-        if st in ("failed", "blocked"):
+        retry_count = int(step.get("retry_count", 0) or 0)
+        can_retry_failed = st == "failed" and retry_count < MAX_RETRIES
+        can_retry_blocked = st == "blocked"
+        if can_retry_failed or can_retry_blocked:
             await update_step_state(
                 step["id"],
                 "pending",

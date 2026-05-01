@@ -1,26 +1,15 @@
 ﻿# Live Production Golden Path PASS/FAIL
 
-- Generated at: `2026-04-08T17:39:53.731790+00:00`
+- Generated at: `2026-05-01T17:57:50.672421+00:00`
 - Base URL: `https://crucibai-production.up.railway.app`
-- Job ID: `e8aee254-3540-44ad-9a89-2b4a9c02ac32`
+- Job ID: `not-created`
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| railway_health | PASS | GET /api/health -> 200 |
-| llm_readiness | PASS | GET /api/health/llm -> 200, status=ready |
-| autorunner_runtime_health | PASS | GET /api/orchestrator/runtime-health -> 200, ok=True |
-| auth_register | PASS | POST /api/auth/register -> 200, token_present=True |
-| live_llm_invocation | PASS | POST /api/ai/chat -> 200, model_used=cerebras/llama3.1-8b |
-| plan_created | PASS | POST /api/orchestrator/plan -> 200, job_id=e8aee254-3540-44ad-9a89-2b4a9c02ac32, step_count=18 |
-| run_auto_started | PASS | POST /api/orchestrator/run-auto -> 200, success=True |
-| preview_boot | PASS | verification.preview: completed |
-| elite_proof | PASS | verification.elite_builder: completed |
-| deploy_build | PASS | deploy.build: completed |
-| deploy_publish | PASS | deploy.publish: completed |
-| background_runner_stability | PASS | job_status=completed, phase=completed, background_crash_found=False |
-| proof_artifacts_available | PASS | proof_item_count=63 |
-| generated_workspace_files | PASS | workspace_file_count=44 |
-| published_generated_app_url | PASS | GET /published/e8aee254-3540-44ad-9a89-2b4a9c02ac32/ -> 200 |
+| railway_health | FAIL | GET /api/health -> 404 |
+| llm_readiness | FAIL | GET /api/health/llm -> 404, status=error |
+| autorunner_runtime_health | FAIL | GET /api/orchestrator/runtime-health -> 404, ok=None |
+| auth_register | FAIL | POST /api/auth/register -> 404, token_present=False |
 
 ## Blockers
-- None recorded.
+- Could not register/authenticate a live proof user; protected golden-path routes were not callable.

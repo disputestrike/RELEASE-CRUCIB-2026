@@ -1,0 +1,132 @@
+Unified Workspace patch validation
+Started: 2026-05-01T12:11:14.8924991-04:00
+Repo: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 2026\RELEASE-CRUCIB-2026
+
+==============================================================================
+Git status (sanity)
+==============================================================================
+ M backend/orchestration/auto_runner.py
+ M frontend/src/components/AutoRunner/BrainGuidancePanel.jsx
+ M frontend/src/components/AutoRunner/PreviewPanel.jsx
+ M frontend/src/components/AutoRunner/PreviewPanel.test.jsx
+ M frontend/src/components/AutoRunner/WorkspaceActivityFeed.jsx
+ M frontend/src/components/AutoRunner/WorkspaceLiveControl.jsx
+ M frontend/src/lib/presentBuildThread.js
+?? artifacts/validation/unified-workspace-validation-20260501-121114.txt
+
+STATUS: PASS
+
+
+==============================================================================
+Frontend unit tests (canonical identity + surface mode)
+==============================================================================
+
+> frontend@0.1.1 test
+> craco test --runInBand src/pages/__tests__/UnifiedWorkspaceCanonicalIdentity.test.js src/pages/__tests__/UnifiedWorkspaceSurfaceMode.test.js
+
+cmd : PASS src/pages/__tests__/UnifiedWorkspaceCanonicalIdentity.test.js
+At C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 
+2026\RELEASE-CRUCIB-2026\scripts\validate_unified_workspace_patch.ps1:48 char:3
++   cmd /c "npm test -- --runInBand src/pages/__tests__/UnifiedWorkspac ...
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/pages/...dentity.test.js:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS src/pages/__tests__/UnifiedWorkspaceSurfaceMode.test.js
+
+Test Suites: 2 passed, 2 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        3.769 s
+Ran all test suites matching /src\\pages\\__tests__\\UnifiedWorkspaceCanonicalIdentity.test.js|src\\pages\\__tests__\\U
+nifiedWorkspaceSurfaceMode.test.js/i.
+
+STATUS: PASS
+
+
+==============================================================================
+Frontend production build
+==============================================================================
+
+> frontend@0.1.1 build
+> cross-env DISABLE_ESLINT_PLUGIN=true craco build
+
+Creating an optimized production build...
+Compiled successfully.
+
+File sizes after gzip:
+
+  805.59 kB (-44 B)  build\static\js\main.1842faae.js
+  60.52 kB           build\static\css\main.7aab6b3a.css
+  42.84 kB           build\static\js\713.b713cfed.chunk.js
+  26.57 kB           build\static\js\531.d8d55189.chunk.js
+  23.45 kB           build\static\js\967.d1fbc514.chunk.js
+  8.86 kB            build\static\js\550.1f9c4ac7.chunk.js
+  6.23 kB            build\static\js\55.3eaba4e4.chunk.js
+
+The bundle size is significantly larger than recommended.
+Consider reducing it with code splitting: https://goo.gl/9VhYWB
+You can also analyze the project dependencies: https://goo.gl/LeUzfb
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  yarn global add serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+
+
+STATUS: PASS
+
+
+==============================================================================
+Backend acceptance invariants (truth/proof contracts)
+==============================================================================
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+cachedir: .pytest_cache_backend
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 2026\RELEASE-CRUCIB-2026\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 3 items
+
+tests\test_system_acceptance_invariants.py ...                           [100%]
+
+============================== 3 passed in 0.31s ==============================
+
+STATUS: PASS
+
+
+==============================================================================
+Backend workspace session/preview resolver tests
+==============================================================================
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+cachedir: .pytest_cache_backend
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 2026\RELEASE-CRUCIB-2026\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 6 items
+
+tests\test_workspace_session_resolve.py ......                           [100%]
+
+============================= 6 passed in 12.57s ==============================
+
+STATUS: PASS
+
+
+==============================================================================
+Validation Complete
+==============================================================================
+Finished: 2026-05-01T12:19:23.7102270-04:00
+Report: C:\Users\benxp\OneDrive\Desktop\CRUCIB AI RELEASE 2026\RELEASE-CRUCIB-2026\artifacts\validation\unified-workspace-validation-20260501-121114.txt

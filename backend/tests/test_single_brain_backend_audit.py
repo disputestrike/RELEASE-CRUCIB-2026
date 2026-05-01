@@ -97,7 +97,7 @@ def test_backend_has_no_forbidden_execution_references():
             continue
 
         rel = path.relative_to(BACKEND_ROOT).as_posix()
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
         tree = ast.parse(text, filename=rel)
 
         if path.name in forbidden_file_names:

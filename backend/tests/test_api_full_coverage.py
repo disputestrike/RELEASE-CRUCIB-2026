@@ -54,7 +54,7 @@ POST_PUBLIC_OR_AUTH = [
         [200, 201, 400, 422],
     ),
     ("/api/auth/login", {"email": "x@x.com", "password": "x"}, [200, 401]),
-    ("/api/ai/chat", {"message": "hi", "session_id": "cov"}, [200, 401, 500]),
+    ("/api/ai/chat", {"message": "hi", "session_id": "cov"}, [200, 401, 500, 503]),
     (
         "/api/ai/analyze",
         {"content": "const x=1;", "doc_type": "text", "task": "summarize"},

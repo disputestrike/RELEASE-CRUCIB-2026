@@ -135,7 +135,7 @@ async def test_one_time_checkout_uses_server_price_and_grants_access():
     )
 
     assert result["status"] == "success"
-    assert result["order"]["amount"] == 15.0
+    assert result["order"]["amount"] == 20.0
     user = await db.users.find_one({"id": "u1"})
     assert user["credit_balance"] == 500
     assert await user_has_access(db, "u1", result["order"]["product_id"]) is True

@@ -530,20 +530,20 @@ NEVER say you cannot access the internet. NEVER mention a knowledge cutoff.
 REAL_AGENT_NO_LLM_KEYS_DETAIL = "Real-agent mode requires an Anthropic or Cerebras API key. Please add one in Settings > API Keys."
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
-# Canonical pricing — keep aligned with backend/pricing_plans.py (linear $0.03/credit).
+# Canonical pricing — keep aligned with backend/pricing_plans.py.
 # The Pricing page /tokens/bundles endpoint reads these values, so they MUST match
 # the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
-    "builder": {"name": "Builder", "tokens": 500_000,  "credits": 500,  "price": 15},
-    "pro":     {"name": "Pro",     "tokens": 1_000_000, "credits": 1000, "price": 30},
-    "scale":   {"name": "Scale",   "tokens": 2_000_000, "credits": 2000, "price": 60},
-    "teams":   {"name": "Teams",   "tokens": 5_000_000, "credits": 5000, "price": 150},
+    "builder": {"name": "Builder", "tokens": 250_000, "credits": 500, "price": 20},
+    "pro": {"name": "Pro", "tokens": 750_000, "credits": 1500, "price": 50},
+    "scale": {"name": "Scale", "tokens": 1_500_000, "credits": 3000, "price": 100},
+    "teams": {"name": "Teams", "tokens": 3_000_000, "credits": 6000, "price": 200},
 }
 ANNUAL_PRICES: Dict[str, Any] = {
-    "builder": 149.99,
-    "pro": 299.99,
-    "scale": 599.99,
-    "teams": 1499.99,
+    "builder": 200,
+    "pro": 500,
+    "scale": 1000,
+    "teams": 2000,
 }
 PAYMENT_PROVIDER = "braintree"
 BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")

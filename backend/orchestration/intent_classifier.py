@@ -72,7 +72,7 @@ class IntentClassifier:
         "billing": ["billing", "payment", "subscription", "stripe", "invoice", "pricing"],
         
         # Frontend
-        "frontend": ["react", "vue", "angular", "frontend", "spa", "ui", "dashboard", "admin panel", "admin tool"],
+        "frontend": ["react", "vue", "angular", "frontend", "spa", "dashboard", "admin panel", "admin tool"],
 
         # Internal operations/admin tools
         "internal_admin": [
@@ -125,7 +125,7 @@ class IntentClassifier:
         "database": ["database", "postgres", "mysql", "mongodb", "sqlite", "redis", "store signups", "collect data", "save emails", "subscribers", "data tables", "admin records", "form submissions"],
         
         # Mobile
-        "mobile": ["mobile", "ios", "android", "react native", "flutter", "expo"],
+        "mobile": ["mobile", "ios app", "android", "react native", "flutter", "expo"],
         
         # CLI. Keep this narrow: "tool" alone can mean a web/admin product.
         "cli": ["cli", "command line", "terminal", "shell script", "command-line tool", "command line tool"],
@@ -164,6 +164,10 @@ class IntentClassifier:
         
         # Detect specific patterns for richer dimensions
         dimensions.update(self._extract_specific_patterns(prompt))
+        if "api" not in dimensions:
+            dimensions["api"] = any(
+                token in prompt_lower for token in (" api", "api ", "rest", "endpoint")
+            )
         
         # Detect risk factors
         risk_factors = self._detect_risk_factors(prompt_lower)
@@ -197,45 +201,45 @@ class IntentClassifier:
         
         # Database patterns
         if "postgres" in prompt_lower:
-            patterns["database"] = "postgresql"
+            patterns["database_engine"] = "PostgreSQL"
         elif "mysql" in prompt_lower:
-            patterns["database"] = "mysql"
+            patterns["database_engine"] = "MySQL"
         elif "mongodb" in prompt_lower:
-            patterns["database"] = "mongodb"
+            patterns["database_engine"] = "MongoDB"
         elif "redis" in prompt_lower:
             patterns["queue"] = "redis"
         
         # Stack patterns
         if "fastapi" in prompt_lower:
-            patterns["backend"] = "FastAPI"
+            patterns["backend_framework"] = "FastAPI"
             patterns["backend_language"] = "python"
         elif "express" in prompt_lower or "node" in prompt_lower or "node.js" in prompt_lower:
-            patterns["backend"] = "Express"
+            patterns["backend_framework"] = "Express"
             patterns["backend_language"] = "node.js"
         elif "django" in prompt_lower:
-            patterns["backend"] = "Django"
+            patterns["backend_framework"] = "Django"
             patterns["backend_language"] = "python"
         elif "nestjs" in prompt_lower or "nest.js" in prompt_lower:
-            patterns["backend"] = "NestJS"
+            patterns["backend_framework"] = "NestJS"
             patterns["backend_language"] = "node.js"
         elif "c++" in prompt_lower or "cpp" in prompt_lower or "cmake" in prompt_lower:
-            patterns["backend"] = "CMake/g++"
+            patterns["backend_framework"] = "CMake/g++"
             patterns["backend_language"] = "cpp"
         elif "golang" in prompt_lower or " go " in prompt_lower or "go," in prompt_lower:
-            patterns["backend"] = "Gin/Echo"
+            patterns["backend_framework"] = "Gin/Echo"
             patterns["backend_language"] = "go"
         elif "rust" in prompt_lower or "cargo" in prompt_lower:
-            patterns["backend"] = "Actix/Rocket"
+            patterns["backend_framework"] = "Actix/Rocket"
             patterns["backend_language"] = "rust"
         
         if "react" in prompt_lower:
-            patterns["frontend"] = "React"
+            patterns["frontend_framework"] = "React"
             if "typescript" in prompt_lower or "ts" in prompt_lower:
-                patterns["frontend"] = "React+TypeScript"
+                patterns["frontend_framework"] = "React+TypeScript"
         elif "vue" in prompt_lower:
-            patterns["frontend"] = "Vue"
+            patterns["frontend_framework"] = "Vue"
         elif "angular" in prompt_lower:
-            patterns["frontend"] = "Angular"
+            patterns["frontend_framework"] = "Angular"
         
         # Specific feature patterns
         marketing_sections = []
@@ -251,7 +255,7 @@ class IntentClassifier:
                 marketing_sections.append(label)
         if marketing_sections:
             patterns["marketing_sections"] = sorted(set(marketing_sections))
-            patterns["frontend"] = patterns.get("frontend") or "React"
+            patterns["frontend_framework"] = patterns.get("frontend_framework") or "React"
             patterns["marketing_site"] = True
 
         if any(

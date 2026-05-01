@@ -1,9 +1,9 @@
 ﻿{
     "active_node":  {
-                        "supported_by_package_engines":  false,
+                        "supported_by_package_engines":  true,
                         "found":  true,
-                        "version":  "v24.14.0",
-                        "major":  24
+                        "version":  "v22.22.0",
+                        "major":  22
                     },
     "frontend_package":  {
                              "package_manager":  "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
@@ -13,7 +13,7 @@
                 "version":  "11.9.0",
                 "found":  true
             },
-    "generated_at":  "2026-04-08T17:38:47.6925811Z",
+    "generated_at":  "2026-05-01T17:57:46.8570032Z",
     "supported_execution_paths":  {
                                       "root_nvmrc":  "22",
                                       "frontend_nvmrc":  "22",
@@ -21,18 +21,18 @@
                                       "repo_has_supported_node_path":  true,
                                       "dockerfile_frontend_node22":  true
                                   },
-    "conclusion":  "host_node_blocked_but_repo_has_node22_paths",
+    "conclusion":  "active_node_supported",
     "frontend_test":  {
                           "status":  "not_run",
                           "exit_code":  null,
-                          "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\frontend_runtime_gate\\frontend_test.log",
+                          "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\frontend_runtime_gate\\frontend_test.log",
                           "requested":  false
                       },
     "docker_frontend_build":  {
                                   "command":  "docker build --target frontend --progress=plain -t crucibai-frontend-runtime-gate .",
-                                  "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\frontend_runtime_gate\\docker_frontend_build.log",
-                                  "status":  "passed",
+                                  "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\frontend_runtime_gate\\docker_frontend_build.log",
+                                  "status":  "failed",
                                   "requested":  true,
-                                  "exit_code":  0
+                                  "exit_code":  1
                               }
 }

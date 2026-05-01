@@ -48,13 +48,13 @@ export function issueCardTitle(ev) {
   const p = readPayload(ev);
   if (t === 'job_failed') {
     const r = String(p.reason || p.failure_reason || p.summary || '').toLowerCase();
-    if (r.includes('step') && r.includes('fail')) return 'Run paused — a step needs repair';
-    return 'Run needs attention';
+    if (r.includes('step') && r.includes('fail')) return 'Repairing run — verification found an issue';
+    return 'Repairing run';
   }
   if (t === 'step_failed') {
-    return `${friendlyStepLabel(p.step_key, p.name)} needs a fix`;
+    return `${friendlyStepLabel(p.step_key, p.name)} is being repaired`;
   }
-  return 'Something needs attention';
+  return 'Repairing the workspace';
 }
 
 /** Main paragraph shown in the thread (plain English, no npm exit codes). */

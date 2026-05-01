@@ -148,7 +148,7 @@ export default function WorkspaceLiveControl({
         </div>
         <div className="wlc-summary-pill">
           <StatusIcon status={overall} />
-          <span>{hasFailure ? 'Needs attention' : jobStatus}</span>
+          <span>{hasFailure ? 'Repairing' : jobStatus}</span>
         </div>
       </div>
 

@@ -277,19 +277,19 @@ class TestIntentClassifier(unittest.TestCase):
         # Python/FastAPI
         result = classifier.classify("Build a FastAPI backend with PostgreSQL")
         patterns = classifier._extract_specific_patterns("Build a FastAPI backend with PostgreSQL")
-        self.assertEqual(patterns.get("backend"), "FastAPI")
+        self.assertEqual(patterns.get("backend_framework"), "FastAPI")
         self.assertEqual(patterns.get("backend_language"), "python")
 
         # Node/Express
         result = classifier.classify("Build an Express API with MongoDB")
         patterns = classifier._extract_specific_patterns("Build an Express API with MongoDB")
-        self.assertEqual(patterns.get("backend"), "Express")
+        self.assertEqual(patterns.get("backend_framework"), "Express")
         self.assertEqual(patterns.get("backend_language"), "node.js")
 
         # C++/CMake
         result = classifier.classify("Build a C++ command-line tool")
         patterns = classifier._extract_specific_patterns("Build a C++ command-line tool")
-        self.assertEqual(patterns.get("backend"), "CMake/g++")
+        self.assertEqual(patterns.get("backend_framework"), "CMake/g++")
         self.assertEqual(patterns.get("backend_language"), "cpp")
 
 

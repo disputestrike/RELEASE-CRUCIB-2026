@@ -206,6 +206,9 @@ class BuildContract:
             return
         
         progress = self.contract_progress[item_type]
+        required_items = list(getattr(self, item_type, []) or [])
+        if not progress.get("missing") and required_items:
+            progress["missing"] = [it for it in required_items if it not in progress.get("done", [])]
         
         if done:
             if item_name not in progress["done"]:
@@ -216,6 +219,12 @@ class BuildContract:
             if item_name not in progress["missing"]:
                 progress["missing"].append(item_name)
         
+        # Keep missing aligned to the authoritative required list.
+        if required_items:
+            done_set = set(progress.get("done", []))
+            progress["done"] = [it for it in required_items if it in done_set]
+            progress["missing"] = [it for it in required_items if it not in done_set]
+
         # Recalculate percent
         total = len(progress["done"]) + len(progress["missing"])
         if total > 0:
@@ -235,18 +244,15 @@ class BuildContract:
             ("required_files", self.required_files),
             ("required_routes", self.required_routes),
             ("required_database_tables", self.required_database_tables),
-            ("required_backend_modules", self.required_backend_modules),
-            ("required_workers", self.required_workers),
-            ("required_integrations", self.required_integrations),
-            ("required_tests", self.required_tests),
-            ("required_preview_routes", self.required_preview_routes),
         ]
         
         for progress_key, required_list in required_checks:
-            if not required_list:
-                continue  # No requirements for this type
-            
             progress = self.contract_progress.get(progress_key, {})
+            if not required_list:
+                if progress.get("missing"):
+                    return False
+                continue  # No requirements for this type
+
             done_items = set(progress.get("done", []))
             
             # Check that ALL required items are in "done"

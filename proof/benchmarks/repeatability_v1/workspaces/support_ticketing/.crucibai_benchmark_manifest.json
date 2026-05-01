@@ -15,28 +15,18 @@
   },
   "generated_files": [
     "Dockerfile",
-    "README_BUILD.md",
     "backend/main.py",
     "deploy/PRODUCTION_SKETCH.md",
     "deploy/PUBLISH.md",
-    "deploy/healthcheck.sh",
-    "docs/CRUCIB_BUILD_TARGET.md",
     "index.html",
     "package.json",
     "proof/DELIVERY_CLASSIFICATION.md",
     "proof/ELITE_EXECUTION_DIRECTIVE.md",
     "src/App.jsx",
     "src/components/ErrorBoundary.jsx",
-    "src/components/ShellLayout.jsx",
     "src/context/AuthContext.jsx",
-    "src/index.js",
     "src/main.jsx",
-    "src/pages/DashboardPage.jsx",
-    "src/pages/HomePage.jsx",
-    "src/pages/LoginPage.jsx",
-    "src/pages/TeamPage.jsx",
     "src/store/useAppStore.js",
-    "src/styles/global.css",
     "vite.config.js"
   ],
   "passed": true,
@@ -46,7 +36,7 @@
       "detail": {
         "failure_reason": null,
         "issues": [],
-        "proof_count": 5
+        "proof_count": 1
       },
       "name": "deploy_build",
       "passed": true,
@@ -56,7 +46,7 @@
       "detail": {
         "failure_reason": null,
         "issues": [],
-        "proof_count": 2,
+        "proof_count": 1,
         "publish_mode": "readiness_only"
       },
       "name": "deploy_publish",
@@ -68,7 +58,7 @@
         "failed_checks": [],
         "failure_reason": null,
         "issues": [],
-        "proof_count": 10
+        "proof_count": 1
       },
       "name": "elite_proof",
       "passed": true,
@@ -76,7 +66,7 @@
     },
     "generated_files": {
       "detail": {
-        "generated_file_count": 24,
+        "generated_file_count": 14,
         "missing": [],
         "passed": true,
         "required_count": 14
@@ -90,7 +80,7 @@
         "failure_reason": null,
         "issues": [],
         "mode": "static_plus_skipped_browser",
-        "proof_count": 8
+        "proof_count": 1
       },
       "name": "preview",
       "passed": true,
@@ -98,7 +88,7 @@
     },
     "prompt_coverage": {
       "detail": {
-        "checked_file_count": 23,
+        "checked_file_count": 13,
         "missing_terms": [],
         "passed": true,
         "required_terms": [
@@ -114,5 +104,5 @@
       "score": 100.0
     }
   },
-  "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\support_ticketing"
+  "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\support_ticketing"
 }

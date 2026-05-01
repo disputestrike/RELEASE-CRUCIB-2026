@@ -194,6 +194,20 @@ def _coerce_model_text(value: Any) -> str:
 # CF33 — Removed compat /ai/chat stub that was masking the real
 # routes/ai.py implementation and returning "Compat reply: ..." to users.
 # The real endpoint lives at routes/ai.py line ~86 and talks to LLM providers.
+@router.post("/ai/chat")
+async def ai_chat_compat(data: AIChatBody, user: dict = Depends(_get_optional_user())):
+    """
+    Compatibility shim: keep /api/ai/chat addressable even when optional route loading fails.
+    Delegates to routes.ai when available; otherwise returns handled 500 instead of 404.
+    """
+    try:
+        from .ai import ChatMessage as _ChatMessage, ai_chat as _real_ai_chat
+        payload = _ChatMessage(message=data.message or "", model=data.model or "auto", session_id=data.session_id)
+        return await _real_ai_chat(payload, user)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"ai_chat_unavailable: {str(exc)[:180]}")
 
 
 @router.post("/ai/validate-and-fix")

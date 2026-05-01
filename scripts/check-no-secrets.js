@@ -31,13 +31,19 @@ function main() {
   }
 
   try {
-    const tracked = execSync('git ls-files "*.env" "*.env.*" .env', {
+    const trackedRaw = execSync('git ls-files "*.env" "*.env.*" .env', {
       cwd: root,
       encoding: 'utf8',
       maxBuffer: 1024,
     }).trim();
-    if (tracked) {
-      errors.push('Secret-like files are tracked by git: ' + tracked.split(/\r?\n/).join(', '));
+    const tracked = trackedRaw
+      .split(/\r?\n/)
+      .map(v => v.trim())
+      .filter(Boolean)
+      // .env.example files are committed templates, not runtime secrets.
+      .filter(v => !v.endsWith('.env.example'));
+    if (tracked.length) {
+      errors.push('Secret-like files are tracked by git: ' + tracked.join(', '));
     }
   } catch (e) {
     if (e.status === 0 && e.stdout && e.stdout.trim()) {

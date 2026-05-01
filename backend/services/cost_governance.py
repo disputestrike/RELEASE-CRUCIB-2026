@@ -133,7 +133,7 @@ def plan_catalog() -> list[dict[str, Any]]:
                 "price_usd": plan["price"],
                 "monthly_credits": plan["credits"],
                 "monthly_tokens": plan["credits"] * CREDITS_PER_TOKEN,
-                "credit_rate_usd": 0.03 if key != "free" else 0,
+                "credit_rate_usd": 0.05 if key != "free" else 0,
             }
         )
     return plans
@@ -144,8 +144,8 @@ def cost_governance_payload() -> dict[str, Any]:
         "status": "ready",
         "pricing": {
             "plans": plan_catalog(),
-            "bulk_credit_rate_usd": 0.03,
-            "approved_price_floor": "$15 Builder plan",
+            "bulk_credit_rate_usd": 0.05,
+            "approved_price_floor": "$20 Builder plan",
             "legacy_prices_allowed": False,
         },
         "simulation_depths": SIMULATION_DEPTHS,
@@ -198,7 +198,7 @@ def estimate_cost(
         "depth": estimate.depth,
         "estimated_tokens": estimate.estimated_tokens,
         "estimated_credits": round(estimate.estimated_credits, 4),
-        "estimated_usd_at_public_rate": round(estimate.estimated_credits * 0.03, 4),
+        "estimated_usd_at_public_rate": round(estimate.estimated_credits * 0.05, 4),
         "policy_credit_cap": estimate.policy_credit_cap,
         "plan_monthly_credits": estimate.plan_monthly_credits,
         "within_action_cap": estimate.within_action_cap,

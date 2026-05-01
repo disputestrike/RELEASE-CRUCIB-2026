@@ -31,10 +31,10 @@ function humanizeJobStatus(status) {
     running: 'Building',
     queued: 'In queue',
     approved: 'Starting',
-    failed: 'Needs attention',
+    failed: 'Repairing',
     completed: 'Done',
     cancelled: 'Stopped',
-    blocked: 'Paused',
+    blocked: 'Repairing',
     pending: 'Starting',
   };
   return map[s] || (status ? String(status).replace(/_/g, ' ') : '');

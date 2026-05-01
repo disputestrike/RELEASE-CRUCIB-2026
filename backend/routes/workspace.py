@@ -12,15 +12,23 @@ import mimetypes
 import os
 import re
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["workspace"])
+
+
+class VisualEditRequest(BaseModel):
+    file_path: str
+    find_text: str
+    replace_text: str = ""
 
 
 # ── Dependency helpers ────────────────────────────────────────────────────────
@@ -649,6 +657,47 @@ async def get_job_workspace_file_raw(
         raise HTTPException(status_code=404, detail="File not found")
     media = mimetypes.guess_type(full_path.name)[0] or "application/octet-stream"
     return FileResponse(path=str(full_path), media_type=media, filename=full_path.name)
+
+
+@router.post("/jobs/{job_id}/visual-edit")
+async def visual_edit_job_workspace_file(
+    job_id: str,
+    body: VisualEditRequest,
+    user: dict = Depends(_get_auth()),
+):
+    """Apply a single find/replace patch and snapshot the previous file content."""
+    workspace = await _assert_job_access(job_id, user)
+    rel_path = (body.file_path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in rel_path or not rel_path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    full = _safe_resolve(workspace, rel_path)
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    if not body.find_text:
+        raise HTTPException(status_code=400, detail="find_text is required")
+
+    before = full.read_text(encoding="utf-8", errors="replace")
+    if body.find_text not in before:
+        raise HTTPException(status_code=400, detail="find_text not found in target file")
+    after = before.replace(body.find_text, body.replace_text, 1)
+
+    snapshot_dir = workspace / ".crucibai" / "snapshots"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_name = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{full.name}.bak"
+    snapshot_path = snapshot_dir / snapshot_name
+    snapshot_path.write_text(before, encoding="utf-8")
+    full.write_text(after, encoding="utf-8")
+
+    return {
+        "status": "patched",
+        "job_id": job_id,
+        "file_path": rel_path,
+        "snapshot_path": str(snapshot_path.relative_to(workspace)).replace("\\", "/"),
+        "changed": True,
+        "find_text": body.find_text,
+        "replace_text": body.replace_text,
+    }
 
 
 # ── Deploy / export routes ─────────────────────────────────────────────────────

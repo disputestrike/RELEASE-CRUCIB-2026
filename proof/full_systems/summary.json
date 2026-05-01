@@ -1,7 +1,7 @@
 ﻿{
-    "generated_at":  "2026-04-08T17:39:53.7855427Z",
-    "base_url":  "https://crucibai-production.up.railway.app",
-    "required_failures":  0,
+    "generated_at":  "2026-05-01T18:53:59.2385497Z",
+    "base_url":  null,
+    "required_failures":  1,
     "results":  [
                     {
                         "name":  "Git diff whitespace check",
@@ -9,8 +9,8 @@
                         "status":  "PASS",
                         "exit_code":  0,
                         "command":  "git diff --check",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\git_diff_check.log",
-                        "duration_seconds":  0.29,
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\git_diff_check.log",
+                        "duration_seconds":  0.41,
                         "error":  null
                     },
                     {
@@ -19,8 +19,8 @@
                         "status":  "PASS",
                         "exit_code":  0,
                         "command":  "python -m py_compile critical backend/scripts",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\py_compile.log",
-                        "duration_seconds":  0.73,
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\py_compile.log",
+                        "duration_seconds":  0.34,
                         "error":  null
                     },
                     {
@@ -29,69 +29,39 @@
                         "status":  "PASS",
                         "exit_code":  0,
                         "command":  "python -m pytest backend\\tests -q --tb=short",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\backend_all_pytest.log",
-                        "duration_seconds":  140.34,
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\backend_all_pytest.log",
+                        "duration_seconds":  655.14,
                         "error":  null
                     },
                     {
                         "name":  "Backend release gate",
                         "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
+                        "status":  "FAIL",
+                        "exit_code":  1,
                         "command":  ".\\scripts\\release-gate.ps1 -BackendOnly",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\release_gate_backend.log",
-                        "duration_seconds":  86.53,
-                        "error":  null
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\release_gate_backend.log",
+                        "duration_seconds":  106.49,
+                        "error":  "ERROR: file or directory not found: backend\\tests\\test_pipeline_crash_fix.py"
                     },
                     {
                         "name":  "Golden path UX source audit",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
+                        "required":  false,
+                        "status":  "FAIL",
+                        "exit_code":  1,
                         "command":  "python scripts\\golden-path-ux-audit.py --proof-dir proof\\full_systems\\golden_path_ux",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\golden_path_ux_audit.log",
-                        "duration_seconds":  0.22,
-                        "error":  null
-                    },
-                    {
-                        "name":  "Frontend Node 22 Docker runtime gate",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
-                        "command":  ".\\scripts\\frontend-runtime-gate.ps1 -RunDockerBuild",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\frontend_runtime_gate.log",
-                        "duration_seconds":  5.09,
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\golden_path_ux_audit.log",
+                        "duration_seconds":  0.14,
                         "error":  null
                     },
                     {
                         "name":  "Railway readiness and smoke",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
-                        "command":  ".\\scripts\\verify-railway-readiness.ps1 -BaseUrl https://crucibai-production.up.railway.app -RunDockerBuild -RunContainerHealth",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_readiness.log",
-                        "duration_seconds":  26.89,
-                        "error":  null
-                    },
-                    {
-                        "name":  "Fortune 100 public trust preflight",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
-                        "command":  "python scripts\\fortune100-preflight.py --base-url https://crucibai-production.up.railway.app --proof-dir proof\\full_systems\\fortune100_preflight",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\fortune100_preflight.log",
-                        "duration_seconds":  2.96,
-                        "error":  null
-                    },
-                    {
-                        "name":  "Live production golden path",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
-                        "command":  "python scripts\\live-production-golden-path.py --base-url https://crucibai-production.up.railway.app --timeout-sec 1200 --poll-sec 8 --request-timeout-sec 90",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\live_production_golden_path.log",
-                        "duration_seconds":  36.1,
-                        "error":  null
+                        "required":  false,
+                        "status":  "FAIL",
+                        "exit_code":  1,
+                        "command":  ".\\scripts\\verify-railway-readiness.ps1",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_readiness.log",
+                        "duration_seconds":  0.29,
+                        "error":  "Railway static readiness failed. See C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_verification\\PASS_FAIL.md"
                     }
                 ]
 }

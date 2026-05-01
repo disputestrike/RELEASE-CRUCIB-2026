@@ -14,7 +14,7 @@ contract = BuildContract(
     product_name="Helios Operations Cloud",
     original_goal="Multi-tenant B2B SaaS with CRM, compliance, audit, jobs, integrations",
     required_database_tables=[
-        "organizations", "workspaces", "users", "crm_accounts", 
+        "organizations", "workspaces", "users", "crm_accounts",
         "crm_contacts", "crm_deals", "audit_logs", "jobs", "integrations"
     ],
     required_backend_modules=["auth", "crm", "audit", "jobs", "integrations"],
@@ -33,9 +33,9 @@ contract = BuildContract(
     stack={"frontend": "React+TypeScript", "backend": "FastAPI", "database": "PostgreSQL"}
 )
 
-print("="*60)
+print("=" * 60)
 print("HELIOS OPERATIONS CLOUD - BUILD STARTING")
-print("="*60)
+print("=" * 60)
 print(f"Contract: {contract.build_id}")
 print(f"Required tables: {len(contract.required_database_tables)}")
 print(f"Required routes: {len(contract.required_routes)}")
@@ -59,6 +59,6 @@ for item_type, items in [
     print(f"  {item_type}: {len(items) if isinstance(items, list) else items}")
 
 print(f"\nContract Satisfied: {contract.is_satisfied()}")
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("DAG READY FOR EXECUTION")
-print("="*60)
+print("=" * 60)

@@ -68,6 +68,11 @@ class Job(Base):
     quality_score = Column(Integer, default=0)
     
     # Relationships
+    build_contracts = relationship(
+        "BuildContractModel",
+        back_populates="job",
+        foreign_keys="BuildContractModel.job_id",
+    )
     contract_deltas = relationship("ContractDelta", back_populates="job")
     generated_files = relationship("GeneratedFile", back_populates="job")
     proof_items = relationship("ProofItem", back_populates="job")
@@ -109,7 +114,11 @@ class BuildContractModel(Base):
     contract_data = Column(JSON, nullable=False)  # Full contract JSON
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    job = relationship("Job", back_populates="contract_deltas")
+    job = relationship(
+        "Job",
+        back_populates="build_contracts",
+        foreign_keys=[job_id],
+    )
 
 
 class ContractDelta(Base):

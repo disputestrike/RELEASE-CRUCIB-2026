@@ -1,7 +1,7 @@
 ﻿{
-    "generated_at":  "2026-04-08T17:39:14.6857820Z",
+    "generated_at":  "2026-05-01T19:19:54.5516595Z",
     "static_readiness":  "passed",
-    "live_confirmation":  "passed",
+    "live_confirmation":  "not_run",
     "checks":  {
                    "railway_json_exists":  true,
                    "railway_uses_dockerfile":  true,
@@ -41,7 +41,7 @@
                                             "required":  false
                                         },
                        "REDIS_URL":  {
-                                         "set_in_current_shell":  true,
+                                         "set_in_current_shell":  false,
                                          "required":  false
                                      },
                        "CEREBRAS_API_KEY":  {
@@ -53,7 +53,7 @@
                                                  "required":  false
                                              },
                        "JWT_SECRET":  {
-                                          "set_in_current_shell":  true,
+                                          "set_in_current_shell":  false,
                                           "required":  true
                                       },
                        "DATABASE_URL":  {
@@ -62,27 +62,26 @@
                                         }
                    },
     "docker_build":  {
+                         "status":  "not_run",
                          "command":  "docker build --progress=plain -t crucibai-railway-readiness .",
-                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\docker_full_build.log",
-                         "status":  "passed",
-                         "requested":  true,
-                         "exit_code":  0
+                         "exit_code":  null,
+                         "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_verification\\docker_full_build.log",
+                         "requested":  false
                      },
     "container_health":  {
-                             "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\docker_container_logs.log",
-                             "requested":  true,
+                             "requested":  false,
                              "container_name":  "crucibai-railway-proof",
-                             "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\docker_container_health.json",
+                             "log":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_verification\\docker_container_logs.log",
                              "health_url":  "http://127.0.0.1:18080/api/health",
-                             "status":  "passed",
-                             "container_id":  "eea38841dab2b0720206ba9e0d55a73682bdd7f8a627724ef390860543202003",
-                             "image":  "crucibai-railway-readiness"
+                             "image":  "crucibai-railway-readiness",
+                             "status":  "not_run",
+                             "health_output":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_verification\\docker_container_health.json"
                          },
     "live":  {
-                 "url":  "https://crucibai-production.up.railway.app",
-                 "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\health_check.json",
-                 "health_status_code":  200,
-                 "requested":  true,
-                 "status":  "passed"
+                 "status":  "not_run",
+                 "url":  "",
+                 "health_output":  "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\full_systems\\railway_verification\\health_check.json",
+                 "health_status_code":  null,
+                 "requested":  false
              }
 }

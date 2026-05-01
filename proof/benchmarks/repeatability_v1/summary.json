@@ -2,7 +2,7 @@
   "average_score": 100.0,
   "benchmark_version": "2026-04-08.repeatability.v1",
   "blockers": [],
-  "generated_at": "2026-04-08T17:38:15.972239+00:00",
+  "generated_at": "2026-05-01T19:33:18.025028+00:00",
   "pass_rate": 1.0,
   "passed": true,
   "passed_count": 50,
@@ -26,28 +26,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -57,7 +47,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -67,7 +57,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -79,7 +69,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -87,7 +77,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -101,7 +91,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -109,7 +99,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -125,7 +115,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\saas_dashboard"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\saas_dashboard"
     },
     {
       "case": {
@@ -144,28 +134,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -175,7 +155,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -185,7 +165,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -197,7 +177,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -205,7 +185,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -219,7 +199,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -227,7 +207,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -243,7 +223,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\marketplace"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\marketplace"
     },
     {
       "case": {
@@ -262,28 +242,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -293,7 +263,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -303,7 +273,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -315,7 +285,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -323,7 +293,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -337,7 +307,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -345,7 +315,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -361,7 +331,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\booking_app"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\booking_app"
     },
     {
       "case": {
@@ -380,28 +350,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -411,7 +371,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -421,7 +381,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -433,7 +393,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -441,7 +401,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -455,7 +415,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -463,7 +423,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -479,7 +439,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\crm_pipeline"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\crm_pipeline"
     },
     {
       "case": {
@@ -498,28 +458,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -529,7 +479,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -539,7 +489,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -551,7 +501,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -559,7 +509,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -573,7 +523,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -581,7 +531,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -597,7 +547,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\ai_chat"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\ai_chat"
     },
     {
       "case": {
@@ -616,28 +566,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -647,7 +587,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -657,7 +597,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -669,7 +609,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -677,7 +617,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -691,7 +631,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -699,7 +639,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -715,7 +655,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\ecommerce_store"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\ecommerce_store"
     },
     {
       "case": {
@@ -734,28 +674,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -765,7 +695,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -775,7 +705,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -787,7 +717,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -795,7 +725,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -809,7 +739,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -817,7 +747,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -833,7 +763,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\workflow_automation"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\workflow_automation"
     },
     {
       "case": {
@@ -852,28 +782,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -883,7 +803,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -893,7 +813,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -905,7 +825,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -913,7 +833,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -927,7 +847,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -935,7 +855,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -951,7 +871,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\bring_your_code_repair"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\bring_your_code_repair"
     },
     {
       "case": {
@@ -970,28 +890,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1001,7 +911,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1011,7 +921,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1023,7 +933,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1031,7 +941,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1045,7 +955,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1053,7 +963,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1069,7 +979,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\internal_tool"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\internal_tool"
     },
     {
       "case": {
@@ -1088,28 +998,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1119,7 +1019,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1129,7 +1029,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1141,7 +1041,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1149,7 +1049,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1163,7 +1063,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1171,7 +1071,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1187,7 +1087,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\landing_page"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\landing_page"
     },
     {
       "case": {
@@ -1206,28 +1106,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1237,7 +1127,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1247,7 +1137,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1259,7 +1149,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1267,7 +1157,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1281,7 +1171,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1289,7 +1179,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1305,7 +1195,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\project_management"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\project_management"
     },
     {
       "case": {
@@ -1324,28 +1214,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1355,7 +1235,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1365,7 +1245,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1377,7 +1257,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1385,7 +1265,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1399,7 +1279,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1407,7 +1287,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1423,7 +1303,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\learning_platform"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\learning_platform"
     },
     {
       "case": {
@@ -1442,29 +1322,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/COMPLIANCE_SKETCH.md",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1474,7 +1343,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 6
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1484,7 +1353,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1496,7 +1365,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1504,7 +1373,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 25,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1518,7 +1387,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1526,7 +1395,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 24,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1542,7 +1411,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\healthcare_intake"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\healthcare_intake"
     },
     {
       "case": {
@@ -1561,28 +1430,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1592,7 +1451,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1602,7 +1461,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1614,7 +1473,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1622,7 +1481,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1636,7 +1495,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1644,7 +1503,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1660,7 +1519,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\finance_budget"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\finance_budget"
     },
     {
       "case": {
@@ -1679,28 +1538,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1710,7 +1559,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1720,7 +1569,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1732,7 +1581,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1740,7 +1589,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1754,7 +1603,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1762,7 +1611,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1778,7 +1627,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\restaurant_ordering"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\restaurant_ordering"
     },
     {
       "case": {
@@ -1797,28 +1646,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1828,7 +1667,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1838,7 +1677,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1850,7 +1689,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1858,7 +1697,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1872,7 +1711,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1880,7 +1719,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -1896,7 +1735,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\real_estate_listing"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\real_estate_listing"
     },
     {
       "case": {
@@ -1915,28 +1754,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -1946,7 +1775,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -1956,7 +1785,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -1968,7 +1797,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -1976,7 +1805,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -1990,7 +1819,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -1998,7 +1827,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2014,7 +1843,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\community_forum"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\community_forum"
     },
     {
       "case": {
@@ -2033,28 +1862,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2064,7 +1883,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2074,7 +1893,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2086,7 +1905,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2094,7 +1913,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2108,7 +1927,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2116,7 +1935,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2132,7 +1951,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\event_management"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\event_management"
     },
     {
       "case": {
@@ -2151,28 +1970,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2182,7 +1991,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2192,7 +2001,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2204,7 +2013,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2212,7 +2021,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2226,7 +2035,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2234,7 +2043,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2250,7 +2059,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\support_ticketing"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\support_ticketing"
     },
     {
       "case": {
@@ -2269,28 +2078,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2300,7 +2099,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2310,7 +2109,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2322,7 +2121,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2330,7 +2129,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2344,7 +2143,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2352,7 +2151,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2368,7 +2167,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\inventory_management"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\inventory_management"
     },
     {
       "case": {
@@ -2387,28 +2186,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2418,7 +2207,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2428,7 +2217,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2440,7 +2229,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2448,7 +2237,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2462,7 +2251,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2470,7 +2259,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2486,7 +2275,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\portfolio_site"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\portfolio_site"
     },
     {
       "case": {
@@ -2505,28 +2294,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2536,7 +2315,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2546,7 +2325,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2558,7 +2337,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2566,7 +2345,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2580,7 +2359,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2588,7 +2367,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2604,7 +2383,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\nonprofit_donor"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\nonprofit_donor"
     },
     {
       "case": {
@@ -2623,28 +2402,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2654,7 +2423,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2664,7 +2433,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2676,7 +2445,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2684,7 +2453,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2698,7 +2467,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2706,7 +2475,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2722,7 +2491,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\hr_onboarding"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\hr_onboarding"
     },
     {
       "case": {
@@ -2741,28 +2510,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2772,7 +2531,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2782,7 +2541,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2794,7 +2553,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2802,7 +2561,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2816,7 +2575,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2824,7 +2583,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2840,7 +2599,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\analytics_report"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\analytics_report"
     },
     {
       "case": {
@@ -2859,28 +2618,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -2890,7 +2639,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -2900,7 +2649,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -2912,7 +2661,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -2920,7 +2669,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -2934,7 +2683,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -2942,7 +2691,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -2958,7 +2707,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\mobile_companion"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\mobile_companion"
     },
     {
       "case": {
@@ -2977,28 +2726,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3008,7 +2747,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3018,7 +2757,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3030,7 +2769,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3038,7 +2777,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3052,7 +2791,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3060,7 +2799,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3076,7 +2815,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\legal_case_tracker"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\legal_case_tracker"
     },
     {
       "case": {
@@ -3095,28 +2834,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3126,7 +2855,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3136,7 +2865,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3148,7 +2877,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3156,7 +2885,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3170,7 +2899,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3178,7 +2907,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3194,7 +2923,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\fitness_coach"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\fitness_coach"
     },
     {
       "case": {
@@ -3213,28 +2942,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3244,7 +2963,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3254,7 +2973,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3266,7 +2985,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3274,7 +2993,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3288,7 +3007,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3296,7 +3015,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3312,7 +3031,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\travel_planner"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\travel_planner"
     },
     {
       "case": {
@@ -3331,28 +3050,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3362,7 +3071,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3372,7 +3081,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3384,7 +3093,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3392,7 +3101,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3406,7 +3115,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3414,7 +3123,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3430,7 +3139,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\creator_membership"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\creator_membership"
     },
     {
       "case": {
@@ -3449,28 +3158,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3480,7 +3179,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3490,7 +3189,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3502,7 +3201,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3510,7 +3209,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3524,7 +3223,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3532,7 +3231,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3548,7 +3247,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\newsletter_cms"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\newsletter_cms"
     },
     {
       "case": {
@@ -3567,28 +3266,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3598,7 +3287,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3608,7 +3297,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3620,7 +3309,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3628,7 +3317,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3642,7 +3331,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3650,7 +3339,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3666,7 +3355,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\job_board"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\job_board"
     },
     {
       "case": {
@@ -3685,28 +3374,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3716,7 +3395,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3726,7 +3405,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3738,7 +3417,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3746,7 +3425,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3760,7 +3439,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3768,7 +3447,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3784,7 +3463,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\property_management"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\property_management"
     },
     {
       "case": {
@@ -3803,28 +3482,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3834,7 +3503,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3844,7 +3513,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3856,7 +3525,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3864,7 +3533,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3878,7 +3547,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -3886,7 +3555,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -3902,7 +3571,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\podcast_site"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\podcast_site"
     },
     {
       "case": {
@@ -3921,28 +3590,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -3952,7 +3611,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -3962,7 +3621,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -3974,7 +3633,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -3982,7 +3641,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -3996,7 +3655,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4004,7 +3663,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4020,7 +3679,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\survey_builder"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\survey_builder"
     },
     {
       "case": {
@@ -4039,28 +3698,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4070,7 +3719,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4080,7 +3729,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4092,7 +3741,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4100,7 +3749,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4114,7 +3763,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4122,7 +3771,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4138,7 +3787,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\knowledge_base"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\knowledge_base"
     },
     {
       "case": {
@@ -4157,28 +3806,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4188,7 +3827,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4198,7 +3837,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4210,7 +3849,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4218,7 +3857,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4232,7 +3871,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4240,7 +3879,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4256,7 +3895,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\event_ticketing"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\event_ticketing"
     },
     {
       "case": {
@@ -4275,28 +3914,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4306,7 +3935,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4316,7 +3945,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4328,7 +3957,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4336,7 +3965,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4350,7 +3979,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4358,7 +3987,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4374,7 +4003,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\micro_saas_waitlist"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\micro_saas_waitlist"
     },
     {
       "case": {
@@ -4393,28 +4022,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4424,7 +4043,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4434,7 +4053,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4446,7 +4065,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4454,7 +4073,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4468,7 +4087,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4476,7 +4095,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4492,7 +4111,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\dao_governance"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\dao_governance"
     },
     {
       "case": {
@@ -4511,28 +4130,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4542,7 +4151,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4552,7 +4161,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4564,7 +4173,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4572,7 +4181,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4586,7 +4195,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4594,7 +4203,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4610,7 +4219,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\iot_monitoring"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\iot_monitoring"
     },
     {
       "case": {
@@ -4629,28 +4238,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4660,7 +4259,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4670,7 +4269,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4682,7 +4281,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4690,7 +4289,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4704,7 +4303,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4712,7 +4311,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4728,7 +4327,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\fleet_management"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\fleet_management"
     },
     {
       "case": {
@@ -4747,28 +4346,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4778,7 +4367,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4788,7 +4377,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4800,7 +4389,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4808,7 +4397,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4822,7 +4411,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4830,7 +4419,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4846,7 +4435,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\church_community"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\church_community"
     },
     {
       "case": {
@@ -4865,28 +4454,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -4896,7 +4475,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -4906,7 +4485,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -4918,7 +4497,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -4926,7 +4505,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -4940,7 +4519,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -4948,7 +4527,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -4964,7 +4543,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\artist_store"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\artist_store"
     },
     {
       "case": {
@@ -4983,28 +4562,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5014,7 +4583,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5024,7 +4593,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5036,7 +4605,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5044,7 +4613,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5058,7 +4627,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5066,7 +4635,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5082,7 +4651,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\subscription_box"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\subscription_box"
     },
     {
       "case": {
@@ -5101,28 +4670,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5132,7 +4691,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5142,7 +4701,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5154,7 +4713,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5162,7 +4721,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5176,7 +4735,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5184,7 +4743,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5200,7 +4759,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\restaurant_reservations"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\restaurant_reservations"
     },
     {
       "case": {
@@ -5219,28 +4778,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5250,7 +4799,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5260,7 +4809,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5272,7 +4821,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5280,7 +4829,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5294,7 +4843,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5302,7 +4851,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5318,7 +4867,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\construction_project"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\construction_project"
     },
     {
       "case": {
@@ -5337,28 +4886,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5368,7 +4907,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5378,7 +4917,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5390,7 +4929,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5398,7 +4937,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5412,7 +4951,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5420,7 +4959,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5436,7 +4975,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\insurance_claims"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\insurance_claims"
     },
     {
       "case": {
@@ -5455,28 +4994,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5486,7 +5015,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5496,7 +5025,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5508,7 +5037,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5516,7 +5045,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5530,7 +5059,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5538,7 +5067,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5554,7 +5083,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\music_lessons"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\music_lessons"
     },
     {
       "case": {
@@ -5573,28 +5102,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5604,7 +5123,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5614,7 +5133,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5626,7 +5145,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5634,7 +5153,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5648,7 +5167,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5656,7 +5175,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5672,7 +5191,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\farm_operations"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\farm_operations"
     },
     {
       "case": {
@@ -5691,28 +5210,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5722,7 +5231,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5732,7 +5241,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5744,7 +5253,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5752,7 +5261,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5766,7 +5275,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5774,7 +5283,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5790,7 +5299,7 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\government_services"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\government_services"
     },
     {
       "case": {
@@ -5809,28 +5318,18 @@
       },
       "generated_files": [
         "Dockerfile",
-        "README_BUILD.md",
         "backend/main.py",
         "deploy/PRODUCTION_SKETCH.md",
         "deploy/PUBLISH.md",
-        "deploy/healthcheck.sh",
-        "docs/CRUCIB_BUILD_TARGET.md",
         "index.html",
         "package.json",
         "proof/DELIVERY_CLASSIFICATION.md",
         "proof/ELITE_EXECUTION_DIRECTIVE.md",
         "src/App.jsx",
         "src/components/ErrorBoundary.jsx",
-        "src/components/ShellLayout.jsx",
         "src/context/AuthContext.jsx",
-        "src/index.js",
         "src/main.jsx",
-        "src/pages/DashboardPage.jsx",
-        "src/pages/HomePage.jsx",
-        "src/pages/LoginPage.jsx",
-        "src/pages/TeamPage.jsx",
         "src/store/useAppStore.js",
-        "src/styles/global.css",
         "vite.config.js"
       ],
       "passed": true,
@@ -5840,7 +5339,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 5
+            "proof_count": 1
           },
           "name": "deploy_build",
           "passed": true,
@@ -5850,7 +5349,7 @@
           "detail": {
             "failure_reason": null,
             "issues": [],
-            "proof_count": 2,
+            "proof_count": 1,
             "publish_mode": "readiness_only"
           },
           "name": "deploy_publish",
@@ -5862,7 +5361,7 @@
             "failed_checks": [],
             "failure_reason": null,
             "issues": [],
-            "proof_count": 10
+            "proof_count": 1
           },
           "name": "elite_proof",
           "passed": true,
@@ -5870,7 +5369,7 @@
         },
         "generated_files": {
           "detail": {
-            "generated_file_count": 24,
+            "generated_file_count": 14,
             "missing": [],
             "passed": true,
             "required_count": 14
@@ -5884,7 +5383,7 @@
             "failure_reason": null,
             "issues": [],
             "mode": "static_plus_skipped_browser",
-            "proof_count": 8
+            "proof_count": 1
           },
           "name": "preview",
           "passed": true,
@@ -5892,7 +5391,7 @@
         },
         "prompt_coverage": {
           "detail": {
-            "checked_file_count": 23,
+            "checked_file_count": 13,
             "missing_terms": [],
             "passed": true,
             "required_terms": [
@@ -5908,11 +5407,11 @@
           "score": 100.0
         }
       },
-      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\ai_agent_console"
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIB AI RELEASE 2026\\RELEASE-CRUCIB-2026\\proof\\benchmarks\\repeatability_v1\\workspaces\\ai_agent_console"
     }
   ],
   "suite_version": "2026-04-08.repeatability.v1",
-  "summary_sha256": "88c866009aef8fe04e266e99840ead85070308e02163d6ad3ab5db3747f88cfa",
+  "summary_sha256": "39b221be0e998a82d309a655fb5ebbd70d0202430cad38387420d66d61850fed",
   "thresholds": {
     "min_average_score": 90.0,
     "min_pass_rate": 0.9

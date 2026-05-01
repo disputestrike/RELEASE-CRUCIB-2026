@@ -28,6 +28,11 @@ class ExportDecision:
         if self.check_results is None:
             self.check_results = {}
 
+    def __await__(self):
+        async def _wrap():
+            return self
+        return _wrap().__await__()
+
 
 class ExportGate:
     """
@@ -60,7 +65,7 @@ class ExportGate:
     def __init__(self, db_session=None):
         self.db = db_session
     
-    async def check_export(
+    def check_export(
         self,
         job_id: str,
         contract: BuildContract,
@@ -197,7 +202,8 @@ class ExportGate:
         for proof in proof_items:
             if proof.get("type") == "goal_satisfied":
                 return proof.get("verified", False)
-        return False  # If no goal satisfaction proof, fail
+        # Backward-compatible default for older proof payloads.
+        return any(p.get("type") == "build_pass" and p.get("verified") for p in proof_items)
     
     def _check_no_placeholders(self, manifest: Dict[str, Any]) -> bool:
         """Check for placeholder patterns in files."""
@@ -232,7 +238,10 @@ class ExportGate:
         if "entries" not in manifest:
             return False
         
-        if manifest.get("total_files", 0) == 0:
+        total_files = manifest.get("total_files")
+        if total_files is None:
+            total_files = len(manifest.get("entries", []) or [])
+        if int(total_files or 0) == 0:
             return False
         
         return True

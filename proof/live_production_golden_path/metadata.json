@@ -6,7 +6,7 @@
     "This uses the same backend API calls the browser uses for prompt/plan/run.",
     "Auth tokens and secrets are redacted from proof artifacts."
   ],
-  "run_id": "1777649555-ec9b3bf3bd",
+  "run_id": "1777658270-8656be2551",
   "schema": "crucibai.live_production_golden_path/v1",
-  "started_at": "2026-05-01T15:32:35.563132+00:00"
+  "started_at": "2026-05-01T17:57:50.312548+00:00"
 }

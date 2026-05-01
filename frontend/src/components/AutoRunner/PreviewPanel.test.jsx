@@ -74,7 +74,7 @@ describe('PreviewPanel', () => {
     expect(screen.getByText(/Assembling your preview/i)).toBeInTheDocument();
   });
 
-  test('shows paused banner when status blocked and sandpack present', () => {
+  test('shows repairing banner when status blocked and sandpack present', () => {
     const sandpackFiles = { '/src/App.jsx': { code: 'export default function App(){return null}' } };
     const sandpackDeps = { react: '^18.2.0', 'react-dom': '^18.2.0' };
     render(
@@ -87,9 +87,9 @@ describe('PreviewPanel', () => {
         blockedDetail="Type error in App.jsx"
       />,
     );
-    expect(screen.getByText(/Preview paused/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preview repairing/i)).toBeInTheDocument();
     expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
-    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Paused/i);
+    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Repairing/i);
   });
 
   test('shows fallback trust banner when sandpackIsFallback', () => {

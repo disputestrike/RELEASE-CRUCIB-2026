@@ -11,7 +11,7 @@ export default function Security() {
 
         <div className="p-6 rounded-xl border border-indigo-200 bg-indigo-50 mb-10">
           <p className="text-indigo-900 font-medium">We prove builds before we call them ready.</p>
-          <p className="text-[#666666] text-sm mt-2">The current evidence matrix lists exactly what is implemented, tested, partially implemented, and not claimable. Completion is tied to proof commands, validator results, build output, and generated artifacts.</p>
+          <p className="text-[#666666] text-sm mt-2">The current evidence matrix lists exactly what is implemented, tested, partially implemented, and not claimable. Completion is tied to proof commands, validator results, build output, and generated artifacts, including the full-systems gate.</p>
         </div>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">

@@ -1,6 +1,6 @@
 # Live Production Golden Path PASS/FAIL
 
-- Generated at: `2026-05-01T15:32:36.998046+00:00`
+- Generated at: `2026-05-01T17:57:50.672421+00:00`
 - Base URL: `https://crucibai-production.up.railway.app`
 - Job ID: `not-created`
 

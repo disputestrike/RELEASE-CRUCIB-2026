@@ -12,11 +12,11 @@ def test_cost_governance_uses_approved_public_pricing():
     plans = {plan["key"]: plan for plan in payload["pricing"]["plans"]}
 
     assert plans["free"]["price_usd"] == 0
-    assert plans["builder"]["price_usd"] == 15
-    assert plans["pro"]["price_usd"] == 30
-    assert plans["scale"]["price_usd"] == 60
-    assert plans["teams"]["price_usd"] == 150
-    assert payload["pricing"]["approved_price_floor"] == "$15 Builder plan"
+    assert plans["builder"]["price_usd"] == 20
+    assert plans["pro"]["price_usd"] == 50
+    assert plans["scale"]["price_usd"] == 100
+    assert plans["teams"]["price_usd"] == 200
+    assert payload["pricing"]["approved_price_floor"] == "$20 Builder plan"
     assert payload["pricing"]["legacy_prices_allowed"] is False
 
 
@@ -39,7 +39,7 @@ def test_cost_estimate_flags_approval_when_action_cap_is_exceeded():
         output_tokens=1000,
     )
 
-    assert estimate["estimated_credits"] == 10
+    assert estimate["estimated_credits"] == 20
     assert estimate["policy_credit_cap"] == 8
     assert estimate["within_action_cap"] is False
     assert estimate["requires_approval"] is True
@@ -52,7 +52,7 @@ def test_cost_governance_routes_return_json():
 
     governance = client.get("/api/cost/governance")
     assert governance.status_code == 200
-    assert governance.json()["pricing"]["bulk_credit_rate_usd"] == 0.03
+    assert governance.json()["pricing"]["bulk_credit_rate_usd"] == 0.05
 
     estimate = client.post(
         "/api/cost/estimate",
@@ -64,4 +64,4 @@ def test_cost_governance_routes_return_json():
         },
     )
     assert estimate.status_code == 200
-    assert estimate.json()["estimated_credits"] == 2
+    assert estimate.json()["estimated_credits"] == 4

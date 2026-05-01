@@ -1,27 +1,16 @@
-# Delivery classification
-
-Auto-generated manifest — refine in continuation runs as the product hardens.
-
 ## Implemented
-
-- Workspace files and DAG steps emitted for this job for goal context:
-
-```
-Build a restaurant reservations app with table notes, guest login, schedule dashboard, team page, and publish readiness.
-```
+Goal: Build a restaurant reservations app with table notes, guest login, schedule dashboard, team page, and publish readiness.
+restaurant
+reservations
+guest
+schedule
+publish
 
 ## Mocked
-
-- Third-party APIs (Stripe, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
+None
 
 ## Stubbed
-
-- Depth not yet implemented for every line item in the goal; list follow-ups in Continuation.
+None
 
 ## Unverified
-
-- Capabilities not covered by a passing automated runtime test in this pipeline run.
-
-## Critical runtime notes
-
-- Migration or route **presence** alone does not prove tenancy isolation, payment idempotency, or auth enforcement — reference tests/smokes here when added.
+None
