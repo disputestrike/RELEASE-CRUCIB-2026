@@ -1,15 +1,17 @@
 {
-  "finished_at": "2026-04-08T17:39:18.086009+00:00",
+  "error": "HTTP Error 404: ",
+  "finished_at": "2026-05-01T15:32:36.780933+00:00",
   "label": "01_health",
   "method": "GET",
-  "ok": true,
+  "ok": false,
   "path": "/api/health",
   "request_body": null,
   "response": {
-    "service": "crucibai",
-    "status": "healthy",
-    "timestamp": "2026-04-08T17:39:18.904507+00:00"
+    "code": 404,
+    "message": "Application not found",
+    "request_id": "5pdp2qHlSPmOAm4aezItjw",
+    "status": "error"
   },
-  "started_at": "2026-04-08T17:39:17.879598+00:00",
-  "status_code": 200
+  "started_at": "2026-05-01T15:32:35.563982+00:00",
+  "status_code": 404
 }

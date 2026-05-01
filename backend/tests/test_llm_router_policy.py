@@ -17,10 +17,23 @@ def test_simple_tasks_are_cerebras_first():
         assert _labels(chain)[0] == "cerebras"
 
 
-def test_complex_tasks_use_haiku_then_cerebras():
+def test_complex_tasks_keep_cerebras_primary():
     router = LLMRouter()
     chain = router.get_model_chain(
         task_complexity=TaskComplexity.COMPLEX,
+        user_tier="pro",
+        speed_selector="pro",
+        available_credits=100,
+    )
+    labels = _labels(chain)
+    if "haiku" in labels and "cerebras" in labels:
+        assert labels.index("cerebras") < labels.index("haiku")
+
+
+def test_critical_tasks_use_haiku_then_cerebras():
+    router = LLMRouter()
+    chain = router.get_model_chain(
+        task_complexity=TaskComplexity.CRITICAL,
         user_tier="pro",
         speed_selector="pro",
         available_credits=100,

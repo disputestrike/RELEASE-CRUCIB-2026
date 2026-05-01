@@ -192,8 +192,9 @@ class LLMRouter:
         # Default: Cerebras volume engine with Haiku fallback.
         chain = ["cerebras", "haiku"]
 
-        # Reasoning/validation heavy tasks start with Haiku.
-        if task_complexity in (TaskComplexity.COMPLEX, TaskComplexity.CRITICAL):
+        # Keep Cerebras primary for broad generation volume; only critical
+        # reasoning/validation paths become Haiku-first.
+        if task_complexity == TaskComplexity.CRITICAL:
             chain = ["haiku", "cerebras"]
 
         # Sonnet remains premium-only and opt-in via env gate.
