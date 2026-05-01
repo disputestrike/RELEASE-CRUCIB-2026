@@ -26,6 +26,44 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["ai"])
 
 
+def _provider_from_model_used(model_used: str) -> str:
+    raw = str(model_used or "").strip().lower()
+    if raw.startswith("cerebras/"):
+        return "cerebras"
+    if raw.startswith("llama/"):
+        return "together"
+    if raw.startswith("haiku/") or raw.startswith("claude/") or raw.startswith("anthropic/"):
+        return "anthropic"
+    return raw.split("/", 1)[0] if raw else "unknown"
+
+
+def _format_fallback_detail(exc: Exception, model_chain: List[Any]) -> Dict[str, Any]:
+    attempts: List[Dict[str, Any]] = []
+    for item in model_chain or []:
+        try:
+            name, model_id, provider = item
+            attempts.append(
+                {
+                    "provider": str(provider or ""),
+                    "model": str(model_id or ""),
+                    "label": str(name or ""),
+                }
+            )
+        except Exception:
+            continue
+    reason = str(exc or "llm_request_failed")
+    fallback_attempted = len(attempts) > 1
+    return {
+        "error": "llm_fallback_failed",
+        "provider_attempted": attempts[0]["provider"] if attempts else "unknown",
+        "provider_failed_reason": reason[:400],
+        "fallback_provider_attempted": fallback_attempted,
+        "fallback_provider_succeeded": False,
+        "provider_attempt_chain": attempts,
+        "detail": reason[:800],
+    }
+
+
 async def _maybe_await(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
@@ -272,13 +310,19 @@ async def ai_chat(
         available_credits = user.get("credit_balance", 0) if user else 0
         speed_selector = _speed_from_plan(user_tier)
         if _is_conversational_message(message):
-            from ..llm_router import HAIKU_MODEL
-
-            haiku_key = (effective or {}).get("anthropic") or os.environ.get(
-                "ANTHROPIC_API_KEY"
-            )
-            if haiku_key:
-                model_chain = [("haiku", HAIKU_MODEL, "anthropic")]
+            # Keep conversational replies simple, but do not hard-pin Anthropic.
+            # When Anthropic credits/key fail, chain must still fall through to Cerebras.
+            convo_chain: List[Any] = []
+            for item in model_chain or []:
+                try:
+                    name, model_id, provider = item
+                except Exception:
+                    continue
+                p = str(provider or "").strip().lower()
+                if p in ("cerebras", "anthropic", "together"):
+                    convo_chain.append(item)
+            if convo_chain:
+                model_chain = convo_chain
         response, model_used = await _call_llm_with_fallback(
             message=combined_text,
             system_message=system_message,
@@ -319,18 +363,31 @@ async def ai_chat(
                 await db.users.update_one(
                     {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
                 )
+        primary_provider = (
+            str(model_chain[0][2]).lower()
+            if model_chain and isinstance(model_chain[0], (list, tuple)) and len(model_chain[0]) >= 3
+            else "unknown"
+        )
+        used_provider = _provider_from_model_used(model_used)
+        fallback_used = bool(model_chain) and used_provider and used_provider != primary_provider
         return {
             "response": response["text"],
             "message": response["text"],
             "session_id": session_id,
             "model_used": model_used,
             "tokens_used": tokens_used,
+            "provider_attempted": primary_provider,
+            "provider_failed_reason": None,
+            "fallback_provider_attempted": len(model_chain or []) > 1,
+            "fallback_provider_succeeded": fallback_used,
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Error in ai_chat")
-        raise HTTPException(status_code=500, detail=str(e))
+        detail = _format_fallback_detail(e, model_chain if "model_chain" in locals() else [])
+        logger.exception("Error in ai_chat: %s", detail)
+        # Provider credit/outage failures should not be reported as opaque 500s.
+        raise HTTPException(status_code=503, detail=detail)
 
 
 @router.post("/ai/image_to_code")

@@ -6,8 +6,10 @@ Every verified action produces evidence stored here.
 import hashlib
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -149,6 +151,32 @@ async def fetch_proof_items_raw(job_id: str) -> List[Dict[str, Any]]:
 
 FAILURE_QUALITY_CAP = 40.0  # aligns with steer/build contract when gates fail
 
+_PUBLISHED_JOB_SCOPED_RE = re.compile(r"/published/([^/]+)/(?:assets|static)/", re.IGNORECASE)
+
+
+def _detect_published_asset_scope(job_id: str, project_id: str) -> str:
+    try:
+        from backend.services.workspace_resolver import workspace_resolver
+
+        dist_index = (
+            workspace_resolver.project_workspace_path(project_id).resolve() / "dist" / "index.html"
+        )
+        if not dist_index.exists():
+            return "unknown"
+        html = dist_index.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return "unknown"
+
+    lowered = html.lower()
+    scoped = _PUBLISHED_JOB_SCOPED_RE.search(lowered)
+    if scoped and scoped.group(1) == str(job_id).lower():
+        return "job_scoped"
+    if "/static/" in lowered or "/assets/" in lowered:
+        if "crucibai — inevitable ai" in lowered or "crucibai - inevitable ai" in lowered:
+            return "global_shell"
+        return "global_unscoped"
+    return "unknown"
+
 
 def _compute_truth_surface(
     flat: List[Dict[str, Any]],
@@ -156,6 +184,8 @@ def _compute_truth_surface(
     job_status: Optional[str],
     build_verified: bool,
     vf_cnt: int,
+    job_id: str,
+    project_id: str,
 ) -> Dict[str, Any]:
     """
     Derive preview / contract truth from persisted proof rows (API + UI hydration).
@@ -173,6 +203,10 @@ def _compute_truth_surface(
     except Exception:
         logger.debug("truth_surface: preview_gate helpers unavailable", exc_info=True)
 
+    published_asset_scope = _detect_published_asset_scope(job_id, project_id) if job_id and project_id else "unknown"
+    if published_asset_scope == "global_shell":
+        preview_src = "main_app_shell"
+
     prompt_ok = True
     for row in flat:
         if (row.get("title") or "") == "E-commerce prompt contract":
@@ -184,6 +218,8 @@ def _compute_truth_surface(
                 else:
                     prompt_ok = bool(pl.get("prompt_contract_passed", True))
             break
+    if preview_src == "main_app_shell":
+        prompt_ok = False
 
     browser_ok = False
     for row in flat:
@@ -210,6 +246,7 @@ def _compute_truth_surface(
         "preview_verified": preview_verified,
         "browser_verified": browser_ok,
         "generated_app_type": app_type,
+        "published_asset_scope": published_asset_scope,
     }
 
 
@@ -329,8 +366,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             flat.append(row)
 
     goal_for_truth = str((job_quick_dict or {}).get("goal") or "")
+    project_id_for_truth = str((job_quick_dict or {}).get("project_id") or "")
     truth_surface = _compute_truth_surface(
-        flat, goal_for_truth, job_status_str, build_verified, vf_cnt
+        flat, goal_for_truth, job_status_str, build_verified, vf_cnt, job_id, project_id_for_truth
     )
     if not truth_surface.get("prompt_contract_passed", True):
         quality_score = min(float(quality_score), FAILURE_QUALITY_CAP)

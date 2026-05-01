@@ -62,6 +62,7 @@ import {
   taskEntryFromJob,
   taskStatusFromJobStatus,
 } from '../workspace/workspaceTaskBinding';
+import { normalizeIdentityToken, resolveCanonicalTaskIdentity } from '../workspace/workspaceCanonicalIdentity';
 import { setCanonicalWorkspaceTaskId } from '../workspace/canonicalWorkspaceTask';
 import { failureStepFromLatestFailure } from '../workspace/workspaceFailureUtils';
 import { extractWorkspaceHandoff } from '../utils/unifiedHandoff';
@@ -357,45 +358,10 @@ export default function UnifiedWorkspace() {
   const [wsListLoading, setWsListLoading] = useState(false);
   const [wsFileCache, setWsFileCache] = useState({});
 
-  // ── Job-switch state reset ──────────────────────────────────────────────────
-  // When the user clicks a different job in the sidebar, jobIdFromUrl changes.
-  // Without this reset, the old job's stage/messages/plan stay visible while the
-  // new job loads, making the UI appear frozen or showing stale data.
-  const prevJobIdFromUrlRef = useRef(null);
+  // ── Canonical build identity / selective hydration reset ────────────────────
+  const previousCanonicalJobKeyRef = useRef('');
+  const lastCanonicalUrlRewriteRef = useRef('');
   const mdOnlyPreviewInjectedRef = useRef('');
-  useEffect(() => {
-    if (!jobIdFromUrl) return;
-    if (prevJobIdFromUrlRef.current === jobIdFromUrl) return;
-    const isFirstLoad = prevJobIdFromUrlRef.current === null;
-    prevJobIdFromUrlRef.current = jobIdFromUrl;
-    if (isFirstLoad) return; // don't reset on initial page load
-    // Clear all job-specific state so the new job hydrates cleanly
-    setGoal('');
-    setPlan(null);
-    setCapabilityNotice([]);
-    setEstimate(null);
-    setStage('input');
-    setLoading(false);
-    setError(null);
-    setErrorRaw(null);
-    setUserChatMessages([]);
-    setFailedStep(null);
-    setFailureCalloutDismissed(false);
-    failureRefreshOnceRef.current = null;
-    setActiveWsPath('');
-    setWsPaths([]);
-    setWsFileCache((prev) => {
-      Object.values(prev).forEach((e) => {
-        if (e?.blobUrl) { try { URL.revokeObjectURL(e.blobUrl); } catch (_) {} }
-      });
-      return {};
-    });
-    // Reset autostart guards so the new job can trigger its own autostart if needed
-    workspaceAutostartDoneRef.current = false;
-    autoPreviewOnceForJobRef.current = null;
-    transcriptRebuiltForJobRef.current = null;
-    mdOnlyPreviewInjectedRef.current = '';
-  }, [jobIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   const [zipBusy, setZipBusy] = useState(false);
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
@@ -421,8 +387,58 @@ export default function UnifiedWorkspace() {
   const sessionJobId = activeWorkspaceSession?.jobId || null;
   const sessionProjectId = activeWorkspaceSession?.projectId || null;
   const sessionTaskId = activeWorkspaceSession?.taskId || null;
+  const activeTaskId = sessionTaskId || taskIdFromUrl || null;
 
   const effectiveJobId = jobIdFromUrl || sessionJobId || jobId;
+  const canonicalJobKey = useMemo(() => {
+    const normalizedJob = normalizeIdentityToken(effectiveJobId);
+    if (normalizedJob) return `job:${normalizedJob}`;
+    const normalizedTask = normalizeIdentityToken(activeTaskId);
+    if (normalizedTask) return `task:${normalizedTask}`;
+    return '';
+  }, [effectiveJobId, activeTaskId]);
+
+  useEffect(() => {
+    if (!canonicalJobKey) return;
+    const previous = previousCanonicalJobKeyRef.current;
+    if (!previous) {
+      previousCanonicalJobKeyRef.current = canonicalJobKey;
+      return;
+    }
+    if (previous === canonicalJobKey) return;
+    previousCanonicalJobKeyRef.current = canonicalJobKey;
+    lastCanonicalUrlRewriteRef.current = '';
+    // True cross-job switch: clear view-specific state and let hydration refill from the new job.
+    setGoal('');
+    setPlan(null);
+    setCapabilityNotice([]);
+    setEstimate(null);
+    setStage('input');
+    setLoading(false);
+    setError(null);
+    setErrorRaw(null);
+    setFailedStep(null);
+    setFailureCalloutDismissed(false);
+    failureRefreshOnceRef.current = null;
+    setActiveWsPath('');
+    setWsPaths([]);
+    setWsFileCache((prev) => {
+      Object.values(prev).forEach((e) => {
+        if (e?.blobUrl) {
+          try {
+            URL.revokeObjectURL(e.blobUrl);
+          } catch (_) {
+            void 0;
+          }
+        }
+      });
+      return {};
+    });
+    workspaceAutostartDoneRef.current = false;
+    autoPreviewOnceForJobRef.current = null;
+    transcriptRebuiltForJobRef.current = null;
+    mdOnlyPreviewInjectedRef.current = '';
+  }, [canonicalJobKey]);
 
   useEffect(() => {
     transcriptRebuiltForJobRef.current = null;
@@ -556,19 +572,30 @@ export default function UnifiedWorkspace() {
   }, [effectiveJobId]);
 
   useEffect(() => {
-    const activeTaskId = sessionTaskId || taskIdFromUrl;
     if (!activeTaskId || !effectiveJobId) return;
     const patch = { jobId: effectiveJobId };
     if (job?.status) patch.status = taskStatusFromJobStatus(job.status);
     updateTask(activeTaskId, patch);
-  }, [sessionTaskId, taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
+  }, [activeTaskId, effectiveJobId, job?.status, updateTask]);
 
   const taskJobBindingRef = useRef('');
   useEffect(() => {
     if (!effectiveJobId || !job) return;
     const existingByTask = taskIdFromUrl ? tasks.find((t) => t.id === taskIdFromUrl) : null;
     const existingByJob = tasks.find((t) => t.jobId === effectiveJobId);
-    const bindingTaskId = sessionTaskId || taskIdFromUrl || existingByJob?.id || stableTaskIdForJob(effectiveJobId);
+    const resolvedIdentity = resolveCanonicalTaskIdentity({
+      jobId: effectiveJobId,
+      taskId: taskIdFromUrl,
+      sessionTaskId,
+      activeTaskId,
+      serverJob: job,
+      existingTask: existingByTask,
+      existingByJob,
+      fallbackTaskId: stableTaskIdForJob(effectiveJobId),
+      currentUrlTaskId: taskIdFromUrl,
+      lastRewriteKey: lastCanonicalUrlRewriteRef.current,
+    });
+    const bindingTaskId = resolvedIdentity.canonicalId || stableTaskIdForJob(effectiveJobId);
     const entry = taskEntryFromJob({
       job,
       jobId: effectiveJobId,
@@ -576,17 +603,20 @@ export default function UnifiedWorkspace() {
       existingTask: existingByTask || existingByJob,
       fallbackPrompt: buildDisplayTitle,
     });
-    if (!entry?.id) return;
+    if (!entry?.id || !resolvedIdentity.shouldUpsert) return;
+    entry.id = resolvedIdentity.canonicalId || entry.id;
     const key = `${entry.id}|${entry.jobId}|${entry.status}|${entry.prompt}|${job?.project_id || ''}`;
     if (taskJobBindingRef.current !== key) {
       taskJobBindingRef.current = key;
       upsertTask(entry);
     }
-    if (sessionTaskId && taskIdFromUrl && taskIdFromUrl !== sessionTaskId) {
-      const oldTask = tasks.find((t) => t.id === taskIdFromUrl);
-      if (oldTask && (!oldTask.jobId || oldTask.jobId === effectiveJobId)) removeTask(taskIdFromUrl);
-    }
-    if (!taskIdFromUrl || taskIdFromUrl !== entry.id) {
+    resolvedIdentity.aliases.forEach((aliasId) => {
+      if (!aliasId || aliasId === entry.id) return;
+      const oldTask = tasks.find((t) => t.id === aliasId);
+      if (oldTask && (!oldTask.jobId || oldTask.jobId === effectiveJobId)) removeTask(aliasId);
+    });
+    if (resolvedIdentity.shouldRewriteUrl) {
+      lastCanonicalUrlRewriteRef.current = resolvedIdentity.rewriteKey;
       setSearchParams(
         (prev) => bindWorkspaceSearchParams(prev, {
           jobId: effectiveJobId,
@@ -596,7 +626,7 @@ export default function UnifiedWorkspace() {
         { replace: true },
       );
     }
-  }, [effectiveJobId, job, sessionTaskId, sessionProjectId, taskIdFromUrl, tasks, upsertTask, removeTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
+  }, [effectiveJobId, job, sessionTaskId, activeTaskId, sessionProjectId, taskIdFromUrl, tasks, upsertTask, removeTask, setSearchParams, buildDisplayTitle, projectIdFromUrl]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
