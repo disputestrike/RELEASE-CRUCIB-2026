@@ -3,6 +3,14 @@
  * Pure function. No React, no fetch, no state.
  */
 
+import {
+  humanIssueSummary,
+  narrationJobStarted,
+  narrationRepairCompleted,
+  narrationRepairStarted,
+  narrationVerifierPassed,
+} from './presentBuildThread';
+
 const readPayload = (event) => {
   if (event?.payload && typeof event.payload === 'object') return event.payload;
   if (event?.payload_json) {
@@ -54,7 +62,7 @@ export function narrateBuildEvent(event) {
 
   switch (type) {
     case 'job_started':
-      return 'Starting this run: planning, implementation, and verification will follow in order.';
+      return narrationJobStarted();
     case 'user_steering':
       return 'Your new instruction is merged into the run; downstream steps will follow it.';
     case 'job_completed': {
@@ -63,21 +71,10 @@ export function narrateBuildEvent(event) {
       }
       return 'Build finished. Open the preview when you are ready, and check proof for export readiness.';
     }
-    case 'job_failed': {
-      const r = (p.reason || p.failure_reason || p.error || p.message || '').trim();
-      const short = r.length > 160 ? `${r.slice(0, 157)}…` : r;
-      return short
-        ? `A check failed (${short}). Starting repair and continuing the run.`
-        : 'A check failed. Starting repair and continuing the run.';
-    }
-    case 'step_failed': {
-      const name = (p.name || p.step_key || phase || 'a step').trim();
-      const err = (p.error_message || p.error || '').trim();
-      const errShort = err.length > 120 ? `${err.slice(0, 117)}…` : err;
-      return errShort
-        ? `${name} hit an issue (${errShort}). Applying a targeted fix now.`
-        : `${name} hit an issue. Applying a targeted fix now.`;
-    }
+    case 'job_failed':
+      return humanIssueSummary(event) || 'This run needs attention before we can ship.';
+    case 'step_failed':
+      return humanIssueSummary(event) || 'A build step needs a quick fix; continuing the run.';
     case 'plan_created':
       return "Here is the plan: screens and routes, data shape, and how we'll verify the build before you ship it.";
     case 'phase_started':
@@ -109,11 +106,11 @@ export function narrateBuildEvent(event) {
     case 'verifier_started':
       return `Running checks for ${phase ? phase.toLowerCase() : 'this stage'} before moving on.`;
     case 'verifier_passed':
-      return `${phase ? `${phase} checks` : 'Verification'} passed — moving forward.`;
+      return narrationVerifierPassed(phase ? `${phase} checks` : '');
     case 'verifier_failed':
       return missing.length
-        ? `Verification failed because the contract is missing ${list(missing)}.`
-        : `Verification failed at ${phase || 'a step'}. I'll repair this.`;
+        ? `Verification noted missing items (${list(missing)}). I am aligning the workspace and continuing.`
+        : `Verification did not pass for ${phase || 'this stage'} yet. I am repairing and continuing the run.`;
     case 'assembly_failed':
       return 'Assembly failed. I am inspecting what is missing.';
     case 'export_gate_blocked':
@@ -121,9 +118,9 @@ export function narrateBuildEvent(event) {
     case 'export_gate_ready':
       return 'Export gate passed. This build is ready.';
     case 'repair_started':
-      return 'Applying a focused repair instead of restarting the whole run.';
+      return narrationRepairStarted();
     case 'repair_completed':
-      return 'Repair landed; re-running verification to confirm the fix.';
+      return narrationRepairCompleted();
     case 'repair_failed':
       return 'That repair path did not clear the failure — trying another approach.';
     case 'circuit_breaker_escalated':

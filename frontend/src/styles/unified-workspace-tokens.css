@@ -119,6 +119,72 @@
   border-color: var(--uw-border-subtle);
 }
 
+/* Fixed product strip — Manus-style: stays at top; thread scrolls beneath */
+.uw-root .arp-center-pane--composer-bottom > .uw-center-pane-brand {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 6px 16px 8px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-root);
+  z-index: 6;
+}
+
+.uw-root .uw-center-pane-brand-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.uw-root .uw-center-pane-brand .sidebar-logo-text,
+.uw-root .uw-center-pane-brand .logo-wordmark {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--uw-text) !important;
+}
+
+.uw-root .uw-center-pane-brand-version {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--uw-text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+  padding-bottom: 1px;
+}
+
+.uw-root .uw-center-pane-brand[data-build-active='true']::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+  background: var(--uw-accent-success);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--uw-accent-success) 45%, transparent);
+  animation: uw-brand-alive 1.35s ease-in-out infinite;
+}
+
+@keyframes uw-brand-alive {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--uw-accent-success) 35%, transparent);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--uw-accent-success) 0%, transparent);
+  }
+}
+
 /* Build title — one soft surface, no heavy box */
 .uw-root .uw-build-identity {
   width: 100%;

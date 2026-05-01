@@ -10,6 +10,9 @@
  *  - failure_block
  *  - repair_block
  *  - proof_block
+ *  - issue_notice (verification / step / job failure — human summary + technical details)
+ *  - checkpoint_card (real job_started)
+ *  - delivery_card (real job_completed)
  *
  * Hard guarantees:
  *  - The first user message of the active job ALWAYS appears at index 0.
@@ -23,6 +26,14 @@
  */
 
 import { narrateBuildEvent, fileBasename } from './narrateBuildEvent';
+import {
+  friendlyStepLabel,
+  humanIssueSummary,
+  humanVerificationFailureSummary,
+  issueCardTitle,
+  technicalDetailLines,
+  narrationJobStarted,
+} from './presentBuildThread';
 
 const readPayload = (event) => {
   if (event?.payload && typeof event.payload === 'object') return event.payload;
@@ -116,9 +127,9 @@ const stripAgentPrefix = (s) =>
     .trim();
 
 const prettyPhase = (phase) => {
-  if (!phase || typeof phase !== 'string') return 'Execution';
+  if (!phase || typeof phase !== 'string') return 'Build progress';
   const stripped = stripAgentPrefix(phase);
-  if (!stripped) return 'Execution';
+  if (!stripped) return 'Build progress';
   const key = stripped.toLowerCase().replace(/\s+/g, '_');
   if (PHASE_FRIENDLY[key]) return PHASE_FRIENDLY[key];
   for (const k of Object.keys(PHASE_FRIENDLY)) {
@@ -172,15 +183,24 @@ const deriveToolTitle = (ev) => {
   const phase = prettyPhase(getPhase(ev));
   if (t === 'file_written' || t === 'file_write') {
     const base = fileBasename(p.file || p.path);
-    return base ? `Write ${base}` : 'Write file';
+    return base ? `Create ${base}` : 'Create file';
   }
-  if (t === 'workspace_files_updated') return 'Sync workspace files';
+  if (t === 'workspace_files_updated') return 'Sync workspace';
   if (t === 'tool_call') return `Run ${agent || p.name || 'tool'}`;
   if (t === 'tool_result') return `${agent || 'Tool'} returned`;
-  if (t === 'verifier_started') return `Verify ${phase || ''}`.trim();
+  if (t === 'verifier_started') {
+    const v = friendlyStepLabel(p.step_key, phase);
+    return v ? `Verify ${v}` : 'Run verification';
+  }
   if (t === 'verifier_passed') return `${phase || 'Verification'} passed`;
-  if (t === 'step_started' || t === 'dag_node_started') return p.name || phase || 'Step started';
-  if (t === 'step_completed' || t === 'dag_node_completed') return p.name || phase || 'Step completed';
+  if (t === 'step_started' || t === 'dag_node_started') {
+    const sk = p.step_key || '';
+    return friendlyStepLabel(sk, p.name) || p.name || phase || 'Step started';
+  }
+  if (t === 'step_completed' || t === 'dag_node_completed') {
+    const sk = p.step_key || '';
+    return `${friendlyStepLabel(sk, p.name) || p.name || phase || 'Step'} done`;
+  }
   if (t === 'code_mutation') {
     const base = fileBasename(p.file || p.path);
     return base ? `Edit ${base}` : 'Apply edit';
@@ -329,9 +349,47 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     const t = ev.type || ev.event_type || '';
     if (!t) continue;
     if (t === 'user_instruction' || t === 'workspace_transcript') continue;
+    // Dag failure is summarized by step_failed / issue_notice; skip duplicate noise.
+    if (t === 'dag_node_failed') continue;
     // brain_guidance / generic message events are already pushed into the chat
     // message stream by UnifiedWorkspace - skip them here so we don't duplicate.
     if (t === 'brain_guidance' || t === 'message') continue;
+
+    if (t === 'job_started') {
+      pushAssistantOnce(narrationJobStarted(), ts, newId('am'));
+      restItems.push({
+        kind: 'checkpoint_card',
+        title: 'Run connected',
+        subtitle: 'This workspace is executing against your goal with live job events.',
+        ts,
+        id: newId('ck'),
+      });
+      continue;
+    }
+
+    if (t === 'step_failed' || t === 'job_failed') {
+      restItems.push({
+        kind: 'issue_notice',
+        title: issueCardTitle(ev),
+        summary: humanIssueSummary(ev),
+        technicalDetail: technicalDetailLines(ev),
+        ts,
+        id: newId('is'),
+      });
+      continue;
+    }
+
+    if (t === 'job_completed') {
+      pushAssistantOnce(narrateBuildEvent(ev) || 'The build finished.', ts, newId('am'));
+      restItems.push({
+        kind: 'delivery_card',
+        narration:
+          'Open Preview for the live surface and Proof for export readiness. Send a follow-up here anytime to steer the next pass.',
+        ts,
+        id: newId('dl'),
+      });
+      continue;
+    }
 
     if (t === 'plan_created') {
       pushAssistantOnce(
@@ -350,21 +408,29 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       const p = readPayload(ev);
       const phaseLabel = prettyPhase(getPhase(ev));
       const titleForFailure = () => {
+        if (t === 'verifier_failed') {
+          return `Verification: ${friendlyStepLabel(p.step_key, p.name || phaseLabel)}`;
+        }
         if (t === 'job_failed') return p.summary || p.message || 'Build stopped';
         if (t === 'step_failed') return p.name || p.step_key || phaseLabel || 'Step did not complete';
         return p.summary || p.message || `Verification failed at ${phaseLabel}`;
       };
+      const reasonHuman =
+        t === 'verifier_failed'
+          ? humanVerificationFailureSummary(p)
+          : p.error ||
+            p.error_message ||
+            p.detail ||
+            p.reason ||
+            p.failure_reason ||
+            narrateBuildEvent(ev) ||
+            '';
+      const rawDetail = technicalDetailLines(ev);
       restItems.push({
         kind: 'failure_block',
         title: titleForFailure(),
-        reason:
-          p.error ||
-          p.error_message ||
-          p.detail ||
-          p.reason ||
-          p.failure_reason ||
-          narrateBuildEvent(ev) ||
-          '',
+        reason: reasonHuman,
+        rawDetail: rawDetail && rawDetail !== reasonHuman ? rawDetail : '',
         missingItems: p.missing || p.missing_routes || p.missing_items || [],
         actions: ['Retry', 'Add instruction', 'Branch'],
         ts,

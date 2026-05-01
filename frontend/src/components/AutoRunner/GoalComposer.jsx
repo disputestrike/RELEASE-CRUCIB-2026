@@ -5,7 +5,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
+import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor, ChevronDown, ChevronUp } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -146,6 +146,7 @@ export default function GoalComposer({
   }, [goal]);
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+  const [workspaceComposerCollapsed, setWorkspaceComposerCollapsed] = useState(false);
   const recogRef = useRef(null);
 
   const stopVoice = useCallback(() => {
@@ -377,83 +378,115 @@ export default function GoalComposer({
 
       {voiceError && <div className="gc-hint gc-hint-warn">{voiceError}</div>}
 
-      <div className="gc-composer-shell">
-        <textarea
-          className="gc-input"
-          placeholder={
-            inputPlaceholder ||
-            'e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway.'
-          }
-          value={goal}
-          onChange={(e) => onGoalChange(e.target.value)}
-          rows={composerInputRows}
-          onKeyDown={(e) => {
-            if (!enterSends || e.key !== 'Enter' || e.shiftKey) return;
-            e.preventDefault();
-            if (!loading && goal.trim() && !authLoading) onSubmit?.();
-          }}
-        />
-        <div className="gc-composer-footer">
-          <div className="gc-composer-footer-left" aria-label="Add context">
-            <input
-              ref={fileRef}
-              type="file"
-              className="gc-file-input"
-              multiple
-              accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css,.pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.svg"
-              onChange={onPickFiles}
-              aria-hidden
-              tabIndex={-1}
-            />
-            <button
-              type="button"
-              className="gc-icon-btn"
-              onClick={() => fileRef.current?.click()}
-              disabled={loading}
-              title="Add files"
-            >
-              <Plus size={20} strokeWidth={2} />
-            </button>
-            {_composerVariant !== 'workspace' ? (
+      {isWorkspaceShell ? (
+        <div className="gc-workspace-composer-strip">
+          <button
+            type="button"
+            className="gc-workspace-composer-toggle"
+            onClick={() => setWorkspaceComposerCollapsed((v) => !v)}
+            aria-expanded={!workspaceComposerCollapsed}
+          >
+            {workspaceComposerCollapsed ? (
+              <>
+                Expand composer <ChevronUp size={14} aria-hidden />
+              </>
+            ) : (
+              <>
+                Minimize composer <ChevronDown size={14} aria-hidden />
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
+
+      {isWorkspaceShell && workspaceComposerCollapsed ? (
+        <button
+          type="button"
+          className="gc-workspace-composer-collapsed"
+          onClick={() => setWorkspaceComposerCollapsed(false)}
+        >
+          <span>Ask a follow-up, steer the build, or attach context…</span>
+          <ChevronUp size={16} aria-hidden />
+        </button>
+      ) : (
+        <div className={`gc-composer-shell${isWorkspaceShell ? ' gc-composer-shell--workspace' : ''}`}>
+          <textarea
+            className="gc-input"
+            placeholder={
+              inputPlaceholder ||
+              'e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway.'
+            }
+            value={goal}
+            onChange={(e) => onGoalChange(e.target.value)}
+            rows={isWorkspaceShell ? Math.min(composerInputRows, 4) : composerInputRows}
+            onKeyDown={(e) => {
+              if (!enterSends || e.key !== 'Enter' || e.shiftKey) return;
+              e.preventDefault();
+              if (!loading && goal.trim() && !authLoading) onSubmit?.();
+            }}
+          />
+          <div className="gc-composer-footer">
+            <div className="gc-composer-footer-left" aria-label="Add context">
+              <input
+                ref={fileRef}
+                type="file"
+                className="gc-file-input"
+                multiple
+                accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css,.pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.svg"
+                onChange={onPickFiles}
+                aria-hidden
+                tabIndex={-1}
+              />
               <button
                 type="button"
                 className="gc-icon-btn"
+                onClick={() => fileRef.current?.click()}
                 disabled={loading}
-                title="Open workspace"
-                onClick={() => navigate({ pathname: '/app/workspace' })}
+                title="Add files"
               >
-                <Monitor size={20} strokeWidth={2} />
+                <Plus size={20} strokeWidth={2} />
               </button>
-            ) : null}
-          </div>
-          <div className="gc-composer-footer-right" aria-label="Send options">
-            {!isWorkspaceShell ? (
-              <Link to="/app/templates" className="gc-icon-btn gc-icon-btn--link" title="Templates & gallery">
-                <Globe size={20} strokeWidth={2} />
-              </Link>
-            ) : null}
-            <button
-              type="button"
-              className={`gc-icon-btn ${listening ? 'gc-icon-btn-active' : ''}`}
-              onClick={toggleVoice}
-              disabled={loading}
-              title={listening ? 'Stop voice' : 'Voice input (Chrome / Edge)'}
-            >
-              {listening ? <MicOff size={20} strokeWidth={2} /> : <Mic size={20} strokeWidth={2} />}
-            </button>
-            <button
-              type="button"
-              className={`gc-submit-send ${!loading && goal.trim() && !authLoading ? 'gc-submit-send--ready' : ''}`}
-              onClick={onSubmit}
-              disabled={loading || !goal.trim() || authLoading}
-              title={enterSends ? 'Send' : 'Generate plan'}
-              aria-label={enterSends ? 'Send' : 'Generate plan'}
-            >
-              {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
-            </button>
+              {_composerVariant !== 'workspace' ? (
+                <button
+                  type="button"
+                  className="gc-icon-btn"
+                  disabled={loading}
+                  title="Open workspace"
+                  onClick={() => navigate({ pathname: '/app/workspace' })}
+                >
+                  <Monitor size={20} strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
+            <div className="gc-composer-footer-right" aria-label="Send options">
+              {!isWorkspaceShell ? (
+                <Link to="/app/templates" className="gc-icon-btn gc-icon-btn--link" title="Templates & gallery">
+                  <Globe size={20} strokeWidth={2} />
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className={`gc-icon-btn ${listening ? 'gc-icon-btn-active' : ''}`}
+                onClick={toggleVoice}
+                disabled={loading}
+                title={listening ? 'Stop voice' : 'Voice input (Chrome / Edge)'}
+              >
+                {listening ? <MicOff size={20} strokeWidth={2} /> : <Mic size={20} strokeWidth={2} />}
+              </button>
+              <button
+                type="button"
+                className={`gc-submit-send ${!loading && goal.trim() && !authLoading ? 'gc-submit-send--ready' : ''}`}
+                onClick={onSubmit}
+                disabled={loading || !goal.trim() || authLoading}
+                title={enterSends ? 'Send' : 'Generate plan'}
+                aria-label={enterSends ? 'Send' : 'Generate plan'}
+              >
+                {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {hasContinuation && (
         <div className="gc-continuation">

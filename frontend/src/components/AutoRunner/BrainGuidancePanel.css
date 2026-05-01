@@ -584,6 +584,146 @@
 }
 .p4-chapter-status--failed  { color: var(--crucibai-danger); border-color: rgba(82, 82, 82, 0.22); background: rgba(82, 82, 82, 0.05); }
 
+.p4-chapter--phase .p4-chapter-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.p4-chapter-progress {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--crucibai-muted);
+  margin-right: 4px;
+}
+
+.p4-chip--pill {
+  border-radius: 999px;
+}
+
+.p4-tech-details {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--crucibai-muted);
+}
+
+.p4-tech-details-summary {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  color: var(--crucibai-text);
+}
+
+.p4-tech-details-summary:hover {
+  color: var(--crucibai-accent);
+}
+
+.p4-tech-details-pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.45;
+  border-radius: 0;
+  background: var(--crucibai-panel-soft);
+  border: 1px solid var(--crucibai-border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--crucibai-muted);
+}
+
+.p4-surface-card {
+  margin: 6px 0 8px 34px;
+  width: min(680px, calc(100% - 34px));
+  padding: 12px 14px;
+  border: 1px solid var(--crucibai-border);
+  background: var(--crucibai-panel);
+  animation: p4-fade 0.16s ease;
+}
+
+.p4-surface-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.p4-surface-card-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--crucibai-text);
+}
+
+.p4-surface-card-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--crucibai-text);
+}
+
+.p4-issue-notice .p4-surface-card-body {
+  color: var(--crucibai-text);
+}
+
+.p4-checkpoint-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.p4-checkpoint-icon-wrap {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--crucibai-panel-soft);
+  border: 1px solid var(--crucibai-border);
+  color: var(--crucibai-accent);
+}
+
+.p4-checkpoint-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.p4-checkpoint-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--crucibai-muted);
+  line-height: 1.45;
+}
+
+.p4-checkpoint-ok {
+  flex-shrink: 0;
+  color: var(--crucibai-success);
+}
+
+.p4-delivery-card .p4-delivery-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.p4-delivery-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.p4-delivery-sub {
+  margin-top: 6px;
+  color: var(--crucibai-muted);
+  font-size: 12.5px;
+}
+
+.p4-muted-icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--crucibai-muted);
+}
+
 .p4-chapter-desc {
   margin: 6px 0 8px;
   color: var(--crucibai-muted);
@@ -745,6 +885,16 @@
 }
 
 /* Thinking indicator */
+.p4-row-typing--alive .p4-typing-dots {
+  animation: p4-typing-alive 1.25s ease-in-out infinite;
+}
+
+@keyframes p4-typing-alive {
+  0%,
+  100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
 .p4-typing-dots {
   display: inline-flex;
   align-items: center;

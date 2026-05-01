@@ -28,6 +28,7 @@ import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
+import Logo from '../components/Logo';
 import ActiveStepBanner from '../components/AutoRunner/ActiveStepBanner';
 import { deriveCurrentActivity } from '../lib/buildThreadModel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
@@ -1893,6 +1894,28 @@ export default function App() {
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom arp-center-pane--no-toolbar">
 
+          <header
+            className="uw-center-pane-brand"
+            data-build-active={
+              Boolean(loading || job?.status === 'running' || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))
+                ? 'true'
+                : undefined
+            }
+          >
+            <div className="uw-center-pane-brand-left">
+              <Logo
+                variant="full"
+                height={34}
+                href={null}
+                className="sidebar-logo uw-center-pane-brand-logo"
+                showTagline={false}
+                showWordmark
+                nameClassName="sidebar-logo-text"
+              />
+              <span className="uw-center-pane-brand-version" aria-hidden>1.0</span>
+            </div>
+          </header>
+
           <div className="arp-center-pane-scroll arp-center-pane-scroll--top">
             <BrainGuidancePanel
               userMessages={userChatMessages.filter((m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId)}
@@ -1903,6 +1926,7 @@ export default function App() {
               buildTargetMeta={buildTargetMeta}
               buildTargetId={buildTarget}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
+              omitInlineBrandChrome
               onPause={handleCancel}
               onResume={handleResume}
               onCancel={handleCancel}

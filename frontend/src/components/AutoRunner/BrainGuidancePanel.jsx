@@ -39,6 +39,8 @@ import {
   RotateCcw,
   X as XIcon,
   RefreshCw,
+  Package,
+  Rocket,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
 import './BrainGuidancePanel.css';
@@ -262,26 +264,29 @@ function PlanBlock({ title, steps }) {
 }
 
 function ToolGroup({ item }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const total = item.children.length;
+  const doneCount = item.children.filter((c) => c.status === 'success' || c.status === 'completed').length;
   const summary =
     item.status === 'failed' ? 'Needs attention'
     : item.status === 'running' ? 'Running'
     : 'Done';
+  const progressLabel = total > 0 ? `${doneCount}/${total}` : '';
   const visibleChips = open ? item.children : item.children.slice(0, 4);
   const hidden = Math.max(0, total - visibleChips.length);
   return (
-    <div className={`p4-chapter p4-chapter--${item.status || 'success'}`}>
+    <div className={`p4-chapter p4-chapter--phase p4-chapter--${item.status || 'success'}`}>
       <button type="button" className="p4-chapter-head" onClick={() => setOpen((v) => !v)}>
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <span className="p4-chapter-title">{item.title}</span>
+        <span className="p4-chapter-progress" aria-hidden>{progressLabel}</span>
         <span className={`p4-chapter-status p4-chapter-status--${item.status || 'success'}`}>{summary}</span>
       </button>
       {item.description ? <p className="p4-chapter-desc">{item.description}</p> : null}
       {total > 0 ? (
-        <div className="p4-chip-list">
+        <div className="p4-chip-list p4-chip-list--pills">
           {visibleChips.map((c) => (
-            <div key={c.id} className={`p4-chip p4-chip--${c.status}`}>
+            <div key={c.id} className={`p4-chip p4-chip--pill p4-chip--${c.status}`}>
               <ToolIcon kind={c.iconKey} status={c.status} />
               <span className="p4-chip-title">{c.title}</span>
             </div>
@@ -298,12 +303,13 @@ function ToolGroup({ item }) {
 }
 
 function FailureBlock({ item }) {
-  // Diagnostic block: title is "what", reason is "why", actions are "what next".
   const niceReason = (item.reason || '').toString().trim();
   const friendlyReason =
     niceReason && !/orchestrator_error/i.test(niceReason)
       ? niceReason
       : 'I need another pass to finish this workspace. Send a note below and I will keep going from the saved files.';
+  const raw = (item.rawDetail || '').toString().trim();
+  const showTechnical = raw.length > 0 && raw !== friendlyReason;
   return (
     <div className="p4-chapter p4-chapter--diagnostic">
       <div className="p4-chapter-head p4-chapter-head--static">
@@ -312,6 +318,12 @@ function FailureBlock({ item }) {
         <span className="p4-chapter-status p4-chapter-status--failed">Needs attention</span>
       </div>
       <p className="p4-chapter-desc">{friendlyReason}</p>
+      {showTechnical ? (
+        <details className="p4-tech-details">
+          <summary className="p4-tech-details-summary">Technical details</summary>
+          <pre className="p4-tech-details-pre">{raw}</pre>
+        </details>
+      ) : null}
       {Array.isArray(item.missingItems) && item.missingItems.length > 0 ? (
         <div className="p4-chip-list">
           {item.missingItems.map((m, i) => (
@@ -368,6 +380,55 @@ function ProofBlock({ item }) {
   );
 }
 
+function IssueNoticeCard({ item }) {
+  const detail = (item.technicalDetail || '').trim();
+  return (
+    <div className="p4-surface-card p4-issue-notice">
+      <div className="p4-surface-card-head">
+        <AlertTriangle size={14} className="p4-warn" />
+        <span className="p4-surface-card-title">{item.title || 'Update'}</span>
+      </div>
+      {item.summary ? <p className="p4-surface-card-body">{item.summary}</p> : null}
+      {detail ? (
+        <details className="p4-tech-details">
+          <summary className="p4-tech-details-summary">What the system saw</summary>
+          <pre className="p4-tech-details-pre">{detail}</pre>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function CheckpointCard({ item }) {
+  return (
+    <div className="p4-surface-card p4-checkpoint-card">
+      <div className="p4-checkpoint-icon-wrap" aria-hidden>
+        <Package size={18} />
+      </div>
+      <div className="p4-checkpoint-body">
+        <div className="p4-surface-card-title">{item.title}</div>
+        {item.subtitle ? <p className="p4-checkpoint-sub">{item.subtitle}</p> : null}
+      </div>
+      <CheckCircle2 size={16} className="p4-checkpoint-ok" aria-hidden />
+    </div>
+  );
+}
+
+function DeliveryCard({ item }) {
+  return (
+    <div className="p4-surface-card p4-delivery-card">
+      <div className="p4-delivery-row">
+        <Rocket size={16} className="p4-accent" aria-hidden />
+        <div className="p4-delivery-main">
+          <div className="p4-surface-card-title">Build delivered to this workspace</div>
+          {item.narration ? <p className="p4-surface-card-body p4-delivery-sub">{item.narration}</p> : null}
+        </div>
+        <ChevronRight size={16} className="p4-muted-icon" aria-hidden />
+      </div>
+    </div>
+  );
+}
+
 function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
   switch (item.kind) {
     case 'user_message':
@@ -384,6 +445,12 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
       return <RepairBlock item={item} />;
     case 'proof_block':
       return <ProofBlock item={item} />;
+    case 'issue_notice':
+      return <IssueNoticeCard item={item} />;
+    case 'checkpoint_card':
+      return <CheckpointCard item={item} />;
+    case 'delivery_card':
+      return <DeliveryCard item={item} />;
     default:
       return null;
   }
@@ -404,6 +471,8 @@ export default function BrainGuidancePanel({
   onCancel,
   onSync,
   canSync = false,
+  /** Workspace: fixed header shows CrucibAI — hide duplicate handle + pill in the scroll stream */
+  omitInlineBrandChrome = false,
 }) {
   const scrollRef = useRef(null);
   const [logoFailed, setLogoFailed] = useState(false);
@@ -491,7 +560,7 @@ export default function BrainGuidancePanel({
 
       {/* Initial-state CrucibAI handle + status pill, rendered when the user
           has spoken but the system has not narrated anything yet. */}
-      {hasUserPrompt && !hasAssistantNarration ? (
+      {!omitInlineBrandChrome && hasUserPrompt && !hasAssistantNarration ? (
         <>
           <CrucibAIHandle logoOk={!logoFailed} onLogoFail={() => setLogoFailed(true)} />
           <div className="p4-handle-pill-row">
@@ -501,7 +570,7 @@ export default function BrainGuidancePanel({
       ) : null}
 
       {isTyping && (hasAssistantNarration || items.length > 0) ? (
-        <div className="p4-row p4-row-assistant p4-row-typing">
+        <div className={`p4-row p4-row-assistant p4-row-typing${isTyping ? ' p4-row-typing--alive' : ''}`}>
           <div className="p4-avatar" aria-hidden>
             {!logoFailed ? (
               <img src="/logo.png" alt="" onError={() => setLogoFailed(true)} className="p4-avatar-img" />
