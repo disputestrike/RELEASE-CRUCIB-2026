@@ -1,0 +1,17 @@
+{
+  "error": "HTTP Error 404: ",
+  "finished_at": "2026-05-01T15:32:26.763643+00:00",
+  "label": "01_health",
+  "method": "GET",
+  "ok": false,
+  "path": "/api/health",
+  "request_body": null,
+  "response": {
+    "code": 404,
+    "message": "Application not found",
+    "request_id": "cfSPCuZuT5mxHRA5GbGh5g",
+    "status": "error"
+  },
+  "started_at": "2026-05-01T15:32:26.600522+00:00",
+  "status_code": 404
+}

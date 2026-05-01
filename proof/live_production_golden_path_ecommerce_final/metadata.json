@@ -1,0 +1,12 @@
+{
+  "base_url": "https://crucibai-production.up.railway.app",
+  "goal": "Build an e-commerce store with product catalog, cart, and Braintree checkout",
+  "mode": "fresh_live_replay",
+  "notes": [
+    "This uses the same backend API calls the browser uses for prompt/plan/run.",
+    "Auth tokens and secrets are redacted from proof artifacts."
+  ],
+  "run_id": "1777649546-b7f29bfec2",
+  "schema": "crucibai.live_production_golden_path/v1",
+  "started_at": "2026-05-01T15:32:26.599885+00:00"
+}

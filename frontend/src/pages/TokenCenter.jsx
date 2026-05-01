@@ -129,12 +129,12 @@ const TokenCenter = () => {
   const bundleOrder = ['builder', 'pro', 'scale', 'teams'];
   const sortedBundles = bundleOrder.filter(k => bundles[k]).map(k => ({ key: k, ...bundles[k] }));
 
-  // Custom credits slider (100–10000 at $0.03/credit, same as plans)
+  // Custom credits slider (500–20000 at $0.05/credit, same as plans)
   const [customCredits, setCustomCredits] = useState(500);
-  const customMin = 100;
-  const customMax = 10000;
-  const customStep = 100;
-  const pricePerCredit = 0.03;
+  const customMin = 500;
+  const customMax = 20000;
+  const customStep = 500;
+  const pricePerCredit = 0.05;
   const customTotal = Math.round(customCredits * pricePerCredit * 100) / 100;
 
   useEffect(() => {
@@ -241,7 +241,7 @@ const TokenCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--theme-text)' }}>Credit Center</h1>
-        <p className="credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Buy credits and track your usage. 50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app.</p>
+        <p className="credit-center-muted" style={{ color: 'var(--theme-muted)' }}>Buy credits and track your usage. Credits represent flexible build capacity based on scope and repair depth.</p>
       </div>
 
       {/* Balance Card */}
@@ -386,7 +386,7 @@ const TokenCenter = () => {
         {/* Need more? Buy credits (slider) */}
         <div className="credit-center-card mt-8 p-6 rounded-xl border" style={{ background: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
           <h3 className="credit-center-heading text-lg font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Need more? Buy credits</h3>
-          <p className="text-sm credit-center-muted mb-4" style={{ color: 'var(--theme-muted)' }}>100–10,000 credits at $0.03/credit (same rate as plans).</p>
+          <p className="text-sm credit-center-muted mb-4" style={{ color: 'var(--theme-muted)' }}>500–20,000 credits at $0.05/credit (same rate as plans).</p>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--theme-text)' }}>Credits: {customCredits}</label>

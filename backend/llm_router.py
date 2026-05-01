@@ -1,17 +1,4 @@
-"""
-CrucibAI LLM Router: Intelligent Routing System
-================================================
-Routes requests to Cerebras, Haiku, or Sonnet based on:
-- Task complexity (simple vs complex)
-- User tier (free, builder, pro, scale, teams)
-- Speed selector (lite, pro, max)
-- Credit availability
-
-Free tier:    Anthropic Haiku (claude-haiku-4-5-20251001); Cerebras fallback
-Paid lite:    Cerebras (same)
-Paid pro/max: Claude Haiku (paid quality)
-Critical/complex (paid pro+): Claude Sonnet (highest quality)
-"""
+"""Cerebras-first model router with strict Sonnet gating."""
 
 import logging
 import os
@@ -66,6 +53,7 @@ CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
 SONNET_MODEL = ANTHROPIC_SONNET_MODEL
+ALLOW_SONNET = os.environ.get("ALLOW_SONNET", "false").strip().lower() in {"1", "true", "yes"}
 
 
 class TaskComplexity(str, Enum):
@@ -165,12 +153,10 @@ class LLMRouter:
     - Speed selector
     - Credit availability
 
-    Routing tiers:
-      Free        → Anthropic Haiku (claude-haiku-4-5-20251001) → Cerebras fallback
-      Builder     → lite: Haiku; pro: Haiku
-      Pro/Scale   → lite: Haiku; pro: Sonnet; max: Sonnet
-      Teams       → lite: Cerebras; pro: Haiku; max: Sonnet
-      Critical    → always Sonnet for paid, Cerebras for free
+    Routing policy:
+      - Volume/default work: Cerebras first, Haiku fallback.
+      - Reasoning/validation heavy work: Haiku first, Cerebras fallback.
+      - Sonnet: disabled by default, premium-gated only.
     """
 
     def __init__(self):
@@ -203,47 +189,28 @@ class LLMRouter:
         is_paid = user_tier in ("builder", "pro", "scale", "teams")
         is_pro_plus = user_tier in ("pro", "scale", "teams")
 
-        # TIER-BASED ROUTING
-        if user_tier == "free":
-            # Free tier: Haiku (Claude quality) → Cerebras fallback
+        # Default: Cerebras volume engine with Haiku fallback.
+        chain = ["cerebras", "haiku"]
+
+        # Reasoning/validation heavy tasks start with Haiku.
+        if task_complexity in (TaskComplexity.COMPLEX, TaskComplexity.CRITICAL):
             chain = ["haiku", "cerebras"]
 
-        elif user_tier == "builder":
-            if speed_selector == "lite":
-                chain = ["haiku", "cerebras"]
-            else:  # pro
-                chain = ["haiku", "cerebras"]
+        # Sonnet remains premium-only and opt-in via env gate.
+        sonnet_eligible = (
+            ALLOW_SONNET
+            and is_paid
+            and is_pro_plus
+            and speed_selector == "max"
+            and task_complexity == TaskComplexity.CRITICAL
+        )
+        if sonnet_eligible:
+            chain = ["sonnet", "haiku", "cerebras"]
 
-        elif is_pro_plus:
-            if speed_selector == "lite":
-                chain = ["haiku", "cerebras"]
-            elif speed_selector == "pro":
-                chain = ["sonnet", "haiku", "cerebras"]
-            else:  # max — use Sonnet for best quality
-                chain = ["sonnet", "haiku", "cerebras"]
-
-        # COMPLEXITY-BASED OVERRIDE for paid users
-        if task_complexity == TaskComplexity.CRITICAL and is_paid:
-            # Critical tasks on paid plans: use Sonnet if on pro+, Haiku otherwise
-            if is_pro_plus and "sonnet" not in chain:
-                chain.insert(0, "sonnet")
-            elif "haiku" not in chain:
-                chain.insert(0, "haiku")
-
-        elif task_complexity == TaskComplexity.SIMPLE:
-            # Simple tasks: always prefer Cerebras (fast, cheap)
-            if chain and chain[0] != "cerebras":
-                if "cerebras" in chain:
-                    chain.remove("cerebras")
-                chain.insert(0, "cerebras")
-
-        # CREDIT-BASED OVERRIDE
-        if available_credits < 10:
-            # Low credits: deprioritize Sonnet and Haiku
-            for model in ("sonnet", "haiku"):
-                if model in chain:
-                    chain.remove(model)
-                    chain.append(model)
+        # Low credits: keep cheapest path first.
+        if available_credits < 10 and "cerebras" in chain:
+            chain = [m for m in chain if m != "cerebras"]
+            chain.insert(0, "cerebras")
 
         # AVAILABILITY CHECK
         final_chain = []

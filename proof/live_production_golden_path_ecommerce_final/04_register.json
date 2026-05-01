@@ -1,0 +1,21 @@
+{
+  "error": "HTTP Error 404: ",
+  "finished_at": "2026-05-01T15:32:26.979808+00:00",
+  "label": "04_register",
+  "method": "POST",
+  "ok": false,
+  "path": "/api/auth/register",
+  "request_body": {
+    "email": "codex-live-proof-1777649546-b7f29bfec2@example.com",
+    "name": "Codex Live Proof",
+    "password": "<redacted>"
+  },
+  "response": {
+    "code": 404,
+    "message": "Application not found",
+    "request_id": "_ZwSFpLPQbCWJ9YvCx5-qw",
+    "status": "error"
+  },
+  "started_at": "2026-05-01T15:32:26.912232+00:00",
+  "status_code": 404
+}

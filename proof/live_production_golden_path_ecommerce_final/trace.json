@@ -1,0 +1,74 @@
+[
+  {
+    "error": "HTTP Error 404: ",
+    "finished_at": "2026-05-01T15:32:26.763643+00:00",
+    "label": "01_health",
+    "method": "GET",
+    "ok": false,
+    "path": "/api/health",
+    "request_body": null,
+    "response": {
+      "code": 404,
+      "message": "Application not found",
+      "request_id": "cfSPCuZuT5mxHRA5GbGh5g",
+      "status": "error"
+    },
+    "started_at": "2026-05-01T15:32:26.600522+00:00",
+    "status_code": 404
+  },
+  {
+    "error": "HTTP Error 404: ",
+    "finished_at": "2026-05-01T15:32:26.841338+00:00",
+    "label": "02_llm_health",
+    "method": "GET",
+    "ok": false,
+    "path": "/api/health/llm",
+    "request_body": null,
+    "response": {
+      "code": 404,
+      "message": "Application not found",
+      "request_id": "7a_cm6-rQP2f03Q5woOzXw",
+      "status": "error"
+    },
+    "started_at": "2026-05-01T15:32:26.764464+00:00",
+    "status_code": 404
+  },
+  {
+    "error": "HTTP Error 404: ",
+    "finished_at": "2026-05-01T15:32:26.911138+00:00",
+    "label": "03_runtime_health",
+    "method": "GET",
+    "ok": false,
+    "path": "/api/orchestrator/runtime-health",
+    "request_body": null,
+    "response": {
+      "code": 404,
+      "message": "Application not found",
+      "request_id": "DmYH8qsuQ6qcb1A8GbGh5g",
+      "status": "error"
+    },
+    "started_at": "2026-05-01T15:32:26.843053+00:00",
+    "status_code": 404
+  },
+  {
+    "error": "HTTP Error 404: ",
+    "finished_at": "2026-05-01T15:32:26.979808+00:00",
+    "label": "04_register",
+    "method": "POST",
+    "ok": false,
+    "path": "/api/auth/register",
+    "request_body": {
+      "email": "codex-live-proof-1777649546-b7f29bfec2@example.com",
+      "name": "Codex Live Proof",
+      "password": "<redacted>"
+    },
+    "response": {
+      "code": 404,
+      "message": "Application not found",
+      "request_id": "_ZwSFpLPQbCWJ9YvCx5-qw",
+      "status": "error"
+    },
+    "started_at": "2026-05-01T15:32:26.912232+00:00",
+    "status_code": 404
+  }
+]

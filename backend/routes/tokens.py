@@ -188,13 +188,14 @@ async def list_user_passes(
 @router.get("/tokens/bundles")
 async def get_bundles():
     TOKEN_BUNDLES, ANNUAL_PRICES, _, _, _, _, _ = _get_token_constants()
+    from ..pricing_plans import CUSTOM_CREDIT_MAX, CUSTOM_CREDIT_MIN, CUSTOM_CREDIT_PRICE
     return {
         "bundles": TOKEN_BUNDLES,
         "annual_prices": ANNUAL_PRICES,
         "custom_addon": {
-            "min_credits": 100,
-            "max_credits": 10000,
-            "price_per_credit": 0.03,
+            "min_credits": CUSTOM_CREDIT_MIN,
+            "max_credits": CUSTOM_CREDIT_MAX,
+            "price_per_credit": CUSTOM_CREDIT_PRICE,
         },
     }
 
@@ -269,7 +270,7 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())
 async def purchase_tokens_custom(
     data: TokenPurchaseCustom, user: dict = Depends(_get_auth())
 ):
-    """Custom credit purchase (slider): 100-10000 credits at $0.03/credit. When Braintree is enabled, use Braintree checkout instead."""
+    """Custom credit purchase via slider. When Braintree is enabled, use Braintree checkout instead."""
     db = _get_db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
@@ -280,8 +281,20 @@ async def purchase_tokens_custom(
             status_code=400 if BRAINTREE_CONFIGURED else 503,
             detail="Use Credit Center -> Pay with Braintree to purchase credits. Direct credit grants are dev-only and disabled by default.",
         )
+    from ..pricing_plans import CUSTOM_CREDIT_MAX, CUSTOM_CREDIT_MIN, CUSTOM_CREDIT_PRICE
+
     credits = data.credits
-    price = round(credits * 0.03, 2)
+    if credits < CUSTOM_CREDIT_MIN or credits > CUSTOM_CREDIT_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Custom credits must be between {CUSTOM_CREDIT_MIN} and {CUSTOM_CREDIT_MAX}",
+        )
+    if credits % CUSTOM_CREDIT_MIN != 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Custom credits must be in increments of {CUSTOM_CREDIT_MIN}",
+        )
+    price = round(credits * CUSTOM_CREDIT_PRICE, 2)
     tokens = credits * CREDITS_PER_TOKEN
     await _ensure_credit_balance(user["id"])
     await db.users.update_one(

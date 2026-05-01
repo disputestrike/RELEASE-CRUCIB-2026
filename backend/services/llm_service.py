@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -49,6 +50,41 @@ except ImportError:  # compatibility for legacy tests importing `services.*`
     from backend.services.skills import detect_skill
 
 logger = logging.getLogger(__name__)
+ALLOW_SONNET = os.environ.get("ALLOW_SONNET", "false").strip().lower() in {"1", "true", "yes"}
+ALLOW_SONNET_OVER_1_PERCENT = os.environ.get("ALLOW_SONNET_OVER_1_PERCENT", "false").strip().lower() in {"1", "true", "yes"}
+_USAGE_WINDOW_TOTAL_TOKENS = 0
+_USAGE_WINDOW_BY_PROVIDER = defaultdict(int)
+_USAGE_WINDOW_BY_MODEL = defaultdict(int)
+_USAGE_WINDOW_BY_CAPABILITY = defaultdict(int)
+
+
+def _estimate_tokens(text: str) -> int:
+    return max(1, int(len(text or "") / 4))
+
+
+def _record_provider_usage(provider: str, model_id: str, capability: str, prompt: str, output: str) -> None:
+    global _USAGE_WINDOW_TOTAL_TOKENS
+    used = _estimate_tokens(prompt) + _estimate_tokens(output)
+    _USAGE_WINDOW_TOTAL_TOKENS += used
+    _USAGE_WINDOW_BY_PROVIDER[provider] += used
+    _USAGE_WINDOW_BY_MODEL[f"{provider}/{model_id}"] += used
+    _USAGE_WINDOW_BY_CAPABILITY[capability] += used
+    if _USAGE_WINDOW_TOTAL_TOKENS <= 0:
+        return
+    haiku = _USAGE_WINDOW_BY_MODEL.get(f"anthropic/{ANTHROPIC_HAIKU_MODEL}", 0)
+    sonnet = sum(v for k, v in _USAGE_WINDOW_BY_MODEL.items() if "/claude-sonnet" in k)
+    haiku_share = (haiku / _USAGE_WINDOW_TOTAL_TOKENS) * 100.0
+    sonnet_share = (sonnet / _USAGE_WINDOW_TOTAL_TOKENS) * 100.0
+    logger.info(
+        "provider.usage.window total_tokens=%s by_provider=%s by_capability=%s",
+        _USAGE_WINDOW_TOTAL_TOKENS,
+        dict(_USAGE_WINDOW_BY_PROVIDER),
+        dict(_USAGE_WINDOW_BY_CAPABILITY),
+    )
+    if haiku_share > 35.0:
+        logger.warning("provider.policy.haiku_share_high share=%.2f threshold=35.0", haiku_share)
+    if sonnet_share > 1.0 and not ALLOW_SONNET_OVER_1_PERCENT:
+        logger.error("provider.policy.sonnet_share_block share=%.2f threshold=1.0", sonnet_share)
 
 # ---------------------------------------------------------------------------
 # Runtime API key references (resolved at call time so .env changes work)
@@ -825,6 +861,8 @@ def _normalize_explicit_model_chain(
             elif provider == "anthropic":
                 if not _resolve_anthropic_api_key_for_call(api_keys):
                     continue
+                if "sonnet" in model_id.lower() and not ALLOW_SONNET:
+                    continue
                 label = "sonnet" if "sonnet" in model_id.lower() else "haiku"
             else:
                 continue
@@ -906,6 +944,14 @@ async def _call_llm_with_fallback(
 
     for model_info in model_chain:
         model_name, model_id, provider = model_info
+        if provider == "anthropic" and "sonnet" in model_id.lower():
+            if not ALLOW_SONNET:
+                continue
+            if _USAGE_WINDOW_TOTAL_TOKENS > 0 and not ALLOW_SONNET_OVER_1_PERCENT:
+                sonnet_used = sum(v for k, v in _USAGE_WINDOW_BY_MODEL.items() if "/claude-sonnet" in k)
+                if (sonnet_used / _USAGE_WINDOW_TOTAL_TOKENS) * 100.0 > 1.0:
+                    logger.error("provider.policy.sonnet_blocked_over_share model=%s", model_id)
+                    continue
 
         try:
             logger.info(
@@ -969,6 +1015,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
+                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
                 return (response, f"llama/{model_id}")
 
             elif provider == "cerebras":
@@ -997,6 +1044,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
+                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
                 return (response, f"cerebras/{model_id}")
 
             elif provider == "anthropic":
@@ -1025,6 +1073,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
+                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
                 return (response, f"{model_name}/{model_id}")
 
         except Exception as e:

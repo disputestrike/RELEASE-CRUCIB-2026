@@ -9,46 +9,41 @@ import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
-// Linear pricing — $0.03/credit (plans and bulk). No credit rollover.
+// Credit pricing model (capacity-based, no fixed app-count guarantees).
 const DEFAULT_BUNDLES = {
-  free:    { credits: 200,  price: 0,   name: 'Free' },
-  builder: { credits: 500,  price: 15,  name: 'Builder' },
-  pro:     { credits: 1000, price: 30,  name: 'Pro' },
-  scale:   { credits: 2000, price: 60,  name: 'Scale' },
-  teams:   { credits: 5000, price: 150, name: 'Teams' },
+  free:    { credits: 100,  price: 0,   name: 'Free' },
+  builder: { credits: 500,  price: 20,  name: 'Builder' },
+  pro:     { credits: 1500, price: 50,  name: 'Pro' },
+  scale:   { credits: 3000, price: 100, name: 'Scale' },
+  teams:   { credits: 6000, price: 200, name: 'Teams' },
 };
 const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
 const PLAN_FEATURES = {
   free: [
-    '2 proof-gated app build runs',
-    'OR 4 landing-page build runs',
+    'Flexible credit capacity for proof-gated build workflows',
     'Live preview · export ZIP · push to GitHub',
     'Agent swarm & sub-agents · voice input · templates',
     'No credit card required',
   ],
   builder: [
-    '5 proof-gated app build runs per month',
-    'OR 10 landing pages · OR 3 Expo mobile artifact runs',
+    'Flexible monthly build capacity',
     'Supported targets: frontend, backend/API, DB/auth/payment scaffolds when requested',
     'Mobile: Expo project + store submission guide; submission not included',
     'Voice input · image-to-code · agent swarm',
   ],
   pro: [
-    '10 proof-gated app build runs per month',
-    'OR 20 landing pages · OR 6 Expo mobile artifact runs',
+    'Higher monthly build capacity',
     'Everything in Builder',
     'Max speed (priority queue) · priority support',
   ],
   scale: [
-    '20 proof-gated app build runs per month',
-    'OR 40 landing pages · OR 13 Expo mobile artifact runs',
+    'Large-scale monthly build capacity',
     'Everything in Pro',
     'High-volume builds for agencies & studios',
   ],
   teams: [
-    '50 proof-gated app build runs per month',
-    'OR 100 landing pages · OR 33 Expo mobile artifact runs',
+    'Team-wide monthly build capacity',
     'Everything in Scale',
     'Teams, agencies, white-label studios',
     'Priority support · team billing',
@@ -57,12 +52,11 @@ const PLAN_FEATURES = {
 
 const CREDITS_PER_LANDING = 50;
 const CREDITS_PER_APP = 100;
-const CREDITS_PER_MOBILE = 150;
 const RECOMMEND_ORDER = ['free', 'builder', 'pro', 'scale', 'teams'];
-const CUSTOM_CREDITS_MIN = 100;
-const CUSTOM_CREDITS_MAX = 10000;
-const CUSTOM_CREDITS_STEP = 100;
-const PRICE_PER_CREDIT = 0.03;
+const CUSTOM_CREDITS_MIN = 500;
+const CUSTOM_CREDITS_MAX = 20000;
+const CUSTOM_CREDITS_STEP = 500;
+const PRICE_PER_CREDIT = 0.05;
 
 function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api, navigate, axios, logApiError }) {
   const [credits, setCredits] = useState(min);
@@ -180,7 +174,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
-  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 149.99, pro: 299.99, scale: 599.99, teams: 1499.99 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 199.99, pro: 499.99, scale: 999.99, teams: 1999.99 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
   const [customAddon, setCustomAddon] = useState({ min_credits: CUSTOM_CREDITS_MIN, max_credits: CUSTOM_CREDITS_MAX, price_per_credit: PRICE_PER_CREDIT });
 
@@ -215,16 +209,17 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Credits fund proof-gated build runs for web apps, backend/API projects, automations, and Expo mobile artifacts. Backend, database, auth, and payment scaffolds are generated when requested and validator-supported. Free tier: 200 credits.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">Credits fund proof-gated build workflows for web apps, backend/API projects, automations, and Expo mobile artifacts. Backend, database, auth, and payment scaffolds are generated when requested and validator-supported. Free tier: 100 credits.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
             <p className="text-sm font-medium text-[#1A1A1A] mb-2">What each credit funds</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
               <li>• Build profiles are checked by the Build Integrity Validator before completion.</li>
               <li>• Expo mobile outputs include source, app metadata, EAS config, and store submission guidance; store submission is not automatic.</li>
-              <li>• Linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
+              <li>• Credit usage varies by build scope and validation depth.</li>
+              <li>• Linear pricing — same $0.05/credit whether you buy 500 or 20,000.</li>
             </ul>
           </div>
-          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing-page run · 100 credits ≈ 1 app build run · 150 credits ≈ 1 Expo mobile artifact run.</p>
+          <p className="text-sm text-kimi-muted mt-4">Credits represent flexible build capacity, not fixed app-count guarantees.</p>
         </div>
 
         {/* Free tier */}
@@ -236,10 +231,9 @@ export default function Pricing() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
-              <p className="text-stone-500 mb-4">200 credits. Run 2 app builds or 4 landing-page builds. No credit card.</p>
+              <p className="text-stone-500 mb-4">100 credits. Flexible starter capacity. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 proof-gated app build runs</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing-page build runs</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Flexible starter build capacity</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Live preview · export to ZIP · push to GitHub</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Plan-first flow · voice input · templates &amp; prompts</li>
               </ul>
@@ -337,7 +331,7 @@ export default function Pricing() {
 
         {/* Custom credits (slider) */}
         <h2 className="text-lg font-semibold text-center mt-14 mb-2">Need more credits?</h2>
-        <p className="text-zinc-500 text-center mb-6">Buy in bulk at the same rate — ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit · 100–{(customAddon.max_credits || CUSTOM_CREDITS_MAX).toLocaleString()} credits.</p>
+        <p className="text-zinc-500 text-center mb-6">Buy in bulk at the same rate — ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit · 500–{(customAddon.max_credits || CUSTOM_CREDITS_MAX).toLocaleString()} credits.</p>
         <CustomCreditsSlider
           min={customAddon.min_credits ?? CUSTOM_CREDITS_MIN}
           max={customAddon.max_credits ?? CUSTOM_CREDITS_MAX}
@@ -360,7 +354,7 @@ export default function Pricing() {
         {/* Outcome calculator */}
         <div className="mt-16 max-w-2xl mx-auto p-6 rounded-2xl border border-stone-200 bg-white shadow-sm">
           <h3 className="text-lg font-semibold mb-2">How many credits do I need?</h3>
-          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing-page run · 100 credits ≈ 1 app build run · 150 credits ≈ 1 Expo mobile artifact run with store submission guidance. Enter your goals below.</p>
+          <p className="text-stone-500 text-sm mb-4">Use this estimator for rough planning only; real credit usage depends on scope, stack, and repair depth.</p>
           <OutcomeCalculator bundles={bundles} onSelectPlan={(key) => {
             if (user) navigate('/app/tokens', { state: { addon: key } });
             else navigate('/app/tokens?addon=' + encodeURIComponent(key));

@@ -8,11 +8,11 @@ import PublicFooter from '../components/PublicFooter';
 const HELP_FAQS = [
   {
     q: 'How do I get started?',
-    a: 'Sign up at /auth, then go to the Workspace. Describe what you want to build in the chat (e.g. "Build a todo app" or "Create a landing page"). You can use voice input, attach images or files, and we\'ll generate a plan and then the code. Free tier includes 200 credits — enough for 2 full apps or 4 landing pages.',
+    a: 'Sign up at /auth, then go to the Workspace. Describe what you want to build in the chat (e.g. "Build a todo app" or "Create a landing page"). You can use voice input, attach images or files, and we\'ll generate a plan and then the code. Free tier includes 100 credits to get started.',
   },
   {
     q: 'How do credits work?',
-    a: 'Each plan gives you a set number of credits per month. Roughly: 50 credits ≈ 1 landing page, 100 credits ≈ 1 full app (frontend + backend + DB + auth), 150 credits ≈ 1 mobile app. Use the Credit Center (/app/tokens) to see your balance and buy more. Plans are monthly; buy extra credits anytime at the same $0.03/credit rate.',
+    a: 'Each plan gives you a set number of credits per month. Usage varies by scope, stack, and repair depth. Use the Credit Center (/app/tokens) to see your balance and buy more. Plans are monthly; buy extra credits anytime at the same $0.05/credit rate.',
   },
   {
     q: 'The workspace says "Backend not available". What do I do?',

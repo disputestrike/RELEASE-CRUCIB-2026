@@ -10,11 +10,11 @@ import pytest
 @pytest.mark.parametrize(
     "plan,expected_credits,expected_price",
     [
-        ("free", 200, 0),
-        ("builder", 500, 15),
-        ("pro", 1000, 30),
-        ("scale", 2000, 60),
-        ("teams", 5000, 150),
+        ("free", 100, 0),
+        ("builder", 500, 20),
+        ("pro", 1500, 50),
+        ("scale", 3000, 100),
+        ("teams", 6000, 200),
     ],
 )
 def test_credit_plans_has_correct_plans_and_values(
@@ -64,6 +64,16 @@ def test_addons_empty_no_light_dev():
 
     assert ADDONS == {}
     assert "light" not in ADDONS and "dev" not in ADDONS
+
+
+def test_credit_pricing_constants():
+    from pricing_plans import CREDIT_PRICE_USD, CUSTOM_CREDIT_MAX, CUSTOM_CREDIT_MIN, CUSTOM_CREDIT_STEP, TOKENS_PER_CREDIT
+
+    assert TOKENS_PER_CREDIT == 500
+    assert CREDIT_PRICE_USD == 0.05
+    assert CUSTOM_CREDIT_MIN == 500
+    assert CUSTOM_CREDIT_STEP == 500
+    assert CUSTOM_CREDIT_MAX == 20000
 
 
 # --- 2. speed_tier_router ---

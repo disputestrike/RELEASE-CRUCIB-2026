@@ -43,7 +43,7 @@ const OurProjectsPage = () => {
 
   const faqs = [
     { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — a plan-first build workspace for proof-gated web apps, Expo mobile artifacts, backend/API projects, and automations. Public claims map to evidence: implemented, tested, partially implemented, or not claimable.' },
-    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 200 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (100–10,000 at $0.03/credit, same rate as plans).' },
+    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 100 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (500–20,000 at $0.05/credit, same rate as plans).' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, internal tools, backend/API projects, automation workflows, and Expo mobile starters. Completion depends on passing the validator for that build profile.' },
     { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Attach it from the Workspace composer or Dashboard prompt.' },
@@ -65,7 +65,7 @@ const OurProjectsPage = () => {
     { q: 'Can I collaborate with my team?', a: 'You can share exported code or push to a shared GitHub repo. Team and org features are on our roadmap.' },
     { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone in the Workspace or Dashboard composer; we transcribe and insert your words into the prompt.' },
     { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the attach control in the Workspace composer.' },
-    { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
+    { q: 'How do credit bundles work?', a: 'You buy a monthly credit plan or top up in bulk. Each AI workflow consumes credits based on scope, validation depth, and repair loops. Use Credit Center to track usage.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
     { q: 'Can I build mobile apps?', a: 'Yes, through an Expo/React Native track that produces expo-mobile/ source, app.json, eas.json, screens, scripts, and mobile integrity proof. App Store and Google Play submission still require your developer credentials, signing, EAS build, and store metadata validation.' },
@@ -81,7 +81,7 @@ const OurProjectsPage = () => {
   ];
 
   const comparisonData = {
-    crucibai: { buildWeb: true, buildMobile: 'Expo artifacts', runAutomations: 'Guarded bridge', sameAI: 'run_agent', importCode: 'ZIP + BIV', ideExtensions: false, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: 'BIV score', appStorePack: false, pricePer100: '$15' },
+    crucibai: { buildWeb: true, buildMobile: 'Expo artifacts', runAutomations: 'Guarded bridge', sameAI: 'run_agent', importCode: 'ZIP + BIV', ideExtensions: false, realtimeMonitor: true, planBeforeBuild: true, approvalWorkflows: true, qualityScore: 'BIV score', appStorePack: false, pricePer100: '$5' },
     lovable: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '$25' },
     bolt: { buildWeb: true, buildMobile: false, runAutomations: false, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: true, approvalWorkflows: false, qualityScore: false, appStorePack: false, pricePer100: '~$20' },
     n8n: { buildWeb: false, buildMobile: false, runAutomations: true, sameAI: false, importCode: false, ideExtensions: false, realtimeMonitor: false, planBeforeBuild: false, approvalWorkflows: true, qualityScore: false, appStorePack: false, pricePer100: 'N/A' },
