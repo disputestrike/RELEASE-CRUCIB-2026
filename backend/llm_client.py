@@ -1,11 +1,29 @@
 """
-LLM Client — Unified interface for Claude/Cerebras API calls.
+LLM Client — Unified interface for Cerebras/Claude API calls.
 Handles authentication, prompt building, structured response parsing, retries.
 
-Model routing policy:
-  - ALL tasks → Cerebras first (volume/speed, ~70-80% of traffic)
-  - FALLBACK → Haiku if Cerebras unavailable or fails
-  - SONNET → never used by default; requires ALLOW_SONNET=true env gate + speed_selector=max
+Model routing policy (capability-based):
+  CEREBRAS primary (70-80% of tokens) — mechanical execution volume:
+    intent_parse, simple_chat, drafting, code_generate, component_generation,
+    boilerplate_generation, landing_page_generate, file_summarization,
+    log_error_summary, agent_swarm_worker, worker_agent, cheap_refutation,
+    repair_patch_generation, expo_metadata, expo_repair_generation,
+    scaffolding, backend_scaffold_generation, generated_file_expansion
+
+  HAIKU primary (20-30% of tokens) — reasoning/validation authority:
+    complex_chat, requirements_clarification, build_plan, architecture_plan,
+    validation, build_integrity, repair_diagnosis, standard_final_proof,
+    should_escalate, backend_scaffold_plan, db_auth_payment_plan,
+    review, audit, security, verification, planning, architecture, reasoning
+
+  SONNET: disabled by default, 0% of tokens.
+    Requires ALLOW_SONNET=true env gate.
+    Only: premium_final_proof, hard_failure_adjudication, security_review,
+           fullstack_auth_payment_review, enterprise_deep_review
+
+Key rule: worker agents ALWAYS use Cerebras. Never Anthropic. Never Sonnet.
+Key rule: Anthropic failure must never stop agents — Cerebras keeps builds alive.
+Key rule: Cerebras keys are round-robined (up to 5 keys) — no rate limiting.
 """
 
 import asyncio
@@ -19,10 +37,74 @@ from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MOD
 
 logger = logging.getLogger(__name__)
 
-# Cerebras handles all task types; Haiku is the Anthropic fallback.
-# No task type forces Anthropic exclusively — Anthropic failure must never
-# stop the agent loop; Cerebras keeps builds alive.
-CEREBRAS_OK_TASKS: set = set()  # Not used for routing; kept for back-compat imports.
+# ─── Capability routing tables ────────────────────────────────────────────────
+# CEREBRAS handles all high-volume mechanical execution.
+CEREBRAS_PRIMARY_TASKS = {
+    # Chat / intent
+    "intent_parse", "simple_chat", "chat",
+    # Drafting and copy
+    "drafting", "draft",
+    # Code and scaffolding generation (Cerebras writes code, Haiku reviews plans)
+    "code_generate", "code_generation", "component_generation",
+    "boilerplate_generation", "scaffolding",
+    "backend_scaffold_generation", "db_scaffold_generation",
+    "landing_page_generate", "landing_page",
+    "generated_file_expansion", "file_expansion",
+    # Worker agents — Cerebras ONLY, never Anthropic
+    "agent_swarm_worker", "worker_agent", "swarm_worker",
+    # Summaries and cheap tasks
+    "file_summarization", "file_summary", "log_error_summary", "log_summary",
+    "cheap_refutation",
+    # Repair execution (Cerebras patches, Haiku diagnoses)
+    "repair_patch_generation", "repair_patch", "simple_repair",
+    # Expo
+    "expo_metadata", "expo_repair_generation", "expo_generation",
+    # Styling/UI
+    "styling", "color_palette", "typography", "animation", "brand",
+    "responsive", "dark_mode", "seo", "i18n", "notification",
+    "email_template", "documentation",
+}
+
+# HAIKU controls all reasoning, validation, and proof-gate decisions.
+HAIKU_PRIMARY_TASKS = {
+    # Chat requiring deep reasoning
+    "complex_chat", "requirements_clarification",
+    # Build and architecture decisions
+    "build_plan", "planning", "architecture_plan", "architecture",
+    # Validation and integrity
+    "validation", "build_integrity", "build_integrity_validator",
+    # Repair diagnosis (Haiku diagnoses, Cerebras patches)
+    "repair_diagnosis",
+    # Proof gates
+    "standard_final_proof", "proof",
+    # Escalation decisions
+    "should_escalate",
+    # Plan/review phases of scaffolding (generation stays on Cerebras)
+    "backend_scaffold_plan", "db_auth_payment_plan",
+    # Review, audit, security, verification — Haiku is gatekeeper
+    "review", "audit", "security", "verification", "reasoning",
+    # Build quality
+    "frontend_generation",  # plan on Haiku; but see note below
+    "backend_generation",   # plan on Haiku; generation on Cerebras
+    "multi_tenant", "rag", "embedding",
+}
+
+# SONNET — locked. Requires ALLOW_SONNET=true env gate.
+SONNET_GATED_TASKS = {
+    "premium_final_proof",
+    "hard_failure_adjudication",
+    "security_review",
+    "fullstack_auth_payment_review",
+    "enterprise_deep_review",
+}
+
+# Worker-agent tasks — Cerebras ONLY, no Anthropic fallback permitted.
+WORKER_AGENT_TASKS = {
+    "agent_swarm_worker", "worker_agent", "swarm_worker",
+}
+
+# Back-compat import name kept for any code that imported this.
+CEREBRAS_OK_TASKS = CEREBRAS_PRIMARY_TASKS
 
 
 @dataclass
@@ -34,55 +116,110 @@ class LLMConfig:
     model: str
     max_tokens: int = 4000
     temperature: float = 0.7
+    # True = never fall back to Anthropic (worker agents)
+    cerebras_only: bool = False
 
 
-def _primary_llm_is_cerebras() -> bool:
-    v = (
-        os.environ.get("PRIMARY_LLM_PROVIDER", "")
-        or os.environ.get("CRUCIB_PRIMARY_LLM", "")
-    ).strip().lower()
-    return v in ("cerebras", "cerebra", "cb")
+def _allow_sonnet() -> bool:
+    return os.environ.get("ALLOW_SONNET", "false").strip().lower() in {"1", "true", "yes"}
 
 
-def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
+def get_llm_config(task_type: str = "") -> Optional["LLMConfig"]:
     """
-    Load LLM config with smart model routing based on task type.
+    Load LLM config using capability-based routing.
 
-    Large/complex tasks → Anthropic (200K context, superior reasoning)
-    Small/fast tasks → Cerebras (if available, avoids 8K limit issues)
+    Decision authority:
+      Cerebras  → mechanical execution (70-80% volume)
+      Haiku     → reasoning/validation/proof gates (20-30%)
+      Sonnet    → locked behind ALLOW_SONNET=true (0% default)
 
-    Set PRIMARY_LLM_PROVIDER=cerebras to prefer Cerebras for all task types
-    (free testing). call_llm() still falls back to Anthropic if Cerebras fails.
+    Worker agents always use Cerebras. Anthropic failure never stops agents.
     """
-    task_lower = task_type.lower()
+    task_lower = task_type.lower().strip()
 
     claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+    cerebras_model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
 
-    # Testing / cost mode: Cerebras first everywhere when key is present.
-    if cerebras_key and _primary_llm_is_cerebras():
-        model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
-        logger.debug(
-            "LLM routing (PRIMARY=cerebras): task=%s → cerebras/%s",
-            task_type or "default",
-            model,
+    # ── Sonnet gate (max 1% of tokens when explicitly enabled) ──────────────
+    if task_lower in SONNET_GATED_TASKS:
+        if _allow_sonnet() and claude_key:
+            # Sonnet is open: use it for this premium capability
+            model = normalize_anthropic_model(
+                os.environ.get("ANTHROPIC_MODEL"),
+                default=ANTHROPIC_SONNET_MODEL,
+            )
+            logger.debug("LLM routing: task=%s → sonnet/%s (premium gate open)", task_type, model)
+            return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
+        # Sonnet locked or key absent → Haiku is the explicit fallback for premium tasks
+        if claude_key:
+            model = normalize_anthropic_model(
+                os.environ.get("ANTHROPIC_MODEL"),
+                default=ANTHROPIC_HAIKU_MODEL,
+            )
+            logger.info(
+                "LLM routing: task=%s — Sonnet locked (ALLOW_SONNET=false); "
+                "using Haiku/%s as premium fallback", task_type, model
+            )
+            return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
+        # Anthropic key absent → Cerebras reasoning as last resort
+        if cerebras_key:
+            logger.warning(
+                "LLM routing: task=%s — Sonnet locked and no Anthropic key; "
+                "using Cerebras/%s as last-resort fallback", task_type, cerebras_model
+            )
+            return LLMConfig(provider="cerebras", api_key=cerebras_key, model=cerebras_model)
+        return None
+
+    # ── Worker agents — Cerebras ONLY ────────────────────────────────────────
+    if task_lower in WORKER_AGENT_TASKS:
+        if cerebras_key:
+            logger.debug("LLM routing: task=%s → cerebras/%s (worker-only)", task_type, cerebras_model)
+            return LLMConfig(
+                provider="cerebras", api_key=cerebras_key,
+                model=cerebras_model, cerebras_only=True,
+            )
+        # No Cerebras key + worker agent = fatal config error, not silent Anthropic fallback
+        logger.error(
+            "task=%s requires Cerebras but CEREBRAS_API_KEY is not set. "
+            "Worker agents must not use Anthropic.", task_type
         )
-        return LLMConfig(provider="cerebras", api_key=cerebras_key, model=model)
+        return None
 
-    # PRIMARY: Cerebras for all task types (~70-80% of traffic).
-    # Anthropic (Haiku) is the fallback — never blocks the agent loop.
+    # ── Haiku primary: reasoning/validation/proof-gate capabilities ───────────
+    if task_lower in HAIKU_PRIMARY_TASKS:
+        if claude_key:
+            model = normalize_anthropic_model(
+                os.environ.get("ANTHROPIC_MODEL"),
+                default=ANTHROPIC_HAIKU_MODEL,
+            )
+            logger.debug("LLM routing: task=%s → haiku/%s (reasoning gate)", task_type, model)
+            return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
+        # Anthropic unavailable → fall back to Cerebras (never blocks agents)
+        if cerebras_key:
+            logger.warning(
+                "LLM routing: task=%s needs Haiku but Anthropic key absent; "
+                "falling back to Cerebras/%s", task_type, cerebras_model
+            )
+            return LLMConfig(provider="cerebras", api_key=cerebras_key, model=cerebras_model)
+        logger.error("No LLM keys available for task=%s", task_type)
+        return None
+
+    # ── Cerebras primary: all volume/mechanical tasks + unknown task types ────
     if cerebras_key:
-        model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
-        logger.debug("LLM routing: task=%s → cerebras/%s", task_type or "default", model)
-        return LLMConfig(provider="cerebras", api_key=cerebras_key, model=model)
+        logger.debug("LLM routing: task=%s → cerebras/%s (volume engine)", task_type or "default", cerebras_model)
+        return LLMConfig(provider="cerebras", api_key=cerebras_key, model=cerebras_model)
 
-    # Fallback: Haiku when Cerebras key unavailable
+    # ── Final fallback: Haiku if Cerebras key missing ─────────────────────────
     if claude_key:
         model = normalize_anthropic_model(
             os.environ.get("ANTHROPIC_MODEL"),
             default=ANTHROPIC_HAIKU_MODEL,
         )
-        logger.debug("LLM routing: task=%s → anthropic/%s (fallback)", task_type or "default", model)
+        logger.warning(
+            "LLM routing: task=%s — no Cerebras key; falling back to haiku/%s",
+            task_type or "default", model
+        )
         return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
 
     logger.warning("No LLM API keys configured (ANTHROPIC_API_KEY or CEREBRAS_API_KEY)")
@@ -250,20 +387,32 @@ async def call_llm(
 
     except Exception as e:
         logger.exception("LLM call failed: %s", e)
-        # Auto-fallback: if Cerebras failed, try Anthropic
-        if config.provider == "cerebras":
-            claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        # Auto-fallback: never let provider failure stop agents.
+        cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+        claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        cerebras_model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
+        if config.provider == "cerebras" and not getattr(config, "cerebras_only", False):
+            # Cerebras failed → try Haiku
             if claude_key:
-                logger.warning("Cerebras failed, falling back to Anthropic")
+                logger.warning("Cerebras failed for task=%s, falling back to Haiku", task_type)
                 fallback = LLMConfig(
                     provider="anthropic",
                     api_key=claude_key,
-                    model=normalize_anthropic_model(
-                        None, default=ANTHROPIC_HAIKU_MODEL
-                    ),
+                    model=normalize_anthropic_model(None, default=ANTHROPIC_HAIKU_MODEL),
                     temperature=temperature,
                 )
                 return await call_claude(system_prompt, user_prompt, fallback)
+        elif config.provider == "anthropic":
+            # Anthropic failed → try Cerebras reasoning (keeps agents alive)
+            if cerebras_key:
+                logger.warning("Anthropic failed for task=%s, falling back to Cerebras", task_type)
+                fallback = LLMConfig(
+                    provider="cerebras",
+                    api_key=cerebras_key,
+                    model=cerebras_model,
+                    temperature=temperature,
+                )
+                return await call_cerebras(system_prompt, user_prompt, fallback)
         return None
 
 
@@ -306,7 +455,7 @@ async def call_llm_for_code(
     instructions: str = "",
     task_type: str = "frontend_generation",
 ) -> Optional[Dict[str, str]]:
-    """Call LLM to generate code — always routed to Anthropic for quality."""
+    """Call LLM to generate code — routes via capability-based get_llm_config."""
     system_prompt = f"""You are an expert {language} developer. Generate production-ready {language} code.
 
 Code must:
@@ -348,7 +497,7 @@ async def call_llm_for_structured_output(
     schema_description: str = "",
     task_type: str = "planning",
 ) -> Optional[Dict[str, Any]]:
-    """Call LLM to generate structured JSON output — routed to Anthropic for reliability."""
+    """Call LLM to generate structured JSON output — routes via capability-based get_llm_config."""
     system_prompt = f"""You are a helpful assistant that generates structured data.
 
 Always respond with ONLY valid JSON, no markdown, no explanation.
