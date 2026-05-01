@@ -35,6 +35,14 @@ from typing import Any, Dict, List, Optional
 
 from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 
+# Lazy import avoids circular dependency — model_share_enforcer may import llm_router.
+def _get_share_enforcer():
+    try:
+        from backend.model_share_enforcer import share_enforcer  # noqa
+        return share_enforcer
+    except Exception:
+        return None
+
 logger = logging.getLogger(__name__)
 
 # ─── Capability routing tables ────────────────────────────────────────────────
@@ -144,13 +152,20 @@ def get_llm_config(task_type: str = "") -> Optional["LLMConfig"]:
     # ── Sonnet gate (max 1% of tokens when explicitly enabled) ──────────────
     if task_lower in SONNET_GATED_TASKS:
         if _allow_sonnet() and claude_key:
-            # Sonnet is open: use it for this premium capability
+            # Sonnet is open — but enforce share cap before committing
             model = normalize_anthropic_model(
                 os.environ.get("ANTHROPIC_MODEL"),
                 default=ANTHROPIC_SONNET_MODEL,
             )
-            logger.debug("LLM routing: task=%s → sonnet/%s (premium gate open)", task_type, model)
-            return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
+            _enf = _get_share_enforcer()
+            if _enf and not _enf.allow(provider="anthropic", model=model):
+                # Share cap hit → downgrade to Haiku silently
+                logger.warning(
+                    "LLM routing: task=%s → Sonnet share cap hit; downgrading to Haiku", task_type
+                )
+            else:
+                logger.debug("LLM routing: task=%s → sonnet/%s (premium gate open)", task_type, model)
+                return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
         # Sonnet locked or key absent → Haiku is the explicit fallback for premium tasks
         if claude_key:
             model = normalize_anthropic_model(
@@ -378,12 +393,19 @@ async def call_llm(
     try:
         config.temperature = temperature
         if config.provider == "anthropic":
-            return await call_claude(system_prompt, user_prompt, config)
+            result_text = await call_claude(system_prompt, user_prompt, config)
         elif config.provider == "cerebras":
-            return await call_cerebras(system_prompt, user_prompt, config)
+            result_text = await call_cerebras(system_prompt, user_prompt, config)
         else:
             logger.error("Unknown LLM provider: %s", config.provider)
             return None
+        # Record usage for model-share enforcement
+        if result_text:
+            _enf = _get_share_enforcer()
+            if _enf:
+                _estimated_tokens = (len(system_prompt) + len(user_prompt) + len(result_text)) // 4
+                _enf.record(provider=config.provider, model=config.model, tokens=_estimated_tokens)
+        return result_text
 
     except Exception as e:
         logger.exception("LLM call failed: %s", e)
@@ -518,3 +540,91 @@ Generate the JSON now."""
         return None
 
     return await parse_json_response(response)
+
+
+# ─── call_llm_simple ─────────────────────────────────────────────────────────
+async def call_llm_simple(prompt: str, *, task_type: str = "simple_chat") -> str:
+    """
+    Convenience wrapper: single user-turn call routed by task_type.
+
+    Returns the response text (empty string on failure).
+    Used by RepairEngine and other services that don't need full
+    system/user separation.
+    """
+    result = await call_llm(
+        system_prompt="You are a helpful assistant.",
+        user_prompt=prompt,
+        task_type=task_type,
+        temperature=0.3,
+    )
+    return result or ""
+
+
+# ─── Sonnet compressed proof packet ──────────────────────────────────────────
+
+def build_sonnet_proof_packet(
+    *,
+    goal: str,
+    plan_summary: str,
+    file_manifest: List[str],
+    validator_results: List[Dict[str, Any]],
+    critical_excerpts: List[str],
+    unresolved_risks: List[str],
+    max_chars: int = 12_000,
+) -> str:
+    """
+    Build a compressed proof packet for Sonnet consumption.
+
+    Sonnet must NEVER receive raw chat history or swarm chatter.
+    Instead it receives this compressed packet containing only the
+    information it needs to adjudicate the final proof gate.
+
+    The packet is kept under *max_chars* so Sonnet stays within
+    SONNET_MAX_TOKENS_PER_RUN (default 15 000 tokens ≈ 60 000 chars).
+
+    Returns a structured XML-like string the Sonnet system prompt
+    can reference without ambiguity.
+    """
+    # Summarise validator results
+    vr_lines: List[str] = []
+    for vr in validator_results:
+        status = "PASS" if vr.get("passed") else "FAIL"
+        name   = vr.get("name") or vr.get("check") or "unknown"
+        detail = vr.get("detail") or vr.get("message") or ""
+        vr_lines.append(f"  [{status}] {name}: {detail[:200]}")
+
+    # Trim collections to budget
+    excerpts_block = "\n---\n".join(critical_excerpts)[:3000]
+    risks_block    = "\n".join(f"  - {r}" for r in unresolved_risks[:20])
+    files_block    = "\n".join(f"  {f}" for f in file_manifest[:100])
+
+    packet = f"""<proof_packet>
+<goal>{goal[:500]}</goal>
+
+<plan_summary>
+{plan_summary[:1500]}
+</plan_summary>
+
+<file_manifest>
+{files_block}
+</file_manifest>
+
+<validator_results>
+{chr(10).join(vr_lines)}
+</validator_results>
+
+<critical_excerpts>
+{excerpts_block}
+</critical_excerpts>
+
+<unresolved_risks>
+{risks_block}
+</unresolved_risks>
+</proof_packet>"""
+
+    # Hard truncate if still over budget
+    if len(packet) > max_chars:
+        packet = packet[:max_chars] + "\n<!-- packet truncated to budget -->"
+
+    logger.debug("build_sonnet_proof_packet: %d chars", len(packet))
+    return packet
