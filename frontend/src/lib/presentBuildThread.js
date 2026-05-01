@@ -39,25 +39,25 @@ export function friendlyStepLabel(stepKey, name) {
   }
   if (key) return key.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
   if (n) return n.replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
-  return 'This step';
+  return 'this step';
 }
 
-/** One-line title for issue / repair cards (no pipe-separated codes). */
+/** One-line title for issue / repair cards — clear and action-oriented. */
 export function issueCardTitle(ev) {
   const t = ev?.type || ev?.event_type || '';
   const p = readPayload(ev);
   if (t === 'job_failed') {
     const r = String(p.reason || p.failure_reason || p.summary || '').toLowerCase();
-    if (r.includes('step') && r.includes('fail')) return 'Repairing run — verification found an issue';
-    return 'Repairing run';
+    if (r.includes('step') && r.includes('fail')) return 'Running a fix';
+    return 'Fixing an issue';
   }
   if (t === 'step_failed') {
-    return `${friendlyStepLabel(p.step_key, p.name)} is being repaired`;
+    return `Fixing ${friendlyStepLabel(p.step_key, p.name)}`;
   }
-  return 'Repairing the workspace';
+  return 'Working on a fix';
 }
 
-/** Main paragraph shown in the thread (plain English, no npm exit codes). */
+/** Main paragraph shown in the thread — plain English, no stack traces. */
 export function humanIssueSummary(ev) {
   const t = ev?.type || ev?.event_type || '';
   const p = readPayload(ev);
@@ -70,21 +70,21 @@ export function humanIssueSummary(ev) {
   const label = friendlyStepLabel(p.step_key, p.name);
   const fr = String(p.failure_reason || '').toLowerCase();
   if (fr.includes('browser_preview') || fr.includes('preview') || /preview/i.test(label)) {
-    return 'The preview/build check found an issue in the generated workspace. I am applying a targeted fix and continuing the run.';
+    return "The preview check found something off. I'm applying a targeted fix and continuing.";
   }
   if (fr.includes('api_smoke') || fr.includes('health') || /api health/i.test(label)) {
-    return 'The API health check found a gap in the generated workspace. I am patching it and rerunning verification.';
+    return "The API health check found a gap. I'm patching it and rerunning the check.";
   }
   if (fr.includes('compile') || /compile/i.test(label)) {
-    return 'The compile check reported a problem. I am fixing the workspace and rerunning the check.';
+    return "The compile check hit an error. I'm fixing it and running the check again.";
   }
-  return `Build verification flagged an issue during ${label}. I am fixing the workspace and keeping the run moving.`;
+  return `Verification flagged something during ${label}. I'm fixing it and keeping the build moving.`;
 }
 
 function humanJobFailedSummary(p) {
   const msg = String(p.message || p.summary || p.reason || p.failure_reason || '').toLowerCase();
   if (msg.includes('steps_failed') || msg.includes('step_failed')) {
-    return 'A verification step did not pass. I am starting a repair pass and continuing the run.';
+    return "A verification step didn't pass. I'm starting a repair pass and continuing.";
   }
   if (msg.includes('cancel')) {
     return 'This run was cancelled.';
@@ -93,7 +93,7 @@ function humanJobFailedSummary(p) {
   if (short && short.length < 180 && !looksLikeRawLog(short)) {
     return short;
   }
-  return 'The run hit a blocking issue. Check technical details below, or send a follow-up to steer the next pass.';
+  return "The build hit a blocking issue. Check the technical details below, or send a follow-up to steer the next pass.";
 }
 
 function looksLikeRawLog(s) {
@@ -127,22 +127,22 @@ export function technicalDetailLines(ev) {
   return lines.filter(Boolean).join('\n').trim();
 }
 
-/** Short opening line when a job run starts (real job_started event). */
+/** Opening line when a job starts. */
 export function narrationJobStarted() {
-  return "I'll set up the project foundation, build the screens and logic you asked for, run verification, and keep a live preview path open as soon as it is safe.";
+  return "Got it — I'm starting the build now. I'll lay down the foundation, wire up the screens and logic, run checks to make sure everything holds, and keep a live preview ready as it comes together.";
 }
 
 export function narrationRepairStarted() {
-  return 'Making a repair pass — I found an issue in the generated workspace, so I am applying a targeted fix and keeping the run moving.';
+  return "I ran into an issue — applying a fix now and picking back up where I left off.";
 }
 
 export function narrationRepairCompleted() {
-  return 'Repair applied. I am rerunning verification to confirm everything lines up.';
+  return "Fixed it. Running the checks again to confirm everything's clean.";
 }
 
 export function narrationVerifierPassed(phaseLabel) {
-  if (phaseLabel) return `${phaseLabel} — checks passed. Moving forward.`;
-  return 'Verification passed for this stage. Continuing the run.';
+  if (phaseLabel) return `${phaseLabel} — all clear. Moving on.`;
+  return 'Checks passed. Continuing.';
 }
 
 /** verifier_failed / export_gate style payloads (no outer type check). */
@@ -152,9 +152,9 @@ export function humanVerificationFailureSummary(p) {
   const fr = String(p?.failure_reason || '').toLowerCase();
   const missingArr = p?.missing || p?.missing_routes;
   if (fr.includes('missing') && Array.isArray(missingArr) && missingArr.length) {
-    return `Verification found missing pieces before we can ship this build. I will align the workspace to the contract and continue.`;
+    return `Verification found some missing pieces. I'm filling them in and continuing.`;
   }
-  return `The ${label} did not pass yet. I am applying fixes and continuing the run.`;
+  return `The ${label} didn't pass yet. I'm applying fixes and continuing the build.`;
 }
 
 export const __test__ = { readPayload, friendlyStepLabel, looksLikeRawLog };

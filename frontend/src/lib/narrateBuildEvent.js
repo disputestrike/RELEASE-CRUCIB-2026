@@ -25,7 +25,7 @@ const readPayload = (event) => {
 };
 
 const prettyPhase = (phase) => {
-  if (!phase || typeof phase !== 'string') return 'execution';
+  if (!phase || typeof phase !== 'string') return 'this step';
   return phase
     .replace(/^[-_.]+|[-_.]+$/g, '')
     .replace(/[._-]+/g, ' ')
@@ -45,8 +45,8 @@ export function fileBasename(path) {
   return n || path;
 }
 
-/** Narration deliberately avoids surfacing agent names. The thread shows what
- * is being done, not who is doing it. Agent identities stay in the backend. */
+/** Narration avoids surfacing agent names. The thread shows what is being
+ * done, not who is doing it. Agent identities stay in the backend. */
 export function narrateBuildEvent(event) {
   if (!event) return null;
   const type = event.type || event.event_type || '';
@@ -63,87 +63,117 @@ export function narrateBuildEvent(event) {
   switch (type) {
     case 'job_started':
       return narrationJobStarted();
+
     case 'user_steering':
-      return 'Your new instruction is merged into the run; downstream steps will follow it.';
+      return "Got it — I've folded your new instruction into the run. Downstream steps will follow it.";
+
     case 'job_completed': {
       if (qScore != null && qScore > 0) {
-        return `Build finished. Quality check scored ${Math.round(qScore)}/100 — you can review the preview and proof tabs next.`;
+        return `Build complete. Quality score: ${Math.round(qScore)}/100 — take a look at Preview and Proof when you're ready.`;
       }
-      return 'Build finished. Open the preview when you are ready, and check proof for export readiness.';
+      return "The build is done. Take a look at Preview — and if anything needs adjusting, just tell me.";
     }
+
     case 'job_failed':
-      return humanIssueSummary(event) || 'This run needs attention before we can ship.';
+      return humanIssueSummary(event) || "Something needs attention before we can ship. Check below or send a follow-up.";
+
     case 'step_failed':
-      return humanIssueSummary(event) || 'A build step needs a quick fix; continuing the run.';
+      return humanIssueSummary(event) || "A step hit an issue. I'm fixing it and continuing.";
+
     case 'plan_created':
-      return "Here is the plan: screens and routes, data shape, and how we'll verify the build before you ship it.";
+      return "Here's what I'm going to build. I've broken it into clear steps — let me know if you want to change anything before I start.";
+
     case 'phase_started':
       return phase
-        ? `Moving into ${phase.toLowerCase()} — this is where the scaffold and core files take shape.`
-        : 'Moving into the next execution phase.';
+        ? `Working on ${phase.toLowerCase()} now.`
+        : 'Moving into the next phase.';
+
     case 'phase_completed':
       return phase
-        ? `${phase} is wrapped; continuing with whatever is next in the pipeline.`
+        ? `${phase} done. Continuing.`
         : 'That phase is complete.';
+
     case 'phase_blocked':
-      return `${phase || 'A phase'} is blocked and waiting for the next decision.`;
+      return `${phase || 'A phase'} is blocked — waiting on the next decision.`;
+
     case 'phase_advanced':
-      return `Moving on to ${phase || 'the next phase'}.`;
+      return `On to ${phase || 'the next phase'}.`;
+
     case 'step_started':
     case 'dag_node_started': {
       const label = (p.name || phase || 'the next step').trim();
-      return `Working on ${label} — this shows up in your activity timeline as it finishes.`;
+      return `Working on ${label}.`;
     }
+
     case 'step_completed':
     case 'dag_node_completed': {
       const label = (p.name || phase || 'That step').trim();
-      return `${label} is done; wiring continues toward preview and verification.`;
+      return `${label} done.`;
     }
+
     case 'tool_call':
-      return `Running ${p.name || 'the requested tool'}.`;
+      return `Running ${p.name || 'tool'}.`;
+
     case 'tool_result':
-      return 'The tool returned; continuing the run.';
+      return null; // too noisy — suppress
+
     case 'verifier_started':
-      return `Running checks for ${phase ? phase.toLowerCase() : 'this stage'} before moving on.`;
+      return `Running checks${phase ? ` on ${phase.toLowerCase()}` : ''}.`;
+
     case 'verifier_passed':
       return narrationVerifierPassed(phase ? `${phase} checks` : '');
+
     case 'verifier_failed':
       return missing.length
-        ? `Verification noted missing items (${list(missing)}). I am aligning the workspace and continuing.`
-        : `Verification did not pass for ${phase || 'this stage'} yet. I am repairing and continuing the run.`;
+        ? `Verification found missing pieces (${list(missing)}). I'm filling them in and continuing.`
+        : `Verification hit a snag${phase ? ` on ${phase.toLowerCase()}` : ''}. I'm applying a fix.`;
+
     case 'assembly_failed':
-      return 'Assembly failed. I am inspecting what is missing.';
+      return "Assembly didn't complete. I'm looking at what's missing.";
+
     case 'export_gate_blocked':
-      return 'Export gate is blocked. I will fix the missing requirements before exporting.';
+      return "The export gate is blocked. I'll fix the missing requirements before exporting.";
+
     case 'export_gate_ready':
-      return 'Export gate passed. This build is ready.';
+      return "Export gate passed. This build is ready to ship.";
+
     case 'repair_started':
       return narrationRepairStarted();
+
     case 'repair_completed':
       return narrationRepairCompleted();
+
     case 'repair_failed':
-      return 'That repair path did not clear the failure — trying another approach.';
+      return "That fix didn't take — trying a different approach.";
+
     case 'circuit_breaker_escalated':
-      return 'I tried multiple repairs without success. Escalating for guidance.';
+      return "I've tried several fixes and I'm still stuck. I need your input to move forward.";
+
     case 'contract_delta_created':
-      return 'Contract updated based on the new instruction.';
+      return "Contract updated based on your instruction.";
+
     case 'run_snapshot':
-      return 'Runtime snapshot captured.';
+      return null; // internal — suppress
+
     case 'code_mutation': {
       const b = fileBasename(p.file || p.path);
       return b ? `Edited ${b}.` : 'Applied a code change.';
     }
+
     case 'file_written':
     case 'file_write': {
       const b = fileBasename(p.file || p.path);
-      return b ? `Added ${b} to the workspace.` : 'Wrote a new file into the workspace.';
+      return b ? `Created ${b}.` : 'Added a file to the workspace.';
     }
+
     case 'workspace_files_updated':
-      return 'Workspace synced from the latest generation pass.';
+      return null; // internal — suppress
+
     case 'brain_guidance':
-      return [p.headline, p.summary].filter(Boolean).join(' — ');
+      return [p.headline, p.summary].filter(Boolean).join(' — ') || null;
+
     default:
-      return p.message || p.summary || '';
+      return p.message || p.summary || null;
   }
 }
 

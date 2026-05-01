@@ -435,7 +435,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
         findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target) ||
         failureRepairByKey.get(rk);
       const startNarration =
-        'Build verification found an issue. Applying a targeted fix and rerunning the check.';
+        "Something came up during verification — I'm fixing it and will rerun the check.";
       if (!item) {
         item = {
           kind: 'repair_block',
@@ -487,11 +487,11 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (t === 'job_completed') {
-      pushAssistantOnce(narrateBuildEvent(ev) || 'The build finished.', ts, newId('am'));
+      pushAssistantOnce(narrateBuildEvent(ev) || 'The build is done. Take a look at Preview — and if anything needs adjusting, just tell me.', ts, newId('am'));
       restItems.push({
         kind: 'delivery_card',
         narration:
-          'Open Preview for the live surface and Proof for export readiness. Send a follow-up here anytime to steer the next pass.',
+          'Your app is ready in Preview. Hit Proof to see what\'s export-ready — and send a follow-up whenever you want changes.',
         ts,
         id: newId('dl'),
       });
@@ -500,7 +500,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'plan_created') {
       pushAssistantOnce(
-        narrateBuildEvent(ev) || "I've reviewed your request. Here's the plan I'll follow.",
+        narrateBuildEvent(ev) || "Here's what I'm going to build — let me know if you want to change anything before I start.",
         ts,
         newId('am'),
       );
