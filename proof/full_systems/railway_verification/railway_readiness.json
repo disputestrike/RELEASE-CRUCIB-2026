@@ -1,5 +1,5 @@
 ﻿{
-    "generated_at":  "2026-05-01T19:19:54.5516595Z",
+    "generated_at":  "2026-05-01T19:35:36.9927908Z",
     "static_readiness":  "passed",
     "live_confirmation":  "not_run",
     "checks":  {
@@ -41,7 +41,7 @@
                                             "required":  false
                                         },
                        "REDIS_URL":  {
-                                         "set_in_current_shell":  false,
+                                         "set_in_current_shell":  true,
                                          "required":  false
                                      },
                        "CEREBRAS_API_KEY":  {
@@ -53,7 +53,7 @@
                                                  "required":  false
                                              },
                        "JWT_SECRET":  {
-                                          "set_in_current_shell":  false,
+                                          "set_in_current_shell":  true,
                                           "required":  true
                                       },
                        "DATABASE_URL":  {
