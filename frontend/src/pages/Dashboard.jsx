@@ -1129,43 +1129,27 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
+      <header
+        className="dashboard-pane-brand dashboard-pane-brand--shell-top"
+        data-chat-active={hasChat && chatLoading ? 'true' : undefined}
+      >
+        <div className="dashboard-pane-brand-left">
+          <Logo
+            variant="full"
+            height={34}
+            href={null}
+            className="sidebar-logo"
+            showTagline={false}
+            showWordmark
+            nameClassName="sidebar-logo-text"
+          />
+          <span className="dashboard-pane-brand-version" aria-hidden>1.0</span>
+        </div>
+      </header>
       <div ref={homeMessagesRef} className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
-        {hasChat && (
-          <header
-            className="dashboard-pane-brand dashboard-pane-brand--sticky"
-            data-chat-active={chatLoading ? 'true' : undefined}
-          >
-            <div className="dashboard-pane-brand-left">
-              <Logo
-                variant="full"
-                height={34}
-                href={null}
-                className="sidebar-logo"
-                showTagline={false}
-                showWordmark
-                nameClassName="sidebar-logo-text"
-              />
-              <span className="dashboard-pane-brand-version" aria-hidden>1.0</span>
-            </div>
-          </header>
-        )}
         {!hasChat && (
           <div className="home-hero-stage">
             <div className="dashboard-home-column">
-            <div className="dashboard-pane-brand dashboard-pane-brand--hero">
-              <div className="dashboard-pane-brand-left">
-                <Logo
-                  variant="full"
-                  height={34}
-                  href={null}
-                  className="sidebar-logo"
-                  showTagline={false}
-                  showWordmark
-                  nameClassName="sidebar-logo-text"
-                />
-                <span className="dashboard-pane-brand-version" aria-hidden>1.0</span>
-              </div>
-            </div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
                 <span className="dashboard-greeting-sub">{location.state?.newProject ? 'What\'s your new project?' : 'What do you want to build?'}</span>

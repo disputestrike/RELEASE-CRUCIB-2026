@@ -82,30 +82,29 @@
   gap: 0;
 }
 
-/* Manus-style fixed strip: CrucibAI 1.0 — dashboard home + chat */
+/* CrucibAI 1.0 — top of dashboard shell (left-aligned, not centered in hero) */
+.dashboard-redesigned.home-screen > .dashboard-pane-brand {
+  flex-shrink: 0;
+}
+
 .dashboard-pane-brand {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  max-width: min(720px, 92vw);
-  margin: 0 auto 12px;
-  padding: 6px 4px 8px;
   box-sizing: border-box;
   border-bottom: 1px solid color-mix(in srgb, var(--theme-text, #18181b) 8%, transparent);
 }
 
-.dashboard-pane-brand--sticky {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  margin-bottom: 16px;
-  padding-top: 4px;
-  background: var(--theme-surface, #ffffff);
+.dashboard-pane-brand--shell-top {
+  padding: 10px max(20px, 4vw) 10px;
+  margin: 0;
+  background: var(--theme-bg, #fafafa);
 }
 
-[data-theme='dark'] .dashboard-pane-brand--sticky {
-  background: var(--theme-surface, #111113);
+[data-theme='dark'] .dashboard-pane-brand--shell-top {
+  background: var(--theme-bg, #111113);
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -133,14 +132,7 @@
   color: var(--theme-text) !important;
 }
 
-.dashboard-pane-brand--hero {
-  max-width: min(640px, 94vw);
-  margin: 0 auto 16px;
-  border-bottom: none;
-  padding: 0 0 4px;
-}
-
-.dashboard-pane-brand--sticky[data-chat-active='true']::after {
+.dashboard-pane-brand[data-chat-active='true']::after {
   content: '';
   width: 8px;
   height: 8px;
