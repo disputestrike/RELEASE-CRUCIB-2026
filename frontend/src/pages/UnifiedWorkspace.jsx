@@ -1903,9 +1903,6 @@ export default function App() {
               buildTargetMeta={buildTargetMeta}
               buildTargetId={buildTarget}
               isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
-              streamConnected={isConnected}
-              connectionMode={connectionMode}
-              eventCount={Array.isArray(events) ? events.length : 0}
               onPause={handleCancel}
               onResume={handleResume}
               onCancel={handleCancel}
@@ -2043,7 +2040,7 @@ export default function App() {
                   </button>
                 </div>
                 <SystemStatusHUD
-                  isConnected={isConnected}
+                  variant="minimal"
                   connectionMode={connectionMode}
                   activeAgentCount={activeAgentCount}
                   jobStatus={job?.status}

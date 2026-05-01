@@ -152,9 +152,9 @@ function ThreadOverflow({ jobStatus, onPause, onResume, onCancel, onSync, canSyn
   );
 }
 
-function UserPrompt({ content, ts }) {
+function UserPrompt({ content, ts, pinned = false }) {
   return (
-    <div className="p4-row p4-row-user">
+    <div className={`p4-row p4-row-user${pinned ? ' p4-row-user--pinned' : ''}`}>
       <div className="p4-user-bubble">
         <div className="p4-user-text">{content}</div>
         {ts ? <div className="p4-meta-time">{formatTime(ts)}</div> : null}
@@ -173,7 +173,7 @@ function CrucibAIHandle({ logoOk, onLogoFail }) {
           <span className="p4-avatar-fallback">C</span>
         )}
       </div>
-      <span className="p4-assist-name p4-assist-name--header">CrucibAI</span>
+      <span className="p4-assist-name p4-assist-name--header sidebar-logo-text">CrucibAI</span>
     </div>
   );
 }
@@ -181,7 +181,7 @@ function CrucibAIHandle({ logoOk, onLogoFail }) {
 function StatusPill({ jobStatus, isTyping }) {
   if (isTyping || jobStatus === 'running') {
     return (
-      <div className="p4-status-pill p4-status-pill--running">
+      <div className="p4-status-pill p4-status-pill--running p4-status-pill--alive">
         <Loader2 size={11} className="p4-spin" />
         <span>Working</span>
       </div>
@@ -204,7 +204,7 @@ function StatusPill({ jobStatus, isTyping }) {
     );
   }
   return (
-    <div className="p4-status-pill p4-status-pill--queued">
+    <div className="p4-status-pill p4-status-pill--queued p4-status-pill--alive">
       <Loader2 size={11} className="p4-spin" />
       <span>Thinking</span>
     </div>
@@ -368,10 +368,10 @@ function ProofBlock({ item }) {
   );
 }
 
-function ThreadItem({ item, logoOk, onLogoFail }) {
+function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
   switch (item.kind) {
     case 'user_message':
-      return <UserPrompt content={item.content} ts={item.ts} />;
+      return <UserPrompt content={item.content} ts={item.ts} pinned={isPinnedUser} />;
     case 'assistant_message':
       return <AssistantSay content={item.content} ts={item.ts} logoOk={logoOk} onLogoFail={onLogoFail} />;
     case 'plan_block':
@@ -398,10 +398,6 @@ export default function BrainGuidancePanel({
   hasTaskOrJobContext = false,
   buildTargetMeta = null,
   buildTargetId = null,
-  /** Same job stream as Preview / Proof / Timeline (single effectiveJobId in workspace) */
-  streamConnected = false,
-  connectionMode = 'sse',
-  eventCount = 0,
   onScroll,
   onPause,
   onResume,
@@ -421,6 +417,10 @@ export default function BrainGuidancePanel({
   const hasUserPrompt = items.some((i) => i.kind === 'user_message');
   const hasAssistantNarration = items.some((i) => i.kind === 'assistant_message');
   const shouldRenderEmptyState = items.length === 0 && !isTyping && !jobId && !hasTaskOrJobContext;
+  const firstUserId = useMemo(() => {
+    const u = items.find((i) => i.kind === 'user_message');
+    return u?.id ?? null;
+  }, [items]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -469,14 +469,6 @@ export default function BrainGuidancePanel({
         {(buildTargetMeta || buildTargetId) ? (
           <BuildTargetChip meta={buildTargetMeta} id={buildTargetId} />
         ) : <span />}
-        {jobId ? (
-          <span
-            className={`p4-stream-badge ${streamConnected ? 'p4-stream-badge--live' : 'p4-stream-badge--wait'}`}
-            title={`Job stream (${connectionMode || 'sse'}) - ${eventCount} events`}
-          >
-            {streamConnected ? 'Live' : 'Connecting...'}
-          </span>
-        ) : null}
         <ThreadOverflow
           jobStatus={jobStatus}
           onPause={onPause}
@@ -493,6 +485,7 @@ export default function BrainGuidancePanel({
           item={item}
           logoOk={!logoFailed}
           onLogoFail={() => setLogoFailed(true)}
+          isPinnedUser={item.kind === 'user_message' && item.id === firstUserId}
         />
       ))}
 

@@ -412,18 +412,17 @@
 }
 
 .uw-root .uw-center-headline-name {
-  font-size: 15px;
-  font-weight: 650;
+  /* Align with app sidebar wordmark (.sidebar-logo-text) */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-strong);
   line-height: 1;
 }
 
 .uw-root .uw-center-headline-version {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  line-height: 1;
+  display: none;
 }
 
 .uw-root .uw-center-headline-actions {

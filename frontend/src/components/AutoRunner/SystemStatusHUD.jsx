@@ -6,6 +6,7 @@ import AgentActivityPanel from './AgentActivityPanel';
 import './SystemStatusHUD.css';
 
 export default function SystemStatusHUD({
+  variant = 'default',
   connectionMode = 'offline',
   activeAgentCount = 0,
   jobStatus,
@@ -40,6 +41,8 @@ export default function SystemStatusHUD({
         ? 'Operational (Polling)'
         : 'Disconnected';
 
+  const isMinimal = variant === 'minimal';
+
   const latencyColor =
     healthLatencyMs == null
       ? 'var(--text-muted)'
@@ -53,7 +56,7 @@ export default function SystemStatusHUD({
 
   return (
     <div
-      className="system-status-hud"
+      className={`system-status-hud${isMinimal ? ' system-status-hud--minimal' : ''}`}
       ref={containerRef}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
@@ -63,14 +66,20 @@ export default function SystemStatusHUD({
       }}
     >
       <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : connectionMode !== 'offline' ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
-      <span className="ssh-text">
-        {opsLabel}
-        {' / '}
-        {agentsLive} agent{agentsLive !== 1 ? 's' : ''} live
-        {' / '}
-        <span style={{ color: latencyColor }}>{latencyLabel}</span>
-        {isActive && ' / Auto'}
-      </span>
+      {isMinimal ? (
+        <span className="ssh-text ssh-text--minimal" style={{ color: latencyColor }}>
+          {latencyLabel}
+        </span>
+      ) : (
+        <span className="ssh-text">
+          {opsLabel}
+          {' / '}
+          {agentsLive} agent{agentsLive !== 1 ? 's' : ''} live
+          {' / '}
+          <span style={{ color: latencyColor }}>{latencyLabel}</span>
+          {isActive && ' / Auto'}
+        </span>
+      )}
 
       {showTooltip && !showPanel && (
         <div className="ssh-tooltip">

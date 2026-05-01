@@ -39,8 +39,8 @@
 .bgp-thread-only > *:first-child { margin-top: auto; }
 
 .bgp-thread-only.bgp-thread-only--top {
-  padding: 22px 28px 16px;
-  gap: 14px;
+  padding: 12px 20px 14px;
+  gap: 12px;
 }
 
 .bgp-thread-only.bgp-thread-only--top > *:first-child { margin-top: 0; }
@@ -50,9 +50,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  margin-bottom: 4px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .p4-target-row {
@@ -94,6 +95,46 @@
 }
 .p4-stream-badge--wait {
   color: var(--crucibai-warning);
+}
+
+/* First user goal stays visible while the stream grows below */
+.uw-root .p4-row-user--pinned {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding-top: 6px;
+  margin-top: -6px;
+  background: linear-gradient(
+    180deg,
+    var(--crucibai-bg) 72%,
+    color-mix(in srgb, var(--crucibai-bg) 40%, transparent) 100%
+  );
+}
+
+/* Wordmark in thread — same scale as app sidebar (.sidebar-logo-text) */
+.uw-root .p4-row-handle .p4-assist-name--header.sidebar-logo-text,
+.uw-root .p4-assist-name--header.sidebar-logo-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--crucibai-text);
+  line-height: 1.2;
+}
+
+/* Subtle “alive” pulse on queued / running status */
+@keyframes p4-pill-alive {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--crucibai-accent) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--crucibai-accent) 18%, transparent);
+  }
+}
+
+.uw-root .p4-status-pill--alive {
+  animation: p4-pill-alive 1.6s ease-in-out infinite;
 }
 
 /* Inline overflow menu (Pause / Resume / Cancel / Sync) */
@@ -158,7 +199,7 @@
 .p4-overflow-item--danger:hover { background: rgba(82, 82, 82, 0.08); }
 
 /* Initial-state assistant handle row (small CrucibAI label, no message body) */
-.p4-row-handle .p4-assist-name--header {
+.p4-row-handle .p4-assist-name--header:not(.sidebar-logo-text) {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--crucibai-text);
