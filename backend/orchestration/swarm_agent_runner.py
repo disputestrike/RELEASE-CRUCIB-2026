@@ -396,7 +396,8 @@ def _get_agent_model_chain(
             chain.append(cerebras_entry)
         if anthropic_key:
             chain.append(anthropic_entry)
-        return chain if chain else [anthropic_entry]
+        # Fallback: always try Cerebras first (never default to Anthropic-only)
+        return chain if chain else [cerebras_entry, anthropic_entry]
 
     if tier == "anthropic":
         # Anthropic primary — but always include Cerebras as fallback
@@ -414,7 +415,8 @@ def _get_agent_model_chain(
             chain.append(cerebras_entry)
         if anthropic_key:
             chain.append(anthropic_entry)
-        return chain if chain else [anthropic_entry]
+        # Fallback: Cerebras-first even if no key loaded yet (env var may arrive at call time)
+        return chain if chain else [cerebras_entry, anthropic_entry]
 
 
 _COMPLEX_SWARM_MARKERS = (

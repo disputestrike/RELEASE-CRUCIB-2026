@@ -293,7 +293,7 @@ async def run_crew_for_goal(
 
     arch = (ctx.get("architecture") or "").strip()
     if arch:
-        _write("docs/CREW_ARCHITECTURE.md", arch, job_id=job_id)
+        _write("docs/CREW_ARCHITECTURE.md", arch)
 
     schema = (ctx.get("schema") or "").strip()
     if schema:
@@ -302,11 +302,11 @@ async def run_crew_for_goal(
             + schema
             + "\n"
         )
-        _write("db/migrations/000_crew_schema.sql", sql, job_id=job_id)
+        _write("db/migrations/000_crew_schema.sql", sql)
 
     openapi = (ctx.get("openapi") or "").strip()
     if openapi:
-        _write("docs/CREW_OPENAPI_SKETCH.md", openapi, job_id=job_id)
+        _write("docs/CREW_OPENAPI_SKETCH.md", openapi)
 
     sp = (kick_inputs.get("system_prompt") or "").strip()
     if sp:
@@ -321,7 +321,7 @@ async def run_crew_for_goal(
                 f"SHA256 prefix: `{fp}`\n\n"
                 "---\n\n" + excerpt
             )
-            _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body, job_id=job_id)
+            _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body)
         except Exception as exc:
             logger.warning(
                 "crew: could not write proof/ELITE_EXECUTION_DIRECTIVE.md: %s", exc

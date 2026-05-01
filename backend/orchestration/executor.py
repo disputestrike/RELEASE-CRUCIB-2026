@@ -2348,13 +2348,15 @@ STEP_HANDLERS = {
 }
 
 
-def _get_handler(step_key: str):
+def _get_handler(step_key: str, step: dict = None):
+    # 1. Exact step_key match
     if step_key in STEP_HANDLERS:
         return STEP_HANDLERS[step_key]
-    # Match by prefix
+    # 2. Two-segment prefix match (e.g. "frontend.scaffold")
     prefix = ".".join(step_key.split(".")[:2])
     if prefix in STEP_HANDLERS:
         return STEP_HANDLERS[prefix]
+    # 3. Phase-level default
     phase = step_key.split(".")[0]
     phase_defaults = {
         "agents": handle_agent_swarm_step,
@@ -2366,7 +2368,28 @@ def _get_handler(step_key: str):
         "deploy": handle_deploy,
         "planning": handle_planning_step,
     }
-    return phase_defaults.get(phase, handle_generic)
+    handler = phase_defaults.get(phase)
+    if handler:
+        return handler
+    # 4. ── DAG CONNECTION ──────────────────────────────────────────────────────
+    # If the step carries an agent_name that lives in AGENT_DAG, route it through
+    # handle_agent_swarm_step so the full 245-agent swarm can actually execute.
+    # This is the bridge between dag_engine.py (which tags steps with agent names
+    # from the planner) and agent_dag.py (which defines what each agent does).
+    if step:
+        agent_name = step.get("agent_name") or step.get("name") or ""
+        if agent_name:
+            try:
+                from backend.agent_dag import AGENT_DAG
+                if agent_name in AGENT_DAG:
+                    logger.debug(
+                        "_get_handler: routing step=%s agent=%s → handle_agent_swarm_step (DAG match)",
+                        step_key, agent_name,
+                    )
+                    return handle_agent_swarm_step
+            except ImportError:
+                pass
+    return handle_generic
 
 
 # ── Main execute_step ─────────────────────────────────────────────────────────
@@ -2445,7 +2468,7 @@ async def execute_step(
 
     try:
         # 2. Execute handler
-        handler = _get_handler(step_key)
+        handler = _get_handler(step_key, step)
         result = await handler(step, job, workspace_path, db_pool=db_pool)
 
         # 3. Verify

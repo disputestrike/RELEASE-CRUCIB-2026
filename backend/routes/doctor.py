@@ -62,6 +62,7 @@ def doctor() -> Dict[str, Any]:
     env_present = {
         "ANTHROPIC_API_KEY": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
+        "CEREBRAS_API_KEY": bool(os.environ.get("CEREBRAS_API_KEY") or os.environ.get("CEREBRAS_API_KEY_1")),
         "DATABASE_URL": bool(os.environ.get("DATABASE_URL")),
         "REDIS_URL": bool(os.environ.get("REDIS_URL")),
         "JWT_SECRET": bool(os.environ.get("JWT_SECRET")),
@@ -75,8 +76,8 @@ def doctor() -> Dict[str, Any]:
          "detail": _cmd_version(["git", "--version"])},
     ]
     warnings: List[str] = []
-    if not env_present.get("ANTHROPIC_API_KEY") and not env_present.get("OPENAI_API_KEY"):
-        warnings.append("No LLM provider key present (ANTHROPIC_API_KEY or OPENAI_API_KEY).")
+    if not env_present.get("ANTHROPIC_API_KEY") and not env_present.get("OPENAI_API_KEY") and not env_present.get("CEREBRAS_API_KEY"):
+        warnings.append("No LLM provider key present — set ANTHROPIC_API_KEY, CEREBRAS_API_KEY, or OPENAI_API_KEY.")
     if not env_present.get("DATABASE_URL"):
         warnings.append("DATABASE_URL not set — running in fallback/sqlite mode.")
     status = "ok" if not warnings else "degraded"
