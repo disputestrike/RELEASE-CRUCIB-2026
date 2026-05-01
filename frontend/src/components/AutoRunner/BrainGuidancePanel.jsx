@@ -46,6 +46,20 @@ import { buildThreadModel } from '../../lib/buildThreadModel';
 import { phaseLabels } from '../../lib/buildMessageReducer';
 import './BrainGuidancePanel.css';
 
+function buildFollowupSuggestions(truthSurface) {
+  const src = String(truthSurface?.preview_source || 'unknown');
+  const contractOk = truthSurface?.prompt_contract_passed !== false;
+  const out = [];
+  if (!contractOk) {
+    out.push('Add missing ecommerce surfaces (catalog, cart, checkout, Braintree stub).');
+  }
+  if (src === 'sandpack_fallback' || src === 'diagnostic_fallback' || src === 'main_app_shell') {
+    out.push('Continue from saved workspace and regenerate a real generated-artifact preview.');
+  }
+  out.push('Run one more verification pass and summarize any blockers in one repair card.');
+  return out.slice(0, 3);
+}
+
 const targetIcon = (id) => {
   const k = String(id || '').toLowerCase();
   if (/(react_native|expo|mobile|android|ios|flutter)/.test(k)) return <Smartphone size={11} />;
@@ -503,7 +517,39 @@ function CheckpointCard({ item }) {
   );
 }
 
-function DeliveryCard({ item }) {
+function DeliveryCard({ item, context }) {
+  const [thumbUrl, setThumbUrl] = useState(null);
+  const [thumbErr, setThumbErr] = useState('');
+  const truth = context?.truthSurface || null;
+  const previewSource = String(truth?.preview_source || 'unknown');
+  const suggestions = useMemo(() => buildFollowupSuggestions(truth), [truth]);
+  useEffect(() => {
+    let dead = false;
+    let objUrl = null;
+    const load = async () => {
+      if (!context?.jobId || !context?.token || !context?.apiBase) return;
+      try {
+        const u = `${context.apiBase}/jobs/${encodeURIComponent(context.jobId)}/workspace/file/raw`;
+        const p = '.crucibai/preview/screenshot.png';
+        const res = await fetch(`${u}?path=${encodeURIComponent(p)}`, {
+          headers: { Authorization: `Bearer ${context.token}` },
+        });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        if (dead || !blob || blob.size === 0) return;
+        objUrl = URL.createObjectURL(blob);
+        setThumbUrl(objUrl);
+        setThumbErr('');
+      } catch (e) {
+        if (!dead) setThumbErr(String(e?.message || ''));
+      }
+    };
+    load();
+    return () => {
+      dead = true;
+      if (objUrl) URL.revokeObjectURL(objUrl);
+    };
+  }, [context?.jobId, context?.token, context?.apiBase]);
   return (
     <div className="p4-surface-card p4-delivery-card">
       <div className="p4-delivery-row">
@@ -511,6 +557,36 @@ function DeliveryCard({ item }) {
         <div className="p4-delivery-main">
           <div className="p4-surface-card-title">Build delivered to this workspace</div>
           {item.narration ? <p className="p4-surface-card-body p4-delivery-sub">{item.narration}</p> : null}
+          <div className="p4-delivery-meta">
+            <span className="p4-delivery-chip">preview_source: {previewSource}</span>
+            {truth ? (
+              <span className="p4-delivery-chip">
+                contract: {truth.prompt_contract_passed === false ? 'failed' : 'passed'}
+              </span>
+            ) : null}
+          </div>
+          {thumbUrl ? (
+            <div className="p4-delivery-thumb-wrap">
+              <img src={thumbUrl} alt="Build preview thumbnail" className="p4-delivery-thumb" />
+            </div>
+          ) : null}
+          {!thumbUrl && thumbErr ? (
+            <p className="p4-delivery-thumb-note">Preview thumbnail unavailable right now.</p>
+          ) : null}
+          {suggestions.length ? (
+            <div className="p4-delivery-followups">
+              {suggestions.map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  className="p4-delivery-followup-btn"
+                  onClick={() => context?.onUseSuggestion?.(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <ChevronRight size={16} className="p4-muted-icon" aria-hidden />
       </div>
@@ -518,7 +594,7 @@ function DeliveryCard({ item }) {
   );
 }
 
-function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
+function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser, deliveryContext }) {
   switch (item.kind) {
     case 'user_message':
       return <UserPrompt content={item.content} ts={item.ts} pinned={isPinnedUser} />;
@@ -541,7 +617,7 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser }) {
     case 'checkpoint_card':
       return <CheckpointCard item={item} />;
     case 'delivery_card':
-      return <DeliveryCard item={item} />;
+      return <DeliveryCard item={item} context={deliveryContext} />;
     default:
       return null;
   }
@@ -562,6 +638,11 @@ export default function BrainGuidancePanel({
   onCancel,
   onSync,
   canSync = false,
+  previewUrl = null,
+  proofTruthSurface = null,
+  token = null,
+  apiBase = '',
+  onUseSuggestion,
   /** Workspace: fixed header shows CrucibAI — hide duplicate handle + pill in the scroll stream */
   omitInlineBrandChrome = false,
 }) {
@@ -649,6 +730,14 @@ export default function BrainGuidancePanel({
           logoOk={!logoFailed}
           onLogoFail={() => setLogoFailed(true)}
           isPinnedUser={item.kind === 'user_message' && item.id === firstUserId}
+          deliveryContext={{
+            previewUrl,
+            truthSurface: proofTruthSurface,
+            jobId: jobId || null,
+            token,
+            apiBase,
+            onUseSuggestion,
+          }}
         />
       ))}
 

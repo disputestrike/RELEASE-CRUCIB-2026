@@ -1932,6 +1932,11 @@ export default function App() {
               events={events}
               jobStatus={job?.status}
               jobId={effectiveJobId || null}
+              previewUrl={previewUrl}
+              proofTruthSurface={proof?.truth_surface || null}
+              token={token}
+              apiBase={API}
+              onUseSuggestion={(text) => setGoal(String(text || ''))}
               hasTaskOrJobContext={Boolean(effectiveJobId || sessionTaskId || taskIdFromUrl)}
               buildTargetMeta={buildTargetMeta}
               buildTargetId={buildTarget}
