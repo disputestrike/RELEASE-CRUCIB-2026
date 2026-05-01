@@ -204,7 +204,12 @@ export const Sidebar = ({
       simulationId: t.simulationId || null,
       runId: t.runId || null,
     }));
-    return [...fromProjects, ...fromStore];
+    const projectIds = new Set(fromProjects.map((p) => p.id).filter(Boolean));
+    const dedupedStore = fromStore.filter((t) => {
+      if (t.linkedProjectId && projectIds.has(t.linkedProjectId)) return false;
+      return true;
+    });
+    return [...fromProjects, ...dedupedStore];
   }, [projects, storeTasks, propTasks, dismissedProjectSet]);
 
   const filteredListItems = useMemo(() => {

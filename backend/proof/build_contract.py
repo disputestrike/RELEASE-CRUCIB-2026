@@ -67,9 +67,18 @@ def build_contract(
     quality_score: float,
     trust_score: float,
     production_readiness_score: float,
+    verification_failed_count: int = 0,
+    build_verified: Optional[bool] = None,
+    truth_surface: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Return the stable contract summary for a job proof bundle."""
     job = job or {}
+    ts = dict(truth_surface or {})
+    preview_source = str(ts.get("preview_source") or "unknown").strip() or "unknown"
+    prompt_contract_passed = ts.get("prompt_contract_passed", True)
+    if isinstance(prompt_contract_passed, str):
+        prompt_contract_passed = prompt_contract_passed.lower() in ("1", "true", "yes")
+    preview_verified = bool(ts.get("preview_verified"))
     step_list: List[Mapping[str, Any]] = list(steps or [])
     counts = _step_counts(step_list)
     evidence = _evidence_flags(bundle)
@@ -79,6 +88,23 @@ def build_contract(
         blockers.append("missing_goal")
     if counts.get("failed") or counts.get("blocked"):
         blockers.append("failed_or_blocked_steps")
+    st = str(job.get("status") or "").strip().lower()
+    if st and st != "completed":
+        blockers.append("job_not_completed")
+    if int(verification_failed_count or 0) > 0:
+        blockers.append("verification_failures_in_proof")
+    if build_verified is False:
+        blockers.append("build_not_verified")
+    if prompt_contract_passed is False:
+        blockers.append("prompt_contract_failed")
+    if preview_source in (
+        "sandpack_fallback",
+        "diagnostic_fallback",
+        "main_app_shell",
+    ):
+        blockers.append("preview_not_generated_artifact")
+    if preview_source == "generated_artifact" and not preview_verified:
+        blockers.append("preview_not_verified")
     if not evidence["files"]:
         blockers.append("missing_file_evidence")
     if not evidence["verification"]:
@@ -88,6 +114,10 @@ def build_contract(
 
     completed_steps = counts.get("completed", 0)
     total_steps = len(step_list)
+    deploy_ready = len(blockers) == 0
+    export_ready = deploy_ready and evidence["files"] and st == "completed"
+    delivery_ready = export_ready and prompt_contract_passed is not False
+    success = deploy_ready and bool(build_verified)
     return {
         "version": CONTRACT_VERSION,
         "generated_at": _now_iso(),
@@ -105,12 +135,22 @@ def build_contract(
             "percent": round((completed_steps / max(1, total_steps)) * 100, 2),
         },
         "evidence": evidence,
+        "truth_surface": {
+            "preview_source": preview_source,
+            "prompt_contract_passed": bool(prompt_contract_passed),
+            "preview_verified": preview_verified,
+            "browser_verified": bool(ts.get("browser_verified")),
+            "generated_app_type": str(ts.get("generated_app_type") or "unknown"),
+        },
         "scores": {
             "quality": float(quality_score or 0.0),
             "trust": float(trust_score or 0.0),
             "production_readiness": float(production_readiness_score or 0.0),
         },
-        "deploy_ready": len(blockers) == 0,
+        "deploy_ready": deploy_ready,
+        "export_ready": export_ready,
+        "delivery_ready": delivery_ready,
+        "success": success,
         "blockers": blockers,
         "bundle_sha256": bundle_sha256,
     }
@@ -126,4 +166,6 @@ def empty_contract(job_id: str) -> Dict[str, Any]:
         quality_score=0.0,
         trust_score=0.0,
         production_readiness_score=0.0,
+        verification_failed_count=0,
+        build_verified=False,
     )

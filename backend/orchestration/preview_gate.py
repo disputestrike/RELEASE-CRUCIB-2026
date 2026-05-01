@@ -265,6 +265,107 @@ def _verify_saas_product_contract(
     return issues, proof
 
 
+def _ecommerce_checkout_intent(goal: str) -> bool:
+    g = (goal or "").lower()
+    hits = 0
+    for needle in (
+        "e-commerce",
+        "ecommerce",
+        "online store",
+        "braintree",
+        "shopping cart",
+        "cart",
+        "product catalog",
+        "checkout",
+    ):
+        if needle in g:
+            hits += 1
+    return hits >= 2
+
+
+def _verify_ecommerce_braintree_contract(
+    goal: str, files: Dict[str, str], combined: str
+) -> Tuple[List[str], List[Dict[str, Any]], bool]:
+    issues: List[str] = []
+    proof: List[Dict[str, Any]] = []
+    if not _ecommerce_checkout_intent(goal):
+        proof.append(
+            _proof(
+                "verification",
+                "E-commerce prompt contract",
+                {"prompt_contract_passed": True, "reason": "goal_not_ecommerce_checkout"},
+                verification_class="product",
+            )
+        )
+        return issues, proof, True
+
+    lower = combined.replace("\n", " ").lower()
+    checks = {
+        "product_catalog": any(
+            x in lower
+            for x in (
+                "product",
+                "catalog",
+                "products.map",
+                "productgrid",
+                "productcard",
+                "product list",
+            )
+        ),
+        "cart_surface": any(
+            x in lower
+            for x in ("cart", "addtocart", "shoppingcart", "usecart", "cartcontext", "lineitems")
+        ),
+        "checkout_surface": "checkout" in lower or "placeorder" in lower or "place order" in lower,
+        "braintree": any(
+            x in lower
+            for x in (
+                "braintree",
+                "dropin",
+                "drop-in",
+                "client_token",
+                "clienttoken",
+                "/api/braintree",
+                "paymentmethod",
+            )
+        ),
+    }
+    missing = [k for k, ok in checks.items() if not ok]
+    passed = not missing
+    proof.append(
+        _proof(
+            "verification",
+            "E-commerce prompt contract",
+            {
+                "prompt_contract_passed": passed,
+                "checks": checks,
+                "missing": missing,
+            },
+            verification_class="product",
+        )
+    )
+    if missing:
+        issues.append(
+            "Prompt contract (e-commerce + Braintree): missing "
+            + ", ".join(missing)
+            + ". Add catalog, cart, checkout, and Braintree client or documented payment API."
+        )
+    return issues, proof, passed
+
+
+def _infer_preview_source_from_proof(proof: List[Dict[str, Any]]) -> str:
+    for item in proof or []:
+        pl = item.get("payload") if isinstance(item.get("payload"), dict) else {}
+        tit = (item.get("title") or "").lower()
+        if pl.get("env") == "CRUCIBAI_SKIP_BROWSER_PREVIEW":
+            return "diagnostic_fallback"
+        if "diagnostic" in tit and "preview" in tit:
+            return "diagnostic_fallback"
+        if "sandpack" in tit:
+            return "sandpack_fallback"
+    return "generated_artifact"
+
+
 async def verify_preview_workspace(
     workspace_path: str,
     *,
@@ -306,6 +407,13 @@ async def verify_preview_workspace(
             "issues": ["Workspace has no readable JS/JSON/CSS sources for preview."],
             "proof": [],
             "failure_reason": failure_reason,
+            "truth_surface": {
+                "preview_source": "diagnostic_fallback",
+                "preview_verified": False,
+                "browser_verified": False,
+                "prompt_contract_passed": True,
+                "generated_app_type": "unknown",
+            },
         }
 
     try:
@@ -495,6 +603,12 @@ async def verify_preview_workspace(
             failure_reason = "website_contract_failed"
             issues.extend(website_issues)
 
+    eco_issues, eco_proof, _eco_ok = _verify_ecommerce_braintree_contract(goal, files, combined)
+    proof.extend(eco_proof)
+    if eco_issues:
+        failure_reason = failure_reason or "prompt_contract_failed"
+        issues.extend(eco_issues)
+
     static_passed = len(issues) == 0
     if static_passed:
         from .browser_preview_verify import verify_browser_preview
@@ -515,10 +629,30 @@ async def verify_preview_workspace(
 
     score = max(0, 100 - len(issues) * 18)
     passed = len(issues) == 0
+    prompt_contract_passed = True
+    for item in proof:
+        if (item.get("title") or "") == "E-commerce prompt contract":
+            pl = item.get("payload") if isinstance(item.get("payload"), dict) else {}
+            prompt_contract_passed = bool(pl.get("prompt_contract_passed", True))
+            break
+    browser_verified = any(
+        "browser preview gate passed" in (i.get("title") or "").lower()
+        or ((i.get("payload") or {}).get("kind") == "preview_screenshot")
+        for i in proof
+    )
     return {
         "passed": passed,
         "score": score,
         "issues": issues,
         "proof": proof,
         "failure_reason": failure_reason,
+        "truth_surface": {
+            "preview_source": _infer_preview_source_from_proof(proof),
+            "preview_verified": passed,
+            "browser_verified": browser_verified,
+            "prompt_contract_passed": prompt_contract_passed,
+            "generated_app_type": (
+                "ecommerce_store" if _ecommerce_checkout_intent(goal) else "unknown"
+            ),
+        },
     }

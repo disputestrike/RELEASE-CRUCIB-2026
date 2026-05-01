@@ -38,9 +38,9 @@ function classify(msg = '') {
     if (e.pattern.test(msg)) return e;
   }
   return {
-    title: "Build paused",
+    title: "Build needs attention",
     cause: "An unexpected issue occurred during the build.",
-    fix: "You can retry or steer to continue",
+    fix: "Continue from the saved workspace or steer with a follow-up message",
     action: "retry",
   };
 }

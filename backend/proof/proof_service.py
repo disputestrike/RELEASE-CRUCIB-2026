@@ -71,6 +71,16 @@ def _empty_bundle(job_id: str) -> Dict[str, Any]:
         "verification_failed_count": 0,
         "step_exception_count": 0,
         "build_verified": False,
+        "truth_surface": {
+            "preview_source": "unknown",
+            "prompt_contract_passed": True,
+            "preview_verified": False,
+            "browser_verified": False,
+            "generated_app_type": "unknown",
+        },
+        "success": False,
+        "export_ready": False,
+        "delivery_ready": False,
     }
 
 
@@ -138,6 +148,69 @@ async def fetch_proof_items_raw(job_id: str) -> List[Dict[str, Any]]:
 
 
 FAILURE_QUALITY_CAP = 40.0  # aligns with steer/build contract when gates fail
+
+
+def _compute_truth_surface(
+    flat: List[Dict[str, Any]],
+    goal: str,
+    job_status: Optional[str],
+    build_verified: bool,
+    vf_cnt: int,
+) -> Dict[str, Any]:
+    """
+    Derive preview / contract truth from persisted proof rows (API + UI hydration).
+    """
+    preview_src = "unknown"
+    app_type = "unknown"
+    try:
+        from backend.orchestration.preview_gate import (
+            _ecommerce_checkout_intent,
+            _infer_preview_source_from_proof,
+        )
+
+        preview_src = _infer_preview_source_from_proof(flat)
+        app_type = "ecommerce_store" if _ecommerce_checkout_intent(goal) else "unknown"
+    except Exception:
+        logger.debug("truth_surface: preview_gate helpers unavailable", exc_info=True)
+
+    prompt_ok = True
+    for row in flat:
+        if (row.get("title") or "") == "E-commerce prompt contract":
+            pl = row.get("payload") or {}
+            if isinstance(pl, dict):
+                reason = pl.get("reason")
+                if reason == "goal_not_ecommerce_checkout":
+                    prompt_ok = True
+                else:
+                    prompt_ok = bool(pl.get("prompt_contract_passed", True))
+            break
+
+    browser_ok = False
+    for row in flat:
+        t = (row.get("title") or "").lower()
+        pl = row.get("payload") or {}
+        if not isinstance(pl, dict):
+            pl = {}
+        if "browser preview gate passed" in t or pl.get("kind") == "preview_screenshot":
+            browser_ok = True
+            break
+
+    st = (job_status or "").strip().lower()
+    preview_verified = (
+        bool(build_verified)
+        and int(vf_cnt or 0) == 0
+        and st == "completed"
+        and preview_src == "generated_artifact"
+        and prompt_ok
+    )
+
+    return {
+        "preview_source": preview_src,
+        "prompt_contract_passed": prompt_ok,
+        "preview_verified": preview_verified,
+        "browser_verified": browser_ok,
+        "generated_app_type": app_type,
+    }
 
 
 def compute_build_verdict(
@@ -255,6 +328,13 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         for row in lst:
             flat.append(row)
 
+    goal_for_truth = str((job_quick_dict or {}).get("goal") or "")
+    truth_surface = _compute_truth_surface(
+        flat, goal_for_truth, job_status_str, build_verified, vf_cnt
+    )
+    if not truth_surface.get("prompt_contract_passed", True):
+        quality_score = min(float(quality_score), FAILURE_QUALITY_CAP)
+
     try:
         from backend.orchestration.trust.trust_scoring import compute_trust_metrics
 
@@ -325,13 +405,33 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         spec_compliance = float(
             spec_guard_snapshot.get("spec_compliance_percent") or 100.0
         )
+        if not truth_surface.get("prompt_contract_passed", True):
+            spec_compliance = min(spec_compliance, 42.0)
+            if isinstance(spec_guard_snapshot, dict):
+                spec_guard_snapshot["prompt_contract_passed"] = False
+                spec_guard_snapshot["spec_compliance_percent"] = spec_compliance
+                notes = spec_guard_snapshot.get("notes")
+                if not isinstance(notes, list):
+                    notes = []
+                if "prompt_contract_failed" not in notes:
+                    spec_guard_snapshot["notes"] = list(notes) + ["prompt_contract_failed"]
 
         prod = compute_production_readiness(flat, bundle)
+        if job_status_str and job_status_str != "completed":
+            pr0 = float(prod.get("production_readiness_score") or 0)
+            prod["production_readiness_score"] = min(pr0, 45.0)
+            fac = list(prod.get("production_readiness_factors") or [])
+            if "job_incomplete_production_readiness_cap" not in fac:
+                fac.append("job_incomplete_production_readiness_cap")
+            prod["production_readiness_factors"] = fac
         scorecard = build_honest_scorecard(
             pipeline_quality_score=quality_score,
             trust_score=float(trust.get("trust_score") or 0.0),
             spec_compliance_percent=spec_compliance,
             production_readiness=prod,
+        )
+        prod["production_readiness_score"] = float(
+            scorecard.get("production_readiness_score") or 0.0
         )
     except Exception:
         logger.exception("proof_service.get_proof: truthful scorecard failed")
@@ -368,6 +468,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             production_readiness_score=float(
                 prod.get("production_readiness_score") or 0.0
             ),
+            verification_failed_count=vf_cnt,
+            build_verified=build_verified,
+            truth_surface=truth_surface,
         )
     except Exception:
         logger.exception("proof_service.get_proof: build contract failed")
@@ -404,6 +507,10 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "verification_failed_count": vf_cnt,
         "step_exception_count": sx_cnt,
         "build_verified": build_verified,
+        "truth_surface": truth_surface,
+        "success": bool(contract.get("success")),
+        "export_ready": bool(contract.get("export_ready")),
+        "delivery_ready": bool(contract.get("delivery_ready")),
         "category_counts": category_counts,
         "bundle": bundle,
         "bundle_sha256": bundle_sha256,

@@ -898,6 +898,46 @@ async def _run_single_agent_with_context(
     completed_anthropic_tool_loop = False
     completed_provider_tool_loop = False
 
+    async def _provider_neutral_workspace_loop() -> tuple[Any, Any]:
+        """Cerebras/other providers via text tool loop — same DAG agent, no Anthropic tools API."""
+        try:
+            from .orchestration.runtime_engine import run_text_agent_loop
+        except ImportError:
+            from backend.orchestration.runtime_engine import run_text_agent_loop
+
+        async def _call_text_llm(*, message, system_message, session_id):
+            resp, model_used = await _call_llm_with_fallback(
+                message=message,
+                system_message=system_message,
+                session_id=session_id,
+                model_chain=model_chain,
+                api_keys=effective,
+                agent_name=agent_name,
+            )
+            return {
+                "text": resp.get("text", "") if isinstance(resp, dict) else str(resp or ""),
+                "model": model_used,
+                "tokens_used": resp.get("tokens_used", 0) if isinstance(resp, dict) else 0,
+            }
+
+        loop_out = await run_text_agent_loop(
+            agent_name=agent_name,
+            system_prompt=system_message,
+            user_message=enriched_prompt,
+            workspace_path=workspace_fs,
+            call_text_llm=_call_text_llm,
+        )
+        out = loop_out.get("final_text") or "[agent completed provider-neutral tool loop]"
+        meta = {
+            "model": "provider_neutral_tool_loop",
+            "tool_loop": True,
+            "provider_neutral_tool_loop": True,
+            "iterations": loop_out.get("iterations"),
+            "files_written": loop_out.get("files_written"),
+            "elapsed_seconds": loop_out.get("elapsed_seconds"),
+        }
+        return out, meta
+
     if use_workspace_tool_loop:
         try:
             from .orchestration.runtime_engine import (
@@ -953,18 +993,33 @@ async def _run_single_agent_with_context(
             completed_anthropic_tool_loop = True
         except Exception as exc:
             logger.warning(
-                "workspace tool loop failed for %s — falling back to single-shot LLM: %s",
+                "workspace tool loop failed for %s — trying provider-neutral tool loop then single-shot: %s",
                 agent_name,
                 exc,
             )
-            output, _meta = await _call_llm_with_fallback(
-                message=enriched_prompt,
-                system_message=system_message,
-                session_id=f"{project_id}:{agent_name}",
-                model_chain=model_chain,
-                api_keys=effective,
-                agent_name=agent_name,
-            )
+            recovered = False
+            if workspace_fs:
+                try:
+                    output, _meta = await _provider_neutral_workspace_loop()
+                    if isinstance(_meta, dict):
+                        _meta["recovery_after_anthropic_tool_loop_fail"] = True
+                    completed_provider_tool_loop = True
+                    recovered = True
+                except Exception as exc2:
+                    logger.warning(
+                        "provider-neutral recovery after anthropic failure failed for %s: %s",
+                        agent_name,
+                        exc2,
+                    )
+            if not recovered:
+                output, _meta = await _call_llm_with_fallback(
+                    message=enriched_prompt,
+                    system_message=system_message,
+                    session_id=f"{project_id}:{agent_name}",
+                    model_chain=model_chain,
+                    api_keys=effective,
+                    agent_name=agent_name,
+                )
     else:
         if workspace_fs and not anthropic_key:
             logger.warning(
@@ -973,42 +1028,7 @@ async def _run_single_agent_with_context(
                 agent_name,
             )
             try:
-                try:
-                    from .orchestration.runtime_engine import run_text_agent_loop
-                except ImportError:
-                    from backend.orchestration.runtime_engine import run_text_agent_loop
-
-                async def _call_text_llm(*, message, system_message, session_id):
-                    resp, model_used = await _call_llm_with_fallback(
-                        message=message,
-                        system_message=system_message,
-                        session_id=session_id,
-                        model_chain=model_chain,
-                        api_keys=effective,
-                        agent_name=agent_name,
-                    )
-                    return {
-                        "text": resp.get("text", "") if isinstance(resp, dict) else str(resp or ""),
-                        "model": model_used,
-                        "tokens_used": resp.get("tokens_used", 0) if isinstance(resp, dict) else 0,
-                    }
-
-                loop_out = await run_text_agent_loop(
-                    agent_name=agent_name,
-                    system_prompt=system_message,
-                    user_message=enriched_prompt,
-                    workspace_path=workspace_fs,
-                    call_text_llm=_call_text_llm,
-                )
-                output = loop_out.get("final_text") or "[agent completed provider-neutral tool loop]"
-                _meta = {
-                    "model": "provider_neutral_tool_loop",
-                    "tool_loop": True,
-                    "provider_neutral_tool_loop": True,
-                    "iterations": loop_out.get("iterations"),
-                    "files_written": loop_out.get("files_written"),
-                    "elapsed_seconds": loop_out.get("elapsed_seconds"),
-                }
+                output, _meta = await _provider_neutral_workspace_loop()
                 completed_provider_tool_loop = True
             except Exception as exc:
                 logger.warning(

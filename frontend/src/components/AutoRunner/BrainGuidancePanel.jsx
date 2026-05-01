@@ -46,15 +46,6 @@ import { buildThreadModel } from '../../lib/buildThreadModel';
 import { phaseLabels } from '../../lib/buildMessageReducer';
 import './BrainGuidancePanel.css';
 
-const formatTime = (ts) => {
-  if (!ts) return '';
-  try {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return '';
-  }
-};
-
 const targetIcon = (id) => {
   const k = String(id || '').toLowerCase();
   if (/(react_native|expo|mobile|android|ios|flutter)/.test(k)) return <Smartphone size={11} />;
@@ -155,12 +146,11 @@ function ThreadOverflow({ jobStatus, onPause, onResume, onCancel, onSync, canSyn
   );
 }
 
-function UserPrompt({ content, ts, pinned = false }) {
+function UserPrompt({ content, ts: _ts, pinned = false }) {
   return (
     <div className={`p4-row p4-row-user${pinned ? ' p4-row-user--pinned' : ''}`}>
       <div className="p4-user-bubble">
         <div className="p4-user-text">{content}</div>
-        {ts ? <div className="p4-meta-time">{formatTime(ts)}</div> : null}
       </div>
     </div>
   );
@@ -194,7 +184,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Repairing</span>
+        <span>Needs attention</span>
       </div>
     );
   }
@@ -206,15 +196,23 @@ function StatusPill({ jobStatus, isTyping }) {
       </div>
     );
   }
+  if (isTyping) {
+    return (
+      <div className="p4-status-pill p4-status-pill--queued">
+        <Loader2 size={11} className="p4-spin" />
+        <span>Working</span>
+      </div>
+    );
+  }
   return (
     <div className="p4-status-pill p4-status-pill--queued">
-      <Loader2 size={11} className="p4-spin" />
-      <span>Thinking</span>
+      <CircleDot size={11} />
+      <span>Ready</span>
     </div>
   );
 }
 
-function AssistantSay({ content, ts, logoOk, onLogoFail }) {
+function AssistantSay({ content, ts: _ts, logoOk, onLogoFail }) {
   return (
     <div className="p4-row p4-row-assistant">
       <div className="p4-avatar" aria-hidden>
@@ -227,7 +225,6 @@ function AssistantSay({ content, ts, logoOk, onLogoFail }) {
       <div className="p4-assist-col">
         <div className="p4-assist-handle">
           <span className="p4-assist-name">CrucibAI</span>
-          {ts ? <span className="p4-assist-time">{formatTime(ts)}</span> : null}
         </div>
         <div className="p4-assist-text">{content}</div>
       </div>

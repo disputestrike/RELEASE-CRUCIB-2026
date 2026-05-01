@@ -837,13 +837,41 @@ async def get_job_proof(
         pool = await _get_pool()
         ps.set_pool(pool)
         proof = await ps.get_proof(job_id)
-        # success = product verdict (gates + job terminal state), not "HTTP OK" (that's status 200).
-        bv = bool(proof.get("build_verified"))
-        return {**proof, "success": bv}
+        return proof
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("GET /api/jobs/%s/proof error", job_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/files")
+async def list_job_files_canonical(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """
+    Canonical file list for a job — same workspace roots as
+    ``GET /api/jobs/{job_id}/workspace/files`` (disk), not SQL-only ``GeneratedFile`` rows.
+
+    Clients that call ``/api/jobs/{id}/files`` get the explorer/preview truth source.
+    """
+    try:
+        await _resolve_job(job_id, user)
+        from .workspace import _assert_job_access, _collect_job_workspace_files
+
+        workspace = await _assert_job_access(job_id, user)
+        rows = _collect_job_workspace_files(workspace, job_id)
+        return {
+            "job_id": job_id,
+            "count": len(rows),
+            "files": rows,
+            "source": "workspace_unified",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/files error", job_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 

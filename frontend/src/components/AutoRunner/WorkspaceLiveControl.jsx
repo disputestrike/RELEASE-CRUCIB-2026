@@ -107,7 +107,21 @@ export default function WorkspaceLiveControl({
   const runningSteps = steps.filter((s) => s.status === 'running').length;
   const jobStatus = job?.status || stage || 'idle';
   const hasJob = Boolean(job?.id || job?.job_id);
-  const hasFiles = workspacePathCount > 0;
+  const proofBackedPaths = useMemo(() => {
+    const rows = proof?.bundle?.files;
+    if (!Array.isArray(rows)) return 0;
+    const set = new Set();
+    for (const row of rows) {
+      const pl = row?.payload && typeof row.payload === 'object' ? row.payload : {};
+      const p = pl.path || pl.file || row?.title;
+      if (typeof p === 'string' && p.includes('.') && !p.startsWith('http')) {
+        set.add(p.replace(/^\/+/, ''));
+      }
+    }
+    return set.size;
+  }, [proof]);
+  const displayFileCount = Math.max(workspacePathCount || 0, proofBackedPaths || 0);
+  const hasFiles = displayFileCount > 0;
   const hasProof = proofItemCount > 0 || Boolean(proof?.bundle);
   const hasPreview = Boolean(previewUrl) || hasSandpack || previewStatus === 'ready' || previewStatus === 'building';
   const hasFailure = jobStatus === 'failed' || failedSteps > 0 || Boolean(latestFailure);
@@ -141,7 +155,7 @@ export default function WorkspaceLiveControl({
       <div className="wlc-metrics">
         <div><span>{completedSteps}/{totalSteps || 0}</span><small>steps</small></div>
         <div><span>{events.length}</span><small>events</small></div>
-        <div><span>{workspacePathCount}</span><small>files</small></div>
+        <div><span>{displayFileCount}</span><small>files</small></div>
         <div><span>{proofItemCount}</span><small>proof</small></div>
       </div>
 
@@ -170,7 +184,7 @@ export default function WorkspaceLiveControl({
         <LiveRow
           icon={<FileText size={15} />}
           label="Files"
-          value={hasFiles ? `${workspacePathCount} workspace paths` : 'No files yet'}
+          value={hasFiles ? `${displayFileCount} paths (workspace + proof)` : 'No files yet'}
           status={hasFiles ? 'ok' : hasJob ? 'waiting' : 'idle'}
           detail={hasFiles ? 'File tree, code pane, preview, and export should share this workspace.' : 'Waiting for generated files.'}
           actionLabel={hasFiles ? 'Code' : null}

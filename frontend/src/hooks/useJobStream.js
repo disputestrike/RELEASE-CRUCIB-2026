@@ -25,6 +25,9 @@ const EMPTY_PROOF = {
   category_counts: {},
   build_verified: false,
   success: false,
+  truth_surface: null,
+  export_ready: false,
+  delivery_ready: false,
 };
 
 function normalizeProofPayload(data, jobId) {
@@ -34,6 +37,9 @@ function normalizeProofPayload(data, jobId) {
       ...data,
       build_verified: bv,
       success: typeof data.success === 'boolean' ? data.success : bv,
+      truth_surface: data.truth_surface || null,
+      export_ready: typeof data.export_ready === 'boolean' ? data.export_ready : false,
+      delivery_ready: typeof data.delivery_ready === 'boolean' ? data.delivery_ready : false,
     };
   }
   return {
