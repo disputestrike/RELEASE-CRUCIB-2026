@@ -77,12 +77,17 @@ async def _get_project_id_for_job(job_id: str) -> Optional[str]:
 
     Runtime state is in-memory and may be empty after a deploy/restart. Preview
     serving still needs to find completed workspaces, so fall back to Postgres.
+    When the jobs row is missing project_id (or the row is stale), build_plans
+    often still has the executor workspace id.
     """
     try:
         from backend.orchestration.runtime_state import get_job
+
         job = await get_job(job_id)
         if job:
-            return job.get("project_id") or job.get("id")
+            pid = job.get("project_id") or job.get("id")
+            if pid:
+                return str(pid)
     except Exception as exc:
         logger.debug("preview_serve: runtime_state lookup failed for %s: %s", job_id, exc)
 
@@ -90,31 +95,32 @@ async def _get_project_id_for_job(job_id: str) -> Optional[str]:
         from backend.db_pg import get_pg_pool
 
         pool = await get_pg_pool()
-        if pool:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT project_id FROM jobs WHERE id = $1 LIMIT 1",
-                    job_id,
-                )
-                if row and row.get("project_id"):
-                    return str(row["project_id"])
+        if not pool:
+            return None
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT project_id FROM jobs WHERE id = $1 LIMIT 1",
+                job_id,
+            )
+            if row:
+                p = str(row["project_id"] or "").strip()
+                if p:
+                    return p
+            row = await conn.fetchrow(
+                """
+                SELECT project_id FROM build_plans
+                WHERE job_id = $1 AND NULLIF(TRIM(project_id), '') IS NOT NULL
+                ORDER BY created_at DESC NULLS LAST
+                LIMIT 1
+                """,
+                job_id,
+            )
+            if row:
+                p = str(row["project_id"] or "").strip()
+                if p:
+                    return p
     except Exception as exc:
-        logger.debug("preview_serve: jobs.project_id lookup failed for %s: %s", job_id, exc)
-
-    try:
-        from backend.db_pg import get_pg_pool
-
-        pool = await get_pg_pool()
-        if pool:
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT doc->>'project_id' AS project_id FROM jobs WHERE id = $1 LIMIT 1",
-                    job_id,
-                )
-                if row and row.get("project_id"):
-                    return str(row["project_id"])
-    except Exception as exc:
-        logger.debug("preview_serve: jobs.doc project_id lookup failed for %s: %s", job_id, exc)
+        logger.debug("preview_serve: DB project_id lookup failed for %s: %s", job_id, exc)
     return None
 
 

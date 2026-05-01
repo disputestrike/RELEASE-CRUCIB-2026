@@ -10,6 +10,7 @@ import hashlib
 import logging
 import mimetypes
 import os
+import re
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -251,10 +252,17 @@ def _stable_task_id_for_job(job_id: str) -> str:
     return f"task_job_{clean}" if clean else ""
 
 
+# Durable runtime job ids from task_manager are tsk_{12 hex chars}.
+_RAW_TASK_JOB_ID = re.compile(r"^tsk_[0-9a-f]{12}$", re.IGNORECASE)
+
+
 def _job_id_from_task_id(task_id: Optional[str]) -> Optional[str]:
     raw = str(task_id or "").strip()
     if raw.startswith("task_job_") and len(raw) > len("task_job_"):
         return raw[len("task_job_"):]
+    # URL may carry the canonical id without the task_job_ wrapper (bookmarks, API links).
+    if _RAW_TASK_JOB_ID.match(raw):
+        return raw
     return None
 
 
