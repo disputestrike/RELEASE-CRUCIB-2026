@@ -179,6 +179,28 @@
   min-height: 0;
 }
 
+/* Dashboard /app: credits stay top-right without pushing the main “CrucibAI 1.0” row down —
+   keeps the brand row on the same horizontal band as the sidebar header + collapse control. */
+.layout-shell--dash-home .layout-main-wrapper {
+  position: relative;
+}
+
+.layout-shell--dash-home .layout-topbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 8;
+  padding: 14px 16px 10px 20px;
+  border-bottom: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.layout-shell--dash-home .layout-topbar a,
+.layout-shell--dash-home .layout-topbar button {
+  pointer-events: auto;
+}
+
 /* Footer */
 .layout-footer {
   display: flex; align-items: center; justify-content: space-between;

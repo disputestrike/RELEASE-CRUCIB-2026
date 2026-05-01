@@ -103,6 +103,13 @@
   background: var(--theme-bg, #fafafa);
 }
 
+/* Match sidebar `.sidebar-header` (16px 12px 12px) so CrucibAI + 1.0 lines up with left rail */
+.layout-shell--dash-home .dashboard-pane-brand--shell-top {
+  padding: 16px max(20px, 4vw) 12px;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
 [data-theme='dark'] .dashboard-pane-brand--shell-top {
   background: var(--theme-bg, #111113);
   border-bottom-color: rgba(255, 255, 255, 0.1);
