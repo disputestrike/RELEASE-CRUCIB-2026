@@ -547,4 +547,75 @@
   border-bottom: 1px solid var(--border-1);
   background: var(--bg-1);
   overflow-x: auto;
-  
+  flex-shrink: 0;
+}
+
+.arp-pane-tab {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-ui);
+  white-space: nowrap;
+}
+.arp-pane-tab:hover {
+  color: var(--text-primary);
+}
+.arp-pane-tab.active {
+  background: var(--bg-3);
+  border-color: var(--border-1);
+  color: var(--text-strong);
+}
+
+.arp-pane-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  overscroll-behavior: contain;
+}
+.arp-pane-content > * {
+  min-height: 0;
+  height: 100%;
+}
+
+/* ── Responsive (spec: <1200 narrow rail, <900 stack / tight right) ─── */
+@media (max-width: 1200px) {
+  .uw-root .arp-left-rail.collapsed .arp-nav-section-label {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .arp-right-pane { width: 320px; }
+}
+
+@media (max-width: 900px) {
+  .arp-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .arp-center-pane {
+    flex: 1;
+    min-height: 40vh;
+  }
+  .resizable-divider {
+    display: none;
+  }
+  .arp-right-pane:not(.collapsed) {
+    width: 100% !important;
+    max-width: 100%;
+    min-height: 42vh;
+    border-left: none;
+    border-top: 1px solid var(--border-1);
+  }
+}
+
+@media (max-width: 768px) {
+  .arp-topbar-btn-label { display: none; }
+}
