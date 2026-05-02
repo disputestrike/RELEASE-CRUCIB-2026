@@ -1871,9 +1871,21 @@ async def lifespan(app: FastAPI):
         logger.info("ensure_all_tables complete.")
     except Exception as _tbl_err:
         logger.error("ensure_all_tables failed (non-fatal): %s", _tbl_err, exc_info=True)
+    # Phase 3: Start closed-loop optimization engine
+    try:
+        from .services.optimization_engine import start_optimization_engine
+        start_optimization_engine()
+        logger.info("Optimization engine started.")
+    except Exception as _opt_err:
+        logger.error("Optimization engine failed to start (non-fatal): %s", _opt_err, exc_info=True)
     yield
     # shutdown
     logger.info("shutdown")
+    try:
+        from .services.optimization_engine import stop_optimization_engine
+        stop_optimization_engine()
+    except Exception:
+        pass
 
 
 app = FastAPI(lifespan=lifespan)
@@ -2090,6 +2102,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.ide", "router", True),
     ("backend.routes.mobile", "mobile_router", True),
     ("backend.routes.monitoring", "router", False),
+    ("backend.routes.metrics_api", "router", False),
     ("backend.routes.doctor", "router", False),
     ("backend.routes.capabilities", "router", False),
     ("backend.routes.trust", "router", False),

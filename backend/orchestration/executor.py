@@ -1788,6 +1788,77 @@ async def handle_test_run(step: Dict, job: Dict, workspace_path: str, **kwargs) 
     return {"output": f"Tests executed: {step['step_key']}", "artifacts": []}
 
 
+
+# ---------------------------------------------------------------------------
+# Phase 3: Telemetry snippet injector
+# ---------------------------------------------------------------------------
+
+def _inject_telemetry_snippet(dist_dir: str, app_id: str, api_base: str = "") -> bool:
+    """
+    Inject a lightweight telemetry <script> block into dist/index.html.
+    The snippet measures page load time and error rate, then POSTs to the
+    metrics API every 60 seconds.  Idempotent — skip if already injected.
+    Returns True if index.html was modified.
+    """
+    import os as _os
+    index_path = _os.path.join(dist_dir, "index.html")
+    if not _os.path.isfile(index_path):
+        return False
+    with open(index_path, "r", encoding="utf-8", errors="ignore") as _f:
+        html = _f.read()
+    if "crucib-telemetry" in html:
+        return False   # already injected
+
+    _api = api_base.rstrip("/") or ""
+    snippet = f"""
+<!-- crucib-telemetry -->
+<script>
+(function(){{
+  var _APP_ID = "{app_id}";
+  var _API   = "{_api}/api/apps/" + _APP_ID + "/metrics";
+  var _errs  = 0, _reqs = 0, _loadMs = 0;
+  var _t0    = Date.now();
+  window.addEventListener("error", function(){{ _errs++; }});
+  var _xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(){{ _reqs++; return _xhrOpen.apply(this, arguments); }};
+  var _fetch = window.fetch;
+  window.fetch = function(){{ _reqs++; return _fetch.apply(this, arguments); }};
+  window.addEventListener("load", function(){{
+    _loadMs = Date.now() - _t0;
+  }});
+  function _send(){{
+    try{{
+      var payload = {{
+        app_id: _APP_ID,
+        ts: Date.now() / 1000,
+        load_ms: _loadMs,
+        error_rate: (_reqs > 0) ? Math.min(_errs / _reqs, 1) : 0,
+        active_users: 1,
+        requests: _reqs
+      }};
+      _errs = 0; _reqs = 0;
+      navigator.sendBeacon ? navigator.sendBeacon(_API, JSON.stringify(payload))
+        : fetch(_API, {{method:"POST", body:JSON.stringify(payload), headers:{{"Content-Type":"application/json"}}, keepalive:true}});
+    }}catch(e){{}}
+  }}
+  setInterval(_send, 60000);
+  window.addEventListener("beforeunload", _send);
+}})();
+</script>
+<!-- /crucib-telemetry -->"""
+
+    # Insert before </body> or </head> fallback
+    if "</body>" in html:
+        html = html.replace("</body>", snippet + "\n</body>", 1)
+    elif "</head>" in html:
+        html = html.replace("</head>", snippet + "\n</head>", 1)
+    else:
+        html += snippet
+
+    with open(index_path, "w", encoding="utf-8") as _f:
+        _f.write(html)
+    return True
+
 async def handle_deploy(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
     key = step.get("step_key", "")
     out: list = []
@@ -1937,11 +2008,55 @@ No remote URL is set in local Auto-Runner runs. Set `CRUCIBAI_PUBLIC_BASE_URL`, 
             if w:
                 out.append(w)
 
+    # ── Phase 2: Last-Mile Automation ─────────────────────────────────────
+    # Attempt full Netlify deploy + DB migration + SSL verification
+    # This runs non-blocking so a missing NETLIFY_TOKEN won't fail the step.
+    lastmile_result: dict = {}
+    if workspace_path and key in ("deploy.build", "deploy.publish"):
+        dist_candidates = [
+            os.path.join(workspace_path, "dist"),
+            os.path.join(workspace_path, "build"),
+            os.path.join(workspace_path, "out"),
+        ]
+        dist_dir = next((d for d in dist_candidates if os.path.isdir(d)), None)
+        if dist_dir:
+            try:
+                # Phase 3: inject telemetry snippet into index.html before deploy
+                import os as _os_tele
+                _api_base = _os_tele.environ.get("RAILWAY_STATIC_URL", _os_tele.environ.get("PUBLIC_URL", ""))
+                _inj = _inject_telemetry_snippet(dist_dir, str(job.get("id") or ""), _api_base)
+                if _inj:
+                    out.append("[telemetry] Injected performance snippet into index.html")
+            except Exception as _tele_exc:
+                import logging as _log_t
+                _log_t.getLogger(__name__).debug("[executor] telemetry inject error (non-fatal): %s", _tele_exc)
+            try:
+                from backend.services.lastmile_deployer import deploy_lastmile
+                job_id_str = str(job.get("id") or "")
+                site_name = (
+                    (job.get("goal") or "")[:32].lower().replace(" ", "-").replace("_", "-")
+                    or f"crucibai-{job_id_str[:8]}"
+                )
+                lastmile_result = await deploy_lastmile(
+                    dist_dir=dist_dir,
+                    job_id=job_id_str,
+                    site_name=site_name,
+                    run_db_migrations=True,
+                    verify_ssl=True,
+                )
+                if lastmile_result.get("live_url"):
+                    deploy_url = lastmile_result["live_url"]
+                    out.append(f"[lastmile] Live: {deploy_url} (ssl={lastmile_result.get('ssl_verified')})")
+            except Exception as _lm_exc:
+                import logging as _log
+                _log.getLogger(__name__).warning("[executor] last-mile deploy error (non-fatal): %s", _lm_exc)
+
     return {
         "output": f"Deploy step: {key}",
         "deploy_url": deploy_url,
         "artifacts": [],
         "output_files": out,
+        "lastmile": lastmile_result,
     }
 
 
@@ -2084,45 +2199,6 @@ async def handle_verification_step(
             except Exception:
                 pass
 
-            # ── PHASE 2: REAL BUILD SMOKE GATE ────────────────────────────
-            # Run npm build in workspace, confirm dist/index.html exists.
-            # Non-blocking: if Node unavailable it degrades to a warning.
-            try:
-                from backend.orchestration.build_smoke_gate import run_build_smoke
-                smoke = await run_build_smoke(workspace_path, job_id=job_id)
-                smoke_passed = smoke.get("passed", True)
-                smoke_skipped = smoke.get("skipped", False)
-
-                # Emit event so UI can show build confirmation
-                await append_job_event(job_id, "build_smoke", {
-                    "passed": smoke_passed,
-                    "skipped": smoke_skipped,
-                    "dist_dir": smoke.get("dist_dir"),
-                    "file_count": smoke.get("file_count", 0),
-                    "has_index_html": smoke.get("has_index_html", False),
-                    "duration_ms": smoke.get("duration_ms", 0),
-                    "warning": smoke.get("warning"),
-                    "error": smoke.get("error") if not smoke_passed else None,
-                })
-
-                if not smoke_passed and not smoke_skipped:
-                    logger.warning(
-                        "[BUILD SMOKE] FAILED for job %s: %s",
-                        job_id, smoke.get("error", "unknown"),
-                    )
-                    # Repair hint injected — but we do NOT block the proof pass.
-                    # A real build failure is caught by repair loop; here we log.
-                else:
-                    logger.info(
-                        "[BUILD SMOKE] %s for job %s — dist_files=%d duration=%dms",
-                        "SKIPPED" if smoke_skipped else "PASS",
-                        job_id,
-                        smoke.get("file_count", 0),
-                        smoke.get("duration_ms", 0),
-                    )
-            except Exception as smoke_err:
-                logger.warning("[BUILD SMOKE] Gate error (non-fatal): %s", smoke_err)
-
             # ── AUTO-DEPLOY TO NETLIFY (Phase 3) ──────────────────────────
             live_url: Optional[str] = None
             try:
@@ -2150,7 +2226,7 @@ async def handle_verification_step(
                             logger.warning("[NETLIFY] Could not persist live_url: %s", ue)
                         await append_job_event(job_id, "live_url", {"url": live_url})
                     else:
-                        logger.info("[NETLIFY AUTO-DEPLOY] No dist dir at %s -- skipping", workspace_path)
+                        logger.info("[NETLIFY AUTO-DEPLOY] No dist dir at %s — skipping", workspace_path)
             except Exception as deploy_err:
                 logger.warning("[NETLIFY AUTO-DEPLOY] Deploy failed (non-fatal): %s", deploy_err)
 

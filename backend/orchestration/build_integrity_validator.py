@@ -498,6 +498,24 @@ def validate_workspace_integrity(
         )
     _score_deployability(files, text, pkg, profile, phase, issues, proof, scores)
 
+    # ── Phase 1: Zero-Placeholder Enforcement ──────────────────────────────
+    try:
+        from backend.agents.validators.zero_placeholder_enforcer import enforce_zero_placeholders
+        zpe_passed, zpe_summary, zpe_blockers = enforce_zero_placeholders(workspace_path)
+        proof.append({"proof_type": "zpe", "title": "Zero-Placeholder Enforcement", "payload": {"summary": zpe_summary, "blockers": len(zpe_blockers)}})
+        if not zpe_passed:
+            for bv in zpe_blockers[:8]:
+                issues.append(_issue(
+                    f"zpe_{bv.get('rule_id', 'placeholder')}",
+                    f"ZPE blocker [{bv.get('rule_id')}] {bv.get('file', '')}:{bv.get('line', '')} — {bv.get('description', '')}",
+                    phase,
+                    severity="blocker",
+                    retry_targets=("integration", "frontend", "backend"),
+                ))
+    except Exception as _zpe_exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("[BIV] ZPE scan error (non-fatal): %s", _zpe_exc)
+
     return _format_result(
         phase=phase,
         profile=profile,
