@@ -498,3 +498,88 @@ export default function Billing() {
                 No {billingInterval} plans available.
               </p>
             ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {visiblePlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    clientId={clientId}
+                    billingInterval={billingInterval}
+                    onSuccess={handleSuccess}
+                    onError={handlePaymentError}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* One-time credit packs */}
+          {oneTimePlans.length > 0 && (
+            <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-1 text-lg font-semibold text-stone-950">One-time credit packs</h2>
+              <p className="mb-5 text-sm text-stone-500">Buy credits once — no recurring charge.</p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {oneTimePlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    clientId={clientId}
+                    billingInterval="one_time"
+                    onSuccess={handleSuccess}
+                    onError={handlePaymentError}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Billing history */}
+          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <History className="h-5 w-5 text-stone-700" />
+              <h2 className="text-lg font-semibold text-stone-950">Billing history</h2>
+            </div>
+            {history.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-stone-300 p-6 text-sm text-stone-600">
+                No billing history yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200 text-xs uppercase text-stone-500">
+                      <th className="py-3 pr-4 font-medium">Date</th>
+                      <th className="py-3 pr-4 font-medium">Type</th>
+                      <th className="py-3 pr-4 font-medium">Status</th>
+                      <th className="py-3 pr-4 font-medium">Amount</th>
+                      <th className="py-3 pr-4 font-medium">PayPal reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((item) => (
+                      <tr key={item.id} className="border-b border-stone-100">
+                        <td className="py-3 pr-4 text-stone-700">{dateText(item.created_at)}</td>
+                        <td className="py-3 pr-4 text-stone-700">{item.payment_type || 'payment'}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`rounded-full border px-2 py-1 text-xs ${statusTone(item.status)}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-medium text-stone-950">
+                          {money(item.amount, item.currency)}
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs text-stone-500">
+                          {item.paypal_capture_id || item.paypal_order_id || item.paypal_subscription_id || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
