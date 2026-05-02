@@ -38,7 +38,10 @@ You are a senior React frontend engineer. Given a product goal, generate a COMPL
 9. CSS goes in src/styles/global.css using standard CSS (no Tailwind, no CSS modules).
 10. Every component must be a default export function.
 
-## REQUIRED FILES
+## REQUIRED FILES — ALL OF THESE MUST BE IN THE OUTPUT
+- package.json — with scripts.build = "vite build", react, react-dom, react-router-dom, zustand deps, @vitejs/plugin-react devDep
+- vite.config.js — with @vitejs/plugin-react plugin, outDir: 'dist'
+- index.html — with <div id="root"> and <script type="module" src="/src/main.jsx">
 - src/main.jsx — createRoot render with StrictMode
 - src/App.jsx — BrowserRouter with Routes
 - src/pages/HomePage.jsx — Landing/home page with real content
@@ -595,10 +598,4 @@ export default function ShellLayout({ children }) {
 """
 
         if "src/styles/global.css" not in files:
-            files["src/styles/global.css"] = """\
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #111; line-height: 1.6; }
-a { color: inherit; text-decoration: none; }
-button { cursor: pointer; font: inherit; }
-input, textarea { font: inherit; }
-"""
+            files
