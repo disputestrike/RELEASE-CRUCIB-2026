@@ -41,6 +41,7 @@ import {
   RefreshCw,
   Package,
   Rocket,
+  Check,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
 import { phaseLabels } from '../../lib/buildMessageReducer';
@@ -104,59 +105,26 @@ function BuildTargetChip({ meta, id }) {
   );
 }
 
-/** Inline run-control bar — Stop / Pause / Continue always visible, no hidden overflow menu. */
-function RunControls({ jobStatus, onPause, onResume, onCancel, onSync, canSync }) {
+function RunControls({ jobStatus, onPause, onResume, onCancel }) {
   const isRunning = jobStatus === 'running';
-  const isPaused = jobStatus === 'paused';
-  const canResume = jobStatus === 'failed' || jobStatus === 'blocked' || isPaused;
-  const showStop = jobStatus && !['completed', 'cancelled', 'canceled'].includes(jobStatus);
-
-  if (!isRunning && !canResume && !showStop && !canSync) return null;
-
+  const canResume = jobStatus === 'failed' || jobStatus === 'blocked';
+  const showStop = jobStatus && !['completed', 'cancelled'].includes(jobStatus);
+  if (!isRunning && !canResume && !showStop) return null;
   return (
-    <div className="p4-run-controls" role="toolbar" aria-label="Build controls">
+    <div className="p4-run-controls">
+      {showStop ? (
+        <button type="button" className="p4-ctrl-btn p4-ctrl-btn--stop" onClick={() => onCancel?.()}>
+          <XIcon size={12} /> Stop
+        </button>
+      ) : null}
       {isRunning ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--pause"
-          onClick={() => onPause?.()}
-          title="Pause build"
-        >
-          <PauseIcon size={12} />
-          <span>Pause</span>
+        <button type="button" className="p4-ctrl-btn" onClick={() => onPause?.()}>
+          <PauseIcon size={12} /> Pause
         </button>
       ) : null}
       {canResume ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--resume"
-          onClick={() => onResume?.()}
-          title="Continue build"
-        >
-          <PlayIcon size={12} />
-          <span>Continue</span>
-        </button>
-      ) : null}
-      {showStop ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--stop"
-          onClick={() => onCancel?.()}
-          title="Stop build"
-        >
-          <XIcon size={12} />
-          <span>Stop</span>
-        </button>
-      ) : null}
-      {canSync ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--sync"
-          onClick={() => onSync?.()}
-          title="Sync workspace"
-        >
-          <RefreshCw size={12} />
-          <span>Sync</span>
+        <button type="button" className="p4-ctrl-btn p4-ctrl-btn--resume" onClick={() => onResume?.()}>
+          <PlayIcon size={12} /> Continue
         </button>
       ) : null}
     </div>
@@ -319,28 +287,23 @@ function ToolGroup({ item }) {
 
 function FailureBlock({ item }) {
   const niceReason = (item.reason || '').toString().trim();
-  // Show the real reason if we have one. Only fall back to generic if reason is empty
-  // or is a raw internal error key (orchestrator_error, background_crash, etc).
-  const isGenericInternalReason =
-    !niceReason ||
-    /^(orchestrator_error|background_crash|job_not_found|execution_timeout|watchdog_timeout)$/i.test(niceReason);
-  const friendlyReason = isGenericInternalReason
-    ? 'Something went wrong during the build. Send a follow-up message below and I will pick up from the saved files.'
-    : niceReason;
+  const friendlyReason =
+    niceReason && !/orchestrator_error/i.test(niceReason)
+      ? niceReason
+      : 'I need another pass to finish this workspace. Send a note below and I will keep going from the saved files.';
   const raw = (item.rawDetail || '').toString().trim();
-  // Show technical detail if it adds information beyond the friendly reason
-  const showTechnical = raw.length > 0 && raw !== friendlyReason && raw !== niceReason;
+  const showTechnical = raw.length > 0 && raw !== friendlyReason;
   return (
     <div className="p4-chapter p4-chapter--diagnostic">
       <div className="p4-chapter-head p4-chapter-head--static">
         <AlertTriangle size={13} className="p4-bad" />
-        <span className="p4-chapter-title">{item.title || 'Build issue'}</span>
-        <span className="p4-chapter-status p4-chapter-status--failed">Needs fix</span>
+        <span className="p4-chapter-title">{item.title || 'Checking the workspace'}</span>
+        <span className="p4-chapter-status p4-chapter-status--failed">Fixing</span>
       </div>
       <p className="p4-chapter-desc">{friendlyReason}</p>
       {showTechnical ? (
         <details className="p4-tech-details">
-          <summary className="p4-tech-details-summary">What went wrong</summary>
+          <summary className="p4-tech-details-summary">Technical details</summary>
           <pre className="p4-tech-details-pre">{raw}</pre>
         </details>
       ) : null}
@@ -359,69 +322,62 @@ function FailureBlock({ item }) {
 }
 
 function phaseStatusLabel(st) {
-  if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Repairing';
-  if (st === 'running') return 'Running';
+  if (st === 'done')    return 'Done';
+  if (st === 'failed')  return 'Fixing';
+  if (st === 'running') return 'In progress';
   return 'Pending';
 }
 
 function BuildProgressCard({ item }) {
   const meta = phaseLabels();
   const order = meta.order;
-  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Derive the active stage for the progress bar fill
+  const activeIdx = (() => {
+    for (let i = order.length - 1; i >= 0; i--) {
+      const st = item.phases[order[i]]?.status;
+      if (st === 'running' || st === 'done' || st === 'failed') return i;
+    }
+    return -1;
+  })();
+
+  // Only show repair stage if it's actually been activated
+  const visibleOrder = order.filter((k) => {
+    if (k === 'repair') return item.phases[k]?.status !== 'pending';
+    return true;
+  });
+
   return (
     <div className="p4-block p4-build-progress">
-      <div className="p4-build-progress-head">Build progress</div>
       <div className="p4-build-progress-rows">
-        {order.map((key) => {
+        {visibleOrder.map((key) => {
           const cell = item.phases[key];
           const st = cell?.status || 'pending';
+          const isActive = st === 'running';
+          const isDone = st === 'done';
+          const isFailed = st === 'failed';
           return (
-            <div key={key} className="p4-build-progress-row">
+            <div key={key} className={`p4-build-progress-row p4-bpr--${st}`}>
+              <span className="p4-bpr-dot">
+                {isDone  ? <Check size={11} /> :
+                 isFailed ? <AlertTriangle size={11} /> :
+                 isActive ? <Loader2 size={11} className="p4-spin" /> :
+                 <span className="p4-bpr-dot-empty" />}
+              </span>
               <span className="p4-bpr-label">{meta[key]}</span>
-              <span className={`p4-bpr-status p4-bpr-status--${st}`}>{phaseStatusLabel(st)}</span>
+              {isActive && (
+                <span className="p4-bpr-badge p4-bpr-badge--active">Working</span>
+              )}
+              {isFailed && (
+                <span className="p4-bpr-badge p4-bpr-badge--fixing">Fixing</span>
+              )}
+              {isDone && (
+                <span className="p4-bpr-badge p4-bpr-badge--done">Done</span>
+              )}
             </div>
           );
         })}
       </div>
-      <button
-        type="button"
-        className="p4-build-progress-details-btn"
-        onClick={() => setDetailsOpen((v) => !v)}
-        aria-expanded={detailsOpen}
-      >
-        {detailsOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        Details
-      </button>
-      {detailsOpen ? (
-        <div className="p4-build-progress-details">
-          {order.map((key) => {
-            const cell = item.phases[key];
-            const actions = cell?.actions || [];
-            const details = cell?.details || [];
-            if (!actions.length && !details.length) return null;
-            return (
-              <div key={`d-${key}`} className="p4-bpd-phase">
-                <div className="p4-bpd-phase-name">{meta[key]}</div>
-                {actions.length ? (
-                  <ul>
-                    {actions.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                {details.length ? (
-                  <ul className="p4-bpd-muted">
-                    {details.map((d, i) => (
-                      <li key={`${i}-${d}`}>{d}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -430,27 +386,32 @@ function RepairBlock({ item }) {
   const isNeedsFix = item.status === 'needs_fix';
   const stateLabel =
     item.status === 'success'
-      ? 'Done'
+      ? 'Fixed'
       : item.status === 'failed'
-      ? 'Repairing'
+      ? 'Still failing'
       : isNeedsFix
-      ? 'Repairing'
-      : `Pass ${item.attempt || 1}`;
+      ? 'Fixing'
+      : 'Fixing';
   const headTitle =
     item.status === 'success'
-      ? 'Repair complete'
+      ? (item.title || 'Fix applied')
       : item.status === 'failed'
-      ? 'Continuing repair'
+      ? (item.title || "Couldn't fix — trying another approach")
       : isNeedsFix
-      ? item.title || 'Repairing verification issue'
-      : 'Repair in progress';
+      ? (item.title || 'Fixing verification issue')
+      : (item.title || 'Fix in progress');
   const detail = (item.technicalDetail || '').trim();
+  const RepairIcon = item.status === 'success'
+    ? <CheckCircle2 size={13} className="p4-ok" />
+    : item.status === 'failed'
+    ? <AlertTriangle size={13} className="p4-bad" />
+    : <Loader2 size={13} className="p4-spin p4-warn" />;
   return (
     <div
       className={`p4-inline-card p4-card-repair p4-card-repair--${isNeedsFix ? 'needs_fix' : item.status || 'running'}`}
     >
       <div className="p4-inline-head">
-        <Wrench size={13} className="p4-warn" />
+        {RepairIcon}
         <span className="p4-inline-title">{headTitle}</span>
         <span className="p4-inline-state">{stateLabel}</span>
       </div>
@@ -631,6 +592,24 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser, deliveryContext })
   }
 }
 
+
+function ActivityChips({ isTyping, jobStatus, currentPhase }) {
+  // Only show while a build is actively running
+  if (!isTyping && jobStatus !== 'running' && jobStatus !== 'blocked') return null;
+
+  const phase = currentPhase || '';
+  const chipLabel = phase || (jobStatus === 'blocked' ? 'Fixing an issue' : 'Working');
+
+  return (
+    <div className="p4-activity-chips">
+      <div className="p4-activity-chip p4-activity-chip--active">
+        <Loader2 size={10} className="p4-spin" />
+        <span>{chipLabel}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function BrainGuidancePanel({
   userMessages = [],
   events = [],
@@ -726,10 +705,13 @@ export default function BrainGuidancePanel({
           onPause={onPause}
           onResume={onResume}
           onCancel={onCancel}
-          onSync={onSync}
-          canSync={canSync}
         />
       </div>
+      <ActivityChips
+        isTyping={isTyping}
+        jobStatus={jobStatus}
+        currentPhase={null}
+      />
 
       {items.map((item) => (
         <ThreadItem
@@ -771,4 +753,9 @@ export default function BrainGuidancePanel({
           </div>
           <div className="p4-assist-col">
             <div className="p4-typing-dots"><span /> <span /> <span /></div>
-          </
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
