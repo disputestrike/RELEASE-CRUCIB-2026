@@ -41,6 +41,8 @@ import {
   RefreshCw,
   Package,
   Rocket,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
 import { phaseLabels } from '../../lib/buildMessageReducer';
@@ -351,69 +353,62 @@ function FailureBlock({ item }) {
 }
 
 function phaseStatusLabel(st) {
-  if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Fixing';
-  if (st === 'running') return 'Running';
+  if (st === 'done')    return 'Done';
+  if (st === 'failed')  return 'Fixing';
+  if (st === 'running') return 'In progress';
   return 'Pending';
 }
 
 function BuildProgressCard({ item }) {
   const meta = phaseLabels();
   const order = meta.order;
-  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // Derive the active stage for the progress bar fill
+  const activeIdx = (() => {
+    for (let i = order.length - 1; i >= 0; i--) {
+      const st = item.phases[order[i]]?.status;
+      if (st === 'running' || st === 'done' || st === 'failed') return i;
+    }
+    return -1;
+  })();
+
+  // Only show repair stage if it's actually been activated
+  const visibleOrder = order.filter((k) => {
+    if (k === 'repair') return item.phases[k]?.status !== 'pending';
+    return true;
+  });
+
   return (
     <div className="p4-block p4-build-progress">
-      <div className="p4-build-progress-head">Build progress</div>
       <div className="p4-build-progress-rows">
-        {order.map((key) => {
+        {visibleOrder.map((key) => {
           const cell = item.phases[key];
           const st = cell?.status || 'pending';
+          const isActive = st === 'running';
+          const isDone = st === 'done';
+          const isFailed = st === 'failed';
           return (
-            <div key={key} className="p4-build-progress-row">
+            <div key={key} className={`p4-build-progress-row p4-bpr--${st}`}>
+              <span className="p4-bpr-dot">
+                {isDone  ? <Check size={11} /> :
+                 isFailed ? <AlertTriangle size={11} /> :
+                 isActive ? <Loader2 size={11} className="p4-spin" /> :
+                 <span className="p4-bpr-dot-empty" />}
+              </span>
               <span className="p4-bpr-label">{meta[key]}</span>
-              <span className={`p4-bpr-status p4-bpr-status--${st}`}>{phaseStatusLabel(st)}</span>
+              {isActive && (
+                <span className="p4-bpr-badge p4-bpr-badge--active">Working</span>
+              )}
+              {isFailed && (
+                <span className="p4-bpr-badge p4-bpr-badge--fixing">Fixing</span>
+              )}
+              {isDone && (
+                <span className="p4-bpr-badge p4-bpr-badge--done">Done</span>
+              )}
             </div>
           );
         })}
       </div>
-      <button
-        type="button"
-        className="p4-build-progress-details-btn"
-        onClick={() => setDetailsOpen((v) => !v)}
-        aria-expanded={detailsOpen}
-      >
-        {detailsOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        Details
-      </button>
-      {detailsOpen ? (
-        <div className="p4-build-progress-details">
-          {order.map((key) => {
-            const cell = item.phases[key];
-            const actions = cell?.actions || [];
-            const details = cell?.details || [];
-            if (!actions.length && !details.length) return null;
-            return (
-              <div key={`d-${key}`} className="p4-bpd-phase">
-                <div className="p4-bpd-phase-name">{meta[key]}</div>
-                {actions.length ? (
-                  <ul>
-                    {actions.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                {details.length ? (
-                  <ul className="p4-bpd-muted">
-                    {details.map((d, i) => (
-                      <li key={`${i}-${d}`}>{d}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }

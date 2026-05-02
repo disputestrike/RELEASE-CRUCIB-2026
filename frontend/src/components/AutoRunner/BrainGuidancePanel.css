@@ -360,106 +360,82 @@
 }
 
 /* High-level build phases (Planning → Delivering) */
+/* ── Build Progress Card — 5-stage pipeline display ── */
 .p4-build-progress {
-  padding: 10px 12px;
-  background: var(--crucibai-panel-soft);
-  border: 1px solid var(--crucibai-border);
-  border-radius: 0;
-  animation: none;
-}
-
-.p4-build-progress-head {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--crucibai-text);
-  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
 }
 
 .p4-build-progress-rows {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .p4-build-progress-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--crucibai-text);
+  gap: 8px;
+  font-size: 12.5px;
+  padding: 3px 0;
+  color: var(--crucibai-muted);
 }
+
+.p4-bpr--running { color: var(--crucibai-text); }
+.p4-bpr--done    { color: var(--crucibai-muted); }
+.p4-bpr--failed  { color: var(--crucibai-danger, #ef4444); }
+
+.p4-bpr-dot {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.p4-bpr-dot-empty {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+  display: block;
+  margin: auto;
+}
+
+.p4-bpr--running .p4-bpr-dot { color: var(--crucibai-accent, #6366f1); }
+.p4-bpr--done    .p4-bpr-dot { color: var(--crucibai-success, #22c55e); }
+.p4-bpr--failed  .p4-bpr-dot { color: var(--crucibai-danger, #ef4444); }
 
 .p4-bpr-label {
-  color: var(--crucibai-text);
+  flex: 1;
   font-weight: 500;
 }
 
-.p4-bpr-status {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--crucibai-muted);
+.p4-bpr-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 20px;
   flex-shrink: 0;
 }
 
-.p4-bpr-status--running {
-  color: var(--crucibai-accent);
+.p4-bpr-badge--active {
+  background: color-mix(in srgb, var(--crucibai-accent, #6366f1) 12%, transparent);
+  color: var(--crucibai-accent, #6366f1);
 }
 
-.p4-bpr-status--failed,
-.p4-bpr-status--needs_fix {
-  color: var(--crucibai-danger);
+.p4-bpr-badge--fixing {
+  background: color-mix(in srgb, var(--crucibai-danger, #ef4444) 12%, transparent);
+  color: var(--crucibai-danger, #ef4444);
 }
 
-.p4-bpr-status--done {
-  color: var(--crucibai-success);
-}
-
-.p4-build-progress-details-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--crucibai-muted);
-  cursor: pointer;
-}
-
-.p4-build-progress-details-btn:hover {
-  color: var(--crucibai-text);
-}
-
-.p4-build-progress-details {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--crucibai-border);
-  font-size: 11px;
-  color: var(--crucibai-text);
-}
-
-.p4-bpd-phase {
-  margin-bottom: 8px;
-}
-
-.p4-bpd-phase-name {
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: var(--crucibai-text);
-}
-
-.p4-bpd-phase ul {
-  margin: 0;
-  padding-left: 16px;
-  color: var(--crucibai-muted);
-}
-
-.p4-bpd-muted {
-  opacity: 0.92;
-  font-size: 10.5px;
+.p4-bpr-badge--done {
+  background: color-mix(in srgb, var(--crucibai-success, #22c55e) 10%, transparent);
+  color: var(--crucibai-success, #22c55e);
 }
 
 .p4-card-repair--needs_fix {
