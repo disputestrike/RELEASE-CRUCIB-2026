@@ -319,6 +319,61 @@ async def run_job_to_completion(
             {"mode": job.get("mode"), "goal": job.get("goal", ""), **_bp_meta},
         )
 
+        # ── Phase 4: FAST PATH for small targeted changes ─────────────────────
+        # If the workspace already has files and the goal is a targeted edit
+        # (≤3 files), skip the full DAG and patch in <30 seconds.
+        if not os.environ.get("CRUCIBAI_DISABLE_FAST_PATH", "").strip():
+            _goal_text = (job.get("goal") or "").strip()
+            _ws = workspace_path or ""
+            try:
+                from .fast_path_executor import is_small_change_goal, run_fast_path
+                # Only activate when a workspace already exists with source files
+                _has_ws = bool(_ws and os.path.isdir(_ws) and any(
+                    True for _, _, files in os.walk(_ws)
+                    for f in files
+                    if f.endswith((".jsx", ".js", ".tsx", ".ts", ".py", ".css"))
+                ))
+                if _has_ws and is_small_change_goal(_goal_text):
+                    logger.info("[FAST PATH] Activating for job=%s goal=%r", job_id, _goal_text[:60])
+                    await append_job_event(job_id, "fast_path_activated", {"goal": _goal_text})
+                    fp_result = await run_fast_path(
+                        job_id=job_id,
+                        goal=_goal_text,
+                        workspace_path=_ws,
+                        append_event_fn=append_job_event,
+                    )
+                    if fp_result.get("success"):
+                        await update_job_state(job_id, "completed", extra={
+                            "fast_path": True,
+                            "files_changed": fp_result.get("files_changed", []),
+                            "fast_path_summary": fp_result.get("summary", ""),
+                        })
+                        await publish(job_id, "job_completed", {
+                            "job_id": job_id,
+                            "fast_path": True,
+                            "summary": fp_result.get("summary", ""),
+                            "duration_ms": fp_result.get("duration_ms", 0),
+                        })
+                        return {
+                            "success": True,
+                            "status": "completed",
+                            "fast_path": True,
+                            "files_changed": fp_result.get("files_changed", []),
+                            "summary": fp_result.get("summary", ""),
+                            "duration_ms": fp_result.get("duration_ms", 0),
+                        }
+                    else:
+                        # Fast path failed — fall through to full DAG
+                        logger.warning(
+                            "[FAST PATH] Failed (falling back to full DAG): %s",
+                            fp_result.get("error", "unknown"),
+                        )
+                        await append_job_event(job_id, "fast_path_fallback", {
+                            "reason": fp_result.get("error", "unknown")
+                        })
+            except Exception as _fpe:
+                logger.warning("[FAST PATH] Exception (falling back to full DAG): %s", _fpe)
+
         # ── Pre-build intelligence briefing ────────────────────────────────────
         # Ensure brain memory tables exist
         try:
