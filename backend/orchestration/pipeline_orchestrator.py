@@ -546,6 +546,21 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
 
 # ─── Main pipeline entry point ────────────────────────────────────────────────
 
+async def _check_job_alive(job_id: str) -> bool:
+    """Return False if the job has been cancelled or paused (caller should abort pipeline)."""
+    try:
+        from backend.orchestration.runtime_state import get_job as _gj
+        j = await _gj(job_id)
+        if not j:
+            return False
+        status = (j.get("status") or "").lower()
+        if status in ("cancelled", "canceled", "paused"):
+            return False
+    except Exception:
+        pass
+    return True
+
+
 async def run_pipeline_job(
     job_id: str,
     workspace_path: str,
@@ -621,6 +636,11 @@ async def run_pipeline_job(
             "stack": plan.get("stack"),
         })
 
+        # Cancel/pause gate between stages
+        if not await _check_job_alive(job_id):
+            await update_job_state(job_id, job["status"] if job else "cancelled")
+            return {"status": "cancelled", "stages_completed": stages_completed}
+
         # ── Stage 2: Generate ────────────────────────────────────────────────
         # Inject working scaffold BEFORE agent runs — prevents cold-start failures
         if _RELIABILITY_AVAILABLE and workspace_path:
@@ -644,6 +664,10 @@ async def run_pipeline_job(
             "files_written": len(gen_result.get("files_written") or []),
         })
 
+        # Cancel/pause gate
+        if not await _check_job_alive(job_id):
+            return {"status": "cancelled", "stages_completed": stages_completed}
+
         # ── Stage 3: Assemble ────────────────────────────────────────────────
         await _emit("stage_started", {"stage": "assemble", "label": "Installing dependencies"})
         logger.info("pipeline[%s] stage=3/assemble", job_id)
@@ -654,6 +678,10 @@ async def run_pipeline_job(
             logger.info("pipeline[%s] workspace adjusted to: %s", job_id, workspace_path)
         stages_completed.append("assemble")
         await _emit("stage_completed", {"stage": "assemble", "npm_success": assemble_result.get("success")})
+
+        # Cancel/pause gate
+        if not await _check_job_alive(job_id):
+            return {"status": "cancelled", "stages_completed": stages_completed}
 
         # ── Stage 4: Verify ──────────────────────────────────────────────────
         await _emit("stage_started", {"stage": "verify", "label": "Running the build"})
