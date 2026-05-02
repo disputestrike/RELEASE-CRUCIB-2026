@@ -577,6 +577,21 @@ async def run_pipeline_job(
     async def _progress(stage_event: str, data: dict = None):
         await _emit(stage_event, data or {})
 
+    # ── Resolve workspace path if missing ────────────────────────────────────
+    if not workspace_path or not workspace_path.strip():
+        try:
+            from backend.orchestration.runtime_state import get_job as _get_job_state
+            _job_meta = await _get_job_state(job_id)
+            _project_id = (_job_meta or {}).get("project_id")
+            if _project_id:
+                from backend.config import WORKSPACE_ROOT
+                workspace_path = str(WORKSPACE_ROOT / "projects" / _project_id)
+                import pathlib as _pl
+                _pl.Path(workspace_path).mkdir(parents=True, exist_ok=True)
+                logger.info("pipeline[%s] workspace_path resolved from project_id: %s", job_id, workspace_path)
+        except Exception as _wpe:
+            logger.warning("pipeline[%s] could not resolve workspace_path: %s", job_id, _wpe)
+
     try:
         await _emit("pipeline_started", {"goal": goal[:200], "workspace": workspace_path})
         await update_job_state(job_id, "running")
@@ -607,6 +622,18 @@ async def run_pipeline_job(
         })
 
         # ── Stage 2: Generate ────────────────────────────────────────────────
+        # Inject working scaffold BEFORE agent runs — prevents cold-start failures
+        if _RELIABILITY_AVAILABLE and workspace_path:
+            try:
+                import pathlib as _pl
+                _pl.Path(workspace_path).mkdir(parents=True, exist_ok=True)
+                app_name = extract_app_name(goal)
+                scaffold_files = write_scaffold_to_workspace(workspace_path, app_name)
+                logger.info("pipeline[%s] scaffold injected: %d files (app=%s)", job_id, len(scaffold_files), app_name)
+                await _emit("scaffold_ready", {"app_name": app_name, "files": len(scaffold_files)})
+            except Exception as _se:
+                logger.warning("pipeline[%s] scaffold injection failed (non-fatal): %s", job_id, _se)
+
         await _emit("stage_started", {"stage": "generate", "label": "Building your application"})
         logger.info("pipeline[%s] stage=2/generate (%d files)", job_id, len(plan.get("file_manifest") or []))
         gen_result = await _stage_generate(goal, plan, workspace_path, on_progress=_progress)
