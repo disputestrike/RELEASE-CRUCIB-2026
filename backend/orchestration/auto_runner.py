@@ -1616,6 +1616,20 @@ async def _execute_job_loop(
             "enforcement_advisory": bool(egr.get("advisory_would_block")),
         },
     )
+    # Phase 6: record this build in user memory (non-blocking)
+    try:
+        _user_id = job.get("user_id") or job.get("owner_id") or ""
+        if _user_id:
+            from backend.services.user_memory_service import record_build_in_memory
+            record_build_in_memory(
+                _user_id,
+                goal=job.get("goal", ""),
+                build_type=job.get("build_type") or job.get("build_kind") or "",
+                job_id=job_id,
+            )
+    except Exception:
+        pass
+
     return {
         "success": True,
         "status": "completed",

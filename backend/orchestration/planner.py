@@ -652,14 +652,27 @@ def _build_phases(
 
 
 async def generate_plan(
-    goal: str, project_state: Optional[Dict] = None, llm_call=None
+    goal: str, project_state: Optional[Dict] = None, llm_call=None,
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate a structured build plan for the given goal.
     llm_call: optional async callable(prompt) -> str for AI-enhanced planning.
+    user_id: when provided, user memory context is prepended to the goal.
     """
-    stack_contract = parse_generation_contract(goal)
-    stack_contract["goal"] = goal
+    # Phase 6: prepend user memory context (always non-blocking)
+    enriched_goal = goal
+    try:
+        if user_id:
+            from backend.services.user_memory_service import build_memory_context_block
+            ctx = build_memory_context_block(user_id)
+            if ctx:
+                enriched_goal = ctx + "\nGoal: " + goal
+    except Exception:
+        pass
+
+    stack_contract = parse_generation_contract(enriched_goal)
+    stack_contract["goal"] = goal  # keep original goal for display
     build_kind = _detect_build_kind(goal)
     integrations = list(_detect_integrations(goal))
     if goal_suggests_database(goal) and "database" not in integrations:

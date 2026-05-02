@@ -17,6 +17,7 @@ import {
   Share2,
   FileArchive,
   Wrench,
+  BrainCircuit,
 } from 'lucide-react';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
@@ -30,6 +31,7 @@ import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import Logo from '../components/Logo';
 import ActiveStepBanner from '../components/AutoRunner/ActiveStepBanner';
+import UserMemoryPanel from '../components/UserMemoryPanel';
 import { deriveCurrentActivity } from '../lib/buildThreadModel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
@@ -364,6 +366,7 @@ export default function UnifiedWorkspace() {
   const mdOnlyPreviewInjectedRef = useRef('');
   const [zipBusy, setZipBusy] = useState(false);
   const [liveUrl, setLiveUrl] = useState(null);   // Phase 3 — Netlify live URL after proof passes
+  const [showMemoryPanel, setShowMemoryPanel] = useState(false); // Phase 6
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
 
@@ -2100,6 +2103,13 @@ export default function App() {
 
           {!rightCollapsed && (
             <>
+              {showMemoryPanel && (
+                <UserMemoryPanel
+                  token={token}
+                  apiBase={API}
+                  onClose={() => setShowMemoryPanel(false)}
+                />
+              )}
               <div className="arp-right-toolbar">
                 <button
                   type="button"
@@ -2157,6 +2167,15 @@ export default function App() {
                   onClick={handleShare}
                 >
                   <Share2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={`arp-topbar-btn arp-toolbar-icon-btn${showMemoryPanel ? ' arp-topbar-btn--active' : ''}`}
+                  title="Build memory — company, stack, brand color"
+                  aria-label="Build memory"
+                  onClick={() => setShowMemoryPanel(p => !p)}
+                >
+                  <BrainCircuit size={16} />
                 </button>
                 <div className="arp-mode-switch" title="Simple vs Dev — which tools show in the right pane">
                   <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>

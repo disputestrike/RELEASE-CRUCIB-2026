@@ -212,3 +212,46 @@ async def deploy_job(job_id: str, user: dict = Depends(_get_auth())):
         return {"url": live_url, "site_id": result.get("site_id"), "deploy_id": result.get("deploy_id")}
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+
+# ── Phase 6: User memory / profile endpoints ──────────────────────────────────
+
+class UserMemoryPatch(BaseModel):
+    """Fields the user can update in their memory profile."""
+    company_name:    Optional[str] = None
+    display_name:    Optional[str] = None
+    brand_color:     Optional[str] = None
+    preferred_stack: Optional[str] = None
+    font_preference: Optional[str] = None
+    custom_notes:    Optional[str] = None
+
+
+@router.get("/users/me/memory")
+async def get_user_memory(user: dict = Depends(_get_auth())):
+    """Return the current user's memory profile (company, stack, brand color, build history)."""
+    from backend.services.user_memory_service import get_profile_summary
+    uid = _user_id(user)
+    return get_profile_summary(uid)
+
+
+@router.patch("/users/me/memory")
+async def patch_user_memory(
+    data: UserMemoryPatch, user: dict = Depends(_get_auth())
+):
+    """Update one or more fields of the user's memory profile."""
+    from backend.services.user_memory_service import patch_user_memory as _patch
+    uid = _user_id(user)
+    updates = {k: v for k, v in data.dict().items() if v is not None}
+    if not updates:
+        return {"ok": True, "updated": []}
+    result = _patch(uid, updates)
+    return {"ok": True, "updated": list(updates.keys()), "profile": result}
+
+
+@router.delete("/users/me/memory")
+async def clear_user_memory(user: dict = Depends(_get_auth())):
+    """Clear all user memory (company name, stack preference, build history, etc.)."""
+    from backend.services.user_memory_service import save_user_memory
+    uid = _user_id(user)
+    save_user_memory(uid, {})
+    return {"ok": True, "cleared": True}
