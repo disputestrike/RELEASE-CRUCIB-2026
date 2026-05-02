@@ -15,7 +15,7 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1"
-CEREBRAS_MODEL = "llama-3.3-70b"
+CEREBRAS_MODEL = "llama-3.1-8b"
 
 
 class CerebrasClient:

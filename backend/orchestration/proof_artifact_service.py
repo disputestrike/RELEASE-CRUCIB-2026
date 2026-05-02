@@ -114,13 +114,6 @@ class ProofArtifact:
             "health_responds": False,
             "api_responds": False,
             "not_stub_code": False,
-            # Cloud proof: separated static readiness from live verification.
-            # cloud_static_ready=True means files exist and are deployable (ZIP/export passes).
-            # cloud_live_verified=True means a live HTTP response was actually confirmed.
-            # live_confirmation="not_run" must NOT be treated as pass — it is a warning.
-            "cloud_static_ready": False,
-            "cloud_live_verified": False,
-            "live_confirmation": "not_run",  # not_run | passed | failed
         },
     })
     final_status: str = "pending"  # pending | pass | fail
@@ -273,29 +266,10 @@ class ProofArtifactService:
 
         # Set deployment readiness flags based on validation
         stages_map = proof.validation.get("stages", {})
-        build_passed = stages_map.get("build", {}).get("passed", False)
-        runtime_passed = stages_map.get("runtime", {}).get("passed", False)
-        integration_passed = stages_map.get("integration", {}).get("passed", False)
-
-        proof.deployment["readiness"]["frontend_builds"] = build_passed
-        proof.deployment["readiness"]["backend_starts"] = runtime_passed
-        proof.deployment["readiness"]["health_responds"] = runtime_passed
-        proof.deployment["readiness"]["api_responds"] = integration_passed
-
-        # Cloud proof: static readiness = files exist + build passed (no live server needed).
-        # Live verification = runtime health check actually passed.
-        proof.deployment["readiness"]["cloud_static_ready"] = build_passed and (
-            proof.generated_files.get("count", 0) >= 1
-        )
-        if runtime_passed:
-            proof.deployment["readiness"]["cloud_live_verified"] = True
-            proof.deployment["readiness"]["live_confirmation"] = "passed"
-        else:
-            # Do NOT mark live_confirmation as pass if runtime stage did not run or failed.
-            proof.deployment["readiness"]["cloud_live_verified"] = False
-            current = proof.deployment["readiness"].get("live_confirmation", "not_run")
-            if current != "failed":
-                proof.deployment["readiness"]["live_confirmation"] = "not_run"
+        proof.deployment["readiness"]["frontend_builds"] = stages_map.get("build", {}).get("passed", False)
+        proof.deployment["readiness"]["backend_starts"] = stages_map.get("runtime", {}).get("passed", False)
+        proof.deployment["readiness"]["health_responds"] = stages_map.get("runtime", {}).get("passed", False)
+        proof.deployment["readiness"]["api_responds"] = stages_map.get("integration", {}).get("passed", False)
 
         logger.info(
             "[PROOF ARTIFACT] Validation: overall=%s failed_stage=%s",
@@ -340,8 +314,7 @@ class ProofArtifactService:
         cycles = getattr(repair_result, "cycles_used", 0)
         details = getattr(repair_result, "details", {})
 
-        self.add_repair_attempt(
-            proof,
+        proof.add_repair_attempt(
             attempt=cycles,
             error_type=details.get("last_hints", ["unknown"])[0] if details.get("last_hints") else "unknown",
             error_log="\n".join(getattr(repair_result, "errors", []))[:2000],
@@ -642,25 +615,7 @@ class ProofArtifactService:
 
         # Check readiness
         readiness = proof.deployment.get("readiness", {})
-        # live_confirmation is a string sentinel — handle separately.
-        live_confirmation = readiness.get("live_confirmation", "not_run")
-        if live_confirmation == "not_run":
-            warnings.append("Live server confirmation was not run — static readiness only")
-            score -= 5
-        elif live_confirmation == "failed":
-            score -= 20
-            critical_failures.append("Live server confirmation failed")
-
         for check, passed in readiness.items():
-            # Skip string sentinels — they are handled above.
-            if check == "live_confirmation":
-                continue
-            # cloud_live_verified is only a warning if static is ready
-            if check == "cloud_live_verified" and not passed:
-                if readiness.get("cloud_static_ready"):
-                    warnings.append("Cloud live verification not confirmed (static deploy ready)")
-                    score -= 5
-                continue
             if not passed:
                 if check == "not_stub_code":
                     score -= 30
@@ -668,9 +623,6 @@ class ProofArtifactService:
                 elif check in ("backend_starts", "health_responds"):
                     score -= 20
                     critical_failures.append(f"Readiness check failed: {check}")
-                elif check == "cloud_static_ready":
-                    score -= 10
-                    warnings.append("Static deployment readiness not confirmed")
                 else:
                     score -= 10
                     warnings.append(f"Readiness check failed: {check}")

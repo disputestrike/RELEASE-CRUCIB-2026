@@ -396,8 +396,7 @@ def _get_agent_model_chain(
             chain.append(cerebras_entry)
         if anthropic_key:
             chain.append(anthropic_entry)
-        # Fallback: always try Cerebras first (never default to Anthropic-only)
-        return chain if chain else [cerebras_entry, anthropic_entry]
+        return chain if chain else [anthropic_entry]
 
     if tier == "anthropic":
         # Anthropic primary — but always include Cerebras as fallback
@@ -415,8 +414,7 @@ def _get_agent_model_chain(
             chain.append(cerebras_entry)
         if anthropic_key:
             chain.append(anthropic_entry)
-        # Fallback: Cerebras-first even if no key loaded yet (env var may arrive at call time)
-        return chain if chain else [cerebras_entry, anthropic_entry]
+        return chain if chain else [anthropic_entry]
 
 
 _COMPLEX_SWARM_MARKERS = (
@@ -731,58 +729,15 @@ async def run_swarm_agent_step(
         except Exception as _bm_err:
             logger.warning("build_memory init failed: %s", _bm_err)
 
-    # ── Agent resilience: retry with Cerebras-only on Anthropic 402/429/5xx ──
-    _anthropic_http_codes = {402, 429, 500, 502, 503, 529}
-    try:
-        result = await _run_server_swarm_agent(
-            project_id=project_id,
-            user_id=user_id,
-            agent_name=agent_name,
-            project_prompt=project_prompt,
-            build_kind=build_kind,
-            previous_outputs=previous_outputs,
-            workspace_path=workspace_path,
-        )
-    except Exception as _swarm_exc:
-        # Detect Anthropic HTTP failures (credit exhaustion, rate-limit, overload)
-        _exc_str = str(_swarm_exc)
-        _http_hit = any(f"status_code={c}" in _exc_str or f"HTTP {c}" in _exc_str
-                        or str(c) in _exc_str[:80]
-                        for c in _anthropic_http_codes)
-        _is_anthropic_fail = (
-            _http_hit
-            or "overloaded_error" in _exc_str
-            or "credit" in _exc_str.lower()
-            or "rate_limit" in _exc_str.lower()
-            or "insufficient_quota" in _exc_str.lower()
-            or "AuthenticationError" in _exc_str
-        )
-        if _is_anthropic_fail:
-            logger.warning(
-                "swarm_agent_runner: Anthropic failure for agent=%s (%s) — "
-                "forcing Cerebras and retrying.", agent_name, _exc_str[:120]
-            )
-            # Force Cerebras for this retry via env flag (picked up by _get_agent_model_chain)
-            os.environ["CRUCIBAI_FORCE_CEREBRAS"] = "1"
-            try:
-                result = await _run_server_swarm_agent(
-                    project_id=project_id,
-                    user_id=user_id,
-                    agent_name=agent_name,
-                    project_prompt=project_prompt,
-                    build_kind=build_kind,
-                    previous_outputs=previous_outputs,
-                    workspace_path=workspace_path,
-                )
-                logger.info("swarm_agent_runner: Cerebras fallback succeeded for agent=%s", agent_name)
-            except Exception as _retry_exc:
-                logger.error(
-                    "swarm_agent_runner: Cerebras fallback also failed for agent=%s: %s",
-                    agent_name, _retry_exc
-                )
-                raise
-        else:
-            raise
+    result = await _run_server_swarm_agent(
+        project_id=project_id,
+        user_id=user_id,
+        agent_name=agent_name,
+        project_prompt=project_prompt,
+        build_kind=build_kind,
+        previous_outputs=previous_outputs,
+        workspace_path=workspace_path,
+    )
 
     # Clean up forced model env
     os.environ.pop("CRUCIBAI_FORCE_CEREBRAS", None)

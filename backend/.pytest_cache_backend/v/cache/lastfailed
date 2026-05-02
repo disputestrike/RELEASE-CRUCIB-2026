@@ -1,0 +1,3 @@
+{
+  "tests/test_route_loading.py::test_debug_route_endpoints_registered": true
+}

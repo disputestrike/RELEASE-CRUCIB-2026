@@ -74,8 +74,8 @@ RECENT_AGENT_SELECTION_LOGS: list = []
 
 
 def _tokens_to_credits(tokens: int) -> int:
-    """Convert token count to credit units (1 credit = 500 tokens)."""
-    return max(1, int(tokens) // 500)
+    """Convert token count to credit units (1 credit = 1 000 tokens)."""
+    return max(1, int(tokens) // 1000)
 
 
 def _needs_live_data(message: str) -> bool:
@@ -534,16 +534,16 @@ RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
 # The Pricing page /tokens/bundles endpoint reads these values, so they MUST match
 # the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
-    "builder": {"name": "Builder", "tokens": 250_000, "credits": 500, "price": 15},
-    "pro": {"name": "Pro", "tokens": 500_000, "credits": 1000, "price": 30},
-    "scale": {"name": "Scale", "tokens": 1_000_000, "credits": 2000, "price": 60},
-    "teams": {"name": "Teams", "tokens": 2_500_000, "credits": 5000, "price": 150},
+    "builder": {"name": "Builder", "tokens": 250_000, "credits": 500, "price": 20},
+    "pro": {"name": "Pro", "tokens": 750_000, "credits": 1500, "price": 50},
+    "scale": {"name": "Scale", "tokens": 1_500_000, "credits": 3000, "price": 100},
+    "teams": {"name": "Teams", "tokens": 3_000_000, "credits": 6000, "price": 200},
 }
 ANNUAL_PRICES: Dict[str, Any] = {
-    "builder": 150,
-    "pro": 300,
-    "scale": 600,
-    "teams": 1500,
+    "builder": 200,
+    "pro": 500,
+    "scale": 1000,
+    "teams": 2000,
 }
 PAYMENT_PROVIDER = "braintree"
 BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
@@ -2096,7 +2096,6 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.knowledge", "router", False),
     ("backend.routes.connectors", "router", False),
     ("backend.routes.braintree_payments", "router", False),
-    ("backend.routes.paypal_payments", "router", False),
     ("backend.routes.cost_hook", "router", False),
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),

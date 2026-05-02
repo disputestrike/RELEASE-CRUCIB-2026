@@ -23,20 +23,13 @@ import os
 import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
 
-# openai is an optional dependency — we import lazily so the module loads
-# even when the package is not installed (e.g. Cerebras-only deployments).
-try:
-    from openai import AsyncOpenAI as _AsyncOpenAI
-    _OPENAI_AVAILABLE = True
-except ImportError:
-    _AsyncOpenAI = None  # type: ignore[assignment,misc]
-    _OPENAI_AVAILABLE = False
+from openai import AsyncOpenAI
 
 # Configure OpenAI client to use local/compatible API
 # We initialize the client inside the call function to avoid startup errors if API keys are missing
-_client = None
+_client: AsyncOpenAI | None = None
 
-def get_client():
+def get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
         api_key = os.environ.get("OPENAI_API_KEY")
@@ -45,7 +38,7 @@ def get_client():
                 "OPENAI_API_KEY environment variable is required but not set. "
                 "The ReAct loop cannot initialize without a valid API key."
             )
-        _client = _AsyncOpenAI(
+        _client = AsyncOpenAI(
             base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
             api_key=api_key,
         )

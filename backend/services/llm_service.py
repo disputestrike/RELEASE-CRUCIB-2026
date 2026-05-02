@@ -595,7 +595,7 @@ async def _call_llama_direct(
 async def _call_cerebras_direct(
     message: str,
     system_message: str,
-    model: str = "llama-3.3-70b",
+    model: str = "llama3.1-8b",
     api_key: Optional[str] = None,
 ) -> str:
     """Call Cerebras Llama via Cerebras AI API with key-rotation on rate limits."""

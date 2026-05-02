@@ -392,25 +392,7 @@ root.render(<App />);`,
         )}
 
         {useRemote && (
-          <iframe
-            ref={iframeRef}
-            className="pp-preview-iframe"
-            src={resolvedRemoteUrl || remotePreviewUrl}
-            title="Live Preview"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
-            allow="clipboard-read; clipboard-write"
-            onLoad={() => {
-              // Check if iframe loaded blank (cross-origin may throw, that's OK)
-              try {
-                const doc = iframeRef.current?.contentDocument;
-                if (doc && doc.body && doc.body.innerHTML.trim() === '') {
-                  // blank body — might be auth-blocked or build not ready
-                  // trigger a retry via the dev-preview mechanism
-                  if (!previewUrl) setRetryTick((v) => v + 1);
-                }
-              } catch { /* cross-origin — content loaded fine */ }
-            }}
-          />
+          <iframe ref={iframeRef} className="pp-preview-iframe" src={resolvedRemoteUrl || remotePreviewUrl} title="Live Preview" />
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (

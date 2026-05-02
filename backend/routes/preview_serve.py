@@ -346,38 +346,24 @@ def _preview_public_base(request: Request) -> str:
 
 
 def _rewrite_vite_dist_html_for_preview(html: str, job_id: str, request: Request) -> str:
-    """Prefix root-absolute Vite asset URLs and inject <base> tag for iframe loading.
-
-    Injects a <base href="..."> so all relative imports resolve under the
-    /api/preview/{job_id}/serve/ path. Falls back to href/src attribute rewriting
-    for any remaining rooted URLs that Vite emits.
-    """
+    """Prefix root-absolute Vite asset URLs so they load under ``/api/preview/.../serve``."""
     if not html or "/api/preview/" in html[:2000]:
+        return html
+    if not re.search(
+        r"""=(["'])/(assets/|static/|vite\.svg)""",
+        html,
+        re.IGNORECASE,
+    ):
         return html
     base = _preview_public_base(request).rstrip("/")
     prefix = f"{base}/api/preview/{job_id}/serve" if base else f"/api/preview/{job_id}/serve"
-
-    # Strategy 1: inject <base href> right after <head> — covers all relative imports at once.
-    if "<base " not in html and re.search(r"<head[^>]*>", html, re.IGNORECASE):
-        html = re.sub(
-            r"(<head[^>]*>)",
-            rf'\1<base href="{prefix}/">',
-            html,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-        return html
-
-    # Strategy 2 (fallback): rewrite explicit root-absolute href/src attributes.
-    if not re.search(r'=(["\'])/(assets/|static/|vite\.svg)', html, re.IGNORECASE):
-        return html
 
     def _inject_prefix(match: re.Match) -> str:
         attr, quote, path = match.group(1), match.group(2), match.group(3)
         return f"{attr}={quote}{prefix}/{path}{quote}"
 
     return re.sub(
-        r'\b(href|src)=(["\'])/(assets/[^"\']*|static/[^"\']*|vite\.svg)',
+        r"""\b(href|src)=(["'])/(assets/[^"']*|static/[^"']*|vite\.svg)""",
         _inject_prefix,
         html,
         flags=re.IGNORECASE,

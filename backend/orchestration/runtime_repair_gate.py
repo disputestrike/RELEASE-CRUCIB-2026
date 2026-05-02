@@ -543,29 +543,6 @@ class JsonRepairAgent(BaseRepairAgent):
         }
 
 
-
-# ── LLM Code Block Extractor ────────────────────────────────────────────────
-
-def _extract_code_block(response: str, fallback: str = "") -> str:
-    """
-    Extract the first code block from an LLM response.
-
-    Handles ```lang\n...``` and ``` ``` patterns.
-    Returns fallback if no code block found.
-    """
-    # Try fenced code block with optional language tag
-    match = re.search(r"```(?:[a-zA-Z]*\n)?(.*?)```", response, re.DOTALL)
-    if match:
-        code = match.group(1).strip()
-        if code:
-            return code
-    # Try bare block (no fences) — use entire response
-    stripped = response.strip()
-    if stripped and not stripped.startswith(("I ", "Here ", "The ", "Sure", "Of course")):
-        return stripped
-    return fallback
-
-
 class LLMCodeRepairAgent(BaseRepairAgent):
     """
     Last-resort repair agent that uses LLM to fix code.
@@ -582,17 +559,12 @@ class LLMCodeRepairAgent(BaseRepairAgent):
         hints: List[RepairHint],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Real LLM-driven repair — calls call_llm_simple with a targeted prompt.
-
-        Supports ALL file types including .jsx, .tsx, .js, .ts, .py, .json.
-        Each failing file gets its own repair call so the LLM has focused context.
-        """
         files_changed = {}
         errors = []
 
+        # Try to use CodeRepairAgent from the existing codebase
         try:
-            from backend.llm_client import call_llm_simple
+            from backend.agents.code_repair_agent import CodeRepairAgent
 
             # Collect affected file paths
             affected_files = set()
@@ -600,73 +572,56 @@ class LLMCodeRepairAgent(BaseRepairAgent):
                 if hint.file_path and hint.file_path != "unknown":
                     affected_files.add(hint.file_path)
 
-            # Filter to files we actually have content for
+            # Filter to files that actually exist in our file set
             target_files = [f for f in affected_files if f in files]
 
             if not target_files:
-                # Fallback: pick the first source file
+                # Try to fix first file that looks like source code
                 for fpath in files.keys():
-                    if fpath.endswith((".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml")):
+                    if fpath.endswith((".py", ".js", ".ts", ".jsx", ".tsx")):
                         target_files.append(fpath)
                         break
 
             if not target_files:
                 return {"success": False, "files_changed": {}, "errors": ["No target files for LLM repair"]}
 
-            # Repair each affected file individually
-            for fpath in target_files[:3]:  # cap at 3 files per cycle
-                file_content = files.get(fpath, "")
-                if not file_content:
-                    continue
+            # Build error context
+            error_context = "\n".join(h.error_message for h in hints)
 
-                # Build focused repair hints for this file
-                file_hints = [h for h in hints if h.file_path == fpath] or hints[:3]
-                error_lines = "\n".join(f"- {h.error_message}" for h in file_hints)
+            # Write files to temp dir for CodeRepairAgent
+            temp_dir = tempfile.mkdtemp(prefix="crucib_repair_")
+            try:
+                for fpath, content in files.items():
+                    full = os.path.join(temp_dir, fpath)
+                    os.makedirs(os.path.dirname(full), exist_ok=True)
+                    with open(full, "w") as f:
+                        f.write(str(content))
 
-                prompt = f"""You are a code repair agent. Fix the following file so it runs without errors.
+                repaired_files = await CodeRepairAgent.repair_workspace_files(
+                    temp_dir,
+                    target_files,
+                    verification_issues=[h.error_message for h in hints],
+                    llm_repair=None,  # Use default LLM callback
+                )
 
-FILE: {fpath}
-```
-{file_content[:6000]}
-```
+                # Read back repaired files
+                for rpath in repaired_files:
+                    full = os.path.join(temp_dir, rpath)
+                    if os.path.exists(full):
+                        with open(full) as f:
+                            files_changed[rpath] = f.read()
+                        logger.info("LLMCodeRepairAgent: repaired %s", rpath)
 
-ERRORS TO FIX:
-{error_lines[:1500]}
+            finally:
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
-INSTRUCTIONS:
-1. Return ONLY the complete fixed file content inside a code block.
-2. Do not truncate — return the entire fixed file.
-3. Do not explain anything outside the code block.
-4. Fix ONLY what is broken; preserve all other logic.
-
-Reply with the fixed file:
-```"""
-
-                try:
-                    response = await call_llm_simple(prompt, task_type="repair_patch_generation")
-                    if not response:
-                        errors.append(f"LLM returned empty response for {fpath}")
-                        continue
-
-                    # Extract code block from response
-                    fixed = _extract_code_block(response, file_content)
-                    if fixed and fixed != file_content:
-                        files_changed[fpath] = fixed
-                        logger.info("[LLMCodeRepairAgent] repaired %s (%d→%d chars)",
-                                    fpath, len(file_content), len(fixed))
-                    else:
-                        errors.append(f"LLM repair produced no changes for {fpath}")
-
-                except Exception as call_err:
-                    errors.append(f"LLM call failed for {fpath}: {str(call_err)[:200]}")
-                    logger.error("[LLMCodeRepairAgent] call failed for %s: %s", fpath, call_err)
-
-        except ImportError as ie:
-            errors.append(f"llm_client not importable: {ie}")
-            logger.error("[LLMCodeRepairAgent] import error: %s", ie)
+        except ImportError:
+            errors.append("CodeRepairAgent not available — skipping LLM repair")
+            logger.warning("LLMCodeRepairAgent: CodeRepairAgent not importable")
         except Exception as e:
             errors.append(f"LLM repair failed: {str(e)[:200]}")
-            logger.error("[LLMCodeRepairAgent] unexpected error: %s", e)
+            logger.error("LLMCodeRepairAgent: failed: %s", e)
 
         return {
             "success": len(files_changed) > 0,

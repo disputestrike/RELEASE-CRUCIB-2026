@@ -307,17 +307,6 @@ export function derivePreviewReadiness({
       severity: 'ok',
     };
   }
-  // verified_static: proof confirms static files are deployable but live server not confirmed.
-  const cloudStaticReady = devPreviewStatus?.proof?.readiness?.cloud_static_ready;
-  const cloudLiveVerified = devPreviewStatus?.proof?.readiness?.cloud_live_verified;
-  if (cloudStaticReady && !cloudLiveVerified && !previewUrl) {
-    return {
-      state: 'verified_static',
-      label: 'Static verified',
-      detail: 'Build passed and files are deployable. Live server confirmation pending.',
-      severity: 'ok',
-    };
-  }
   if (hasSandpack) {
     return {
       state: 'sandpack_fallback',
@@ -368,14 +357,6 @@ export function derivePreviewReadiness({
       label: 'Ready, no target',
       detail: 'Build is complete, but no live URL or packable preview files were found.',
       severity: 'warn',
-    };
-  }
-  if (!previewStatus && !devPreviewStatus && !hasSandpack) {
-    return {
-      state: 'unavailable',
-      label: 'Not available',
-      detail: 'No build has completed yet. Start a build to generate a preview.',
-      severity: 'idle',
     };
   }
   return {

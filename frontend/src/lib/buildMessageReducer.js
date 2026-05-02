@@ -1,9 +1,6 @@
 /**
- * buildMessageReducer — dedupe keys and pipeline-stage routing for workspace thread.
+ * buildMessageReducer — dedupe keys and high-level phase routing for workspace thread.
  * Pure helpers; no React.
- *
- * Phases now match the 5-stage pipeline:
- *   plan → generate → assemble → verify → repair (conditional)
  */
 
 const readPayload = (event) => {
@@ -19,7 +16,7 @@ const readPayload = (event) => {
   return {};
 };
 
-/** Short stable signature for deduping repeated failures. */
+/** Short stable signature for deduping repeated failures (same check + same error class). */
 export function errorSignature(ev) {
   const p = readPayload(ev);
   const err = String(p.error || p.error_message || p.failure_reason || p.detail || '').trim();
@@ -29,37 +26,40 @@ export function errorSignature(ev) {
 }
 
 /**
- * Failure dedupe key — keyed to JOB only so all failures for one job share one card.
+ * Dedupe key: job_id + step_key + error signature.
+ * Same compile/preview failure repeating updates one card, not a new thread row.
  */
 export function failureDedupeKey(ev, jobId) {
-  const jid = String(jobId || readPayload(ev).job_id || 'nojob');
-  return `${jid}::failure`;
+  const p = readPayload(ev);
+  const jid = String(jobId || p.job_id || p.jobId || 'nojob');
+  const ck = String(p.check_id || p.checkId || '').trim();
+  const sk = String(p.step_key || p.step || p.name || 'unknown').trim();
+  return `${jid}::${ck}::${sk}::${errorSignature(ev)}`;
 }
 
-/**
- * Repair dedupe key — all repairs for a job share one card.
- */
 export function repairDedupeKey(ev, jobId) {
-  const jid = String(jobId || readPayload(ev).job_id || 'nojob');
-  return `${jid}::repair`;
+  const p = readPayload(ev);
+  const jid = String(jobId || p.job_id || p.jobId || 'nojob');
+  const hint = String(p.step_key || p.failure_reason || p.repair_target || 'repair').trim();
+  return `${jid}::repair::${hint}`;
 }
 
 const HIGH = {
-  PLAN:     'plan',
-  GENERATE: 'generate',
-  ASSEMBLE: 'assemble',
-  VERIFY:   'verify',
-  REPAIR:   'repair',
+  PLANNING: 'planning',
+  BUILDING: 'building',
+  VERIFYING: 'verifying',
+  REPAIRING: 'repairing',
+  DELIVERING: 'delivering',
 };
 
-const PHASE_ORDER = [HIGH.PLAN, HIGH.GENERATE, HIGH.ASSEMBLE, HIGH.VERIFY, HIGH.REPAIR];
+const PHASE_ORDER = [HIGH.PLANNING, HIGH.BUILDING, HIGH.VERIFYING, HIGH.REPAIRING, HIGH.DELIVERING];
 
 const LABELS = {
-  [HIGH.PLAN]:     'Planning',
-  [HIGH.GENERATE]: 'Building',
-  [HIGH.ASSEMBLE]: 'Setting up',
-  [HIGH.VERIFY]:   'Verifying',
-  [HIGH.REPAIR]:   'Fixing',
+  [HIGH.PLANNING]: 'Planning',
+  [HIGH.BUILDING]: 'Building',
+  [HIGH.VERIFYING]: 'Verifying',
+  [HIGH.REPAIRING]: 'Repairing',
+  [HIGH.DELIVERING]: 'Delivering',
 };
 
 function emptyPhases() {
@@ -70,46 +70,35 @@ function emptyPhases() {
   return o;
 }
 
-/**
- * Route backend event type to the correct pipeline stage.
- * Handles both new pipeline events (stage_started/stage_completed)
- * and legacy DAG events for backward compatibility.
- */
+/** Route backend event type + payload to one of five high-level phases. */
 export function routeEventToHighPhase(t, p, phaseRaw) {
-  const ph = String(phaseRaw || p?.phase || p?.stage || p?.step_key || '').toLowerCase();
-
-  // ── New pipeline events ──────────────────────────────────────────────────
-  if (t === 'pipeline_started') return HIGH.PLAN;
-  if (t === 'stage_started' || t === 'stage_completed') {
-    const stage = ph || String(p?.stage || '').toLowerCase();
-    if (stage === 'plan')     return HIGH.PLAN;
-    if (stage === 'generate') return HIGH.GENERATE;
-    if (stage === 'assemble') return HIGH.ASSEMBLE;
-    if (stage === 'verify')   return HIGH.VERIFY;
-    if (stage === 'repair')   return HIGH.REPAIR;
-    return HIGH.GENERATE;
+  const ph = String(phaseRaw || p.phase || p.step_key || '').toLowerCase();
+  if (t === 'plan_created' || t === 'job_started') return HIGH.PLANNING;
+  if (/^repair_|step_failed|job_failed/.test(t)) return HIGH.REPAIRING;
+  if (t === 'export_gate_blocked') return HIGH.REPAIRING;
+  if (/verifier_|verification\.|assembly_failed|export_gate/.test(t) || ph.includes('verif')) return HIGH.VERIFYING;
+  if (/export_gate_ready|job_completed|run_snapshot|contract_delta/.test(t)) return HIGH.DELIVERING;
+  if (
+    /file_written|file_write|code_mutation|workspace_files_updated|tool_call|tool_result|dag_node_|step_|phase_/.test(t) &&
+    !ph.includes('verif')
+  ) {
+    return HIGH.BUILDING;
   }
-  if (t === 'generate_started') return HIGH.GENERATE;
-  if (t === 'verify_started')   return HIGH.VERIFY;
-  if (t === 'repair_started' || t === 'repair_completed' || t === 'repair_failed') return HIGH.REPAIR;
-
-  // ── Legacy DAG events (still emitted by non-pipeline path) ───────────────
-  if (t === 'job_started' || t === 'plan_created') return HIGH.PLAN;
-  if (/^repair_|step_failed|job_failed|export_gate_blocked/.test(t)) return HIGH.REPAIR;
-  if (/verifier_|verification\.|assembly_failed/.test(t) || ph.includes('verif')) return HIGH.VERIFY;
-  if (/export_gate_ready|job_completed|run_snapshot|contract_delta/.test(t)) return HIGH.VERIFY;
-  if (/file_written|file_write|code_mutation|workspace_files_updated|tool_call|dag_node_|step_/.test(t)) {
-    if (ph.includes('plan')) return HIGH.PLAN;
-    if (ph.includes('verif')) return HIGH.VERIFY;
-    return HIGH.GENERATE;
+  if (/phase_started|phase_completed|phase_advanced/.test(t)) {
+    if (ph.includes('plan') || ph.includes('requirement')) return HIGH.PLANNING;
+    if (ph.includes('verif') || ph.includes('preview')) return HIGH.VERIFYING;
+    return HIGH.BUILDING;
   }
-  return HIGH.GENERATE;
+  return HIGH.BUILDING;
 }
 
 export function phaseLabels() {
   return { ...LABELS, order: [...PHASE_ORDER] };
 }
 
+/**
+ * Push a short action label into phase.actions (max 3). Longer trail goes to details.
+ */
 export function recordPhaseAction(phases, highKey, label, detailLine) {
   const cell = phases[highKey];
   if (!cell) return;
@@ -125,10 +114,12 @@ export function recordPhaseAction(phases, highKey, label, detailLine) {
   }
 }
 
+/** Bump phase status: pending < running < done | failed */
 export function bumpPhaseStatus(phases, highKey, next) {
   const cell = phases[highKey];
   if (!cell) return;
   const cur = cell.status || 'pending';
+  // After a failed check, a rerun should show "running" again (not stuck on failed).
   if (next === 'running' && cur === 'failed') {
     cell.status = 'running';
     return;

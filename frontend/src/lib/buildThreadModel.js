@@ -302,76 +302,75 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     const card = ensureProgress(ts);
     const hi = routeEventToHighPhase(t, p, getPhase(ev));
 
-    // ── New 5-stage pipeline events ────────────────────────────────────────
-    if (t === 'pipeline_started') {
-      bumpPhaseStatus(card.phases, 'plan', 'running');
-      return;
-    }
-    if (t === 'stage_started') {
-      const stage = String(p.stage || '').toLowerCase();
-      if (stage) {
-        // Mark previous stages done, current running
-        const order = ['plan', 'generate', 'assemble', 'verify', 'repair'];
-        const idx = order.indexOf(stage);
-        for (let i = 0; i < idx; i++) bumpPhaseStatus(card.phases, order[i], 'done');
-        bumpPhaseStatus(card.phases, stage, 'running');
-      }
-      return;
-    }
-    if (t === 'stage_completed') {
-      const stage = String(p.stage || '').toLowerCase();
-      if (stage) bumpPhaseStatus(card.phases, stage, 'done');
-      return;
-    }
-    if (t === 'stage_failed') {
-      const stage = String(p.stage || '').toLowerCase();
-      if (stage) bumpPhaseStatus(card.phases, stage, 'failed');
-      return;
-    }
-
-    // ── Legacy / DAG events (backward compat) ─────────────────────────────
     if (t === 'job_started') {
-      bumpPhaseStatus(card.phases, 'plan', 'running');
+      bumpPhaseStatus(card.phases, 'planning', 'running');
+      recordPhaseAction(card.phases, 'planning', 'Run queued', '');
       return;
     }
     if (t === 'plan_created') {
-      bumpPhaseStatus(card.phases, 'plan', 'done');
-      bumpPhaseStatus(card.phases, 'generate', 'running');
+      bumpPhaseStatus(card.phases, 'planning', 'done');
+      bumpPhaseStatus(card.phases, 'building', 'running');
+      recordPhaseAction(card.phases, 'planning', 'Plan saved', '');
       return;
     }
     if (t === 'verifier_started') {
-      bumpPhaseStatus(card.phases, 'generate', 'done');
-      bumpPhaseStatus(card.phases, 'verify', 'running');
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'running');
+      recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), '');
       return;
     }
     if (t === 'verifier_passed') {
-      bumpPhaseStatus(card.phases, 'verify', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
       return;
     }
     if (FAILURE_EVENT_TYPES.test(t)) {
-      bumpPhaseStatus(card.phases, 'verify', 'failed');
-      bumpPhaseStatus(card.phases, 'repair', 'running');
+      bumpPhaseStatus(card.phases, 'verifying', 'failed');
+      bumpPhaseStatus(card.phases, 'repairing', 'running');
       return;
     }
     if (/^repair_/.test(t)) {
-      if (t === 'repair_started') {
-        bumpPhaseStatus(card.phases, 'verify', 'failed');
-        bumpPhaseStatus(card.phases, 'repair', 'running');
-      }
+      if (t === 'repair_started') bumpPhaseStatus(card.phases, 'repairing', 'running');
       if (t === 'repair_completed') {
-        bumpPhaseStatus(card.phases, 'repair', 'done');
-        bumpPhaseStatus(card.phases, 'verify', 'running');
+        bumpPhaseStatus(card.phases, 'repairing', 'done');
+        bumpPhaseStatus(card.phases, 'verifying', 'running');
       }
-      if (t === 'repair_failed') bumpPhaseStatus(card.phases, 'repair', 'failed');
+      if (t === 'repair_failed') bumpPhaseStatus(card.phases, 'repairing', 'failed');
+      return;
+    }
+    if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
+      bumpPhaseStatus(card.phases, 'delivering', 'running');
+      const delLabel =
+        t === 'export_gate_ready'
+          ? 'Export gate'
+          : t === 'run_snapshot'
+          ? 'Runtime snapshot'
+          : 'Contract update';
+      recordPhaseAction(card.phases, 'delivering', delLabel, '');
       return;
     }
     if (t === 'job_completed') {
-      ['plan','generate','assemble','verify'].forEach(k => bumpPhaseStatus(card.phases, k, 'done'));
+      bumpPhaseStatus(card.phases, 'planning', 'done');
+      bumpPhaseStatus(card.phases, 'building', 'done');
+      bumpPhaseStatus(card.phases, 'verifying', 'done');
+      bumpPhaseStatus(card.phases, 'repairing', 'done');
+      bumpPhaseStatus(card.phases, 'delivering', 'done');
       return;
     }
     if (isToolEvent(t)) {
-      bumpPhaseStatus(card.phases, hi, 'running');
-      recordPhaseAction(card.phases, hi, deriveToolTitle(ev), t);
+      if (hi === 'planning') {
+        bumpPhaseStatus(card.phases, 'planning', 'running');
+        recordPhaseAction(card.phases, 'planning', deriveToolTitle(ev), t);
+        return;
+      }
+      if (hi === 'verifying') {
+        bumpPhaseStatus(card.phases, 'verifying', 'running');
+        recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), t);
+        return;
+      }
+      bumpPhaseStatus(card.phases, 'building', 'running');
+      recordPhaseAction(card.phases, 'building', deriveToolTitle(ev), t);
     }
   };
 
@@ -394,8 +393,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (FAILURE_EVENT_TYPES.test(t)) {
-      // All failures for a job share ONE card (job-level key)
-      const key = repairDedupeKey(ev, activeJobId);
+      const key = failureDedupeKey(ev, activeJobId);
       const title = issueCardTitle(ev);
       const summary =
         t === 'verifier_failed'
@@ -432,26 +430,23 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'repair_started') {
       const p = readPayload(ev);
-      // All repairs for a job collapse into ONE card keyed by job id only
       const rk = repairDedupeKey(ev, activeJobId);
-      const startNarration = "I ran into an issue — applying a fix now and picking back up where I left off.";
-      let item = failureRepairByKey.get(rk);
-      if (!item) {
-        // Check if there's an existing failure card to upgrade
-        const anyKey = [...failureRepairByKey.keys()].find(k => k.startsWith(String(activeJobId || '')));
-        item = anyKey ? failureRepairByKey.get(anyKey) : null;
-      }
+      let item =
+        findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target) ||
+        failureRepairByKey.get(rk);
+      const startNarration =
+        'Build verification found an issue. Applying a targeted fix and rerunning the check.';
       if (!item) {
         item = {
           kind: 'repair_block',
           id: newId('rb'),
           ts,
           agent: '',
-          attempt: 1,
+          attempt: Number(p.attempt || 1),
           filesChanged: [],
           status: 'running',
           narration: startNarration,
-          title: 'Running a fix',
+          title: issueCardTitle(ev) || 'Repair pass',
           technicalDetail: '',
           repeatCount: 1,
           dedupeKey: rk,
@@ -459,11 +454,13 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
         failureRepairByKey.set(rk, item);
         restItems.push(item);
       } else {
-        // Upgrade existing card to repair state rather than pushing a second card
+        if (item.dedupeKey && item.dedupeKey !== rk) failureRepairByKey.set(rk, item);
         item.status = 'running';
-        item.attempt = (item.attempt || 0) + 1;
-        item.narration = startNarration;
-        item.title = `Running a fix`;
+        const fromPayload = Number(p.attempt);
+        item.attempt = Number.isFinite(fromPayload) && fromPayload > 0
+          ? fromPayload
+          : (item.attempt || 0) + 1;
+        item.narration = item.narration?.trim() ? item.narration : startNarration;
         failureRepairByKey.set(rk, item);
       }
       continue;
@@ -490,11 +487,11 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (t === 'job_completed') {
-      pushAssistantOnce(narrateBuildEvent(ev) || 'The build is done. Take a look at Preview — and if anything needs adjusting, just tell me.', ts, newId('am'));
+      pushAssistantOnce(narrateBuildEvent(ev) || 'The build finished.', ts, newId('am'));
       restItems.push({
         kind: 'delivery_card',
         narration:
-          'Your app is ready in Preview. Hit Proof to see what\'s export-ready — and send a follow-up whenever you want changes.',
+          'Open Preview for the live surface and Proof for export readiness. Send a follow-up here anytime to steer the next pass.',
         ts,
         id: newId('dl'),
       });
@@ -503,7 +500,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'plan_created') {
       pushAssistantOnce(
-        narrateBuildEvent(ev) || "Here's what I'm going to build — let me know if you want to change anything before I start.",
+        narrateBuildEvent(ev) || "I've reviewed your request. Here's the plan I'll follow.",
         ts,
         newId('am'),
       );

@@ -1,15 +1,4 @@
-"""Capability-based model router.
-
-Work division:
-  Cerebras (70-80% tokens): mechanical execution — code gen, scaffolding,
-    worker agents, drafting, summaries, repair patching, boilerplate.
-  Haiku (20-30% tokens): reasoning/validation authority — build plans,
-    architecture, repair diagnosis, proof gates, build integrity.
-  Sonnet (0% default, max 1%): locked behind ALLOW_SONNET=true.
-
-Cerebras keys are round-robined (CEREBRAS_API_KEY + CEREBRAS_API_KEY_1..5)
-to distribute load across up to 5 keys and avoid rate limits.
-"""
+"""Cerebras-first model router with strict Sonnet gating."""
 
 import logging
 import os
@@ -59,21 +48,12 @@ def get_cerebras_key() -> str:
 # Backwards compat — single key reference (first key or empty)
 CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
 # Cerebras model id (API changes retired llama-3.3-70b). Set CEREBRAS_MODEL on Railway.
-CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama-3.3-70b").strip()
+CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
 SONNET_MODEL = ANTHROPIC_SONNET_MODEL
 ALLOW_SONNET = os.environ.get("ALLOW_SONNET", "false").strip().lower() in {"1", "true", "yes"}
-# Sonnet token share caps — enforced in model-share observability layer.
-# Sonnet must not exceed 1% of total platform token share.
-SONNET_MAX_PLATFORM_TOKEN_SHARE = float(os.environ.get("SONNET_MAX_PLATFORM_TOKEN_SHARE", "0.01"))
-# Per-run token cap for Sonnet: receive compressed proof packet only (10k-25k tokens).
-SONNET_MAX_TOKENS_PER_RUN = int(os.environ.get("SONNET_MAX_TOKENS_PER_RUN", "15000"))
-# Haiku over-threshold warning (logs warning if Haiku exceeds 35% of job/user token share)
-HAIKU_MAX_TOKEN_SHARE_WARN = float(os.environ.get("HAIKU_MAX_TOKEN_SHARE_WARN", "0.35"))
-# Cerebras under-threshold alert (alert if Cerebras drops below 60% on normal workloads)
-CEREBRAS_MIN_TOKEN_SHARE_ALERT = float(os.environ.get("CEREBRAS_MIN_TOKEN_SHARE_ALERT", "0.60"))
 
 
 class TaskComplexity(str, Enum):
@@ -191,68 +171,47 @@ class LLMRouter:
         user_tier: str = "free",
         speed_selector: str = "lite",
         available_credits: int = 0,
-        capability: str = "",
     ) -> list:
         """
         Get the LLM model chain for a task.
-
-        Capability-based routing — work division:
-          Cerebras (70-80% tokens): mechanical execution — code gen, scaffolding,
-            worker agents, drafting, summaries, repair patching, boilerplate.
-          Haiku (20-30% tokens): reasoning/validation — build plans, architecture,
-            repair diagnosis, proof gates, build integrity, should_escalate.
-          Sonnet (0% default, max 1%): locked premium only when ALLOW_SONNET=true.
-
-        Worker agents always route to Cerebras only — never Anthropic, never Sonnet.
 
         Args:
             task_complexity: SIMPLE, MODERATE, COMPLEX, CRITICAL
             user_tier: free, builder, pro, scale, teams
             speed_selector: lite, pro, max
             available_credits: User's available credits
-            capability: optional task capability hint (e.g. "build_plan", "code_generate")
 
         Returns:
-            List of (name, model, provider) tuples in fallback order.
+            List of models to try in order: [primary, fallback1, fallback2]
         """
-        # Import capability tables from llm_client for a single source of truth.
-        try:
-            from .llm_client import (
-                CEREBRAS_PRIMARY_TASKS,
-                HAIKU_PRIMARY_TASKS,
-                SONNET_GATED_TASKS,
-                WORKER_AGENT_TASKS,
-            )
-        except ImportError:
-            CEREBRAS_PRIMARY_TASKS = set()
-            HAIKU_PRIMARY_TASKS = set()
-            SONNET_GATED_TASKS = set()
-            WORKER_AGENT_TASKS = set()
 
-        cap_lower = (capability or "").lower().strip()
-        is_pro_plus = user_tier in ("pro", "scale", "teams")
+        chain = []
         is_paid = user_tier in ("builder", "pro", "scale", "teams")
+        is_pro_plus = user_tier in ("pro", "scale", "teams")
 
-        # ── Worker agents: Cerebras ONLY ──────────────────────────────────────
-        if cap_lower in WORKER_AGENT_TASKS:
-            chain = ["cerebras"]
+        # Default: Cerebras volume engine with Haiku fallback.
+        chain = ["cerebras", "haiku"]
 
-        # ── Sonnet gate (locked, premium-only) ────────────────────────────────
-        elif (
-            cap_lower in SONNET_GATED_TASKS
-            and ALLOW_SONNET
-            and is_pro_plus
-            and speed_selector == "max"
-        ):
-            chain = ["sonnet", "haiku", "cerebras"]
-
-        # ── Haiku primary: reasoning/validation capabilities ──────────────────
-        elif cap_lower in HAIKU_PRIMARY_TASKS or task_complexity == TaskComplexity.CRITICAL:
+        # Keep Cerebras primary for broad generation volume; only critical
+        # reasoning/validation paths become Haiku-first.
+        if task_complexity == TaskComplexity.CRITICAL:
             chain = ["haiku", "cerebras"]
 
-        # ── Cerebras primary: all volume/mechanical/default tasks ─────────────
-        else:
-            chain = ["cerebras", "haiku"]
+        # Sonnet remains premium-only and opt-in via env gate.
+        sonnet_eligible = (
+            ALLOW_SONNET
+            and is_paid
+            and is_pro_plus
+            and speed_selector == "max"
+            and task_complexity == TaskComplexity.CRITICAL
+        )
+        if sonnet_eligible:
+            chain = ["sonnet", "haiku", "cerebras"]
+
+        # Low credits: keep cheapest path first.
+        if available_credits < 10 and "cerebras" in chain:
+            chain = [m for m in chain if m != "cerebras"]
+            chain.insert(0, "cerebras")
 
         # AVAILABILITY CHECK
         final_chain = []
@@ -266,25 +225,18 @@ class LLMRouter:
             elif model == "sonnet" and self.sonnet_available:
                 final_chain.append(("sonnet", SONNET_MODEL, "anthropic"))
 
+        # Fallback: if no models available, return empty (will error)
         if not final_chain:
-            logger.error(
-                "No LLM models available for capability=%s complexity=%s",
-                capability, task_complexity
-            )
+            logger.error("No LLM models available")
 
-        # Optional provider-registry ordering
+        # Optional provider-registry ordering (feature-flagged, non-breaking by default)
         chain_with_registry = choose_chain(
             final_chain,
             need_tools=task_complexity in (TaskComplexity.COMPLEX, TaskComplexity.CRITICAL),
             need_vision=False,
         )
         meta = selection_meta()
-        logger.debug(
-            "Model chain: capability=%s complexity=%s chain=%s registry_mode=%s",
-            capability, task_complexity,
-            [c[0] for c in chain_with_registry],
-            meta.get("mode"),
-        )
+        logger.debug("Provider registry selection: mode=%s strategy=%s", meta.get("mode"), meta.get("strategy"))
         return chain_with_registry
 
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
