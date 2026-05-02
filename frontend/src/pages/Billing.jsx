@@ -13,6 +13,7 @@ import {
 import { API_BASE as API } from '../apiBase';
 import { useAuth } from '../authContext';
 import { logApiError } from '../utils/apiError';
+import PayPalCheckout from '../components/PayPalCheckout';
 
 const BRAINTREE_DROPIN_SCRIPT = 'https://js.braintreegateway.com/web/dropin/1.46.1/js/dropin.min.js';
 
@@ -389,6 +390,45 @@ export default function Billing() {
               </div>
             </section>
           </div>
+
+          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-950">Buy with PayPal</h2>
+                <p className="mt-1 text-sm text-stone-500">One-click checkout — no card storage required. Credits are added instantly after payment.</p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                { key: 'starter',    label: 'Starter',    price: '$9/mo',  credits: '50 builds',  best: false },
+                { key: 'pro',        label: 'Pro',        price: '$29/mo', credits: '200 builds', best: true  },
+                { key: 'enterprise', label: 'Enterprise', price: '$99/mo', credits: '1000 builds',best: false },
+              ].map(({ key, label, price, credits, best }) => (
+                <div key={key} className={`relative rounded-xl border p-5 ${best ? 'border-stone-950 bg-stone-950 text-white' : 'border-stone-200 bg-white'}`}>
+                  {best && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-yellow-400 px-3 py-0.5 text-xs font-semibold text-stone-950">Most popular</span>}
+                  <p className={`text-lg font-bold ${best ? 'text-white' : 'text-stone-950'}`}>{label}</p>
+                  <p className={`mt-1 text-2xl font-semibold ${best ? 'text-white' : 'text-stone-950'}`}>{price}</p>
+                  <p className={`mt-1 text-sm ${best ? 'text-stone-300' : 'text-stone-500'}`}>{credits}/month</p>
+                  <div className="mt-4">
+                    <PayPalCheckout
+                      plan={key}
+                      onSuccess={(result) => window.location.reload()}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-stone-100 pt-4">
+              <p className="text-xs text-stone-400">Need just a few extra builds? Top-up packs: <strong>10 credits — $4.99</strong> &nbsp;·&nbsp; <strong>50 credits — $19.99</strong></p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {['credits_10', 'credits_50'].map((k) => (
+                  <div key={k} className="w-56">
+                    <PayPalCheckout plan={k} onSuccess={() => window.location.reload()} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">

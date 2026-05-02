@@ -42,7 +42,6 @@ import {
   Package,
   Rocket,
   Check,
-  AlertTriangle,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
 import { phaseLabels } from '../../lib/buildMessageReducer';
