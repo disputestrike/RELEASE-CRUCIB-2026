@@ -33,7 +33,19 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL
+try:
+    from backend.cerebras_roundrobin import get_next_cerebras_key, wait_for_key as _cerebras_wait_for_key, has_cerebras_keys
+    _CEREBRAS_ROTATOR_AVAILABLE = True
+except ImportError:
+    _CEREBRAS_ROTATOR_AVAILABLE = False
+    def get_next_cerebras_key():
+        return os.environ.get("CEREBRAS_API_KEY", "").strip()
+    def _cerebras_wait_for_key(timeout_s=30.0):
+        k = os.environ.get("CEREBRAS_API_KEY", "").strip()
+        return k if k else None
+    def has_cerebras_keys():
+        return bool(os.environ.get("CEREBRAS_API_KEY", "").strip()), ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 
 # Lazy import avoids circular dependency — model_share_enforcer may import llm_router.
 def _get_share_enforcer():
@@ -146,7 +158,14 @@ def get_llm_config(task_type: str = "") -> Optional["LLMConfig"]:
     task_lower = task_type.lower().strip()
 
     claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+    # Use the round-robin rotator if available; fall back to env var
+    if _CEREBRAS_ROTATOR_AVAILABLE and has_cerebras_keys():
+        cerebras_key = get_next_cerebras_key()
+    else:
+        if _CEREBRAS_ROTATOR_AVAILABLE and has_cerebras_keys():
+            cerebras_key = get_next_cerebras_key()
+        else:
+            cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
     cerebras_model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
 
     # ── Sonnet gate (max 1% of tokens when explicitly enabled) ──────────────
@@ -335,9 +354,17 @@ async def call_cerebras(
                         if attempt < max_retries - 1:
                             wait_time = 2**attempt
                             logger.warning(
-                                "Cerebras rate limited, retrying in %ds", wait_time
+                                "Cerebras rate limited on slot; rotating to next key in %ds",
+                                wait_time,
                             )
                             await asyncio.sleep(wait_time)
+                            # Rotate to next key on 429 — previous key is rate-limited
+                            if _CEREBRAS_ROTATOR_AVAILABLE and has_cerebras_keys():
+                                new_key = _cerebras_wait_for_key(timeout_s=max(wait_time, 10.0))
+                                if new_key:
+                                    config.api_key = new_key
+                                    headers["Authorization"] = f"Bearer {new_key}"
+                                    logger.info("Cerebras: rotated to next key after 429")
                         else:
                             raise Exception("Rate limited after retries")
                     else:

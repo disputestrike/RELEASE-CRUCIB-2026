@@ -295,6 +295,31 @@ async def run_job_to_completion(
         if db_pool:
             proof_service.set_pool(db_pool)
 
+        # ── 5-Stage Pipeline (default ON) ────────────────────────────────────
+        # Set CRUCIBAI_USE_PIPELINE=0 to revert to the legacy DAG executor.
+        from .pipeline_orchestrator import pipeline_enabled
+        if pipeline_enabled():
+            goal = job.get("goal") or job.get("prompt") or ""
+            logger.info(
+                "auto_runner[%s]: routing to 5-stage pipeline (CRUCIBAI_USE_PIPELINE=1)", job_id
+            )
+            from .pipeline_orchestrator import run_pipeline_job
+            pipeline_out = await run_pipeline_job(
+                job_id=job_id,
+                workspace_path=workspace_path or "",
+                goal=goal,
+                db_pool=db_pool,
+                proof_service=proof_service,
+            )
+            return {
+                "success": pipeline_out.get("status") == "completed",
+                "status": pipeline_out.get("status", "failed"),
+                "pipeline": True,
+                "stages_completed": pipeline_out.get("stages_completed", []),
+                "elapsed_seconds": pipeline_out.get("elapsed_seconds"),
+            }
+        # ── Legacy DAG executor ───────────────────────────────────────────────
+
         await update_job_state(job_id, "running")
         _bp_meta: dict = {}
         try:
