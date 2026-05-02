@@ -12,7 +12,7 @@ import { logApiError } from '../utils/apiError';
 // Credit pricing model (capacity-based, no fixed app-count guarantees).
 const DEFAULT_BUNDLES = {
   free:    { credits: 100,  price: 0,   name: 'Free' },
-  builder: { credits: 500,  price: 20,  name: 'Builder' },
+  builder: { credits: 500,  price: 15,  name: 'Builder' },
   pro:     { credits: 1500, price: 50,  name: 'Pro' },
   scale:   { credits: 3000, price: 100, name: 'Scale' },
   teams:   { credits: 6000, price: 200, name: 'Teams' },

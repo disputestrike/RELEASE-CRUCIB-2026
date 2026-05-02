@@ -16,7 +16,7 @@ CREDIT_PLANS = {
     },
     "builder": {
         "credits": 500,
-        "price": 20,
+        "price": 15,
         "name": "Builder",
         "speed_tiers": ["lite", "pro"],
         "models": {"lite": "cerebras", "pro": "haiku"},

@@ -522,13 +522,11 @@
   transform: scale(1.04);
 }
 
-.gc-submit-spin {
-  animation: gc-spin 0.9s linear infinite;
-  color: var(--text-muted);
+.gc-submit-stop {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+  cursor: pointer !important;
 }
 
-@keyframes gc-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+.gc-submit-st

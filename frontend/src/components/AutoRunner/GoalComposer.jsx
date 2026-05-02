@@ -5,7 +5,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
+import { Mic, MicOff, Plus, ArrowUp, Loader2, Globe, Monitor, Square } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -101,6 +101,8 @@ export default function GoalComposer({
   goal,
   onGoalChange,
   onSubmit,
+  onStop,
+  jobStatus,
   loading,
   error,
   token,
@@ -441,16 +443,28 @@ export default function GoalComposer({
               >
                 {listening ? <MicOff size={20} strokeWidth={2} /> : <Mic size={20} strokeWidth={2} />}
               </button>
-              <button
-                type="button"
-                className={`gc-submit-send ${!loading && goal.trim() && !authLoading ? 'gc-submit-send--ready' : ''}`}
-                onClick={onSubmit}
-                disabled={loading || !goal.trim() || authLoading}
-                title={enterSends ? 'Send' : 'Generate plan'}
-                aria-label={enterSends ? 'Send' : 'Generate plan'}
-              >
-                {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
-              </button>
+              {jobStatus === 'running' || jobStatus === 'planning' ? (
+                <button
+                  type="button"
+                  className="gc-submit-send gc-submit-stop"
+                  onClick={onStop}
+                  title="Stop build"
+                  aria-label="Stop build"
+                >
+                  <Square size={18} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`gc-submit-send ${!loading && goal.trim() && !authLoading ? 'gc-submit-send--ready' : ''}`}
+                  onClick={onSubmit}
+                  disabled={loading || !goal.trim() || authLoading}
+                  title={enterSends ? 'Send' : 'Generate plan'}
+                  aria-label={enterSends ? 'Send' : 'Generate plan'}
+                >
+                  {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
+                </button>
+              )}
             </div>
           </div>
       </div>
@@ -511,19 +525,4 @@ export default function GoalComposer({
         />
       ) : null}
 
-      {authLoading && <div className="gc-hint">Starting your session…</div>}
-
-      {error && (
-        <div className="gc-error-wrap">
-          <div className="gc-error gc-error-friendly">{error}</div>
-          {errorRaw ? (
-            <details className="gc-error-details">
-              <summary className="gc-error-details-summary">Technical details</summary>
-              <pre className="gc-error-details-pre">{errorRaw}</pre>
-            </details>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
+      {authLoading && <div classNam

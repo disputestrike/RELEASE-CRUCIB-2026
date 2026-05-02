@@ -314,7 +314,8 @@ class ProofArtifactService:
         cycles = getattr(repair_result, "cycles_used", 0)
         details = getattr(repair_result, "details", {})
 
-        proof.add_repair_attempt(
+        self.add_repair_attempt(
+            proof,
             attempt=cycles,
             error_type=details.get("last_hints", ["unknown"])[0] if details.get("last_hints") else "unknown",
             error_log="\n".join(getattr(repair_result, "errors", []))[:2000],
@@ -678,4 +679,4 @@ def get_proof_artifact_service() -> ProofArtifactService:
     global _proof_service
     if _proof_service is None:
         _proof_service = ProofArtifactService()
-    return _proof_service
+    retu
