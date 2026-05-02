@@ -310,7 +310,22 @@ export default function UnifiedWorkspace() {
 
   useEffect(() => {
     if (!jobIdFromUrl || !token || !API) return;
-    if (jobIdFromUrl === jobId) return;
+    if (jobIdFromUrl === jobId) {
+      // Job already loaded — but stage may have been clobbered by the canonical key
+      // effect if jobId was set before the URL updated (common in runNewPlanAndAuto).
+      // Restore stage from the already-fetched job object if it drifted to 'input'.
+      // We use a function-form of setStage so we can read current stage atomically.
+      setStage((currentStage) => {
+        if (currentStage !== 'input') return currentStage; // stage is fine, leave it
+        // We don't have the job object here — defer to useJobStream's job.status
+        // The completion effect (isCompleted → 'completed') handles the terminal case.
+        // For running jobs, the stream arriving sets the visuals regardless of stage.
+        // So the only dangerous stuck state is 'input' during an active build.
+        // We cannot read job.status synchronously here, so do a lightweight re-fetch.
+        return currentStage; // handled by the status-sync effect below
+      });
+      return;
+    }
     const headers = { Authorization: `Bearer ${token}` };
     axios
       .get(`${API}/jobs/${jobIdFromUrl}`, { headers })
@@ -413,7 +428,17 @@ export default function UnifiedWorkspace() {
     setPlan(null);
     setCapabilityNotice([]);
     setEstimate(null);
-    setStage('input');
+    // ── FIX: Do NOT call setStage('input') here. ──────────────────────────────
+    // Stage is owned by three sources only:
+    //   1. job-load effect (below) when jobIdFromUrl loads a job from the URL
+    //   2. submit handlers (runNewPlanAndAuto, handleRunAuto) when a build starts
+    //   3. handleReset() when the user explicitly starts fresh
+    // Calling setStage('input') here races with those setters because:
+    //   - setJobId() fires before setSearchParams() in runNewPlanAndAuto, so by the
+    //     time canonicalJobKey changes, jobIdFromUrl === jobId, causing the job-load
+    //     effect's early-return guard to skip stage restoration entirely.
+    // Result: stage gets stuck at 'input' mid-build, wiping the live progress view.
+    // ──────────────────────────────────────────────────────────────────────────
     setLoading(false);
     setError(null);
     setErrorRaw(null);
@@ -692,6 +717,20 @@ export default function UnifiedWorkspace() {
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
+
+  // ── Stage rescue: if stage got clobbered to 'input' while a real job exists, restore it.
+  // This is the safety net for the canonical-key-effect / job-load-early-return race.
+  useEffect(() => {
+    if (!job || !job.status || stage !== 'input') return;
+    const st = job.status;
+    if (st === 'planned') {
+      setStage('plan');
+    } else if (['approved', 'queued', 'running', 'blocked'].includes(st)) {
+      setStage('running');
+    } else if (['completed', 'failed', 'cancelled', 'delivered'].includes(st)) {
+      setStage('completed');
+    }
+  }, [job?.status, stage]);
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -2005,7 +2044,7 @@ export default function App() {
 
           </div>
 
-          <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
+          {/* ActiveStepBanner removed — replaced by inline activity chips in thread */}
 
           <div className="arp-center-pane-composer">
             <GoalComposer
@@ -2327,4 +2366,18 @@ export default function App() {
                         activePathPosix={activeWsPath}
                         entry={wsFileCache[activeWsPath]}
                         trace={activeWsPath ? traceByPath[activeWsPath] : null}
-                        editorCo
+                        editorColorMode={editorColorMode}
+                        onTextChange={handleCodeChange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+    </WorkspaceNavProvider>
+  );
+}
