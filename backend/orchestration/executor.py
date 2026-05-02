@@ -2084,7 +2084,38 @@ async def handle_verification_step(
             except Exception:
                 pass
 
-            return {
+            # ── AUTO-DEPLOY TO NETLIFY (Phase 3) ──────────────────────────
+            live_url: Optional[str] = None
+            try:
+                from backend.services.netlify_deploy import netlify_configured, deploy_to_netlify
+                if netlify_configured() and workspace_path:
+                    dist_dir = os.path.join(workspace_path, "dist")
+                    if not os.path.isdir(dist_dir):
+                        for alt in ("build", "out", "public"):
+                            candidate = os.path.join(workspace_path, alt)
+                            if os.path.isdir(candidate):
+                                dist_dir = candidate
+                                break
+                    if os.path.isdir(dist_dir):
+                        site_name = f"crucibai-{job_id[:12]}"
+                        deploy_result = await deploy_to_netlify(
+                            dist_dir=dist_dir,
+                            site_name=site_name,
+                        )
+                        live_url = deploy_result.get("url")
+                        logger.info("[NETLIFY AUTO-DEPLOY] Live URL: %s", live_url)
+                        try:
+                            from backend.orchestration.runtime_state import update_job_state
+                            await update_job_state(job_id, "completed", extra={"live_url": live_url})
+                        except Exception as ue:
+                            logger.warning("[NETLIFY] Could not persist live_url: %s", ue)
+                        await append_job_event(job_id, "live_url", {"url": live_url})
+                    else:
+                        logger.info("[NETLIFY AUTO-DEPLOY] No dist dir at %s -- skipping", workspace_path)
+            except Exception as deploy_err:
+                logger.warning("[NETLIFY AUTO-DEPLOY] Deploy failed (non-fatal): %s", deploy_err)
+
+            result_payload: dict = {
                 "output": f"Verification PASSED: {step_key} (all 4 stages, proof saved)",
                 "artifacts": [],
                 "validation": {
@@ -2096,6 +2127,9 @@ async def handle_verification_step(
                 "proof_path": proof_path,
                 "what_if_count": len(proof.what_if_results),
             }
+            if live_url:
+                result_payload["live_url"] = live_url
+            return result_payload
 
         # ── STAGE 2: VALIDATION FAILED — TRIGGER REPAIR LOOP ──────────────
         logger.error(

@@ -363,6 +363,7 @@ export default function UnifiedWorkspace() {
   const lastCanonicalUrlRewriteRef = useRef('');
   const mdOnlyPreviewInjectedRef = useRef('');
   const [zipBusy, setZipBusy] = useState(false);
+  const [liveUrl, setLiveUrl] = useState(null);   // Phase 3 — Netlify live URL after proof passes
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
 
@@ -1086,6 +1087,30 @@ export default function App() {
       });
     }
   }, [events, effectiveJobId]);
+
+  // ── Phase 3: capture live_url from job record or SSE events ────────────────
+  useEffect(() => {
+    const url = job?.live_url || null;
+    if (url) setLiveUrl(url);
+  }, [job?.live_url]);
+
+  useEffect(() => {
+    if (!events.length) return;
+    for (const ev of events) {
+      const t = ev?.type || ev?.event_type;
+      if (t === 'live_url') {
+        const url = ev?.payload?.url || ev?.url;
+        if (url) setLiveUrl(url);
+      }
+    }
+  }, [events]);
+
+  // Reset live URL when starting a new build
+  useEffect(() => {
+    if (job?.status === 'running' || job?.status === 'planning') {
+      setLiveUrl(null);
+    }
+  }, [job?.status]);
 
   const prevJobStatusRef = useRef(null);
   useEffect(() => {
@@ -2007,6 +2032,26 @@ export default function App() {
 
           <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
 
+          {liveUrl && (
+            <div className="uw-live-url-banner">
+              <span className="uw-live-url-icon">🚀</span>
+              <span className="uw-live-url-label">Your app is live —</span>
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="uw-live-url-link"
+              >
+                {liveUrl}
+              </a>
+              <button
+                className="uw-live-url-dismiss"
+                onClick={() => setLiveUrl(null)}
+                aria-label="Dismiss"
+              >✕</button>
+            </div>
+          )}
+
           <div className="arp-center-pane-composer">
             <GoalComposer
               goal={goal}
@@ -2307,40 +2352,4 @@ export default function App() {
                             ? 'Downloading...'
                             : ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
                               ? 'Download Code'
-                              : String(job?.status || '').toLowerCase() === 'failed'
-                                ? 'Download Failed Workspace'
-                                : 'Download Draft Workspace'}
-                        </button>
-                      ) : null}
-                      <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>
-                    </div>
-                    <div className="code-pane-main">
-                      <WorkspaceFileTree
-                        paths={wsPaths}
-                        selectedPath={activeWsPath}
-                        onSelectPath={(p) => {
-                          setActiveWsPath(p);
-                          setTreeRevealTick((t) => t + 1);
-                        }}
-                        revealTick={treeRevealTick}
-                        loading={wsListLoading}
-                      />
-                      <WorkspaceFileViewer
-                        activePathPosix={activeWsPath}
-                        entry={wsFileCache[activeWsPath]}
-                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
-                        editorColorMode={editorColorMode}
-                        onTextChange={handleCodeChange}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-    </WorkspaceNavProvider>
-  );
-}
+                              : S
