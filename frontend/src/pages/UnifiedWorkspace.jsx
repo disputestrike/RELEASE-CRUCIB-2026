@@ -20,6 +20,7 @@ import {
   BrainCircuit,
 } from 'lucide-react';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
+import UserMemoryPanel from '../components/UserMemoryPanel';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
@@ -31,7 +32,6 @@ import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import Logo from '../components/Logo';
 import ActiveStepBanner from '../components/AutoRunner/ActiveStepBanner';
-import UserMemoryPanel from '../components/UserMemoryPanel';
 import { deriveCurrentActivity } from '../lib/buildThreadModel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
@@ -367,6 +367,30 @@ export default function UnifiedWorkspace() {
   const [zipBusy, setZipBusy] = useState(false);
   const [liveUrl, setLiveUrl] = useState(null);   // Phase 3 — Netlify live URL after proof passes
   const [showMemoryPanel, setShowMemoryPanel] = useState(false); // Phase 6
+
+  // ── Phase 3: capture live_url from job record or SSE events ────────────────
+  useEffect(() => {
+    const url = job?.live_url || null;
+    if (url) setLiveUrl(url);
+  }, [job?.live_url]);
+
+  useEffect(() => {
+    if (!events.length) return;
+    for (const ev of events) {
+      const t = ev?.type || ev?.event_type;
+      if (t === 'live_url') {
+        const url = ev?.payload?.url || ev?.url;
+        if (url) setLiveUrl(url);
+      }
+    }
+  }, [events]);
+
+  // Reset live URL when starting a new build
+  useEffect(() => {
+    if (job?.status === 'running' || job?.status === 'planning') {
+      setLiveUrl(null);
+    }
+  }, [job?.status]);
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
 
@@ -1090,30 +1114,6 @@ export default function App() {
       });
     }
   }, [events, effectiveJobId]);
-
-  // ── Phase 3: capture live_url from job record or SSE events ────────────────
-  useEffect(() => {
-    const url = job?.live_url || null;
-    if (url) setLiveUrl(url);
-  }, [job?.live_url]);
-
-  useEffect(() => {
-    if (!events.length) return;
-    for (const ev of events) {
-      const t = ev?.type || ev?.event_type;
-      if (t === 'live_url') {
-        const url = ev?.payload?.url || ev?.url;
-        if (url) setLiveUrl(url);
-      }
-    }
-  }, [events]);
-
-  // Reset live URL when starting a new build
-  useEffect(() => {
-    if (job?.status === 'running' || job?.status === 'planning') {
-      setLiveUrl(null);
-    }
-  }, [job?.status]);
 
   const prevJobStatusRef = useRef(null);
   useEffect(() => {
@@ -2033,8 +2033,16 @@ export default function App() {
 
           </div>
 
+          {showMemoryPanel && (
+            <UserMemoryPanel
+              token={token}
+              apiBase={API}
+              onClose={() => setShowMemoryPanel(false)}
+            />
+          )}
           <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
 
+          <div className="arp-center-pane-composer">
           {liveUrl && (
             <div className="uw-live-url-banner">
               <span className="uw-live-url-icon">🚀</span>
@@ -2055,7 +2063,6 @@ export default function App() {
             </div>
           )}
 
-          <div className="arp-center-pane-composer">
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
@@ -2103,13 +2110,6 @@ export default function App() {
 
           {!rightCollapsed && (
             <>
-              {showMemoryPanel && (
-                <UserMemoryPanel
-                  token={token}
-                  apiBase={API}
-                  onClose={() => setShowMemoryPanel(false)}
-                />
-              )}
               <div className="arp-right-toolbar">
                 <button
                   type="button"
@@ -2161,13 +2161,6 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
-                  title="Share — copy link"
-                  aria-label="Share"
-                  onClick={handleShare}
-                >
-                  <Share2 size={16} />
-                </button>
                 <button
                   type="button"
                   className={`arp-topbar-btn arp-toolbar-icon-btn${showMemoryPanel ? ' arp-topbar-btn--active' : ''}`}
@@ -2176,6 +2169,13 @@ export default function App() {
                   onClick={() => setShowMemoryPanel(p => !p)}
                 >
                   <BrainCircuit size={16} />
+                </button>
+                  className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
+                  title="Share — copy link"
+                  aria-label="Share"
+                  onClick={handleShare}
+                >
+                  <Share2 size={16} />
                 </button>
                 <div className="arp-mode-switch" title="Simple vs Dev — which tools show in the right pane">
                   <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>
@@ -2371,4 +2371,40 @@ export default function App() {
                             ? 'Downloading...'
                             : ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
                               ? 'Download Code'
-                              : S
+                              : String(job?.status || '').toLowerCase() === 'failed'
+                                ? 'Download Failed Workspace'
+                                : 'Download Draft Workspace'}
+                        </button>
+                      ) : null}
+                      <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>
+                    </div>
+                    <div className="code-pane-main">
+                      <WorkspaceFileTree
+                        paths={wsPaths}
+                        selectedPath={activeWsPath}
+                        onSelectPath={(p) => {
+                          setActiveWsPath(p);
+                          setTreeRevealTick((t) => t + 1);
+                        }}
+                        revealTick={treeRevealTick}
+                        loading={wsListLoading}
+                      />
+                      <WorkspaceFileViewer
+                        activePathPosix={activeWsPath}
+                        entry={wsFileCache[activeWsPath]}
+                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
+                        editorColorMode={editorColorMode}
+                        onTextChange={handleCodeChange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+    </WorkspaceNavProvider>
+  );
+}
