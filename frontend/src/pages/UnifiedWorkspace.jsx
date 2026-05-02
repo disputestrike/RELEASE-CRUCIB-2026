@@ -365,10 +365,9 @@ export default function UnifiedWorkspace() {
   const lastCanonicalUrlRewriteRef = useRef('');
   const mdOnlyPreviewInjectedRef = useRef('');
   const [zipBusy, setZipBusy] = useState(false);
-  const [liveUrl, setLiveUrl] = useState(null);   // Phase 3 — Netlify live URL after proof passes
+  const [liveUrl, setLiveUrl] = useState(null);   // Phase 3
   const [showMemoryPanel, setShowMemoryPanel] = useState(false); // Phase 6
 
-  // ── Phase 3: capture live_url from job record or SSE events ────────────────
   useEffect(() => {
     const url = job?.live_url || null;
     if (url) setLiveUrl(url);
@@ -378,18 +377,12 @@ export default function UnifiedWorkspace() {
     if (!events.length) return;
     for (const ev of events) {
       const t = ev?.type || ev?.event_type;
-      if (t === 'live_url') {
-        const url = ev?.payload?.url || ev?.url;
-        if (url) setLiveUrl(url);
-      }
+      if (t === 'live_url') { const url = ev?.payload?.url || ev?.url; if (url) setLiveUrl(url); }
     }
   }, [events]);
 
-  // Reset live URL when starting a new build
   useEffect(() => {
-    if (job?.status === 'running' || job?.status === 'planning') {
-      setLiveUrl(null);
-    }
+    if (job?.status === 'running' || job?.status === 'planning') setLiveUrl(null);
   }, [job?.status]);
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
@@ -2034,11 +2027,7 @@ export default function App() {
           </div>
 
           {showMemoryPanel && (
-            <UserMemoryPanel
-              token={token}
-              apiBase={API}
-              onClose={() => setShowMemoryPanel(false)}
-            />
+            <UserMemoryPanel token={token} apiBase={API} onClose={() => setShowMemoryPanel(false)} />
           )}
           <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
 
@@ -2047,19 +2036,8 @@ export default function App() {
             <div className="uw-live-url-banner">
               <span className="uw-live-url-icon">🚀</span>
               <span className="uw-live-url-label">Your app is live —</span>
-              <a
-                href={liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="uw-live-url-link"
-              >
-                {liveUrl}
-              </a>
-              <button
-                className="uw-live-url-dismiss"
-                onClick={() => setLiveUrl(null)}
-                aria-label="Dismiss"
-              >✕</button>
+              <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="uw-live-url-link">{liveUrl}</a>
+              <button className="uw-live-url-dismiss" onClick={() => setLiveUrl(null)} aria-label="Dismiss">✕</button>
             </div>
           )}
 
@@ -2161,8 +2139,6 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                <button
-                  type="button"
                   className={`arp-topbar-btn arp-toolbar-icon-btn${showMemoryPanel ? ' arp-topbar-btn--active' : ''}`}
                   title="Build memory — company, stack, brand color"
                   aria-label="Build memory"
@@ -2170,6 +2146,8 @@ export default function App() {
                 >
                   <BrainCircuit size={16} />
                 </button>
+                <button
+                  type="button"
                   className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
                   title="Share — copy link"
                   aria-label="Share"
