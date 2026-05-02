@@ -236,16 +236,35 @@ async def _stage_plan(goal: str) -> Dict[str, Any]:
     if not plan:
         # Fallback: minimal plan
         logger.warning("pipeline: planner JSON parse failed; using minimal plan")
+        # Use intent classifier for smart defaults
+        try:
+            from backend.orchestration.intent_to_build_type import classify_goal
+            classified = classify_goal(goal)
+        except Exception:
+            classified = {}
         plan = {
-            "build_type": "fullstack_web",
-            "stack": "react+vite+ts",
+            "build_type": classified.get("type", "fullstack_web"),
+            "stack": classified.get("stack", "react+vite+ts"),
             "file_manifest": [],
-            "install_command": ["npm", "install"],
-            "build_command": ["npm", "run", "build"],
-            "dev_command": ["npm", "run", "dev"],
-            "entry_point": "src/main.tsx",
+            "install_command": classified.get("install_command", ["npm", "install"]),
+            "build_command": classified.get("build_command", ["npm", "run", "build"]),
+            "dev_command": classified.get("dev_command", ["npm", "run", "dev"]),
+            "entry_point": classified.get("entry_point", "src/main.tsx"),
             "summary": goal[:200],
         }
+    else:
+        # Enrich LLM plan with classified timeouts if missing
+        try:
+            from backend.orchestration.intent_to_build_type import classify_goal
+            classified = classify_goal(goal)
+            plan.setdefault("install_command", classified.get("install_command", ["npm", "install"]))
+            plan.setdefault("build_command", classified.get("build_command", ["npm", "run", "build"]))
+            # Apply adaptive timeout based on complexity
+            if classified.get("is_complex") and not os.environ.get("CRUCIBAI_GEN_TIMEOUT_S"):
+                adaptive_timeout = classified.get("timeout_seconds", GEN_TIMEOUT_S)
+                logger.info("pipeline: adaptive timeout %.0fs for %s", adaptive_timeout, classified.get("type"))
+        except Exception:
+            pass
     return plan
 
 
@@ -264,17 +283,30 @@ async def _stage_generate(
     build_cmd = " ".join(plan.get("build_command") or ["npm", "run", "build"])
     install_cmd = " ".join(plan.get("install_command") or ["npm", "install"])
 
-    user_message = f"""Goal: {goal}
+    # Enrich goal with detected intent + requirements before passing to agent
+    enriched_goal = goal
+    try:
+        from backend.orchestration.goal_enricher import enrich_goal
+        enrichment = enrich_goal(goal)
+        enriched_goal = enrichment["enriched_goal"]
+        logger.info("pipeline: goal enriched for type=%s app=%s",
+                    enrichment.get("build_type"), enrichment.get("app_name"))
+    except Exception as e:
+        logger.warning("pipeline: goal enrichment failed (%s) — using raw goal", e)
 
-Build plan summary: {plan.get("summary", "")}
+    user_message = f"""{enriched_goal}
+
+## Build Plan
 Stack: {plan.get("stack", "react+vite+ts")}
 Build command: {build_cmd}
 Install command: {install_cmd}
 
-File manifest (every file you must create):
+## File Manifest (every file you must write)
 {manifest_text}
 
-Start building now. Write every file, run npm install, run the build, fix errors, and stop only when the build passes."""
+A working scaffold has already been written to the workspace. Read the existing files first,
+then build the complete application on top of them. Run npm install, then npm run build.
+Fix every error. Stop only when the build exits with code 0."""
 
     use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
     caller, loop_type = _pick_generate_caller(use_anthropic)
