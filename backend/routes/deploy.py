@@ -151,3 +151,64 @@ async def deploy_validate(body: DeployValidateRequest):
         "warnings": result.warnings,
         "platform": result.platform,
     }
+
+
+# ── Manual one-click deploy for a completed job ───────────────────────────────
+
+
+@router.post("/jobs/{job_id}/deploy")
+async def deploy_job(job_id: str, user: dict = Depends(_get_auth())):
+    """
+    Trigger a Netlify deploy for a completed job's dist folder.
+    Returns {"url": "https://xxx.netlify.app"} on success.
+    Requires NETLIFY_TOKEN set in Railway environment variables.
+    """
+    from backend.services.netlify_deploy import netlify_configured, deploy_to_netlify
+    import os
+
+    if not netlify_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="NETLIFY_TOKEN is not configured. Set it in your Railway environment variables.",
+        )
+
+    # Resolve workspace path for this job
+    try:
+        from backend.orchestration.runtime_state import runtime_state_adapter
+        job = await runtime_state_adapter.get_job(job_id)
+    except Exception:
+        job = None
+
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    workspace_path = job.get("workspace_path") or job.get("workspace") or ""
+    if not workspace_path:
+        raise HTTPException(status_code=422, detail="No workspace found for this job")
+
+    dist_dir = os.path.join(workspace_path, "dist")
+    if not os.path.isdir(dist_dir):
+        for alt in ("build", "out", "public"):
+            candidate = os.path.join(workspace_path, alt)
+            if os.path.isdir(candidate):
+                dist_dir = candidate
+                break
+
+    if not os.path.isdir(dist_dir):
+        raise HTTPException(
+            status_code=422,
+            detail=f"No built dist folder found — run a build first",
+        )
+
+    try:
+        site_name = f"crucibai-{job_id[:12]}"
+        result = await deploy_to_netlify(dist_dir=dist_dir, site_name=site_name)
+        live_url = result.get("url")
+        try:
+            from backend.orchestration.runtime_state import update_job_state
+            await update_job_state(job_id, job.get("status", "completed"), extra={"live_url": live_url})
+        except Exception:
+            pass
+        return {"url": live_url, "site_id": result.get("site_id"), "deploy_id": result.get("deploy_id")}
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
