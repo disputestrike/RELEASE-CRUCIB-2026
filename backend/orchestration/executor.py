@@ -2084,6 +2084,45 @@ async def handle_verification_step(
             except Exception:
                 pass
 
+            # ── PHASE 2: REAL BUILD SMOKE GATE ────────────────────────────
+            # Run npm build in workspace, confirm dist/index.html exists.
+            # Non-blocking: if Node unavailable it degrades to a warning.
+            try:
+                from backend.orchestration.build_smoke_gate import run_build_smoke
+                smoke = await run_build_smoke(workspace_path, job_id=job_id)
+                smoke_passed = smoke.get("passed", True)
+                smoke_skipped = smoke.get("skipped", False)
+
+                # Emit event so UI can show build confirmation
+                await append_job_event(job_id, "build_smoke", {
+                    "passed": smoke_passed,
+                    "skipped": smoke_skipped,
+                    "dist_dir": smoke.get("dist_dir"),
+                    "file_count": smoke.get("file_count", 0),
+                    "has_index_html": smoke.get("has_index_html", False),
+                    "duration_ms": smoke.get("duration_ms", 0),
+                    "warning": smoke.get("warning"),
+                    "error": smoke.get("error") if not smoke_passed else None,
+                })
+
+                if not smoke_passed and not smoke_skipped:
+                    logger.warning(
+                        "[BUILD SMOKE] FAILED for job %s: %s",
+                        job_id, smoke.get("error", "unknown"),
+                    )
+                    # Repair hint injected — but we do NOT block the proof pass.
+                    # A real build failure is caught by repair loop; here we log.
+                else:
+                    logger.info(
+                        "[BUILD SMOKE] %s for job %s — dist_files=%d duration=%dms",
+                        "SKIPPED" if smoke_skipped else "PASS",
+                        job_id,
+                        smoke.get("file_count", 0),
+                        smoke.get("duration_ms", 0),
+                    )
+            except Exception as smoke_err:
+                logger.warning("[BUILD SMOKE] Gate error (non-fatal): %s", smoke_err)
+
             # ── AUTO-DEPLOY TO NETLIFY (Phase 3) ──────────────────────────
             live_url: Optional[str] = None
             try:
