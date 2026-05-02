@@ -67,8 +67,14 @@ export default function SystemStatusHUD({
     >
       <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : connectionMode !== 'offline' ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
       {isMinimal ? (
-        <span className="ssh-text ssh-text--minimal" style={{ color: latencyColor }}>
-          {latencyLabel}
+        <span className="ssh-text ssh-text--minimal">
+          {isActive && agentsLive > 0 ? (
+            <span style={{ color: 'var(--text-success, #22c55e)', fontWeight: 600 }}>
+              {agentsLive} {agentsLive === 1 ? 'agent' : 'agents'}
+            </span>
+          ) : (
+            <span style={{ color: latencyColor }}>{latencyLabel}</span>
+          )}
         </span>
       ) : (
         <span className="ssh-text">

@@ -327,7 +327,7 @@ function FailureBlock({ item }) {
       <div className="p4-chapter-head p4-chapter-head--static">
         <AlertTriangle size={13} className="p4-bad" />
         <span className="p4-chapter-title">{item.title || 'Checking the workspace'}</span>
-        <span className="p4-chapter-status p4-chapter-status--failed">Repairing</span>
+        <span className="p4-chapter-status p4-chapter-status--failed">Fixing</span>
       </div>
       <p className="p4-chapter-desc">{friendlyReason}</p>
       {showTechnical ? (
@@ -352,7 +352,7 @@ function FailureBlock({ item }) {
 
 function phaseStatusLabel(st) {
   if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Repairing';
+  if (st === 'failed') return 'Fixing';
   if (st === 'running') return 'Running';
   return 'Pending';
 }
@@ -422,27 +422,32 @@ function RepairBlock({ item }) {
   const isNeedsFix = item.status === 'needs_fix';
   const stateLabel =
     item.status === 'success'
-      ? 'Done'
+      ? 'Fixed'
       : item.status === 'failed'
-      ? 'Repairing'
+      ? 'Still failing'
       : isNeedsFix
-      ? 'Repairing'
-      : `Pass ${item.attempt || 1}`;
+      ? 'Fixing'
+      : 'Fixing';
   const headTitle =
     item.status === 'success'
-      ? 'Repair complete'
+      ? (item.title || 'Fix applied')
       : item.status === 'failed'
-      ? 'Continuing repair'
+      ? (item.title || "Couldn't fix — trying another approach")
       : isNeedsFix
-      ? item.title || 'Repairing verification issue'
-      : 'Repair in progress';
+      ? (item.title || 'Fixing verification issue')
+      : (item.title || 'Fix in progress');
   const detail = (item.technicalDetail || '').trim();
+  const RepairIcon = item.status === 'success'
+    ? <CheckCircle2 size={13} className="p4-ok" />
+    : item.status === 'failed'
+    ? <AlertTriangle size={13} className="p4-bad" />
+    : <Loader2 size={13} className="p4-spin p4-warn" />;
   return (
     <div
       className={`p4-inline-card p4-card-repair p4-card-repair--${isNeedsFix ? 'needs_fix' : item.status || 'running'}`}
     >
       <div className="p4-inline-head">
-        <Wrench size={13} className="p4-warn" />
+        {RepairIcon}
         <span className="p4-inline-title">{headTitle}</span>
         <span className="p4-inline-state">{stateLabel}</span>
       </div>
@@ -623,6 +628,24 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser, deliveryContext })
   }
 }
 
+
+function ActivityChips({ isTyping, jobStatus, currentPhase }) {
+  // Only show while a build is actively running
+  if (!isTyping && jobStatus !== 'running' && jobStatus !== 'blocked') return null;
+
+  const phase = currentPhase || '';
+  const chipLabel = phase || (jobStatus === 'blocked' ? 'Fixing an issue' : 'Working');
+
+  return (
+    <div className="p4-activity-chips">
+      <div className="p4-activity-chip p4-activity-chip--active">
+        <Loader2 size={10} className="p4-spin" />
+        <span>{chipLabel}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function BrainGuidancePanel({
   userMessages = [],
   events = [],
@@ -722,6 +745,11 @@ export default function BrainGuidancePanel({
           canSync={canSync}
         />
       </div>
+      <ActivityChips
+        isTyping={isTyping}
+        jobStatus={jobStatus}
+        currentPhase={null}
+      />
 
       {items.map((item) => (
         <ThreadItem

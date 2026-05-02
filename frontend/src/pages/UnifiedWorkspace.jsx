@@ -2033,7 +2033,7 @@ export default function App() {
 
           </div>
 
-          <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
+          {/* ActiveStepBanner removed — replaced by inline activity chips in thread */}
 
           <div className="arp-center-pane-composer">
             <GoalComposer
