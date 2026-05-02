@@ -1354,30 +1354,178 @@ async def share_get(token: str):
 
 # ==================== TEMPLATES GALLERY ====================
 
+# ── Phase 5: 8 pre-verified seed templates ───────────────────────────────────
+# Each template has a detailed prompt engineered to produce a complete,
+# working app on first build — no placeholder copy, real components.
 TEMPLATES_GALLERY = [
     {
-        "id": "dashboard",
-        "name": "Dashboard",
-        "description": "Sidebar + stats cards + chart placeholder",
-        "prompt": "Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.",
-        "tags": ["saas", "analytics"],
+        "id": "saas-dashboard",
+        "name": "SaaS Dashboard",
+        "description": "Analytics dashboard with sidebar nav, KPI cards, line chart, and user table",
+        "prompt": (
+            "Build a complete SaaS analytics dashboard using React and CSS modules. "
+            "Include: (1) a fixed sidebar with nav links (Dashboard, Users, Revenue, Settings) "
+            "and a logo placeholder; (2) a top bar with a search input and user avatar; "
+            "(3) four KPI stat cards showing Total Revenue ($48,200), Active Users (1,340), "
+            "New Signups (87), and Churn Rate (2.4%) with trend arrows; "
+            "(4) a responsive line chart using recharts showing 6-month revenue trend; "
+            "(5) a users table with columns Name, Email, Plan, Status (Active/Trial badge), Joined. "
+            "Use a clean light theme with Inter font. No backend required."
+        ),
+        "tags": ["saas", "analytics", "dashboard"],
         "difficulty": "starter",
+        "icon": "BarChart2",
+        "preview_color": "#6366f1",
     },
     {
-        "id": "blog",
-        "name": "Blog",
-        "description": "Blog layout with posts list and post detail",
-        "prompt": "Build a blog with a list of posts and a post detail view. React and Tailwind.",
-        "tags": ["cms", "publishing"],
+        "id": "waitlist",
+        "name": "Waitlist Landing Page",
+        "description": "Launch page with hero, features, email signup, and social proof",
+        "prompt": (
+            "Build a startup waitlist landing page using React. "
+            "Include: (1) hero section with bold headline, subheadline, and email signup form "
+            "with a CTA button that shows a success message on submit; "
+            "(2) three feature cards with icons (Zap, Shield, Globe from lucide-react); "
+            "(3) social proof counter showing '2,400+ people already joined'; "
+            "(4) FAQ accordion with 4 questions; (5) footer with logo and links. "
+            "Use a dark gradient background (#0f0f0f to #1a1a2e), "
+            "accent color #6366f1, Inter font, fully mobile-responsive. "
+            "No backend — email capture is client-side with success state."
+        ),
+        "tags": ["landing", "marketing", "launch"],
         "difficulty": "starter",
+        "icon": "Rocket",
+        "preview_color": "#6366f1",
     },
     {
-        "id": "saas-shell",
-        "name": "SaaS shell",
-        "description": "Auth shell with nav and settings",
-        "prompt": "Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.",
-        "tags": ["saas", "auth"],
+        "id": "booking-app",
+        "name": "Appointment Booking",
+        "description": "Calendar booking UI with time slots, service selection, and confirmation",
+        "prompt": (
+            "Build a service booking app using React. "
+            "Include: (1) a service selection step with 4 cards (Haircut $30/30min, "
+            "Color $80/90min, Treatment $60/60min, Styling $45/45min) each with an icon; "
+            "(2) a weekly calendar grid for the next 2 weeks with clickable date chips; "
+            "(3) time slot selector (9am-5pm in 30-min intervals) showing available/booked states; "
+            "(4) booking form collecting name, email, phone with validation; "
+            "(5) confirmation screen with booking summary and a calendar-add button. "
+            "Multi-step wizard UI with back/next buttons and a progress indicator. "
+            "All state is client-side. Clean white card design with #0ea5e9 accent."
+        ),
+        "tags": ["booking", "calendar", "services"],
         "difficulty": "intermediate",
+        "icon": "Calendar",
+        "preview_color": "#0ea5e9",
+    },
+    {
+        "id": "ecommerce-storefront",
+        "name": "E-commerce Storefront",
+        "description": "Product grid, cart sidebar, checkout flow — fully client-side",
+        "prompt": (
+            "Build a complete e-commerce storefront using React. "
+            "Include: (1) product grid with 8 sample products (t-shirts, hoodies, etc.) "
+            "each with image placeholder, name, price, and Add to Cart button; "
+            "(2) category filter tabs (All, Tops, Bottoms, Accessories); "
+            "(3) a slide-out cart sidebar showing items, quantities (+/-), subtotal, "
+            "and a Checkout button; (4) a 3-step checkout flow: Shipping address form → "
+            "Payment form (card fields, no real processing) → Order confirmation with order number; "
+            "(5) header with logo, cart icon + item count badge, search bar. "
+            "Use Tailwind-style CSS, responsive grid. All state is client-side React."
+        ),
+        "tags": ["ecommerce", "shop", "checkout"],
+        "difficulty": "intermediate",
+        "icon": "ShoppingCart",
+        "preview_color": "#f59e0b",
+    },
+    {
+        "id": "portfolio",
+        "name": "Developer Portfolio",
+        "description": "Personal portfolio with projects, skills, and contact form",
+        "prompt": (
+            "Build a personal developer portfolio using React. "
+            "Include: (1) hero section with animated typing effect showing 3 roles "
+            "(Full-Stack Developer / React Engineer / Open Source Contributor), "
+            "profile photo placeholder circle, and CTA buttons (View Work / Contact Me); "
+            "(2) about section with bio paragraph and skills grid showing 12 tech badges "
+            "(React, TypeScript, Python, FastAPI, PostgreSQL, Docker, etc.); "
+            "(3) projects section with 6 project cards each showing title, description, "
+            "tech stack tags, and GitHub/Live links; "
+            "(4) experience timeline with 3 jobs; "
+            "(5) contact form with name/email/message and submit state; "
+            "(6) sticky nav and footer with social links. "
+            "Dark theme (#0a0a0a background), green accent (#10b981), monospace headings."
+        ),
+        "tags": ["portfolio", "personal", "developer"],
+        "difficulty": "starter",
+        "icon": "User",
+        "preview_color": "#10b981",
+    },
+    {
+        "id": "internal-tool",
+        "name": "Internal Admin Tool",
+        "description": "Data table with filters, bulk actions, and detail drawer",
+        "prompt": (
+            "Build an internal admin tool using React. "
+            "Include: (1) a data table with 20 sample rows of user records "
+            "(ID, Name, Email, Role, Status, Last Active, Actions); "
+            "(2) column sorting (click header to sort asc/desc); "
+            "(3) search input filtering rows in real-time; "
+            "(4) status filter dropdown (All / Active / Suspended / Pending); "
+            "(5) row checkboxes with select-all and a bulk-action toolbar "
+            "appearing when rows are selected (Export CSV, Suspend, Delete); "
+            "(6) click a row to open a right-side detail drawer with user info, "
+            "activity log (5 events), and Edit/Suspend action buttons; "
+            "(7) pagination (10 rows/page). "
+            "Dense professional UI, neutral gray palette, no external chart lib needed."
+        ),
+        "tags": ["admin", "internal", "data"],
+        "difficulty": "intermediate",
+        "icon": "Table2",
+        "preview_color": "#64748b",
+    },
+    {
+        "id": "api-backend",
+        "name": "REST API Backend",
+        "description": "FastAPI backend with auth, CRUD endpoints, and OpenAPI docs",
+        "prompt": (
+            "Build a complete REST API backend using FastAPI and Python. "
+            "Include: (1) JWT authentication with POST /auth/register and POST /auth/login "
+            "returning access tokens; (2) a /users/me endpoint returning current user; "
+            "(3) a /items resource with full CRUD: POST /items, GET /items (with pagination), "
+            "GET /items/{id}, PUT /items/{id}, DELETE /items/{id}; "
+            "(4) SQLite database with SQLAlchemy ORM and two tables: users and items; "
+            "(5) Pydantic models for request/response validation; "
+            "(6) CORS middleware configured for localhost:3000; "
+            "(7) a GET /health endpoint returning status and uptime; "
+            "(8) requirements.txt with fastapi, uvicorn, sqlalchemy, pyjwt, passlib, python-dotenv. "
+            "Main file: main.py. Include a README.md with curl examples."
+        ),
+        "tags": ["backend", "api", "fastapi", "python"],
+        "difficulty": "intermediate",
+        "icon": "Server",
+        "preview_color": "#8b5cf6",
+    },
+    {
+        "id": "saas-pricing",
+        "name": "SaaS Pricing Page",
+        "description": "Pricing page with toggle, feature comparison table, and FAQ",
+        "prompt": (
+            "Build a SaaS pricing page using React. "
+            "Include: (1) a monthly/annual toggle that updates all prices "
+            "(annual = 20% off, shown with strikethrough + badge); "
+            "(2) three pricing tiers in cards: Free ($0/mo), Pro ($15/mo annual or $19 monthly), "
+            "Enterprise ($79/mo annual or $99 monthly) — highlight Pro as 'Most Popular'; "
+            "(3) each card lists 5-7 features with checkmark/X icons; "
+            "(4) a feature comparison table below the cards with 15 features across all tiers; "
+            "(5) a CTA section with headline and Get Started / Book Demo buttons; "
+            "(6) FAQ accordion with 6 questions about billing, cancellation, and features. "
+            "Use the same color scheme as the cards section (purple accent #7c3aed). "
+            "Fully responsive. No backend needed."
+        ),
+        "tags": ["saas", "pricing", "marketing"],
+        "difficulty": "starter",
+        "icon": "CreditCard",
+        "preview_color": "#7c3aed",
     },
 ]
 
