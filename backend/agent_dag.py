@@ -1,7 +1,13 @@
 """
-Agent DAG: dependency graph and parallel execution phases.
-Used by run_orchestration_v2 for output chaining and parallel runs.
-Token optimization: set USE_TOKEN_OPTIMIZED_PROMPTS=1 for shorter prompts and smaller context.
+LEGACY — agent_dag.py
+
+This file contains the original 245-agent DAG.
+IT IS NOT ACTIVE. The default execution path is the 5-stage pipeline in
+pipeline_orchestrator.py (auto_runner.py routes there when CRUCIBAI_USE_PIPELINE=1,
+which is the default).
+
+This file is only reached when CRUCIBAI_USE_PIPELINE=0 is explicitly set.
+Do not add new agents here. New work belongs in pipeline_orchestrator.py.
 """
 
 import os
