@@ -545,7 +545,7 @@ ANNUAL_PRICES: Dict[str, Any] = {
     "scale": 1000,
     "teams": 2000,
 }
-PAYMENT_PROVIDER = "braintree"
+PAYMENT_PROVIDER = "paypal"
 BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
 BRAINTREE_MERCHANT_ID = os.environ.get("BRAINTREE_MERCHANT_ID", "")
 BRAINTREE_PUBLIC_KEY = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
@@ -2095,7 +2095,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("backend.routes.trust", "router", False),
     ("backend.routes.knowledge", "router", False),
     ("backend.routes.connectors", "router", False),
-    ("backend.routes.braintree_payments", "router", False),
+    ("backend.routes.paypal_payments", "router", False),
     ("backend.routes.cost_hook", "router", False),
     ("backend.routes.skills", "router", False),
     ("backend.routes.terminal", "router", False),
@@ -2229,3 +2229,4 @@ else:
 
 
 
+      

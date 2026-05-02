@@ -1,178 +1,241 @@
-"""
-PayPal payment routes — CrucibAI
-POST /api/paypal/create-order   -> { order_id, approve_url, ... }
-POST /api/paypal/capture-order  -> { status, credits, payer_email, ... }
-POST /api/paypal/webhook        -> PayPal IPN / webhook handler
-GET  /api/paypal/plans          -> List of available plans with prices
-GET  /api/paypal/status         -> Whether PayPal is configured
-"""
-
+"""PayPal payment routes — replaces braintree_payments.py"""
 from __future__ import annotations
 
-import json
-import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..services.paypal_billing import (
-    PayPalConfigError,
-    PayPalError,
-    capture_order,
-    create_order,
-    get_order,
-    list_plans,
+    BillingConfigError,
+    BillingError,
+    activate_paypal_subscription,
+    billing_history,
+    billing_overview,
+    cancel_paypal_subscription,
+    capture_paypal_order,
+    create_paypal_order,
+    create_paypal_subscription,
+    list_active_prices,
+    paypal_client_id,
     paypal_configured,
-    verify_webhook_signature,
+    process_webhook,
+    required_paypal_config,
 )
 
-logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/paypal", tags=["paypal"])
+router = APIRouter(tags=["billing"])
 
 
-def _get_current_user():
+def _get_auth():
+    from ..deps import get_current_user
+    return get_current_user
+
+
+def _get_db():
     try:
-        from ..deps import get_current_user
-        return get_current_user
+        from ..deps import get_db
+        return get_db()
     except Exception:
         return None
 
 
-def _http(exc: PayPalError) -> HTTPException:
+def _http_error(exc: BillingError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=exc.detail())
 
 
-# ── Models ───────────────────────────────────────────────────────────────────
+def _db_or_503():
+    db = _get_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail={"error": "db_unavailable", "message": "Database not available"})
+    return db
 
+
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
 
 class CreateOrderRequest(BaseModel):
-    plan: str = Field(..., description="Plan key: starter | pro | enterprise | credits_10 | credits_50")
-    return_url: str = Field(..., description="URL PayPal redirects to on success")
-    cancel_url: str = Field(..., description="URL PayPal redirects to on cancel")
+    price_id: Optional[str] = None
+    product_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class CaptureOrderRequest(BaseModel):
-    order_id: str = Field(..., description="PayPal order ID to capture")
+    paypal_order_id: str
 
 
-# ── Routes ───────────────────────────────────────────────────────────────────
+class CreateSubscriptionRequest(BaseModel):
+    price_id: Optional[str] = None
+    product_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
-@router.get("/status")
-async def paypal_status():
-    """Returns whether PayPal is configured and which environment is active."""
-    from ..services.paypal_billing import PAYPAL_ENV
+class ActivateSubscriptionRequest(BaseModel):
+    paypal_subscription_id: str
+
+
+class CancelSubscriptionRequest(BaseModel):
+    subscription_id: str
+    cancel_at_period_end: bool = True
+
+
+# ---------------------------------------------------------------------------
+# Public config endpoint (returns client ID for PayPal JS SDK)
+# ---------------------------------------------------------------------------
+
+@router.get("/billing/config")
+async def billing_config():
+    """Returns PayPal client ID for the frontend SDK loader."""
     return {
-        "configured": paypal_configured(),
-        "environment": PAYPAL_ENV,
         "provider": "paypal",
+        "paypal_client_id": paypal_client_id(),
+        "configured": paypal_configured(),
+        "required_config": [] if paypal_configured() else required_paypal_config(),
     }
 
 
-@router.get("/plans")
-async def get_plans():
-    """Return all available pricing plans."""
-    return {"plans": list_plans()}
+# ---------------------------------------------------------------------------
+# Plans / prices
+# ---------------------------------------------------------------------------
 
-
-@router.post("/create-order")
-async def create_paypal_order(body: CreateOrderRequest, request: Request):
-    """
-    Create a PayPal order for a given plan.
-    Returns order_id + approve_url; frontend opens approve_url in PayPal JS SDK.
-    """
-    if not paypal_configured():
-        raise HTTPException(status_code=503, detail="PayPal is not configured on this server.")
-
-    # Try to get user_id from auth token (non-fatal if auth not wired)
-    user_id = "guest"
+@router.get("/billing/plans")
+async def get_plans(db=Depends(_db_or_503)):
     try:
-        from ..deps import get_current_user
-        from fastapi.security import HTTPBearer
-        scheme = HTTPBearer(auto_error=False)
-        creds = await scheme(request)
-        if creds:
-            user = await get_current_user(creds)
-            user_id = str(getattr(user, "id", None) or getattr(user, "user_id", None) or "guest")
-    except Exception:
-        pass
+        prices = await list_active_prices(db)
+        return {"plans": prices, "prices": prices}
+    except BillingError as exc:
+        raise _http_error(exc)
 
+
+# ---------------------------------------------------------------------------
+# Billing overview
+# ---------------------------------------------------------------------------
+
+@router.get("/billing/overview")
+async def get_overview(
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
     try:
-        result = await create_order(
-            plan_key=body.plan,
-            user_id=user_id,
-            return_url=body.return_url,
-            cancel_url=body.cancel_url,
+        return await billing_overview(db, current_user)
+    except BillingError as exc:
+        raise _http_error(exc)
+
+
+# ---------------------------------------------------------------------------
+# One-time orders
+# ---------------------------------------------------------------------------
+
+@router.post("/billing/create-order")
+async def post_create_order(
+    body: CreateOrderRequest,
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
+    try:
+        return await create_paypal_order(
+            db,
+            current_user,
+            price_id=body.price_id,
+            product_id=body.product_id,
+            idempotency_key=body.idempotency_key,
         )
-    except PayPalConfigError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-    except PayPalError as exc:
-        raise _http(exc)
-
-    return result
+    except BillingError as exc:
+        raise _http_error(exc)
 
 
-@router.post("/capture-order")
-async def capture_paypal_order(body: CaptureOrderRequest, request: Request):
-    """
-    Capture an approved PayPal order.
-    Call this after the user approves via PayPal JS SDK onApprove callback.
-    Returns payer details + credits to grant.
-    """
-    if not paypal_configured():
-        raise HTTPException(status_code=503, detail="PayPal is not configured on this server.")
-
+@router.post("/billing/capture-order")
+async def post_capture_order(
+    body: CaptureOrderRequest,
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
     try:
-        result = await capture_order(body.order_id)
-    except PayPalError as exc:
-        raise _http(exc)
-
-    # TODO: grant credits to user in DB here
-    # await grant_credits(user_id=result["payer_id"], credits=result["credits"])
-    logger.info("Order captured and ready for credit grant: %s", result)
-
-    return result
+        return await capture_paypal_order(db, current_user, paypal_order_id=body.paypal_order_id)
+    except BillingError as exc:
+        raise _http_error(exc)
 
 
-@router.post("/webhook")
-async def paypal_webhook(request: Request):
-    """
-    PayPal webhook handler (PAYMENT.CAPTURE.COMPLETED, etc.)
-    Verifies signature then processes event.
-    Set PAYPAL_WEBHOOK_ID in your env to enable signature verification.
-    """
-    raw_body = await request.body()
-    headers = dict(request.headers)
+# ---------------------------------------------------------------------------
+# Subscriptions
+# ---------------------------------------------------------------------------
 
-    is_valid = await verify_webhook_signature(headers, raw_body)
-    if not is_valid:
-        logger.warning("PayPal webhook signature verification failed")
-        raise HTTPException(status_code=400, detail="Invalid webhook signature")
-
+@router.post("/billing/create-subscription")
+async def post_create_subscription(
+    body: CreateSubscriptionRequest,
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
     try:
-        event = json.loads(raw_body)
+        return await create_paypal_subscription(
+            db,
+            current_user,
+            price_id=body.price_id,
+            product_id=body.product_id,
+            idempotency_key=body.idempotency_key,
+        )
+    except BillingError as exc:
+        raise _http_error(exc)
+
+
+@router.post("/billing/activate-subscription")
+async def post_activate_subscription(
+    body: ActivateSubscriptionRequest,
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
+    try:
+        return await activate_paypal_subscription(
+            db, current_user, paypal_subscription_id=body.paypal_subscription_id
+        )
+    except BillingError as exc:
+        raise _http_error(exc)
+
+
+@router.post("/billing/cancel-subscription")
+async def post_cancel_subscription(
+    body: CancelSubscriptionRequest,
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
+    try:
+        return await cancel_paypal_subscription(
+            db,
+            current_user,
+            subscription_id=body.subscription_id,
+            cancel_at_period_end=body.cancel_at_period_end,
+        )
+    except BillingError as exc:
+        raise _http_error(exc)
+
+
+# ---------------------------------------------------------------------------
+# Billing history
+# ---------------------------------------------------------------------------
+
+@router.get("/billing/history")
+async def get_billing_history(
+    db=Depends(_db_or_503),
+    current_user=Depends(_get_auth()),
+):
+    try:
+        return await billing_history(db, current_user)
+    except BillingError as exc:
+        raise _http_error(exc)
+
+
+# ---------------------------------------------------------------------------
+# PayPal Webhooks
+# ---------------------------------------------------------------------------
+
+@router.post("/billing/webhook/paypal")
+async def paypal_webhook(request: Request, db=Depends(_db_or_503)):
+    try:
+        body = await request.json()
+        headers = dict(request.headers)
+        result = await process_webhook(db, body, headers=headers)
+        return result
+    except BillingError as exc:
+        raise _http_error(exc)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON body")
-
-    event_type = event.get("event_type", "")
-    resource = event.get("resource", {})
-
-    logger.info("PayPal webhook received: %s", event_type)
-
-    if event_type == "PAYMENT.CAPTURE.COMPLETED":
-        capture_id = resource.get("id", "")
-        amount = resource.get("amount", {}).get("value", "0")
-        custom_id = resource.get("custom_id", "")
-        logger.info("Payment captured: capture_id=%s amount=%s user=%s", capture_id, amount, custom_id)
-        # TODO: persist to DB, grant credits
-        # await record_payment(capture_id=capture_id, user_id=custom_id, amount=amount)
-
-    elif event_type == "PAYMENT.CAPTURE.DENIED":
-        logger.warning("Payment denied: %s", resource.get("id"))
-
-    elif event_type == "PAYMENT.CAPTURE.REFUNDED":
-        logger.info("Payment refunded: %s", resource.get("id"))
-        # TODO: revoke credits
-
-    return {"received": True, "event_type": event_type}
+        return {"status": "ok"}
