@@ -528,5 +528,13 @@
   color: #fff !important;
   cursor: pointer !important;
 }
-
-.gc-submit-st
+.gc-submit-stop:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  transform: scale(1.04);
+}
+.gc-submit-stop:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  transform: scale(1.04);
+}

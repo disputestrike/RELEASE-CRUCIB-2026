@@ -2328,4 +2328,19 @@ export default function App() {
                       <WorkspaceFileViewer
                         activePathPosix={activeWsPath}
                         entry={wsFileCache[activeWsPath]}
-                        trace={active
+                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
+                        editorColorMode={editorColorMode}
+                        onTextChange={handleCodeChange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+    </WorkspaceNavProvider>
+  );
+}

@@ -524,5 +524,35 @@ export default function GoalComposer({
           onEstimateReady={onEstimateReady}
         />
       ) : null}
+      {authLoading && <div className="gc-hint">Starting your session…</div>}
 
-      {authLoading && <div classNam
+      {error && (
+        <div className="gc-error-wrap">
+          <div className="gc-error gc-error-friendly">{error}</div>
+          {errorRaw ? (
+            <details className="gc-error-details">
+              <summary className="gc-error-details-summary">Technical details</summary>
+              <pre className="gc-error-details-pre">{errorRaw}</pre>
+            </details>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+      {authLoading && <div className="gc-hint">Starting your session…</div>}
+
+      {error && (
+        <div className="gc-error-wrap">
+          <div className="gc-error gc-error-friendly">{error}</div>
+          {errorRaw ? (
+            <details className="gc-error-details">
+              <summary className="gc-error-details-summary">Technical details</summary>
+              <pre className="gc-error-details-pre">{errorRaw}</pre>
+            </details>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
