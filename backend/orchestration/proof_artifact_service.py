@@ -679,4 +679,4 @@ def get_proof_artifact_service() -> ProofArtifactService:
     global _proof_service
     if _proof_service is None:
         _proof_service = ProofArtifactService()
-    retu
+    return _proof_service

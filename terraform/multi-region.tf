@@ -67,19 +67,19 @@ resource "aws_route53_zone" "main" {
   }
 }
 
-# Primary Region A Record (Failover - PRIMARY)
+# Primary Region A Record
 resource "aws_route53_record" "primary" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "api.crucibai.com"
   type    = "A"
 
-  failover_routing_policy {
-    type = "PRIMARY"
+  weighted_routing_policy {
+    weight = 100
   }
 
   alias {
-    name                   = "api-primary.crucibai.com"
-    zone_id                = "Z123456"  # Replace with actual ALB zone ID
+    name                   = var.primary_alias_dns_name
+    zone_id                = var.primary_alias_zone_id
     evaluate_target_health = true
   }
 
@@ -87,19 +87,19 @@ resource "aws_route53_record" "primary" {
   health_check_id = aws_route53_health_check.primary.id
 }
 
-# Secondary Region A Record (Failover - SECONDARY)
+# Secondary Region A Record
 resource "aws_route53_record" "secondary" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "api.crucibai.com"
   type    = "A"
 
-  failover_routing_policy {
-    type = "SECONDARY"
+  weighted_routing_policy {
+    weight = 50
   }
 
   alias {
-    name                   = "api-secondary.crucibai.com"
-    zone_id                = "Z789012"  # Replace with actual ALB zone ID
+    name                   = var.secondary_alias_dns_name
+    zone_id                = var.secondary_alias_zone_id
     evaluate_target_health = true
   }
 
@@ -107,19 +107,19 @@ resource "aws_route53_record" "secondary" {
   health_check_id = aws_route53_health_check.secondary.id
 }
 
-# Tertiary Region A Record (Failover - SECONDARY)
+# Tertiary Region A Record
 resource "aws_route53_record" "tertiary" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "api.crucibai.com"
   type    = "A"
 
-  failover_routing_policy {
-    type = "SECONDARY"
+  weighted_routing_policy {
+    weight = 25
   }
 
   alias {
-    name                   = "api-tertiary.crucibai.com"
-    zone_id                = "Z345678"  # Replace with actual ALB zone ID
+    name                   = var.tertiary_alias_dns_name
+    zone_id                = var.tertiary_alias_zone_id
     evaluate_target_health = true
   }
 

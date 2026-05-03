@@ -87,7 +87,7 @@ const API_SECTIONS = [
     endpoints: [
       { method: 'GET', path: '/api/tokens/balance', desc: 'Get current token balance', body: null, response: '{ "balance": 50000, "tier": "pro" }' },
       { method: 'GET', path: '/api/tokens/usage', desc: 'Get usage history', body: null, response: '{ "usage": [...], "total": 125000 }' },
-      { method: 'POST', path: '/api/payments/braintree/checkout', desc: 'Complete Braintree checkout from a payment method nonce', body: '{ "bundle": "pro", "payment_method_nonce": "..." }', response: '{ "ok": true, "transaction_id": "..." }' },
+      { method: 'POST', path: '/api/billing/create-order', desc: 'Create a PayPal checkout order', body: '{ "price_id": "price_pro_one_time" }', response: '{ "status": "created", "paypal_order_id": "..." }' },
       { method: 'GET', path: '/api/tokens/referral', desc: 'Get referral code and stats', body: null, response: '{ "code": "...", "referrals": 5, "earned": 5000 }' },
     ]
   },

@@ -5,7 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 const SUGGESTIONS = [
-  'Build a SaaS dashboard with auth and Braintree',
+  'Build a SaaS dashboard with auth and PayPal',
   'Create a project management tool with team collaboration',
   'Build an e-commerce store with product catalog and checkout',
   'Create a CRM with lead pipeline and automation',
@@ -104,7 +104,7 @@ export default function CommandCenter({ onSubmit, isRunning = false, placeholder
   };
 
   const defaultPlaceholder = isRunning
-    ? "Steer anytime — 'make it dark mode', 'add Braintree', 'skip tests'…"
+    ? "Steer anytime - 'make it dark mode', 'add PayPal', 'skip tests'..."
     : "Describe what you want to build…";
 
   return (

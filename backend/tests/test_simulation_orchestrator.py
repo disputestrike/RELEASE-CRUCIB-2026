@@ -41,7 +41,7 @@ async def test_simulation_orchestrator_stream_ndjson(monkeypatch):
 
     chunks = []
     async for line in orch.stream_ndjson(
-        scenario="What if we remove Stripe?",
+        scenario="What if we remove PayPal?",
         population_size=12,
         rounds=2,
         agent_roles=["architect", "backend", "security"],

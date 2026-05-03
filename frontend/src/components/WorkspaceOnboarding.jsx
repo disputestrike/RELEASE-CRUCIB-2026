@@ -11,12 +11,12 @@ const DEMO_MESSAGES = [
   { text: 'Building dashboard with analytics…', delay: 2400 },
   { text: 'Connecting authentication…', delay: 3400 },
   { text: '✓ Auth ready — 12 tables created', delay: 4400 },
-  { text: 'Wiring Braintree billing integration…', delay: 5200 },
+  { text: 'Wiring PayPal billing integration...', delay: 5200 },
   { text: '✓ Build complete — quality 88/100', delay: 6200 },
 ];
 
 const SUGGESTIONS = [
-  'Build a SaaS dashboard with Braintree billing',
+  'Build a SaaS dashboard with PayPal billing',
   'Create a project management tool with teams',
   'Build a CRM with email automation',
   'Create a mobile app with auth and notifications',

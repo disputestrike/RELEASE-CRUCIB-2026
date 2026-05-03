@@ -1657,8 +1657,8 @@ async def create_product(
         "type": body.type,
         "is_active": True,
         "metadata": body.metadata or {},
-        "braintree_product_id": None,
-        "braintree_plan_id": None,
+        "paypal_product_id": None,
+        "paypal_plan_id": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -1736,7 +1736,7 @@ async def get_order(order_id: str, user: dict = Depends(_resolve_current_user)):
 async def create_checkout(
     body: CheckoutCreate, request: Request, user: dict = Depends(_resolve_current_user)
 ):
-    """Create a Braintree checkout handoff for a product."""
+    """Create a PayPal checkout handoff for a product."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
@@ -1746,20 +1746,18 @@ async def create_checkout(
     if not product.get("is_active", True):
         raise HTTPException(status_code=400, detail="Product is not active")
     configured = bool(
-        os.environ.get("BRAINTREE_MERCHANT_ID")
-        and os.environ.get("BRAINTREE_PUBLIC_KEY")
-        and os.environ.get("BRAINTREE_PRIVATE_KEY")
+        os.environ.get("PAYPAL_CLIENT_ID")
+        and os.environ.get("PAYPAL_CLIENT_SECRET")
     )
     if not configured:
         raise HTTPException(
             status_code=503,
             detail={
-                "error": "braintree_not_configured",
+                "error": "paypal_not_configured",
                 "required_config": [
-                    "BRAINTREE_MERCHANT_ID",
-                    "BRAINTREE_PUBLIC_KEY",
-                    "BRAINTREE_PRIVATE_KEY",
-                    "BRAINTREE_ENVIRONMENT",
+                    "PAYPAL_CLIENT_ID",
+                    "PAYPAL_CLIENT_SECRET",
+                    "PAYPAL_MODE",
                 ],
             },
         )
@@ -1768,7 +1766,7 @@ async def create_checkout(
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
         "product_id": product["id"],
-        "payment_provider": "braintree",
+        "payment_provider": "paypal",
         "amount": product["price"] * (body.quantity or 1),
         "currency": product["currency"],
         "status": "pending",
@@ -1779,10 +1777,10 @@ async def create_checkout(
     await db.orders.insert_one(order)
     return {
         "status": "ready",
-        "provider": "braintree",
+        "provider": "paypal",
         "order_id": order["id"],
-        "client_token_endpoint": "/api/payments/braintree/client-token",
-        "checkout_endpoint": "/api/payments/braintree/checkout",
+        "create_order_endpoint": "/api/billing/create-order",
+        "capture_order_endpoint": "/api/billing/capture-order",
     }
 
 
@@ -1961,7 +1959,7 @@ def _generate_schema_heuristic(
             "subscription",
             "plan",
             "billing",
-            "braintree",
+            "paypal",
             "saas",
             "pricing",
             "tier",
@@ -1972,7 +1970,7 @@ def _generate_schema_heuristic(
     # Feature flag overrides
     if "teams" in feature_set or "organizations" in feature_set:
         has_teams = True
-    if "payments" in feature_set or "braintree" in feature_set:
+    if "payments" in feature_set or "paypal" in feature_set:
         has_orders = True
         has_products = True
         has_subscriptions = True
@@ -2204,8 +2202,8 @@ def _generate_schema_heuristic(
             "  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'fulfilling', 'completed', 'cancelled', 'refunded')),",
             "  total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,",
             "  currency TEXT NOT NULL DEFAULT 'usd',",
-            "  braintree_transaction_id TEXT,",
-            "  braintree_payment_method_nonce TEXT,",
+            "  paypal_order_id TEXT,",
+            "  paypal_capture_id TEXT,",
             "  items JSONB NOT NULL DEFAULT '[]',",
             "  metadata JSONB NOT NULL DEFAULT '{}',",
             "  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
@@ -2225,7 +2223,7 @@ def _generate_schema_heuristic(
             {
                 "method": "POST",
                 "path": "/checkout",
-                "description": "Create Braintree checkout handoff",
+                "description": "Create PayPal checkout handoff",
             },
             {"method": "GET", "path": "/orders", "description": "List user's orders"},
             {
@@ -2234,10 +2232,9 @@ def _generate_schema_heuristic(
                 "description": "Get order detail",
             },
         ]
-        env_vars.append("BRAINTREE_MERCHANT_ID=<your-braintree-merchant-id>")
-        env_vars.append("BRAINTREE_PUBLIC_KEY=<your-braintree-public-key>")
-        env_vars.append("BRAINTREE_PRIVATE_KEY=<your-braintree-private-key>")
-        env_vars.append("BRAINTREE_ENVIRONMENT=sandbox")
+        env_vars.append("PAYPAL_CLIENT_ID=<your-paypal-client-id>")
+        env_vars.append("PAYPAL_CLIENT_SECRET=<your-paypal-client-secret>")
+        env_vars.append("PAYPAL_MODE=sandbox")
 
     if has_messages:
         tables_sql_parts += [
@@ -2423,8 +2420,8 @@ def _generate_schema_heuristic(
             "  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,",
             "  plan TEXT NOT NULL DEFAULT 'free',",
             "  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'past_due', 'cancelled', 'trialing')),",
-            "  braintree_subscription_id TEXT,",
-            "  braintree_customer_id TEXT,",
+            "  paypal_subscription_id TEXT,",
+            "  paypal_customer_id TEXT,",
             "  current_period_start TIMESTAMPTZ,",
             "  current_period_end TIMESTAMPTZ,",
             "  cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,",

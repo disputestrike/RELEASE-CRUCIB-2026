@@ -51,7 +51,7 @@ function buildFollowupSuggestions(truthSurface) {
   const contractOk = truthSurface?.prompt_contract_passed !== false;
   const out = [];
   if (!contractOk) {
-    out.push('Add missing ecommerce surfaces (catalog, cart, checkout, Braintree stub).');
+    out.push('Add missing ecommerce surfaces (catalog, cart, checkout, PayPal stub).');
   }
   if (src === 'sandpack_fallback' || src === 'diagnostic_fallback' || src === 'main_app_shell') {
     out.push('Continue from saved workspace and regenerate a real generated-artifact preview.');

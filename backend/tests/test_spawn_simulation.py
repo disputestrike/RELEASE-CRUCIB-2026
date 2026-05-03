@@ -60,7 +60,7 @@ async def test_spawn_simulate_endpoint_returns_success(monkeypatch):
 
     monkeypatch.setattr(events_module.event_bus, "emit", lambda event_type, payload=None: emitted.append((event_type, payload or {})))
 
-    body = route.SpawnSimulateBody(jobId="job-1", scenario="What if we replace Stripe?")
+    body = route.SpawnSimulateBody(jobId="job-1", scenario="What if we replace PayPal?")
     result = await route.spawn_simulate(body, user={"id": "user-1"})
 
     assert result["success"] is True
@@ -100,7 +100,7 @@ async def test_spawn_simulate_stream_endpoint_returns_ndjson(monkeypatch):
 
     body = route.SpawnSimulateBody(
         jobId="job-1",
-        scenario="What if we replace Stripe?",
+        scenario="What if we replace PayPal?",
         population_size=12,
         rounds=2,
     )

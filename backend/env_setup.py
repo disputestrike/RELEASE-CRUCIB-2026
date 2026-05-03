@@ -28,12 +28,10 @@ REQUIRED_VARS = {
 
 OPTIONAL_VARS = {
     "payment": {
-        "BRAINTREE_MERCHANT_ID": "Braintree merchant ID for payment processing",
-        "BRAINTREE_PUBLIC_KEY": "Braintree public key",
-        "BRAINTREE_PRIVATE_KEY": "Braintree private key",
-        "BRAINTREE_ENVIRONMENT": "Braintree environment: sandbox or production",
-        "BRAINTREE_MERCHANT_ACCOUNT_ID": "Default Starlight LLC Braintree merchant account ID",
-        "APP_URL": "Public app URL used for Braintree webhook configuration",
+        "PAYPAL_CLIENT_ID": "PayPal app client ID",
+        "PAYPAL_CLIENT_SECRET": "PayPal app client secret",
+        "PAYPAL_MODE": "PayPal mode: sandbox or live",
+        "APP_URL": "Public app URL used for PayPal webhook configuration",
     },
     "email": {
         "SMTP_HOST": "SMTP server hostname",

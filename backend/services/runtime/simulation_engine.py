@@ -66,8 +66,8 @@ class SimulationEngine:
                 return "Stabilize current stack first, change only with security regression checks"
             return "Prefer safer path with strict controls and verification"
         if prior == "cost_sensitive":
-            if "stripe" in s and ("remove" in s or "switch" in s):
-                return "Switch to lower-fee option if migration risk is bounded"
+            if "paypal" in s and ("remove" in s or "switch" in s):
+                return "Switch payment providers only if migration risk is bounded"
             return "Prefer lower operating cost and lean dependencies"
         if prior == "speed_first":
             return "Prefer fastest path to production with minimum migration drag"

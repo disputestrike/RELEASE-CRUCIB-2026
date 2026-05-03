@@ -24,7 +24,7 @@ CLAIM_PATTERNS: Dict[str, re.Pattern] = {
         re.I,
     ),
     "integration_complete": re.compile(
-        r"\bintegration\s+complete\b|\breal\s+stripe\b|\blive\s+payments\b",
+        r"\bintegration\s+complete\b|\breal\s+paypal\b|\blive\s+payments\b",
         re.I,
     ),
     "deployment_ready": re.compile(

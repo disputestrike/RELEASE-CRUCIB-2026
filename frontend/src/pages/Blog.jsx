@@ -46,7 +46,7 @@ const POSTS = [
     date: '2026-02',
     body: [
       'We take security in two places: the platform we run, and the code you build or bring.',
-      'On the platform we use rate limiting (per user and per IP), security headers (CSP, HSTS, X-Frame-Options, and more), request validation (max body size, blocking suspicious patterns), and CORS from configurable origins. Auth is JWT with bcrypt for passwords; we support MFA and API keys. We don’t return secrets in API responses; Braintree and webhook signatures are verified. We block disposable emails at signup and cap referral abuse. So the service itself is hardened for production use.',
+      'On the platform we use rate limiting (per user and per IP), security headers (CSP, HSTS, X-Frame-Options, and more), request validation (max body size, blocking suspicious patterns), and CORS from configurable origins. Auth is JWT with bcrypt for passwords; we support MFA and API keys. We do not return secrets in API responses; PayPal payment events are handled server-side. We block disposable emails at signup and cap referral abuse. So the service itself is hardened for production use.',
       'For your code we give you evidence-backed checks. Build Integrity blocks likely client-exposed secrets and weak artifacts, and baseline security scans can produce reports. Comprehensive CORS/auth/tenancy security doctors and WCAG/axe/keyboard/contrast accessibility proof are still not claimable for every project.',
       'So: we protect the platform, and we give you visibility and checks for what you build and bring. No magic — just controls and feedback you can act on.',
     ],

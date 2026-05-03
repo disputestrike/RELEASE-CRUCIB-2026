@@ -89,8 +89,8 @@ def _detect_integrations(goal: str) -> list:
     """Word-boundary matching avoids substring false positives (e.g. 'payment' in unrelated words)."""
     g = goal.lower()
     integrations = []
-    if re.search(r"\b(braintree|payments?|billing|checkout)\b", g):
-        integrations.append("braintree")
+    if re.search(r"\b(paypal|payments?|billing|checkout)\b", g):
+        integrations.append("paypal")
     if re.search(r"\b(auth|authentication|login|sign[\s-]?up|oauth|jwt)\b", g):
         integrations.append("auth")
     if re.search(r"\b(database|postgres|postgresql|mysql|mongodb|sqlite|storage)\b", g):
@@ -211,10 +211,10 @@ def _detect_risk_flags(
 ) -> list:
     flags = []
     g = goal.lower()
-    if "Braintree" in g and not (project_state or {}).get("env_vars", {}).get(
-        "BRAINTREE_PRIVATE_KEY"
+    if "paypal" in g and not (project_state or {}).get("env_vars", {}).get(
+        "PAYPAL_CLIENT_ID"
     ):
-        flags.append("Braintree_keys_missing")
+        flags.append("paypal_keys_missing")
     if len(goal) < 20:
         flags.append("goal_too_vague")
     thresh = _goal_len_advisory_threshold(project_state)
@@ -275,7 +275,7 @@ def _architecture_outline(
             if "multi_tenant" in ints
             else "single_tenant_template"
         ),
-        "billing_intent": "Braintree stubs + idempotency SQL sketch if Braintree integration detected",
+        "billing_intent": "PayPal stubs + idempotency SQL sketch if payment integration detected",
         "frontend_stack": (
             "agent_swarm_requested_stack"
             if swarm_mode
@@ -632,14 +632,14 @@ def _build_phases(
         },
     ]
 
-    # Add Braintree steps if needed
-    if "braintree" in integrations:
+    # Add PayPal steps if needed
+    if "paypal" in integrations:
         phases[2]["steps"].append(
             {
-                "key": "backend.braintree",
+                "key": "backend.paypal",
                 "agent": "Payment Setup Agent",
-                "name": "Braintree integration",
-                "description": "Checkout, webhooks, billing portal",
+                "name": "PayPal integration",
+                "description": "Checkout, subscriptions, webhooks",
                 "depends_on": ["backend.routes"],
             }
         )
@@ -652,27 +652,14 @@ def _build_phases(
 
 
 async def generate_plan(
-    goal: str, project_state: Optional[Dict] = None, llm_call=None,
-    user_id: Optional[str] = None,
+    goal: str, project_state: Optional[Dict] = None, llm_call=None
 ) -> Dict[str, Any]:
     """
     Generate a structured build plan for the given goal.
     llm_call: optional async callable(prompt) -> str for AI-enhanced planning.
-    user_id: when provided, user memory context is prepended to the goal.
     """
-    # Phase 6: prepend user memory context (always non-blocking)
-    enriched_goal = goal
-    try:
-        if user_id:
-            from backend.services.user_memory_service import build_memory_context_block
-            ctx = build_memory_context_block(user_id)
-            if ctx:
-                enriched_goal = ctx + "\nGoal: " + goal
-    except Exception:
-        pass
-
-    stack_contract = parse_generation_contract(enriched_goal)
-    stack_contract["goal"] = goal  # keep original goal for display
+    stack_contract = parse_generation_contract(goal)
+    stack_contract["goal"] = goal
     build_kind = _detect_build_kind(goal)
     integrations = list(_detect_integrations(goal))
     if goal_suggests_database(goal) and "database" not in integrations:
@@ -695,11 +682,11 @@ async def generate_plan(
     missing_inputs: list = []
     env_vars = (project_state or {}).get("env_vars", {})
 
-    if "braintree" in integrations and not env_vars.get("BRAINTREE_PRIVATE_KEY"):
+    if "paypal" in integrations and not env_vars.get("PAYPAL_CLIENT_ID"):
         missing_inputs.append(
             _advisory_missing(
-                "BRAINTREE_PRIVATE_KEY",
-                "For live charges add to backend/.env; dev builds can use checkout mocks / placeholders.",
+                "PAYPAL_CLIENT_ID",
+                "For live charges add PayPal client/secret credentials to backend/.env; dev builds can use checkout mocks / placeholders.",
                 blocking=True,
             )
         )
@@ -743,8 +730,8 @@ async def generate_plan(
         "Authentication flow works end-to-end",
         "Preview iframe renders the application",
     ]
-    if "braintree" in integrations:
-        acceptance_criteria.append("Braintree checkout flow reachable")
+    if "paypal" in integrations:
+        acceptance_criteria.append("PayPal checkout flow reachable")
     if "compliance_sensitive" in integrations:
         acceptance_criteria.append(
             "Regulated-domain sketch doc present (docs/COMPLIANCE_SKETCH.md) — review with counsel before production",

@@ -1761,8 +1761,8 @@ export default function App() {
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar uw-center-headline">
-            <div className="uw-center-headline-brand" aria-label="Crucible product version">
-              <span className="uw-center-headline-name">Crucible</span>
+            <div className="uw-center-headline-brand" aria-label="CrucibAI product version">
+              <span className="uw-center-headline-name">CrucibAI</span>
               <span className="uw-center-headline-version">1.0</span>
             </div>
             <div className="uw-center-headline-actions">

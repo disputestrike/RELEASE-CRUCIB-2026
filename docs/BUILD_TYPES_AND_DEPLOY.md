@@ -1,6 +1,6 @@
-# Build Types, Full Builds, and Deploy
+﻿# Build Types, Full Builds, and Deploy
 
-This doc answers: **How does “build me a mobile / agent / software” work?** and **How do we guarantee full builds and deploy?**
+This doc answers: **How does â€œbuild me a mobile / agent / softwareâ€ work?** and **How do we define the full-build contract and deploy path?**
 
 ---
 
@@ -11,7 +11,7 @@ This doc answers: **How does “build me a mobile / agent / software” work?** 
 
 ---
 
-## 1. How the system recognizes what you’re building
+## 1. How the system recognizes what youâ€™re building
 
 ### From the **Project Builder** (explicit type)
 
@@ -31,24 +31,24 @@ When you create a project from **New Project** and choose a type, we send that a
 | API Backend      | `fullstack`          | Backend-focused web project |
 | Automation       | `ai_agent`           | Automation/agent-style project |
 
-So: **“Build me a mobile”** = choose **Mobile App** in Project Builder → `build_kind: "mobile"` → orchestration produces an Expo bundle.  
-**“Build me an agent”** = choose **AI Agent** (or **Automation**) → `build_kind: "ai_agent"` → plan and agents target agent/automation outputs.
+So: **â€œBuild me a mobileâ€** = choose **Mobile App** in Project Builder â†’ `build_kind: "mobile"` â†’ orchestration produces an Expo bundle.  
+**â€œBuild me an agentâ€** = choose **AI Agent** (or **Automation**) â†’ `build_kind: "ai_agent"` â†’ plan and agents target agent/automation outputs.
 
 ### From the **Dashboard / Workspace** (inferred from prompt)
 
-If you type in the Dashboard (e.g. “Build me a todo app”) and go straight to the **Workspace** (no project created yet), the **backend** infers `build_kind` from the prompt when a **project is later created** (e.g. from Project Builder or save flow). The inference rules (in `_infer_build_kind`) include:
+If you type in the Dashboard (e.g. â€œBuild me a todo appâ€) and go straight to the **Workspace** (no project created yet), the **backend** infers `build_kind` from the prompt when a **project is later created** (e.g. from Project Builder or save flow). The inference rules (in `_infer_build_kind`) include:
 
-- **Mobile**: “mobile app”, “react native”, “flutter”, “ios app”, “android app”, “build me a mobile”, etc.
-- **Agent / automation**: “build me an agent”, “automation”, “scheduled task”, “cron”, “webhook agent”, “build agent”, etc.
-- **Website**: “website”, “build me a website”, “build me a web”.
-- **Landing**: “landing page”, “one-page”, “marketing page”.
+- **Mobile**: â€œmobile appâ€, â€œreact nativeâ€, â€œflutterâ€, â€œios appâ€, â€œandroid appâ€, â€œbuild me a mobileâ€, etc.
+- **Agent / automation**: â€œbuild me an agentâ€, â€œautomationâ€, â€œscheduled taskâ€, â€œcronâ€, â€œwebhook agentâ€, â€œbuild agentâ€, etc.
+- **Website**: â€œwebsiteâ€, â€œbuild me a websiteâ€, â€œbuild me a webâ€.
+- **Landing**: â€œlanding pageâ€, â€œone-pageâ€, â€œmarketing pageâ€.
 - **SaaS, bot, game, trading**: same keywords as in the table above.
 
-So when someone says **“Build me an agent”** or **“Build me a mobile”**, the system either uses the type they picked (Project Builder) or infers it from the prompt when running **orchestration** (e.g. after creating a project).
+So when someone says **â€œBuild me an agentâ€** or **â€œBuild me a mobileâ€**, the system either uses the type they picked (Project Builder) or infers it from the prompt when running **orchestration** (e.g. after creating a project).
 
 ---
 
-## 2. Two ways to “build”
+## 2. Two ways to â€œbuildâ€
 
 ### A. **Project flow (full orchestration, full bundle)**
 
@@ -70,16 +70,16 @@ Preview and deploy use these **deploy_files**, so the project is **complete** fo
 
 ### B. **Workspace-only flow (no project, single-shot AI)**
 
-1. User types on the **Dashboard** (e.g. “Build me a flower website”) → intent **build** → navigate to **Workspace** with `initialPrompt` + `autoStart`.
+1. User types on the **Dashboard** (e.g. â€œBuild me a flower websiteâ€) â†’ intent **build** â†’ navigate to **Workspace** with `initialPrompt` + `autoStart`.
 2. **No project is created.** Workspace calls `/ai/chat` or `/ai/chat/stream` with a long prompt that asks for multiple files (App.js, Navbar, Footer, pages/Home.js, etc.).
 3. Response is parsed; root-level files are normalized to `/src/` and a default `src/index.js` is injected if missing so **Sandpack preview** works.
 4. User can later **export** (ZIP) or **deploy** from the Workspace UI; that uses the in-memory files. To get the **full orchestration bundle** (with backend, DB, tests, package.json, index.html), they need to **create a project** from Project Builder with the same intent and run the full build there.
 
-So: **“Build me a software”** in the Dashboard → Workspace gives a **single-shot** full-stack-style app (multi-file when the model complies). **“Build me a software”** in **Project Builder** with type Full-Stack → **full build** with backend, DB, tests, and full web bundle.
+So: **â€œBuild me a softwareâ€** in the Dashboard â†’ Workspace gives a **single-shot** full-stack-style app (multi-file when the model complies). **â€œBuild me a softwareâ€** in **Project Builder** with type Full-Stack â†’ **full build** with backend, DB, tests, and full web bundle.
 
 ---
 
-## 3. Full build guarantee (no “minimal” only)
+## 3. Full build contract (no â€œminimalâ€ only)
 
 - **Web (orchestration path)**  
   Every web project from orchestration gets:
@@ -118,11 +118,12 @@ So: **full build** = create a project with the right type (or inferred `build_ki
 
 | Question | Answer |
 |----------|--------|
-| How does “build me a mobile” work? | Choose **Mobile App** in Project Builder (or prompt implies mobile) → `build_kind: "mobile"` → orchestration produces full Expo app. |
-| How does “build me an agent” work? | Choose **AI Agent** or **Automation** (or prompt implies agent/automation) → `build_kind: "ai_agent"` → orchestration produces agent/automation outputs. |
-| How does “build me a software” work? | Full-Stack or inferred `fullstack` → full web bundle + backend + DB + tests; single-shot in Workspace = multi-file React app when the model complies. |
-| How does the agent recognize what to build? | **Project Builder**: you pick the type → `build_kind`. **Orchestration**: `build_kind` from requirements or `_infer_build_kind(prompt)`. |
-| Full build guarantee? | Web: always `src/App.jsx`, `src/index.js`, `src/styles.css`, `package.json`, `public/index.html` + backend/DB/tests when applicable. Mobile: full Expo. No “minimal-only” for orchestrated projects. |
+| How does â€œbuild me a mobileâ€ work? | Choose **Mobile App** in Project Builder (or prompt implies mobile) â†’ `build_kind: "mobile"` â†’ orchestration produces full Expo app. |
+| How does â€œbuild me an agentâ€ work? | Choose **AI Agent** or **Automation** (or prompt implies agent/automation) â†’ `build_kind: "ai_agent"` â†’ orchestration produces agent/automation outputs. |
+| How does â€œbuild me a softwareâ€ work? | Full-Stack or inferred `fullstack` â†’ full web bundle + backend + DB + tests; single-shot in Workspace = multi-file React app when the model complies. |
+| How does the agent recognize what to build? | **Project Builder**: you pick the type â†’ `build_kind`. **Orchestration**: `build_kind` from requirements or `_infer_build_kind(prompt)`. |
+| Full build contract? | Web: always `src/App.jsx`, `src/index.js`, `src/styles.css`, `package.json`, `public/index.html` + backend/DB/tests when applicable. Mobile: full Expo. No â€œminimal-onlyâ€ for orchestrated projects. |
 | Deploy? | From project: use Deploy in Workspace (ZIP / GitHub / Vercel / Netlify / Railway) from `deploy_files`. From Workspace-only: export/deploy from in-memory files. |
 
 This is the single source of truth for build types, full builds, and deploy behavior.
+

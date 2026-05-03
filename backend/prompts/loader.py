@@ -72,8 +72,8 @@ def load_design_system_injection() -> str:
 def load_payment_default_injection() -> str:
     """Return the payment default injection prompt for any agent that may generate billing code.
     
-    This enforces the Stripe-first rule: all generated customer apps use Stripe unless the
-    user explicitly named Braintree in their original prompt.
+    This enforces the PayPal-only rule: generated customer apps use PayPal for billing.
+    Legacy Stripe or Braintree code should be rejected by build integrity checks.
     """
     p = PROMPTS_DIR / "payment_default_injection.txt"
     if not p.exists():

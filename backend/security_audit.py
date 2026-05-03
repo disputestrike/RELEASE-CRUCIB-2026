@@ -28,10 +28,9 @@ class SecurityAudit:
             "JWT_SECRET",
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "BRAINTREE_MERCHANT_ID",
-            "BRAINTREE_PUBLIC_KEY",
-            "BRAINTREE_PRIVATE_KEY",
-            "BRAINTREE_MERCHANT_ACCOUNT_ID",
+            "PAYPAL_CLIENT_ID",
+            "PAYPAL_CLIENT_SECRET",
+            "PAYPAL_MODE",
         ]
 
         results = {}

@@ -738,8 +738,7 @@ class BuildContractGenerator:
     def _synthesize_forbidden_providers(self, dims: Dict) -> List[str]:
         """Synthesize forbidden providers."""
         if dims.get("billing"):
-            # If Stripe is default, forbid Braintree unless explicitly requested
-            return ["Braintree"]
+            return ["Stripe", "Braintree"]
         return []
     
     def _synthesize_verifiers(self, dims: Dict) -> List[str]:

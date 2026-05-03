@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
 
   backend "s3" {
@@ -24,7 +28,6 @@ provider "aws" {
       Project     = "CrucibAI"
       Environment = var.environment
       ManagedBy   = "Terraform"
-      CreatedAt   = timestamp()
     }
   }
 }
@@ -139,8 +142,13 @@ resource "aws_secretsmanager_secret" "jwt_secret" {
   recovery_window_in_days = 7
 }
 
-resource "aws_secretsmanager_secret" "stripe_key" {
-  name                    = "crucibai/stripe-key/${var.environment}"
+resource "aws_secretsmanager_secret" "paypal_client_id" {
+  name                    = "crucibai/paypal-client-id/${var.environment}"
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret" "paypal_client_secret" {
+  name                    = "crucibai/paypal-client-secret/${var.environment}"
   recovery_window_in_days = 7
 }
 

@@ -61,13 +61,11 @@ cp .env.production.template .env.production
 # Fill in all required secrets:
 # - JWT_SECRET (generate: openssl rand -hex 16)
 # - API_KEY_ENCRYPTION_KEY (generate: openssl rand -hex 16)
-# - BRAINTREE_ENVIRONMENT=sandbox (use production after live approval)
-# - BRAINTREE_MERCHANT_ID (from Braintree dashboard)
-# - BRAINTREE_PUBLIC_KEY (from Braintree dashboard)
-# - BRAINTREE_PRIVATE_KEY (from Braintree dashboard)
-# - BRAINTREE_MERCHANT_ACCOUNT_ID (default Starlight LLC merchant account)
+# - PAYPAL_MODE=sandbox (use live after production approval)
+# - PAYPAL_CLIENT_ID (from PayPal developer dashboard)
+# - PAYPAL_CLIENT_SECRET (from PayPal developer dashboard)
 # - APP_URL=https://your-production-domain.com
-# - Braintree webhook URL: APP_URL/api/webhooks/braintree
+# - PayPal webhook URL: APP_URL/api/billing/webhook/paypal
 # - OAUTH_GOOGLE_CLIENT_ID (from Google Cloud)
 # - OAUTH_GOOGLE_CLIENT_SECRET (from Google Cloud)
 # - SENTRY_DSN (from Sentry.io)

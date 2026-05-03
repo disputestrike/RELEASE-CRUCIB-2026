@@ -3,7 +3,7 @@
 Covers:
  - Content-type purity (Markdown-in-JSX detection)
  - Manifest-vs-disk reconciliation
- - Stripe-first payment enforcement
+ - PayPal-only payment enforcement
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import pytest
 from backend.orchestration.build_integrity_validator import (
     _check_content_type_purity,
     _check_manifest_vs_disk,
-    _check_stripe_first,
+    _check_paypal_only,
 )
 
 
@@ -102,34 +102,35 @@ def test_manifest_no_file_skips():
         assert _check_manifest_vs_disk(tmp, {}) == []
 
 
-# ── Stripe-first payment enforcement ─────────────────────────────────────────
+# ── PayPal-only payment enforcement ──────────────────────────────────────────
 
-def test_stripe_first_no_payment_passes():
+def test_paypal_only_no_payment_passes():
     files = {"src/App.jsx": "import React from 'react';\nexport default function App() {}"}
-    assert _check_stripe_first(files) == []
+    assert _check_paypal_only(files) == []
 
 
-def test_stripe_first_braintree_in_generated_fails():
+def test_paypal_only_braintree_in_generated_fails():
     files = {
         "src/billing/payment.py": "from braintree import BraintreeGateway\ngateway = BraintreeGateway(...)"
     }
-    result = _check_stripe_first(files)
+    result = _check_paypal_only(files)
     assert len(result) == 1
-    assert "STRIPE_FIRST_VIOLATION" in result[0]
+    assert "PAYPAL_ONLY_VIOLATION" in result[0]
 
 
-def test_stripe_first_platform_braintree_allowed():
-    """CrucibAI's own billing routes are exempt from the stripe-first check."""
+def test_paypal_only_platform_files_allowed():
+    """CrucibAI platform files are checked by platform tests, not generated-app BIV."""
     files = {
-        "backend/routes/braintree_payments.py": "from braintree import BraintreeGateway",
-        "backend/services/braintree_billing.py": "import braintree",
+        "backend/routes/paypal_payments.py": "from backend.services.paypal_billing import create_paypal_order",
+        "backend/services/paypal_billing.py": "PAYPAL_CLIENT_ID = ''",
     }
-    assert _check_stripe_first(files) == []
+    assert _check_paypal_only(files) == []
 
 
-def test_stripe_first_user_requested_braintree_allowed():
+def test_paypal_only_stripe_in_generated_fails():
     files = {
-        "src/billing/payment.py": "from braintree import BraintreeGateway\ngateway = BraintreeGateway(...)"
+        "src/billing/payment.py": "import stripe\nstripe.checkout.Session.create()"
     }
-    result = _check_stripe_first(files, user_requested_braintree=True)
-    assert result == []
+    result = _check_paypal_only(files)
+    assert len(result) == 1
+    assert "PAYPAL_ONLY_VIOLATION" in result[0]

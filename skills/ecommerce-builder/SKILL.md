@@ -1,6 +1,6 @@
 ---
 name: ecommerce-builder
-description: Build a complete e-commerce store with product catalog, shopping cart, Stripe checkout, order management, and admin dashboard. Use when the user wants to sell products online, build a shop, create a store, add payments, or needs Stripe checkout integrated. Triggers on phrases like "build a store", "create an e-commerce site", "I want to sell products", "build a shop with Stripe", "create an online marketplace".
+description: Build a complete e-commerce store with product catalog, shopping cart, PayPal checkout, order management, and admin dashboard. Use when the user wants to sell products online, build a shop, create a store, add payments, or needs PayPal checkout integrated. Triggers on phrases like "build a store", "create an e-commerce site", "I want to sell products", "build a shop with PayPal", "create an online marketplace".
 metadata:
   version: '1.0'
   category: build
@@ -10,8 +10,8 @@ metadata:
 
 # E-Commerce Builder
 
-> **PAYMENT RULE**: Default payment integration is **Stripe** (Checkout, Billing, Customer Portal).
-> Never implement Braintree unless the user explicitly names Braintree. BIV enforces this.
+> **PAYMENT RULE**: Default payment integration is **PayPal** (Checkout, subscriptions, webhooks).
+> Never implement Stripe or Braintree unless the user explicitly names that provider. BIV enforces this.
 
 
 
@@ -21,7 +21,7 @@ Apply this skill when the user wants to sell products online:
 
 - "Build me an online store for X"
 - "Create an e-commerce site that sells Y"
-- "I need a shop with Stripe checkout"
+- "I need a shop with PayPal checkout"
 - "Build a marketplace for Z"
 - Any request for a product catalog, store, shop, or commerce flow
 
@@ -42,12 +42,12 @@ A production-ready e-commerce application:
 - Quantity updates and item removal
 - Cart total with tax calculation
 
-**Checkout (Stripe)**
-- Stripe Checkout session for secure payment
+**Checkout (PayPal)**
+- PayPal Checkout order for secure payment
 - Guest checkout (no account required)
 - Order confirmation page with order number
 - Email confirmation (order receipt)
-- Stripe webhook for order fulfillment
+- PayPal webhook for order fulfillment
 
 **User Accounts**
 - Register/login (optional for purchase)
@@ -65,7 +65,7 @@ A production-ready e-commerce application:
 **Infrastructure**
 - PostgreSQL: products, categories, orders, order_items, users, cart
 - Image upload to S3/Cloudinary
-- Stripe Checkout + webhook handler
+- PayPal Checkout + webhook handler
 - Email notifications (order placed, shipped, delivered)
 
 ## Instructions
@@ -73,14 +73,14 @@ A production-ready e-commerce application:
 1. **Define the catalog** — extract: product type, categories, whether digital or physical, inventory needed, variants (size/color)
 
 2. **Build in 5 passes**:
-   - Pass 1: Config + types + DB schema + Stripe setup
+   - Pass 1: Config + types + DB schema + PayPal setup
    - Pass 2: Product catalog (grid, filters, detail page)
-   - Pass 3: Cart + checkout flow (Stripe)
+   - Pass 3: Cart + checkout flow (PayPal)
    - Pass 4: User auth + order history + admin dashboard
    - Pass 5: Backend API + webhook + email templates + README
 
-3. **Stripe rules**:
-   - Use Stripe Checkout Sessions (not Elements) for simplicity
+3. **PayPal rules**:
+   - Use PayPal Checkout Orders for simplicity
    - Webhook verifies payment before creating order
    - Never store card data
 
@@ -88,7 +88,7 @@ A production-ready e-commerce application:
    - Browse → add to cart → checkout → payment → order confirmation
    - Admin: add product → view orders → update status
 
-5. **Code must include** complete Stripe integration with webhook handler
+5. **Code must include** complete PayPal integration with webhook handler
 
 ## Example Input → Output
 
@@ -98,7 +98,8 @@ Output includes:
 - `/src/pages/Shop.tsx` — product grid with category filter + search
 - `/src/pages/Product.tsx` — product detail with add-to-cart
 - `/src/components/Cart.tsx` — slide-out cart drawer
-- `/src/pages/Checkout.tsx` — redirects to Stripe Checkout
+- `/src/pages/Checkout.tsx` — starts PayPal Checkout
 - `/src/pages/OrderConfirmation.tsx` — thank you page
-- `/server/routes/orders.ts` — create order + Stripe webhook
+- `/server/routes/orders.ts` — create order + PayPal webhook
 - `/database/schema.sql` — products, categories, orders, cart tables
+

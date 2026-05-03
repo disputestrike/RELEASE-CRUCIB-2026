@@ -1,6 +1,6 @@
 """
 CrucibAI API Tests � real app via AsyncClient (no mocks).
-Tests: Health, AI Chat, Auth, Tokens, Projects, Patterns, Build phases, Stripe.
+Tests: Health, AI Chat, Auth, Tokens, Projects, Patterns, Build phases, PayPal.
 AI endpoints may return 503/500 when no API keys or missing LLM deps; tests accept 200, 503, 500.
 """
 
@@ -453,22 +453,19 @@ class TestDeletionEndpoints:
         assert r_me.status_code in (401, 404)
 
 
-class TestStripeEndpoints:
-    """Stripe � 401/503 when not configured or no auth."""
+class TestPayPalEndpoints:
+    """PayPal billing endpoints."""
 
-    async def test_stripe_checkout_requires_auth(self, app_client):
+    async def test_paypal_create_order_requires_auth(self, app_client):
         r = await app_client.post(
-            "/api/stripe/create-checkout-session", json={"bundle": "builder"}
+            "/api/billing/create-order", json={"price_id": "price_builder_one_time"}
         )
         assert r.status_code in (401, 503)
 
-    async def test_stripe_checkout_invalid_bundle(self, app_client):
-        r = await app_client.post(
-            "/api/stripe/create-checkout-session",
-            json={"bundle": "invalid_bundle"},
-            headers={"Authorization": "Bearer fake"},
-        )
-        assert r.status_code in (400, 401, 403, 503)
+    async def test_paypal_config_public(self, app_client):
+        r = await app_client.get("/api/billing/config")
+        assert r.status_code == 200
+        assert r.json()["provider"] == "paypal"
 
 
 if __name__ == "__main__":

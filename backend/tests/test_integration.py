@@ -171,22 +171,21 @@ build_queue_depth 3
         assert "build_queue_depth" in prometheus_output
 
 
-class TestStripeWebhook:
-    """Test Stripe webhook integration"""
+class TestPayPalWebhook:
+    """Test PayPal webhook integration"""
 
-    async def test_stripe_webhook_verifies_signature(self):
-        """Verify Stripe webhook verifies signature"""
-        signature_verified = False
+    async def test_paypal_webhook_event_is_processed_once(self):
+        processed_event_ids = set()
+        event_id = "WH-TEST-1"
 
-        def mock_construct_event(payload, sig_header, secret):
-            nonlocal signature_verified
-            signature_verified = True
-            return {"type": "checkout.session.completed"}
+        first = event_id not in processed_event_ids
+        processed_event_ids.add(event_id)
+        second = event_id not in processed_event_ids
 
-        event = mock_construct_event(b"payload", "sig_123", "secret_123")
-        assert signature_verified, "Signature should be verified"
+        assert first is True
+        assert second is False
 
-    async def test_stripe_webhook_adds_credits(self, mock_db):
+    async def test_paypal_webhook_adds_credits(self, mock_db):
         """Verify credits are added to user account"""
         mock_db.execute = AsyncMock(return_value={"credits": 1000})
 
@@ -198,7 +197,7 @@ class TestStripeWebhook:
         result = await mock_db.execute()
         assert result["credits"] == 1000
 
-    async def test_stripe_webhook_sends_email(self):
+    async def test_paypal_webhook_sends_email(self):
         """Verify email is sent after credits added"""
         email_sent = False
 

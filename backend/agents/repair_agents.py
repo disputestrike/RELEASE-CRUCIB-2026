@@ -309,7 +309,7 @@ class LLMCodeRepairAgent:
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=0.1,  # Low temp for deterministic repair
-                task_type="backend_generation",  # Route to Anthropic for quality
+                task_type="repair_patch_generation",
             )
         except Exception as e:
             logger.error("[LLMCodeRepair] LLM call failed: %s", e)

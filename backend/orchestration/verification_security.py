@@ -1,5 +1,5 @@
 """
-verification.security — static checks for tenancy / Stripe sketches and obvious footguns.
+verification.security — static checks for tenancy / PayPal sketches and obvious footguns.
 Not a full SAST; complements production_gate secret scan on deploy.build.
 """
 
@@ -183,12 +183,12 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
                             verification_class="runtime",
                         ),
                     )
-        if "stripe_events_processed" in sql:
+        if "paypal_events_processed" in sql:
             proof.append(
                 _pi(
                     "verification",
-                    "Security: Stripe webhook idempotency table sketch in SQL",
-                    {"check": "stripe_idempotency_sql"},
+                    "Security: PayPal webhook idempotency table sketch in SQL",
+                    {"check": "payment_webhook_idempotency_sql"},
                     verification_class="runtime",
                 ),
             )
@@ -234,11 +234,11 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
                     verification_class="presence",
                 ),
             )
-        if "stripe_routes" in main_py or "include_router" in main_py:
+        if "paypal_routes" in main_py or "include_router" in main_py:
             proof.append(
                 _pi(
                     "verification",
-                    "Security: API app includes mounted sub-routers (e.g. Stripe)",
+                    "Security: API app includes mounted sub-routers (e.g. PayPal)",
                     {"check": "router_mount"},
                     verification_class="presence",
                 ),

@@ -284,7 +284,7 @@ class TestConnectorManager:
         assert "railway"  in status
         assert "vercel"   in status
         assert "slack"    in status
-        assert "stripe"   in status
+        assert "paypal"   in status
 
     def test_get_returns_none_for_unknown(self):
         from services.connector_manager import connector_manager

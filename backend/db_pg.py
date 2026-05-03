@@ -714,8 +714,6 @@ REQUIRED_TABLES = [
     "asset_generation_requests",
     "connector_credentials",
     "connector_oauth_states",
-    "braintree_transactions",
-    "braintree_webhook_events",
     "capability_registry_snapshots",
     "audit_log",
     "simulations",
@@ -805,8 +803,6 @@ CREATE TABLE IF NOT EXISTS computer_use_actions (id TEXT PRIMARY KEY, doc JSONB 
 CREATE TABLE IF NOT EXISTS asset_generation_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS connector_credentials (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS connector_oauth_states (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
-CREATE TABLE IF NOT EXISTS braintree_transactions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
-CREATE TABLE IF NOT EXISTS braintree_webhook_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS capability_registry_snapshots (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_log (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS simulations (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');

@@ -53,7 +53,7 @@ $checks = [ordered]@{
         ($dockerfile -match '\$\{PORT:-8000\}' -or $dockerfile -match '\$PORT' -or $dockerfile -match 'PORT')
     )
     dockerfile_healthcheck_api_health = ($dockerfile -match "/api/health")
-    dockerfile_copies_full_systems_proof = ($dockerfile -match "proof/full_systems/summary.json" -and $dockerfile -match "proof/full_systems/PASS_FAIL.md")
+    dockerfile_does_not_require_deleted_proof_tree = -not ($dockerfile -match "COPY\s+proof/")
     procfile_uvicorn_fallback = ($procfile -match "uvicorn server:app")
 }
 

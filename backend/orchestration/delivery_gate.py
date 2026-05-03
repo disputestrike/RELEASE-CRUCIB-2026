@@ -114,8 +114,8 @@ def check_artifact_reconciliation(workspace_path: str) -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 _LIVE_CLAIM_PATTERNS = re.compile(
-    r"\b(stripe payments? live|live payments?|payments? (are |is )?live|"
-    r"real (stripe|braintree)|production payments?)\b",
+    r"\b(paypal payments? live|live payments?|payments? (are |is )?live|"
+    r"real (paypal|payments?)|production payments?)\b",
     re.IGNORECASE,
 )
 

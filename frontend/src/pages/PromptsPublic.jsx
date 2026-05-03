@@ -14,7 +14,7 @@ const FALLBACK_PROMPTS = [
   { id: 'ecommerce', name: 'E-commerce with cart', prompt: 'Build a modern e-commerce product list with add-to-cart, cart sidebar, and checkout button. Use React and Tailwind.', category: 'app' },
   { id: 'auth-dashboard', name: 'Auth + Dashboard', prompt: 'Create a login page and a dashboard with sidebar navigation. Use React, Tailwind, and local state for auth.', category: 'app' },
   { id: 'landing-waitlist', name: 'Landing + waitlist', prompt: 'Build a landing page with hero, features section, and email waitlist signup. React and Tailwind.', category: 'marketing' },
-  { id: 'Braintree-saas', name: 'Braintree subscription SaaS', prompt: 'Build a SaaS landing page with pricing cards and Braintree Checkout integration for subscription. React and Tailwind.', category: 'app' },
+  { id: 'paypal-saas', name: 'PayPal subscription SaaS', prompt: 'Build a SaaS landing page with pricing cards and PayPal Checkout integration for subscription. React and Tailwind.', category: 'app' },
   { id: 'todo', name: 'Task manager', prompt: 'Create a task manager with add, complete, delete, and filter by status. React and Tailwind.', category: 'app' },
   { id: 'ai-chatbot', name: 'AI Chatbot UI', prompt: 'Build a ChatGPT-style chat interface with message bubbles, streaming text, code blocks, and a prompt input. React and Tailwind.', category: 'ai' },
   { id: 'kanban-board', name: 'Kanban Board', prompt: 'Create a Trello-style kanban board with columns (To Do, In Progress, Done), draggable cards, and add/edit tasks. React and Tailwind.', category: 'app' },

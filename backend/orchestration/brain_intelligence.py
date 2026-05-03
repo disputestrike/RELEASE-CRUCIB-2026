@@ -348,11 +348,11 @@ async def predict_failures(goal: str) -> List[Dict[str, Any]]:
     # Static pattern library — built from our experience today
     KNOWN_RISKY_PATTERNS = [
         {
-            "pattern": r"braintree.*payment|payment.*braintree|braintree.*checkout|checkout.*braintree",
-            "risk": "Braintree checkout requires server-side client-token and nonce sale flow",
-            "prevention": "Add BRAINTREE_MERCHANT_ID, BRAINTREE_PUBLIC_KEY, BRAINTREE_PRIVATE_KEY, and BRAINTREE_ENVIRONMENT to env before enabling live checkout",
+            "pattern": r"paypal.*payment|payment.*paypal|paypal.*checkout|checkout.*paypal",
+            "risk": "PayPal checkout requires server-side order creation, capture, and webhook idempotency",
+            "prevention": "Add PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_MODE to env before enabling live checkout",
             "affected_agents": [
-                "braintree_checkout_agent",
+                "paypal_checkout_agent",
                 "payment_integration_agent",
             ],
         },

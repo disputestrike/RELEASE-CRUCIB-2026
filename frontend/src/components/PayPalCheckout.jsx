@@ -5,7 +5,7 @@
  *
  * Usage:
  *   <PayPalCheckout
- *     plan="pro"                        // plan key from /api/paypal/plans
+ *     plan="pro"                        // plan key from /api/billing/plans
  *     onSuccess={(result) => ...}       // called with capture result
  *     onError={(err) => ...}            // optional
  *   />
@@ -86,17 +86,15 @@ export default function PayPalCheckout({ plan = 'pro', onSuccess, onError, class
           createOrder: async () => {
             setStatus('processing');
             try {
-              const origin = window.location.origin;
               const res = await axios.post(
-                `${API}/api/paypal/create-order`,
+                `${API}/billing/create-order`,
                 {
-                  plan,
-                  return_url: `${origin}/billing?paypal=success`,
-                  cancel_url: `${origin}/billing?paypal=cancel`,
+                  price_id: plan?.startsWith?.('price_') ? plan : `price_${plan}_one_time`,
+                  idempotency_key: `paypal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
                 },
                 token ? { headers: { Authorization: `Bearer ${token}` } } : {}
               );
-              return res.data.order_id;
+              return res.data.paypal_order_id;
             } catch (err) {
               handleError(err?.response?.data?.detail || err.message || 'Failed to create order');
               throw err;
@@ -107,8 +105,8 @@ export default function PayPalCheckout({ plan = 'pro', onSuccess, onError, class
           onApprove: async (data) => {
             try {
               const res = await axios.post(
-                `${API}/api/paypal/capture-order`,
-                { order_id: data.orderID },
+                `${API}/billing/capture-order`,
+                { paypal_order_id: data.orderID },
                 token ? { headers: { Authorization: `Bearer ${token}` } } : {}
               );
               setCaptureResult(res.data);
@@ -142,9 +140,9 @@ export default function PayPalCheckout({ plan = 'pro', onSuccess, onError, class
         <CheckCircle2 size={28} className="paypal-checkout__icon paypal-checkout__icon--success" />
         <div className="paypal-checkout__message">
           <strong>Payment successful!</strong>
-          <span>{captureResult.credits} credits added to your account.</span>
+          <span>{captureResult.order?.credits || captureResult.credits || 0} credits added to your account.</span>
           <span className="paypal-checkout__sub">
-            {captureResult.plan} plan · ${captureResult.amount} {captureResult.currency}
+            {captureResult.order?.price_id || captureResult.plan || plan} plan - ${captureResult.order?.amount || captureResult.amount || ''} {captureResult.order?.currency || captureResult.currency || 'USD'}
           </span>
         </div>
       </div>

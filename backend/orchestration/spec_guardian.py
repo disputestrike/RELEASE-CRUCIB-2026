@@ -205,10 +205,10 @@ def evaluate_goal_against_runner(
             strict_blocker=False,
         )
 
-    if "idempotent" in g and "braintree" in g:
+    if "idempotent" in g and "paypal" in g:
         add(
-            "braintree_production_depth",
-            "Goal requires production-grade Braintree payment idempotency â€” runner adds route stubs only.",
+            "paypal_production_depth",
+            "Goal requires production-grade PayPal payment idempotency - runner adds route stubs only.",
             "Implement webhook dedupe table and signature verification before live charges.",
             strict_blocker=False,
         )

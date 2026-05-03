@@ -140,7 +140,7 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
             + [
                 "backend/models.py",
                 "backend/auth.py",
-                "backend/stripe_routes.py",
+                "backend/paypal_routes.py",
             ]
         )
     )

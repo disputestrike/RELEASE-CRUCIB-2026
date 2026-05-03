@@ -54,7 +54,7 @@ A production-ready full-stack web application:
 
 ## Instructions
 
-1. **Parse the user's description** — extract: app name, core features, user roles, data entities, integrations needed (Stripe, email, etc.)
+1. **Parse the user's description** — extract: app name, core features, user roles, data entities, integrations needed (PayPal, email, etc.)
 
 2. **Generate a build plan first** — list the pages, API endpoints, and database tables before writing any code. Show this plan to the user.
 
@@ -93,3 +93,4 @@ Output includes:
 - `/server/routes/projects.ts` — CRUD API
 - `/database/schema.sql` — projects, tasks, team_members, assignments tables
 - `docker-compose.yml`, `README.md`, CI/CD config
+

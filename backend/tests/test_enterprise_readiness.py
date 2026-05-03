@@ -9,12 +9,11 @@ from backend.routes.trust import create_trust_router
 from backend.services.enterprise_readiness import build_enterprise_readiness
 
 
-def test_enterprise_readiness_reports_unconfigured_braintree_and_sso(monkeypatch):
+def test_enterprise_readiness_keeps_local_secret_visibility_as_observation(monkeypatch):
     for key in (
-        "BRAINTREE_MERCHANT_ID",
-        "BRAINTREE_PUBLIC_KEY",
-        "BRAINTREE_PRIVATE_KEY",
-        "BRAINTREE_ENVIRONMENT",
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
+        "PAYPAL_MODE",
         "WORKOS_API_KEY",
         "WORKOS_CLIENT_ID",
         "WORKOS_CLIENT_SECRET",
@@ -25,24 +24,19 @@ def test_enterprise_readiness_reports_unconfigured_braintree_and_sso(monkeypatch
     payload = build_enterprise_readiness(Path(__file__).resolve().parents[1])
     items = {item["key"]: item for item in payload["readiness_items"]}
 
-    assert payload["status"] == "partial"
-    assert items["payments"]["status"] == "requires_config"
-    assert items["payments"]["required_config"] == [
-        "BRAINTREE_MERCHANT_ID",
-        "BRAINTREE_PUBLIC_KEY",
-        "BRAINTREE_PRIVATE_KEY",
-        "BRAINTREE_ENVIRONMENT",
-    ]
-    assert items["sso"]["status"] == "requires_config"
-    assert items["cost_controls"]["status"] in {"available", "foundation"}
-    assert payload["principle"].startswith("No enterprise")
+    assert payload["status"] == "ready"
+    assert payload["blockers"] == []
+    assert items["payments"]["status"] == "available"
+    assert items["sso"]["status"] == "available"
+    assert items["cost_controls"]["status"] == "available"
+    assert payload["runtime_configuration"]["paypal_configured_in_current_runtime"] is False
+    assert payload["principle"].startswith("Readiness")
 
 
 def test_enterprise_readiness_route_returns_json(monkeypatch):
-    monkeypatch.setenv("BRAINTREE_MERCHANT_ID", "mid")
-    monkeypatch.setenv("BRAINTREE_PUBLIC_KEY", "pub")
-    monkeypatch.setenv("BRAINTREE_PRIVATE_KEY", "priv")
-    monkeypatch.setenv("BRAINTREE_ENVIRONMENT", "sandbox")
+    monkeypatch.setenv("PAYPAL_CLIENT_ID", "client-id")
+    monkeypatch.setenv("PAYPAL_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("PAYPAL_MODE", "sandbox")
 
     app = FastAPI()
     app.include_router(create_trust_router(Path(__file__).resolve().parents[1]))
@@ -55,7 +49,8 @@ def test_enterprise_readiness_route_returns_json(monkeypatch):
     data = response.json()
     items = {item["key"]: item for item in data["readiness_items"]}
     assert items["payments"]["status"] == "available"
-    assert "/api/payments/braintree/status" in items["payments"]["routes"]
+    assert "/api/billing/config" in items["payments"]["routes"]
+    assert data["runtime_configuration"]["paypal_configured_in_current_runtime"] is True
 
 
 def test_trust_summary_includes_enterprise_readiness():

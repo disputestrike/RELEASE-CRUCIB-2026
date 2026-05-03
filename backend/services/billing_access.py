@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .braintree_billing import user_has_access
+from .paypal_billing import user_has_access
 
 
 async def userHasAccess(user_id: str, product_id: str, db: Any | None = None) -> bool:

@@ -421,7 +421,7 @@ async def cost_balance_compat(_user: dict = Depends(_get_optional_user())):
 async def payment_plans_compat():
     return {
         "status": "ready",
-        "checkout": "requires_braintree_configuration",
+        "checkout": "requires_paypal_configuration",
         "plans": [
             {"id": "free", "name": "Free", "credits": 200},
             {"id": "builder", "name": "Builder"},
@@ -499,7 +499,7 @@ async def integrations_status_compat(_user: dict = Depends(_get_optional_user())
             "vercel": "requires_config",
             "netlify": "requires_config",
             "slack": "requires_config",
-            "braintree": "requires_config",
+            "paypal": "requires_config",
             "tavily": "requires_config",
         },
         "note": "Integration contracts are surfaced honestly; live connector actions require credentials.",
@@ -578,7 +578,7 @@ async def mobile_jobs_compat(_user: dict = Depends(_get_optional_user())):
 
 @router.get("/commerce/products")
 async def commerce_products_compat(_user: dict = Depends(_get_optional_user())):
-    return {"products": [], "status": "foundation", "requires": ["Braintree or product data connector"]}
+    return {"products": [], "status": "foundation", "requires": ["PayPal or product data connector"]}
 
 
 @router.get("/channels")
@@ -627,42 +627,6 @@ async def create_project_from_template_compat(
         except Exception:
             pass
     return {"project": project}
-
-
-@router.post("/stripe/webhook")
-async def stripe_webhook_verify(request: Request):
-    """Verify Stripe signatures when ``STRIPE_WEBHOOK_SECRET`` is set; else 503."""
-    from fastapi.responses import JSONResponse
-
-    import os
-
-    wh_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
-    payload = await request.body()
-    sig = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature") or ""
-    if not wh_secret:
-        return JSONResponse({"detail": "stripe_webhook_not_configured"}, status_code=503)
-    try:
-        import stripe
-
-        stripe.Webhook.construct_event(payload, sig, wh_secret)
-    except Exception:
-        return JSONResponse({"detail": "invalid_signature"}, status_code=400)
-    return {"received": True}
-
-
-@router.post("/stripe/create-checkout-session")
-async def create_checkout_session_compat(
-    payload: Dict[str, Any], _user: dict = Depends(_get_auth())
-):
-    raise HTTPException(
-        status_code=410,
-        detail={
-            "error": "stripe_checkout_removed",
-            "replacement": "/api/checkout/one-time",
-            "billing_page": "/app/billing",
-            "status_endpoint": "/api/payments/braintree/status",
-        },
-    )
 
 
 @router.post("/build/from-reference")

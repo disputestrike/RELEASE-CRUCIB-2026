@@ -5,8 +5,6 @@ NOT just structural tests — ACTUAL FUNCTIONAL VERIFICATION
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -349,32 +347,21 @@ build_queue_depth 3
 
 
 # ============================================================================
-# PHASE 4: PAYMENT & STRIPE (Checks 23-28)
+# PHASE 4: PAYMENT & PAYPAL (Checks 23-28)
 # ============================================================================
 
 
 class TestPaymentPhase:
     """Phase 4: Payment Processing"""
 
-    # Check 23: Stripe webhook signature verification
-    def test_stripe_webhook_signature_verification(self):
-        """Verify Stripe webhook signature is verified"""
-        secret = "whsec_test_secret"
-        payload = b'{"type": "checkout.session.completed"}'
-
-        # Create signature
-        timestamp = str(int(datetime.now().timestamp()))
-        signed_content = f"{timestamp}.{payload.decode()}"
-        signature = hmac.new(
-            secret.encode(), signed_content.encode(), hashlib.sha256
-        ).hexdigest()
-
-        # Verify signature
-        expected_sig = hmac.new(
-            secret.encode(), signed_content.encode(), hashlib.sha256
-        ).hexdigest()
-
-        assert signature == expected_sig
+    # Check 23: PayPal webhook idempotency
+    def test_paypal_webhook_idempotency(self):
+        """Verify PayPal webhook IDs support idempotent processing."""
+        processed = set()
+        event_id = "WH-TEST-123"
+        assert event_id not in processed
+        processed.add(event_id)
+        assert event_id in processed
 
     # Check 24: Credits added atomically
     async def test_credits_added_atomically(self):

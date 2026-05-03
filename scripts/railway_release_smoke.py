@@ -5,7 +5,7 @@ Requires a reachable backend URL (APP_URL, BACKEND_PUBLIC_URL, or --app-url).
 
   python scripts/railway_release_smoke.py --app-url https://your-app.up.railway.app
 
-Exit 0 when core HTTP probes succeed; prints a short manual checklist either way.
+Exit 0 when public HTTP probes succeed; prints a short manual checklist either way.
 
 Does not submit a full swarm job (needs auth/session); pair this with manual UI QA.
 """
@@ -20,6 +20,19 @@ from typing import Any, Dict, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
+
+
+DEFAULT_RAILWAY_URL = "https://vigilant-youth-production-5aa6.up.railway.app"
+PUBLIC_PROBES = (
+    "/api/health",
+    "/api/settings/capabilities",
+    "/api/billing/config",
+    "/api/cost/governance",
+    "/api/trust/enterprise-readiness",
+    "/api/trust/public-proof-readiness",
+    "/api/trust/summary",
+    "/api/doctor/routes",
+)
 
 
 def fetch_json(base_url: str, path: str, timeout: float) -> Tuple[int, Any]:
@@ -44,10 +57,22 @@ def fetch_json(base_url: str, path: str, timeout: float) -> Tuple[int, Any]:
         return 0, {"error": repr(exc)}
 
 
+def summarize_response(data: Any) -> Any:
+    if not isinstance(data, dict):
+        return data
+    summary: Dict[str, Any] = {}
+    for key in ("status", "ok", "provider", "configured", "route_count", "summary", "checks", "error", "message"):
+        if key in data:
+            summary[key] = data[key]
+    if not summary:
+        summary["keys"] = sorted(list(data.keys()))[:20]
+    return summary
+
+
 def manual_checklist() -> str:
     return """MANUAL ACCEPTANCE (complete after automated smoke passes)
 - [ ] Deploy on Railway is the expected git commit (sha / branch).
-- [ ] ANTHROPIC_API_KEY (or workspace key mapping) is set in the service.
+- [ ] Provider keys, PayPal keys, JWT secret, proof HMAC, and DATABASE_URL are set in Railway variables.
 - [ ] Run one agent-swarm build with a real workspace path; verify `tool_loop` on results.
 - [ ] Check `anthropic_usage` / `tokens_used` look plausible in agent response metadata.
 - [ ] End-to-end user path: signup or guest, goal entry, job completes or clear error.
@@ -62,9 +87,16 @@ def main() -> int:
             os.environ.get("APP_URL", "").strip()
             or os.environ.get("CRUCIBAI_PUBLIC_BASE_URL", "").strip()
             or os.environ.get("BACKEND_PUBLIC_URL", "").strip()
+            or os.environ.get("RAILWAY_PUBLIC_URL", "").strip()
+            or DEFAULT_RAILWAY_URL
         ),
     )
     parser.add_argument("--timeout", type=float, default=25.0)
+    parser.add_argument(
+        "--core-only",
+        action="store_true",
+        help="Only probe /api/health and /api/doctor/routes.",
+    )
     parser.add_argument("--report-json", action="store_true")
     args = parser.parse_args()
 
@@ -77,12 +109,19 @@ def main() -> int:
         print(manual_checklist())
         return 2
 
-    paths = ("/api/health", "/api/doctor/routes")
+    paths = ("/api/health", "/api/doctor/routes") if args.core_only else PUBLIC_PROBES
     checks = []
     for path in paths:
         status, data = fetch_json(args.app_url, path, args.timeout)
         ok = 200 <= status < 400 and status != 0
-        checks.append({"path": path, "status_code": status, "ok": ok, "response": data})
+        checks.append(
+            {
+                "path": path,
+                "status_code": status,
+                "ok": ok,
+                "response": summarize_response(data),
+            }
+        )
 
     ok_all = all(c["ok"] for c in checks)
     payload: Dict[str, Any] = {

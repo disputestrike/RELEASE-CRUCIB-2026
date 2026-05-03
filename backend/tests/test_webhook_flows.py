@@ -1,6 +1,6 @@
 """
 Layer 2: WEBHOOK & EVENT FLOW TEST
-Verify async flows: project creation, token deduction, Stripe webhook handling.
+Verify async flows: project creation, token deduction, and build planning.
 """
 
 from unittest.mock import AsyncMock, patch
@@ -44,22 +44,6 @@ async def test_project_creation_returns_and_deduction(app_client):
     assert r_me_after.status_code == 200
     balance_after = r_me_after.json().get("credit_balance") or 0
     assert balance_after <= balance_before, "Credits should be deducted or same"
-
-
-@pytest.mark.asyncio
-async def test_stripe_webhook_rejects_invalid_signature(app_client):
-    """Stripe webhook returns 400 when signature is invalid (no secret leak)."""
-    r = await app_client.post(
-        "/api/stripe/webhook",
-        content=b'{"type":"checkout.session.completed"}',
-        headers={"Stripe-Signature": "invalid"},
-        timeout=5,
-    )
-    # 400 when Stripe is configured and signature invalid; 503 when Stripe not configured
-    assert r.status_code in (
-        400,
-        503,
-    ), f"Webhook should reject invalid signature or be unavailable: {r.status_code}"
 
 
 @pytest.mark.asyncio

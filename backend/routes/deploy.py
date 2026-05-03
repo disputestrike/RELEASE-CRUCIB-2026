@@ -164,7 +164,6 @@ async def deploy_job(job_id: str, user: dict = Depends(_get_auth())):
     Requires NETLIFY_TOKEN set in Railway environment variables.
     """
     from backend.services.netlify_deploy import netlify_configured, deploy_to_netlify
-    import os
 
     if not netlify_configured():
         raise HTTPException(
@@ -184,8 +183,10 @@ async def deploy_job(job_id: str, user: dict = Depends(_get_auth())):
 
     workspace_path = job.get("workspace_path") or job.get("workspace") or ""
     if not workspace_path:
-        raise HTTPException(status_code=422, detail="No workspace found for this job")
+        raise HTTPException(status_code=422, detail="No workspace found for this job — cannot deploy")
 
+    # Find dist dir
+    import os
     dist_dir = os.path.join(workspace_path, "dist")
     if not os.path.isdir(dist_dir):
         for alt in ("build", "out", "public"):
@@ -197,61 +198,21 @@ async def deploy_job(job_id: str, user: dict = Depends(_get_auth())):
     if not os.path.isdir(dist_dir):
         raise HTTPException(
             status_code=422,
-            detail=f"No built dist folder found — run a build first",
+            detail=f"No built dist folder found at {workspace_path} — run a build first",
         )
 
     try:
         site_name = f"crucibai-{job_id[:12]}"
         result = await deploy_to_netlify(dist_dir=dist_dir, site_name=site_name)
         live_url = result.get("url")
+
+        # Persist live_url back to job
         try:
             from backend.orchestration.runtime_state import update_job_state
             await update_job_state(job_id, job.get("status", "completed"), extra={"live_url": live_url})
         except Exception:
             pass
+
         return {"url": live_url, "site_id": result.get("site_id"), "deploy_id": result.get("deploy_id")}
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
-
-
-# ── Phase 6: User memory / profile endpoints ──────────────────────────────────
-
-class UserMemoryPatch(BaseModel):
-    """Fields the user can update in their memory profile."""
-    company_name:    Optional[str] = None
-    display_name:    Optional[str] = None
-    brand_color:     Optional[str] = None
-    preferred_stack: Optional[str] = None
-    font_preference: Optional[str] = None
-    custom_notes:    Optional[str] = None
-
-
-@router.get("/users/me/memory")
-async def get_user_memory(user: dict = Depends(_get_auth())):
-    """Return the current user's memory profile (company, stack, brand color, build history)."""
-    from backend.services.user_memory_service import get_profile_summary
-    uid = _user_id(user)
-    return get_profile_summary(uid)
-
-
-@router.patch("/users/me/memory")
-async def patch_user_memory(
-    data: UserMemoryPatch, user: dict = Depends(_get_auth())
-):
-    """Update one or more fields of the user's memory profile."""
-    from backend.services.user_memory_service import patch_user_memory as _patch
-    uid = _user_id(user)
-    updates = {k: v for k, v in data.dict().items() if v is not None}
-    if not updates:
-        return {"ok": True, "updated": []}
-    result = _patch(uid, updates)
-    return {"ok": True, "updated": list(updates.keys()), "profile": result}
-
-
-@router.delete("/users/me/memory")
-async def clear_user_memory(user: dict = Depends(_get_auth())):
-    """Clear all user memory (company name, stack preference, build history, etc.)."""
-    from backend.services.user_memory_service import save_user_memory
-    uid = _user_id(user)
-    save_user_memory(uid, {})
-    return {"ok": True, "cleared": True}

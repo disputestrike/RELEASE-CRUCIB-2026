@@ -266,7 +266,7 @@ class TestServerHelpers:
         assert not _is_conversational_message("create a REST API for my startup")
         # Long technical messages
         assert not _is_conversational_message(
-            "I want to build a full-stack e-commerce platform with React, Node.js, PostgreSQL, and Stripe integration"
+            "I want to build a full-stack e-commerce platform with React, Node.js, PostgreSQL, and PayPal integration"
         )
 
     def test_merge_prior_turns(self):
@@ -290,3 +290,4 @@ class TestServerHelpers:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+

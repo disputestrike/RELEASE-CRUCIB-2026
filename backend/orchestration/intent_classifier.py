@@ -69,7 +69,7 @@ class IntentClassifier:
         "auth": ["auth", "login", "authentication", "jwt", "session", "sso", "oauth"],
         
         # Billing
-        "billing": ["billing", "payment", "subscription", "stripe", "invoice", "pricing"],
+        "billing": ["billing", "payment", "subscription", "paypal", "invoice", "pricing"],
         
         # Frontend
         "frontend": ["react", "vue", "angular", "frontend", "spa", "dashboard", "admin panel", "admin tool"],
@@ -139,7 +139,7 @@ class IntentClassifier:
     
     # Risk factors that require human approval
     RISK_KEYWORDS = {
-        "payment": ["payment", "billing", "stripe", "braintree", "transaction", "money"],
+        "payment": ["payment", "billing", "paypal", "transaction", "money"],
         "compliance": ["gdpr", "hipaa", "pci", "soc2", "regulatory", "audit"],
         "production_deploy": ["production", "deploy", "live", "customer-facing"],
         "security_critical": ["auth", "encryption", "security", "sensitive data"],

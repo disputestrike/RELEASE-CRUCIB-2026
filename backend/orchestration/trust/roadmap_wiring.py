@@ -55,10 +55,10 @@ def roadmap_wiring_status() -> List[Dict[str, Any]]:
             "detail": "goal-driven 002_multitenancy_rls.sql (live RLS on app_items) + X-Tenant-Slug API + Tenant models; CI tests RLS",
         },
         {
-            "id": "domain_pack_stripe_idempotency_sql",
+            "id": "domain_pack_paypal_idempotency_sql",
             "phase": 3,
             "status": "partial",
-            "detail": "003_stripe_idempotency_sketch.sql + stripe_routes webhook sketch",
+            "detail": "003_paypal_idempotency_sketch.sql + paypal_routes webhook sketch",
         },
         {
             "id": "domain_pack_compliance_sketch_md",
@@ -79,10 +79,10 @@ def roadmap_wiring_status() -> List[Dict[str, Any]]:
             "detail": "verification.security runs migration + main.py + package checks",
         },
         {
-            "id": "stripe_router_mounted_in_main",
+            "id": "paypal_router_mounted_in_main",
             "phase": 4,
             "status": "wired",
-            "detail": "backend.stripe patches main.py with include_router(stripe_routes.router)",
+            "detail": "backend.paypal patches main.py with include_router(paypal_routes.router)",
         },
         {
             "id": "verification_api_smoke_static_live",

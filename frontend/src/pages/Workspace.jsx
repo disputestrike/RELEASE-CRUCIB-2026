@@ -934,7 +934,7 @@ const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding 
 const SKILL_TRIGGERS_JS = {
   'Web App Builder': ['web app', 'full-stack', 'webapp', 'react app', 'crud app', 'portal'],
   'Mobile App': ['mobile app', 'ios app', 'android app', 'react native', 'expo', 'phone app'],
-  'SaaS MVP': ['saas', 'subscription', 'Braintree billing', 'mvp with billing', 'paid app'],
+  'SaaS MVP': ['saas', 'subscription', 'PayPal billing', 'mvp with billing', 'paid app'],
   'E-Commerce': ['e-commerce', 'ecommerce', 'online store', 'shop', 'sell products', 'product catalog'],
   'AI Chatbot': ['chatbot', 'ai assistant', 'chat interface', 'knowledge base bot', 'streaming chat'],
   'Landing Page': ['landing page', 'marketing page', 'product page', 'waitlist', 'hero section'],
@@ -2090,7 +2090,7 @@ root.render(<${compName} />);` };
             : /build me an agent|automation|cron|webhook agent|build agent/i.test(p) ? 'ai_agent'
             : /landing page|one-page|marketing page/i.test(p) ? 'landing'
             : /website|build me a web/i.test(p) ? 'fullstack'
-            : /saas|subscription|Braintree|billing/i.test(p) ? 'saas'
+            : /saas|subscription|PayPal|billing/i.test(p) ? 'saas'
             : /slack bot|discord bot|telegram bot|chatbot/i.test(p) ? 'bot'
             : /game|2d game|3d game|browser game/i.test(p) ? 'game'
             : /trading|stock|crypto|forex|order book/i.test(p) ? 'trading'
@@ -2359,9 +2359,9 @@ BUILD IT NOW â€” output every file completely:`;
       if (imagesToSend.length > 0) {
         messageContent += `\n\n- The user attached ${imagesToSend.length} image(s) as design reference. Match the style closely.`;
       }
-      const wantsPayments = /payment|Braintree|subscription|checkout|pay|billing/i.test(prompt);
+      const wantsPayments = /payment|PayPal|subscription|checkout|pay|billing/i.test(prompt);
       if (wantsPayments) {
-        messageContent += `\n\n- Include Braintree Checkout integration with a working payment button. Use BRAINTREE_MERCHANT_ID, BRAINTREE_PUBLIC_KEY, BRAINTREE_PRIVATE_KEY, and BRAINTREE_ENVIRONMENT placeholders for server-side payment setup.`;
+        messageContent += `\n\n- Include PayPal Checkout integration with a working payment button. Use PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, and PAYPAL_MODE placeholders for server-side payment setup.`;
       }
       const wantsAuth = /login|auth|sign.?in|register|user|account/i.test(prompt);
       if (wantsAuth) {

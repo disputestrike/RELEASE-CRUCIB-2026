@@ -532,6 +532,24 @@ async def load_checkpoint(job_id: str, checkpoint_key: str) -> Optional[Dict[str
     return await runtime_state.load_checkpoint(job_id, checkpoint_key)
 
 
+def save_proof_json(
+    *,
+    project_id: Optional[str] = None,
+    job_id: str,
+    proof_data: Dict[str, Any],
+) -> str:
+    """Synchronous compatibility hook for proof_artifact_service."""
+
+    if project_id:
+        root = WORKSPACE_ROOT / str(project_id) / "runtime_state" / str(job_id)
+        root.mkdir(parents=True, exist_ok=True)
+    else:
+        root = runtime_state._job_dir(str(job_id))
+    path = root / "proof.json"
+    path.write_text(json.dumps(proof_data, indent=2, ensure_ascii=True), encoding="utf-8")
+    return str(path)
+
+
 def set_job(job_id: str, payload: Dict[str, Any]) -> None:
     project_id = str(payload.get("project_id") or "runtime_compat")
     task_manager.create_task(

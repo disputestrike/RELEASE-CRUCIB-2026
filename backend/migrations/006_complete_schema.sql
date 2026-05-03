@@ -330,14 +330,14 @@ CREATE TABLE IF NOT EXISTS metrics (
     doc JSONB NOT NULL DEFAULT '{}'
 );
 
-CREATE TABLE IF NOT EXISTS stripe_events_processed (
+CREATE TABLE IF NOT EXISTS paypal_events_processed (
     id TEXT PRIMARY KEY,
     event_id TEXT NOT NULL,
     received_at TIMESTAMPTZ DEFAULT NOW(),
     processed_at TIMESTAMPTZ,
     doc JSONB NOT NULL DEFAULT '{}'
 );
-CREATE INDEX IF NOT EXISTS idx_stripe_events_received ON stripe_events_processed(received_at);
+CREATE INDEX IF NOT EXISTS idx_paypal_events_received ON paypal_events_processed(received_at);
 
 -- ============================================================================
 -- SECTION 4: Verification and build tables

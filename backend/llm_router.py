@@ -1,169 +1,133 @@
-"""Cerebras-first model router with strict Sonnet gating."""
+"""Compatibility facade for the single CrucibAI routing policy.
+
+The routing rules live in backend.llm_client. This module keeps older imports
+working while preventing a second model policy from drifting out of sync.
+"""
+
+from __future__ import annotations
 
 import logging
 import os
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from .anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
-from .services.providers import choose_chain, selection_meta
+from .llm_client import (
+    ALLOW_SONNET,
+    CEREBRAS_MODEL,
+    HAIKU_MODEL,
+    SONNET_ALLOWED_TASKS,
+    SONNET_MODEL,
+    get_cerebras_key,
+    get_route_labels,
+)
 
 logger = logging.getLogger(__name__)
 
-# LLM Configuration
 LLAMA_API_KEY = os.environ.get("LLAMA_API_KEY", "").strip()
 LLAMA_MODEL = "meta-llama/Llama-3-70b-chat-hf"
-LLAMA_PROVIDER = "together"  # Using Together AI for hosted Llama
+LLAMA_PROVIDER = "together"
 
-# Cerebras key pool — round-robin across up to 5 keys for 5x rate limit
-import itertools as _itertools
-
-
-def _load_cerebras_keys() -> list:
-    """Load all CEREBRAS_API_KEY_1..5 and CEREBRAS_API_KEY, return non-empty list."""
-    keys = []
-    # Primary env var
-    k = os.environ.get("CEREBRAS_API_KEY", "").strip()
-    if k:
-        keys.append(k)
-    # Pool keys 1-5
-    for i in range(1, 6):
-        k = os.environ.get(f"CEREBRAS_API_KEY_{i}", "").strip()
-        if k and k not in keys:
-            keys.append(k)
-    return keys
-
-
-_CEREBRAS_KEYS = _load_cerebras_keys()
-_cerebras_key_cycle = _itertools.cycle(_CEREBRAS_KEYS) if _CEREBRAS_KEYS else None
-
-
-def get_cerebras_key() -> str:
-    """Return next Cerebras key in round-robin rotation."""
-    if not _cerebras_key_cycle:
-        return ""
-    return next(_cerebras_key_cycle)
-
-
-# Backwards compat — single key reference (first key or empty)
-CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
-# Cerebras model id (API changes retired llama-3.3-70b). Set CEREBRAS_MODEL on Railway.
-CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
-
+CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY", "").strip()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
-SONNET_MODEL = ANTHROPIC_SONNET_MODEL
-ALLOW_SONNET = os.environ.get("ALLOW_SONNET", "false").strip().lower() in {"1", "true", "yes"}
+HAIKU_MODEL = HAIKU_MODEL or ANTHROPIC_HAIKU_MODEL
+SONNET_MODEL = SONNET_MODEL or ANTHROPIC_SONNET_MODEL
 
 
 class TaskComplexity(str, Enum):
-    """Task complexity classification"""
+    """Task complexity labels kept for legacy callers."""
 
-    SIMPLE = "simple"  # Quick formatting, simple transforms
-    MODERATE = "moderate"  # Standard code generation
-    COMPLEX = "complex"  # Architecture, logic, security
-    CRITICAL = "critical"  # High-stakes decisions
+    SIMPLE = "simple"
+    MODERATE = "moderate"
+    COMPLEX = "complex"
+    CRITICAL = "critical"
 
 
 class TaskClassifier:
-    """
-    Classifies incoming tasks by complexity.
-    Used to route to appropriate LLM.
-    """
+    """Small classifier used only to pick a policy task label."""
 
     COMPLEX_KEYWORDS = {
         "architecture",
-        "design",
-        "security",
         "authentication",
         "database",
-        "schema",
-        "migration",
-        "performance",
-        "optimization",
-        "refactor",
-        "bug fix",
         "debugging",
-        "error",
         "failure",
-        "recovery",
-        "algorithm",
         "logic",
+        "migration",
+        "optimization",
+        "performance",
         "reasoning",
-        "decision",
+        "recovery",
+        "security",
+        "validation",
+        "verification",
     }
 
     SIMPLE_KEYWORDS = {
+        "add line",
+        "change text",
+        "color",
+        "comment",
+        "edit",
+        "fix typo",
         "format",
         "rename",
-        "reorder",
-        "style",
-        "color",
         "spacing",
+        "style",
         "typo",
-        "fix typo",
-        "change text",
         "update",
-        "edit",
-        "add line",
-        "remove line",
-        "comment",
-        "uncomment",
+    }
+
+    CRITICAL_AGENTS = {
+        "code review agent",
+        "deployment agent",
+        "schema validation agent",
+        "security checker",
+        "validation agent",
     }
 
     @staticmethod
     def classify(request: str, agent_name: str = "") -> TaskComplexity:
-        """
-        Classify task complexity from request text.
+        request_lower = (request or "").lower()
+        agent_lower = (agent_name or "").lower()
 
-        Returns:
-            TaskComplexity enum (SIMPLE, MODERATE, COMPLEX, CRITICAL)
-        """
-        request_lower = request.lower()
-        agent_lower = agent_name.lower()
-
-        # Check for critical agents
-        critical_agents = {
-            "security checker",
-            "deployment agent",
-            "database agent",
-            "backend generation",
-            "auth setup agent",
-        }
-        if any(agent in agent_lower for agent in critical_agents):
+        if any(agent in agent_lower for agent in TaskClassifier.CRITICAL_AGENTS):
             return TaskComplexity.CRITICAL
-
-        # Check for complex keywords
         if any(keyword in request_lower for keyword in TaskClassifier.COMPLEX_KEYWORDS):
             return TaskComplexity.COMPLEX
-
-        # Check for simple keywords
         if any(keyword in request_lower for keyword in TaskClassifier.SIMPLE_KEYWORDS):
             return TaskComplexity.SIMPLE
-
-        # Default: moderate
         return TaskComplexity.MODERATE
 
 
-class LLMRouter:
-    """
-    Intelligent LLM router that selects the best model based on:
-    - Task complexity
-    - User tier
-    - Speed selector
-    - Credit availability
+def _policy_task_for_complexity(
+    task_complexity: TaskComplexity,
+    *,
+    user_tier: str,
+    speed_selector: str,
+) -> str:
+    if task_complexity == TaskComplexity.CRITICAL:
+        premium = (
+            ALLOW_SONNET
+            and user_tier in {"pro", "scale", "teams"}
+            and speed_selector == "max"
+        )
+        return "premium_final_proof" if premium else "standard_final_proof"
+    if task_complexity == TaskComplexity.COMPLEX:
+        # Complex build work still uses Cerebras volume unless a caller names a
+        # proof/planning/security capability directly.
+        return "code_generation"
+    return "code_generation"
 
-    Routing policy:
-      - Volume/default work: Cerebras first, Haiku fallback.
-      - Reasoning/validation heavy work: Haiku first, Cerebras fallback.
-      - Sonnet: disabled by default, premium-gated only.
-    """
+
+class LLMRouter:
+    """Legacy class wrapper around backend.llm_client routing."""
 
     def __init__(self):
         self.llama_available = bool(LLAMA_API_KEY)
         self.cerebras_available = bool(CEREBRAS_API_KEY)
         self.haiku_available = bool(ANTHROPIC_API_KEY)
-        self.sonnet_available = bool(ANTHROPIC_API_KEY)
+        self.sonnet_available = bool(ANTHROPIC_API_KEY and ALLOW_SONNET)
 
     def get_model_chain(
         self,
@@ -171,84 +135,27 @@ class LLMRouter:
         user_tier: str = "free",
         speed_selector: str = "lite",
         available_credits: int = 0,
-    ) -> list:
-        """
-        Get the LLM model chain for a task.
-
-        Args:
-            task_complexity: SIMPLE, MODERATE, COMPLEX, CRITICAL
-            user_tier: free, builder, pro, scale, teams
-            speed_selector: lite, pro, max
-            available_credits: User's available credits
-
-        Returns:
-            List of models to try in order: [primary, fallback1, fallback2]
-        """
-
-        chain = []
-        is_paid = user_tier in ("builder", "pro", "scale", "teams")
-        is_pro_plus = user_tier in ("pro", "scale", "teams")
-
-        # Default: Cerebras volume engine with Haiku fallback.
-        chain = ["cerebras", "haiku"]
-
-        # Keep Cerebras primary for broad generation volume; only critical
-        # reasoning/validation paths become Haiku-first.
-        if task_complexity == TaskComplexity.CRITICAL:
-            chain = ["haiku", "cerebras"]
-
-        # Sonnet remains premium-only and opt-in via env gate.
-        sonnet_eligible = (
-            ALLOW_SONNET
-            and is_paid
-            and is_pro_plus
-            and speed_selector == "max"
-            and task_complexity == TaskComplexity.CRITICAL
+    ) -> List[Tuple[str, str, str]]:
+        task_type = _policy_task_for_complexity(
+            task_complexity,
+            user_tier=user_tier,
+            speed_selector=speed_selector,
         )
-        if sonnet_eligible:
-            chain = ["sonnet", "haiku", "cerebras"]
+        chain: List[Tuple[str, str, str]] = []
+        for label in get_route_labels(task_type):
+            if label == "cerebras" and self.cerebras_available:
+                chain.append(("cerebras", CEREBRAS_MODEL, "cerebras"))
+            elif label == "haiku" and self.haiku_available:
+                chain.append(("haiku", HAIKU_MODEL, "anthropic"))
+            elif label == "sonnet" and self.sonnet_available and task_type in SONNET_ALLOWED_TASKS:
+                chain.append(("sonnet", SONNET_MODEL, "anthropic"))
 
-        # Low credits: keep cheapest path first.
-        if available_credits < 10 and "cerebras" in chain:
-            chain = [m for m in chain if m != "cerebras"]
-            chain.insert(0, "cerebras")
-
-        # AVAILABILITY CHECK
-        final_chain = []
-        for model in chain:
-            if model == "llama" and self.llama_available:
-                final_chain.append(("llama", LLAMA_MODEL, LLAMA_PROVIDER))
-            elif model == "cerebras" and self.cerebras_available:
-                final_chain.append(("cerebras", CEREBRAS_MODEL, "cerebras"))
-            elif model == "haiku" and self.haiku_available:
-                final_chain.append(("haiku", HAIKU_MODEL, "anthropic"))
-            elif model == "sonnet" and self.sonnet_available:
-                final_chain.append(("sonnet", SONNET_MODEL, "anthropic"))
-
-        # Fallback: if no models available, return empty (will error)
-        if not final_chain:
+        if not chain:
             logger.error("No LLM models available")
-
-        # Optional provider-registry ordering (feature-flagged, non-breaking by default)
-        chain_with_registry = choose_chain(
-            final_chain,
-            need_tools=task_complexity in (TaskComplexity.COMPLEX, TaskComplexity.CRITICAL),
-            need_vision=False,
-        )
-        meta = selection_meta()
-        logger.debug("Provider registry selection: mode=%s strategy=%s", meta.get("mode"), meta.get("strategy"))
-        return chain_with_registry
+        return chain
 
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
-        """Get cost and performance info for a model."""
         info = {
-            "llama": {
-                "name": "Llama 3 70B",
-                "cost_per_1m_tokens": 0.0,  # Free (open-source via Together)
-                "speed": "medium",
-                "quality": 8.5,
-                "provider": "together",
-            },
             "cerebras": {
                 "name": f"Cerebras {CEREBRAS_MODEL}",
                 "cost_per_1m_tokens": 0.27,
@@ -257,14 +164,14 @@ class LLMRouter:
                 "provider": "cerebras",
             },
             "haiku": {
-                "name": "Claude Haiku 4.5",
+                "name": "Claude Haiku",
                 "cost_per_1m_tokens": 1.0,
                 "speed": "medium",
                 "quality": 9.0,
                 "provider": "anthropic",
             },
             "sonnet": {
-                "name": "Claude Sonnet 4.6",
+                "name": "Claude Sonnet",
                 "cost_per_1m_tokens": 3.0,
                 "speed": "medium",
                 "quality": 9.8,
@@ -274,6 +181,5 @@ class LLMRouter:
         return info.get(model_name, {})
 
 
-# Singleton instance
 router = LLMRouter()
 classifier = TaskClassifier()

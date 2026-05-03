@@ -39,7 +39,7 @@ def test_phase2_controller_live_progress_shape_and_controller_block():
     [
         "Enterprise CRM with HIPAA compliance and audit trail",
         "Real-time WebGL multiplayer game client",
-        "FastAPI PostgreSQL Stripe billing SaaS",
+        "FastAPI PostgreSQL PayPal billing SaaS",
     ],
 )
 def test_phase3_select_agents_resolves_existing_dag_vertices(goal):

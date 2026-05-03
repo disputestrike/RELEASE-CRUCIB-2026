@@ -169,7 +169,7 @@ class DatabaseInitializer:
             CREATE TABLE IF NOT EXISTS payments (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                stripe_payment_id VARCHAR(255) UNIQUE,
+                paypal_order_id VARCHAR(255) UNIQUE,
                 amount DECIMAL(10, 2),
                 currency VARCHAR(3) DEFAULT 'USD',
                 status VARCHAR(50) DEFAULT 'pending',

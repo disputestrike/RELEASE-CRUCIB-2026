@@ -15,7 +15,7 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1"
-CEREBRAS_MODEL = "llama-3.1-8b"
+CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
 
 
 class CerebrasClient:
@@ -27,10 +27,10 @@ class CerebrasClient:
             self.api_key = api_key
         else:
             try:
-                from cerebras_roundrobin import get_next_cerebras_key
+                from backend.cerebras_roundrobin import get_next_cerebras_key
 
                 self.api_key = get_next_cerebras_key()
-                logger.info(f"CerebrasClient: Using rotated API key (pool size: 5)")
+                logger.info("CerebrasClient: using rotated API key")
             except Exception as e:
                 logger.warning(f"Round-robin failed: {e}, falling back to env var")
                 self.api_key = os.environ.get("CEREBRAS_API_KEY")

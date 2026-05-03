@@ -28,13 +28,13 @@ export default function SkillDrafting({ onSkillSaved }) {
       </div>
       <div className="space-y-2">
         <input value={name} onChange={e => setName(e.target.value)}
-          placeholder="Skill name (e.g. Add Braintree)"
+          placeholder="Skill name (e.g. Add PayPal)"
           className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm outline-none focus:border-emerald-400" />
         <input value={description} onChange={e => setDescription(e.target.value)}
           placeholder="Description"
           className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm outline-none focus:border-emerald-400" />
         <input value={triggers} onChange={e => setTriggers(e.target.value)}
-          placeholder="Trigger keywords, comma-separated (e.g. Braintree, billing, payment)"
+          placeholder="Trigger keywords, comma-separated (e.g. PayPal, billing, payment)"
           className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm outline-none focus:border-emerald-400" />
         <button onClick={handleSave} disabled={!name.trim()}
           className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm

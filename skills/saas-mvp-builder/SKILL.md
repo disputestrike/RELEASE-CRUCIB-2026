@@ -1,6 +1,6 @@
 ---
 name: saas-mvp-builder
-description: Build a complete SaaS product MVP with authentication, Stripe subscription billing, user dashboard, admin panel, and multi-tenant architecture. Use when the user wants to launch a SaaS, build a subscription product, create a paid software service, or needs Stripe billing integrated. Triggers on phrases like "build a SaaS", "create a subscription product", "I need Stripe billing", "build an MVP with subscriptions", "build a paid app".
+description: Build a complete SaaS product MVP with authentication, PayPal subscription billing, user dashboard, admin panel, and multi-tenant architecture. Use when the user wants to launch a SaaS, build a subscription product, create a paid software service, or needs PayPal billing integrated. Triggers on phrases like "build a SaaS", "create a subscription product", "I need PayPal billing", "build an MVP with subscriptions", "build a paid app".
 metadata:
   version: '1.0'
   category: build
@@ -10,16 +10,16 @@ metadata:
 
 # SaaS MVP Builder
 
-> **PAYMENT RULE**: All generated SaaS apps use **Stripe** as the default payment integration
-> (Checkout, Billing, Customer Portal, Webhooks). Never implement Braintree unless the user
-> explicitly names Braintree in their prompt. This is enforced by the Build Integrity Validator.
+> **PAYMENT RULE**: All generated SaaS apps use **PayPal** as the default payment integration
+> (Checkout, subscriptions, webhooks). Never implement Stripe or Braintree unless the user
+> explicitly names that provider in their prompt. This is enforced by the Build Integrity Validator.
 
 ## When to Use This Skill
 
 Apply this skill when the user wants to build a subscription-based software product:
 
 - "Build a SaaS product for X"
-- "Create a subscription app with Stripe"
+- "Create a subscription app with PayPal"
 - "I need an MVP with billing and user management"
 - "Build a paid tool that does Y"
 - Any request for a SaaS, subscription product, or paid software service
@@ -36,11 +36,11 @@ A production-ready SaaS MVP:
 - JWT sessions with refresh tokens
 - User profile page
 
-**Subscription Billing (Stripe)**
-- Stripe Checkout integration
+**Subscription Billing (PayPal)**
+- PayPal Checkout integration
 - 3-tier pricing (Free, Pro, Enterprise)
 - Monthly and annual billing toggle
-- Stripe Customer Portal (self-service billing)
+- PayPal subscription management flow
 - Webhook handler for subscription lifecycle events
 - Credit/usage tracking per user
 - Upgrade/downgrade flows
@@ -69,7 +69,7 @@ A production-ready SaaS MVP:
 - PostgreSQL schema (users, organizations, subscriptions, usage)
 - Redis for session storage and rate limiting
 - Email service (Resend/Nodemailer templates)
-- Stripe webhook handling
+- PayPal webhook handling
 - docker-compose for local dev
 - CI/CD pipeline
 
@@ -80,22 +80,22 @@ A production-ready SaaS MVP:
 2. **Generate pricing structure** — show Free/Pro/Enterprise with specific feature gates before coding
 
 3. **Build in 6 passes**:
-   - Pass 1: Config, types, Stripe setup, DB schema
+   - Pass 1: Config, types, PayPal setup, DB schema
    - Pass 2: Auth (register, login, verify, reset password)
    - Pass 3: Billing UI (pricing page, checkout, portal)
    - Pass 4: User dashboard + feature pages
    - Pass 5: Backend API (auth routes, billing webhooks, feature APIs)
    - Pass 6: Admin panel + README + env vars
 
-4. **Stripe integration rules**:
-   - Always use Stripe Checkout (not custom payment form)
-   - Webhook endpoint must verify Stripe signature
-   - Store Stripe customer ID and subscription ID in DB
-   - Feature gates check subscription status from DB, not Stripe API on every request
+4. **PayPal integration rules**:
+   - Always use PayPal Checkout or subscription approval links, not custom card forms
+   - Webhook endpoint must verify PayPal event authenticity
+   - Store PayPal customer/payer ID and subscription/order ID in DB
+   - Feature gates check subscription status from DB, not PayPal API on every request
 
 5. **Code must include**:
-   - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` in .env.example
-   - Complete webhook handler for: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+   - `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE` in .env.example
+   - Complete webhook handler for: checkout completed, subscription activated/updated/cancelled, payment failed
 
 ## Example Input → Output
 
@@ -105,5 +105,6 @@ Output includes:
 - Pricing: Free (50 responses/mo), Pro ($29/mo, unlimited + AI), Enterprise (custom)
 - `/src/pages/Pricing.tsx` — plan cards with annual toggle
 - `/src/pages/Dashboard.tsx` — feedback inbox, response stats, AI summary (Pro gate)
-- `/server/routes/billing.ts` — Stripe checkout + webhook + portal
+- `/server/routes/billing.ts` — PayPal checkout + webhook + subscription management
 - `/database/schema.sql` — organizations, subscriptions, feedback, responses
+

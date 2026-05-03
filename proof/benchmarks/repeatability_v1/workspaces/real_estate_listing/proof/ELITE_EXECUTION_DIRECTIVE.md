@@ -1,1 +1,0 @@
-Elite execution directive active.

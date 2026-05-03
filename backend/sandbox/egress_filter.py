@@ -117,7 +117,7 @@ class EgressFilter:
         """Detect common secret patterns."""
         patterns = [
             r"sk-[A-Za-z0-9_-]{8,}",  # OpenAI / generic secret-like key
-            r"sk_[A-Za-z0-9_]+",  # Stripe/Supabase style
+            r"sk_[A-Za-z0-9_]+",  # generic secret key style
             r'api[_-]?key["\s:=]+["\']?(sk-[A-Za-z0-9_-]{6,}|[A-Za-z0-9_-]{6,})',
             r'password["\s:=]+["\']?(.{6,})',
             r'secret["\s:=]+["\']?(.{6,})',

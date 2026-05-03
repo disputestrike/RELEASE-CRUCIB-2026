@@ -101,7 +101,7 @@ class BuildContract:
         "hardcoded secrets",
         "client-supplied price"
     ])
-    forbidden_providers: List[str] = field(default_factory=lambda: ["Braintree"])
+    forbidden_providers: List[str] = field(default_factory=lambda: ["Stripe", "Braintree"])
     
     # Verification (with defaults)
     verifiers_required: List[str] = field(default_factory=list)

@@ -145,7 +145,7 @@ def cost_governance_payload() -> dict[str, Any]:
         "pricing": {
             "plans": plan_catalog(),
             "bulk_credit_rate_usd": 0.05,
-            "approved_price_floor": "$20 Builder plan",
+            "approved_price_floor": "$15 Builder plan",
             "legacy_prices_allowed": False,
         },
         "simulation_depths": SIMULATION_DEPTHS,
@@ -155,7 +155,7 @@ def cost_governance_payload() -> dict[str, Any]:
             "Every expensive action must choose or infer a budget.",
             "Deep/Maximum runs must expose higher cost and time expectations.",
             "Simulation depth controls agents, rounds, evidence depth, and modeled perspectives.",
-            "No hidden Stripe dependency: payments are Braintree and require Braintree runtime configuration.",
+            "No hidden legacy payment dependency: payments use PayPal and require PayPal runtime configuration.",
         ],
     }
 

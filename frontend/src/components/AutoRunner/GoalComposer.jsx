@@ -475,7 +475,7 @@ export default function GoalComposer({
             Continuation / next phase
           </label>
           <p className="gc-continuation-hint">
-            Appended automatically when you click <strong>Generate Plan</strong> (e.g. “add Braintree webhooks”, “harden
+            Appended automatically when you click <strong>Generate Plan</strong> (e.g. “add PayPal webhooks”, “harden
             tenancy on quotes table”). Keeps multi-step work in one flow.
           </p>
           <textarea

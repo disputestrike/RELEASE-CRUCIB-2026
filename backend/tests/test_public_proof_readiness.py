@@ -27,8 +27,8 @@ def test_public_proof_readiness_has_required_launch_items():
     }
 
     assert expected.issubset(items)
-    assert payload["status"] in {"ready", "partial"}
-    assert payload["rule"].startswith("No public claim")
+    assert payload["status"] == "ready"
+    assert payload["rule"].startswith("Public claims")
     assert "/api/cost/governance" in items["pricing_proof"]["routes"]
     assert "/api/trust/enterprise-readiness" in items["enterprise_defense_page"]["routes"]
 

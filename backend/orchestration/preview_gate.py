@@ -272,7 +272,7 @@ def _ecommerce_checkout_intent(goal: str) -> bool:
         "e-commerce",
         "ecommerce",
         "online store",
-        "braintree",
+        "paypal",
         "shopping cart",
         "cart",
         "product catalog",
@@ -283,7 +283,7 @@ def _ecommerce_checkout_intent(goal: str) -> bool:
     return hits >= 2
 
 
-def _verify_ecommerce_braintree_contract(
+def _verify_ecommerce_paypal_contract(
     goal: str, files: Dict[str, str], combined: str
 ) -> Tuple[List[str], List[Dict[str, Any]], bool]:
     issues: List[str] = []
@@ -317,16 +317,15 @@ def _verify_ecommerce_braintree_contract(
             for x in ("cart", "addtocart", "shoppingcart", "usecart", "cartcontext", "lineitems")
         ),
         "checkout_surface": "checkout" in lower or "placeorder" in lower or "place order" in lower,
-        "braintree": any(
+        "paypal": any(
             x in lower
             for x in (
-                "braintree",
-                "dropin",
-                "drop-in",
-                "client_token",
-                "clienttoken",
-                "/api/braintree",
-                "paymentmethod",
+                "paypal",
+                "paypal.com/sdk/js",
+                "paypal_order_id",
+                "create-order",
+                "capture-order",
+                "/api/billing",
             )
         ),
     }
@@ -346,9 +345,9 @@ def _verify_ecommerce_braintree_contract(
     )
     if missing:
         issues.append(
-            "Prompt contract (e-commerce + Braintree): missing "
+            "Prompt contract (e-commerce + PayPal): missing "
             + ", ".join(missing)
-            + ". Add catalog, cart, checkout, and Braintree client or documented payment API."
+            + ". Add catalog, cart, checkout, and PayPal client or documented payment API."
         )
     return issues, proof, passed
 
@@ -603,7 +602,7 @@ async def verify_preview_workspace(
             failure_reason = "website_contract_failed"
             issues.extend(website_issues)
 
-    eco_issues, eco_proof, _eco_ok = _verify_ecommerce_braintree_contract(goal, files, combined)
+    eco_issues, eco_proof, _eco_ok = _verify_ecommerce_paypal_contract(goal, files, combined)
     proof.extend(eco_proof)
     if eco_issues:
         failure_reason = failure_reason or "prompt_contract_failed"

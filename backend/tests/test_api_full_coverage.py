@@ -163,17 +163,6 @@ async def test_voice_transcribe_requires_file(app_client):
 
 
 @pytest.mark.asyncio
-async def test_stripe_checkout_requires_auth(app_client):
-    """Stripe checkout requires auth."""
-    r = await app_client.post(
-        "/api/stripe/create-checkout-session",
-        json={"bundle": "builder"},
-        timeout=5,
-    )
-    assert r.status_code in (401, 403)  # unauthenticated
-
-
-@pytest.mark.asyncio
 async def test_enterprise_contact_accepts_post(app_client):
     """Enterprise contact form accepts POST."""
     r = await app_client.post(
@@ -210,7 +199,7 @@ async def test_ai_extra_routes(app_client):
         ("/api/ai/accessibility-check", {"code": "<div>hi</div>"}),
         ("/api/ai/explain-error", {"error": "SyntaxError", "code": "x"}),
         ("/api/ai/suggest-next", {"files": {}, "last_prompt": ""}),
-        ("/api/ai/inject-stripe", {"code": "// app", "target": "checkout"}),
+        ("/api/ai/inject-paypal", {"code": "// app", "target": "checkout"}),
         ("/api/ai/generate-readme", {"code": "x", "project_name": "T"}),
         ("/api/ai/generate-docs", {"code": "x", "doc_type": "api"}),
         ("/api/ai/generate-faq-schema", {"faqs": [{"q": "Q", "a": "A"}]}),

@@ -28,9 +28,9 @@ try:
     from ..dev_stub_llm import is_real_agent_only
     from ..dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
     from ..dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
-    from ..llm_router import CEREBRAS_MODEL
-    from ..llm_router import TaskComplexity, classifier
-    from ..llm_router import get_cerebras_key as _get_cerebras_key
+    from ..llm_client import CEREBRAS_MODEL, get_cerebras_key as _get_cerebras_key
+    from ..llm_client import get_model_chain_entries
+    from ..llm_router import classifier
     from ..llm_router import router as llm_router
     from .events import event_bus
     from .skills import detect_skill
@@ -42,9 +42,9 @@ except ImportError:  # compatibility for legacy tests importing `services.*`
     from backend.dev_stub_llm import is_real_agent_only
     from backend.dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
     from backend.dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
-    from backend.llm_router import CEREBRAS_MODEL
-    from backend.llm_router import TaskComplexity, classifier
-    from backend.llm_router import get_cerebras_key as _get_cerebras_key
+    from backend.llm_client import CEREBRAS_MODEL, get_cerebras_key as _get_cerebras_key
+    from backend.llm_client import get_model_chain_entries
+    from backend.llm_router import classifier
     from backend.llm_router import router as llm_router
     from backend.services.events import event_bus
     from backend.services.skills import detect_skill
@@ -153,7 +153,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
     "saas-mvp-builder": [
         "saas",
         "subscription",
-        "braintree billing",
+        "paypal billing",
         "mvp with billing",
         "paid app",
         "saas mvp",
@@ -166,7 +166,7 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
         "shop",
         "sell products",
         "product catalog",
-        "braintree checkout",
+        "paypal checkout",
         "marketplace",
         "shopify",
     ],
@@ -425,56 +425,57 @@ def _filter_chain_by_keys(
     ]
 
 
+def _policy_task_type(
+    model_key: str,
+    message: str,
+    force_complex: bool = False,
+    agent_name: str = "",
+) -> str:
+    key = (model_key or "auto").strip().lower()
+    if key in {
+        "build_plan",
+        "planning",
+        "architecture",
+        "repair_diagnosis",
+        "standard_final_proof",
+        "premium_final_proof",
+        "security_review",
+        "validation",
+        "verification",
+        "proof",
+    }:
+        return key
+    if key == "haiku":
+        return "standard_final_proof"
+    if key == "analysis":
+        return "planning"
+    if key in {"code", "general", "creative", "fast"}:
+        return "code_generation"
+
+    agent_lower = (agent_name or "").lower()
+    if any(token in agent_lower for token in ("security", "validation", "review", "proof")):
+        return "standard_final_proof"
+    if any(token in agent_lower for token in ("planner", "requirements", "stack selector")):
+        return "build_plan"
+    if force_complex:
+        return "planning"
+
+    complexity = classifier.classify(message or "", agent_name or "")
+    if str(getattr(complexity, "value", complexity)).lower() == "critical":
+        return "standard_final_proof"
+    return "code_generation"
+
+
 def _get_model_chain(
     model_key: str,
     message: str,
     effective_keys: Optional[Dict[str, str]] = None,
     force_complex: bool = False,
 ) -> List[Dict[str, str]]:
-    """Return a list of {provider, model} dicts to try in order.
+    """Return provider/model attempts from the single llm_client policy."""
 
-    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) is always primary.
-    Anthropic Haiku is fallback only (used when Cerebras key absent or fails).
-    """
-    cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
-        "CEREBRAS_API_KEY"
-    )
-    anthropic_key = (effective_keys or {}).get("anthropic") or os.environ.get(
-        "ANTHROPIC_API_KEY"
-    )
-
-    if model_key == "auto":
-        if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        ):
-            chain = (
-                _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys)
-                or MODEL_FALLBACK_CHAINS
-            )
-        else:
-            complexity = (
-                "complex" if force_complex else _classify_task_complexity(message)
-            )
-            # Cerebras is always primary; Anthropic is fallback only
-            if cerebras_key:
-                chain = [
-                    {"provider": "cerebras", "model": CEREBRAS_MODEL},
-                    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                ]
-            elif anthropic_key:
-                chain = [
-                    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                ]
-            else:
-                chain = MODEL_FALLBACK_CHAINS
-    else:
-        chain = MODEL_CHAINS.get(model_key)
-        if not chain:
-            primary = MODEL_CONFIG["general"]
-            chain = [primary] + MODEL_FALLBACK_CHAINS
-
+    task_type = _policy_task_type(model_key, message, force_complex)
+    chain = get_model_chain_entries(task_type)
     return _filter_chain_by_keys(chain, effective_keys) or [
         c
         for c in (MODEL_FALLBACK_CHAINS or [])
@@ -830,8 +831,8 @@ def _normalize_explicit_model_chain(
     """Convert explicit ``[{"provider","model"}, ...]`` chains to router tuples.
 
     Swarm and ``_get_model_chain`` pass ordered provider dicts (often Cerebras
-    first). When this returns ``None``, callers should use
-    ``llm_router.get_model_chain`` instead.
+    first). When this returns ``None``, callers should resolve through
+    ``backend.llm_client.get_model_chain_entries``.
 
     Tuple chains ``(label, model_id, provider)`` are passed through unchanged.
     """
@@ -903,23 +904,36 @@ async def _call_llm_with_fallback(
 
         require_runtime_authority("llm_service", detail="model execution")
 
-    task_complexity = classifier.classify(message, agent_name)
+    task_label = "explicit"
 
     explicit = _normalize_explicit_model_chain(model_chain, api_keys)
     if explicit is not None:
         model_chain = explicit
     else:
-        model_chain = llm_router.get_model_chain(
-            task_complexity=task_complexity,
-            user_tier=user_tier,
-            speed_selector=speed_selector,
-            available_credits=available_credits,
+        task_label = _policy_task_type(
+            "auto",
+            message,
+            force_complex=speed_selector == "max",
+            agent_name=agent_name,
         )
+        model_chain = _normalize_explicit_model_chain(
+            get_model_chain_entries(task_label),
+            api_keys,
+        ) or []
+        if not model_chain:
+            # Compatibility path for tests/legacy callers that monkeypatch the
+            # router object. The router module is now a facade over llm_client.
+            model_chain = llm_router.get_model_chain(
+                task_complexity=classifier.classify(message, agent_name),
+                user_tier=user_tier,
+                speed_selector=speed_selector,
+                available_credits=available_credits,
+            )
     try:
         event_bus.emit(
             "provider.chain.selected",
             {
-                "task_complexity": str(task_complexity),
+                "task_complexity": task_label,
                 "chain": [
                     {
                         "name": name,
@@ -958,7 +972,7 @@ async def _call_llm_with_fallback(
                 "provider.fallback.attempt session_id=%s agent=%s task=%s provider=%s model_id=%s label=%s",
                 session_id,
                 agent_name,
-                task_complexity,
+                task_label,
                 provider,
                 model_id,
                 model_name,
@@ -970,7 +984,7 @@ async def _call_llm_with_fallback(
                         "provider": provider,
                         "model_name": model_name,
                         "model_id": model_id,
-                        "task_complexity": str(task_complexity),
+                        "task_complexity": task_label,
                         "agent_name": agent_name,
                         "session_id": session_id,
                     },
@@ -981,7 +995,7 @@ async def _call_llm_with_fallback(
                         "provider": provider,
                         "model_name": model_name,
                         "model_id": model_id,
-                        "task_complexity": str(task_complexity),
+                        "task_complexity": task_label,
                         "agent_name": agent_name,
                         "session_id": session_id,
                     },
@@ -989,13 +1003,12 @@ async def _call_llm_with_fallback(
             except Exception:
                 logger.debug("provider.call.started event emission failed")
 
-            if provider == "together" and llm_router.llama_available:
+            if provider == "together" and os.environ.get("LLAMA_API_KEY"):
                 response = await _call_llama_direct(
                     message,
                     system_message,
                     model=model_id,
-                    api_key=llm_router.llama_available
-                    and os.environ.get("LLAMA_API_KEY"),
+                    api_key=os.environ.get("LLAMA_API_KEY"),
                 )
                 try:
                     event_bus.emit(
@@ -1015,7 +1028,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
-                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
+                _record_provider_usage(provider, model_id, task_label, message, response)
                 return (response, f"llama/{model_id}")
 
             elif provider == "cerebras":
@@ -1044,7 +1057,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
-                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
+                _record_provider_usage(provider, model_id, task_label, message, response)
                 return (response, f"cerebras/{model_id}")
 
             elif provider == "anthropic":
@@ -1073,7 +1086,7 @@ async def _call_llm_with_fallback(
                     provider,
                     model_id,
                 )
-                _record_provider_usage(provider, model_id, str(task_complexity), message, response)
+                _record_provider_usage(provider, model_id, task_label, message, response)
                 return (response, f"{model_name}/{model_id}")
 
         except Exception as e:

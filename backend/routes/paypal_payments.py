@@ -1,4 +1,4 @@
-"""PayPal payment routes — replaces braintree_payments.py"""
+"""PayPal payment routes for CrucibAI billing."""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -83,7 +83,7 @@ class CancelSubscriptionRequest(BaseModel):
 # Public config endpoint (returns client ID for PayPal JS SDK)
 # ---------------------------------------------------------------------------
 
-@router.get("/billing/config")
+@router.get("/api/billing/config")
 async def billing_config():
     """Returns PayPal client ID for the frontend SDK loader."""
     return {
@@ -98,7 +98,7 @@ async def billing_config():
 # Plans / prices
 # ---------------------------------------------------------------------------
 
-@router.get("/billing/plans")
+@router.get("/api/billing/plans")
 async def get_plans(db=Depends(_db_or_503)):
     try:
         prices = await list_active_prices(db)
@@ -111,7 +111,7 @@ async def get_plans(db=Depends(_db_or_503)):
 # Billing overview
 # ---------------------------------------------------------------------------
 
-@router.get("/billing/overview")
+@router.get("/api/billing/overview")
 async def get_overview(
     db=Depends(_db_or_503),
     current_user=Depends(_get_auth()),
@@ -126,7 +126,7 @@ async def get_overview(
 # One-time orders
 # ---------------------------------------------------------------------------
 
-@router.post("/billing/create-order")
+@router.post("/api/billing/create-order")
 async def post_create_order(
     body: CreateOrderRequest,
     db=Depends(_db_or_503),
@@ -144,7 +144,7 @@ async def post_create_order(
         raise _http_error(exc)
 
 
-@router.post("/billing/capture-order")
+@router.post("/api/billing/capture-order")
 async def post_capture_order(
     body: CaptureOrderRequest,
     db=Depends(_db_or_503),
@@ -160,7 +160,7 @@ async def post_capture_order(
 # Subscriptions
 # ---------------------------------------------------------------------------
 
-@router.post("/billing/create-subscription")
+@router.post("/api/billing/create-subscription")
 async def post_create_subscription(
     body: CreateSubscriptionRequest,
     db=Depends(_db_or_503),
@@ -178,7 +178,7 @@ async def post_create_subscription(
         raise _http_error(exc)
 
 
-@router.post("/billing/activate-subscription")
+@router.post("/api/billing/activate-subscription")
 async def post_activate_subscription(
     body: ActivateSubscriptionRequest,
     db=Depends(_db_or_503),
@@ -192,7 +192,7 @@ async def post_activate_subscription(
         raise _http_error(exc)
 
 
-@router.post("/billing/cancel-subscription")
+@router.post("/api/billing/cancel-subscription")
 async def post_cancel_subscription(
     body: CancelSubscriptionRequest,
     db=Depends(_db_or_503),
@@ -213,7 +213,7 @@ async def post_cancel_subscription(
 # Billing history
 # ---------------------------------------------------------------------------
 
-@router.get("/billing/history")
+@router.get("/api/billing/history")
 async def get_billing_history(
     db=Depends(_db_or_503),
     current_user=Depends(_get_auth()),
@@ -228,7 +228,7 @@ async def get_billing_history(
 # PayPal Webhooks
 # ---------------------------------------------------------------------------
 
-@router.post("/billing/webhook/paypal")
+@router.post("/api/billing/webhook/paypal")
 async def paypal_webhook(request: Request, db=Depends(_db_or_503)):
     try:
         body = await request.json()

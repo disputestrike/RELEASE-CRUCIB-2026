@@ -38,7 +38,7 @@ function eventToThought(ev) {
   if (t === 'brain_guidance') {
     const headline = pp?.headline || pp?.summary || p?.headline || '';
     const summary = pp?.summary || p?.summary || '';
-    const agent = pp?.agent_name || p?.agent_name || 'Crucible Brain';
+    const agent = pp?.agent_name || p?.agent_name || 'CrucibAI Brain';
     if (!headline && !summary) return null;
     return { id, type: 'thinking', message: headline || summary,
       detail: summary !== headline ? summary : null, agent, ts };

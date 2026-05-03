@@ -23,9 +23,9 @@ PAYPAL_LIVE_URL = "https://api-m.paypal.com"
 PAYPAL_SANDBOX_URL = "https://api-m.sandbox.paypal.com"
 
 DEFAULT_BUSINESS_ID = "biz_starlight"
-DEFAULT_PRODUCT_ID = "prod_crucible_ai_credits"
+DEFAULT_PRODUCT_ID = "prod_crucibai_credits"
 DEFAULT_BUSINESS_SLUG = "starlight"
-DEFAULT_PRODUCT_SLUG = "crucible-ai"
+DEFAULT_PRODUCT_SLUG = "crucibai"
 DEFAULT_LEGAL_ENTITY = "Starlight Global LLC"
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "approval_pending", "approved"}
 
@@ -219,9 +219,9 @@ async def ensure_catalog(db: Any) -> Dict[str, Any]:
         {
             "id": DEFAULT_PRODUCT_ID,
             "business_id": business["id"],
-            "name": "Crucible AI Credits",
+            "name": "CrucibAI Credits",
             "slug": DEFAULT_PRODUCT_SLUG,
-            "description": "Proof-gated build credits for Crucible AI.",
+            "description": "Proof-gated build credits for CrucibAI.",
             "active": True,
         },
     )
@@ -338,7 +338,7 @@ async def create_paypal_order(
             "purchase_units": [
                 {
                     "reference_id": idem_key,
-                    "description": price.get("name", "Crucible AI Credits"),
+                    "description": price.get("name", "CrucibAI Credits"),
                     "amount": {
                         "currency_code": price.get("currency", "USD"),
                         "value": f"{amount:.2f}",
@@ -470,8 +470,8 @@ async def ensure_paypal_plan(
     product_resp = await _paypal_post(
         "/v1/catalogs/products",
         {
-            "name": "Crucible AI Credits",
-            "description": "Build credits for Crucible AI by Starlight Global LLC",
+            "name": "CrucibAI Credits",
+            "description": "Build credits for CrucibAI by Starlight Global LLC",
             "type": "SERVICE",
             "category": "SOFTWARE",
         },
@@ -484,7 +484,7 @@ async def ensure_paypal_plan(
         "/v1/billing/plans",
         {
             "product_id": paypal_product_id,
-            "name": price.get("name", "Crucible AI"),
+            "name": price.get("name", "CrucibAI"),
             "description": f"{price.get('name')} — {price.get('credits')} credits",
             "status": "ACTIVE",
             "billing_cycles": [

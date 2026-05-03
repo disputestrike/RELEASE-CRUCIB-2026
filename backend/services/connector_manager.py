@@ -11,8 +11,7 @@ Supported connectors:
   • Railway – deployments via Railway API
   • Vercel  – deployments via Vercel API
   • Slack   – messages via webhooks
-  • Braintree — billing readiness and payment configuration
-  • Stripe — Stripe API readiness when STRIPE_SECRET_KEY is set
+  - PayPal - billing readiness and payment configuration
 
 Design:
   • Each connector is stateless; credentials pulled from env at call time.
@@ -224,53 +223,35 @@ class SlackConnector(ConnectorBase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Braintree connector (configuration/readiness)
+# PayPal connector (configuration/readiness)
 # ─────────────────────────────────────────────────────────────────────────────
 
-class BraintreeConnector(ConnectorBase):
-    name = "braintree"
+class PayPalConnector(ConnectorBase):
+    name = "paypal"
 
     def __init__(self) -> None:
-        self._merchant_id = os.environ.get("BRAINTREE_MERCHANT_ID", "")
-        self._public_key = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
-        self._private_key = os.environ.get("BRAINTREE_PRIVATE_KEY", "")
-        self._environment = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
+        self._client_id = os.environ.get("PAYPAL_CLIENT_ID", "")
+        self._client_secret = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+        self._mode = os.environ.get("PAYPAL_MODE", "sandbox")
 
     def is_available(self) -> bool:
-        return bool(self._merchant_id and self._public_key and self._private_key)
+        return bool(self._client_id and self._client_secret)
 
     def status(self) -> Dict[str, Any]:
         return {
             "configured": self.is_available(),
-            "environment": self._environment,
+            "mode": self._mode,
             "required_config": [
-                "BRAINTREE_MERCHANT_ID",
-                "BRAINTREE_PUBLIC_KEY",
-                "BRAINTREE_PRIVATE_KEY",
-                "BRAINTREE_ENVIRONMENT",
+                "PAYPAL_CLIENT_ID",
+                "PAYPAL_CLIENT_SECRET",
+                "PAYPAL_MODE",
             ],
         }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stripe connector (readiness parity with Braintree; server routes may use Stripe)
+# Legacy payment connectors removed; PayPal is the only billing connector.
 # ─────────────────────────────────────────────────────────────────────────────
-
-
-class StripeConnector(ConnectorBase):
-    name = "stripe"
-
-    def __init__(self) -> None:
-        self._secret_key = os.environ.get("STRIPE_SECRET_KEY", "").strip()
-
-    def is_available(self) -> bool:
-        return bool(self._secret_key)
-
-    def status(self) -> Dict[str, Any]:
-        return {
-            "configured": self.is_available(),
-            "required_config": ["STRIPE_SECRET_KEY"],
-        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -287,8 +268,7 @@ class ConnectorManager:
             RailwayConnector,
             VercelConnector,
             SlackConnector,
-            StripeConnector,
-            BraintreeConnector,
+            PayPalConnector,
         ]:
             instance = cls()
             self._registry[instance.name] = instance

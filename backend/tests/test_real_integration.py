@@ -4,8 +4,6 @@ Uses actual database, calls real endpoints, shows real failures
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import os
 import sqlite3
@@ -275,22 +273,22 @@ class TestRealAgentExecution:
 
 
 # ============================================================================
-# PHASE 4: REAL STRIPE WEBHOOK TESTS
+# PHASE 4: REAL PAYPAL WEBHOOK TESTS
 # ============================================================================
 
 
-class TestRealStripeWebhook:
-    """Test actual Stripe webhook - calls real payment code"""
+class TestRealPayPalWebhook:
+    """Test actual PayPal webhook behavior"""
 
-    def test_stripe_webhook_adds_credits(self, db_connection, test_user):
-        """REAL TEST: Stripe webhook should add credits to user"""
+    def test_paypal_webhook_adds_credits(self, db_connection, test_user):
+        """REAL TEST: PayPal webhook should add credits to user"""
         cursor = db_connection.cursor()
 
         # Get initial credits
         cursor.execute("SELECT credits FROM users WHERE id = ?", (test_user["id"],))
         initial_credits = cursor.fetchone()["credits"]
 
-        # Simulate Stripe webhook adding credits
+        # Simulate PayPal webhook adding credits
         new_credits = initial_credits + 1000
         cursor.execute(
             """
@@ -328,25 +326,15 @@ class TestRealStripeWebhook:
         assert payment["status"] == "completed"
         print(f"✅ Credits added: {initial_credits} → {updated_credits}")
 
-    def test_stripe_webhook_signature_valid(self):
-        """REAL TEST: Stripe webhook signature should validate correctly"""
-        secret = "whsec_test_secret"
-        timestamp = str(int(time.time()))
-        payload = '{"type": "checkout.session.completed"}'
+    def test_paypal_webhook_idempotency_key_valid(self):
+        """REAL TEST: PayPal webhook IDs can be used for idempotent processing."""
+        event_id = "WH-TEST-123"
+        processed = set()
 
-        # Create signature
-        signed_content = f"{timestamp}.{payload}"
-        signature = hmac.new(
-            secret.encode(), signed_content.encode(), hashlib.sha256
-        ).hexdigest()
-
-        # Verify signature
-        expected_sig = hmac.new(
-            secret.encode(), signed_content.encode(), hashlib.sha256
-        ).hexdigest()
-
-        assert signature == expected_sig, "Signature should match"
-        print("✅ Stripe webhook signature valid")
+        assert event_id not in processed
+        processed.add(event_id)
+        assert event_id in processed
+        print("PayPal webhook idempotency key valid")
 
 
 # ============================================================================

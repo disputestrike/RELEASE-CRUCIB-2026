@@ -396,9 +396,9 @@ AGENT_KEYWORDS = {
     "rbac": ["RBAC Agent"],
     "permission": ["RBAC Agent"],
     # Payments / comms
-    "payment": ["Payment Setup Agent", "Braintree Subscription Agent"],
-    "braintree": ["Payment Setup Agent", "Braintree Subscription Agent"],
-    "billing": ["Braintree Subscription Agent", "Invoice Agent"],
+    "payment": ["Payment Setup Agent", "PayPal Subscription Agent"],
+    "paypal": ["Payment Setup Agent", "PayPal Subscription Agent"],
+    "billing": ["PayPal Subscription Agent", "Invoice Agent"],
     "invoice": ["Invoice Agent"],
     "email": ["Email Agent", "Notification Agent"],
     "sendgrid": ["Email Agent", "Notification Agent"],
@@ -468,7 +468,7 @@ ROUTING_NOISE_KEYWORDS: frozenset[str] = frozenset(
         "real-time",
         "websocket",
         "websockets",
-        "Braintree",
+        "PayPal",
         "payment",
         "billing",
         "oauth",
@@ -676,8 +676,8 @@ def explain_agent_selection(
             "contract:payments",
             (
                 "Payment Setup Agent",
-                "Braintree Subscription Agent",
-                "Braintree Integration Agent",
+                "PayPal Subscription Agent",
+                "PayPal Integration Agent",
                 "Subscription Management Agent",
             ),
         )
@@ -1052,12 +1052,12 @@ def explain_agent_selection(
             ("Accessibility Audit Agent",),
         )
 
-    if any(word in goal_lower for word in ("braintree", "payment", "billing", "checkout")):
+    if any(word in goal_lower for word in ("paypal", "payment", "billing", "checkout")):
         _record_rule_hit(
             selected,
             matched_rules,
             "rule:payments",
-            ("Braintree Integration Agent", "Subscription Management Agent"),
+            ("PayPal Integration Agent", "Subscription Management Agent"),
         )
 
     if any(

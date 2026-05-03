@@ -46,7 +46,7 @@ jobs:
             backend/orchestration/auto_runner.py \
             scripts/verify_claim_evidence_parity.py \
             scripts/verify_1010_readiness.py \
-            scripts/prove_braintree_sandbox.py \
+            scripts/prove_paypal_sandbox.py \
             scripts/prove_deployment_readiness.py
 
       - name: Public claim/evidence parity
@@ -55,8 +55,8 @@ jobs:
       - name: Cross-mode 10/10 readiness proof
         run: python scripts/verify_1010_readiness.py --report-path proof-ci/1010-readiness.json
 
-      - name: Braintree sandbox live-proof hook
-        run: python scripts/prove_braintree_sandbox.py --report-path proof-ci/braintree-sandbox-proof.json
+      - name: PayPal sandbox live-proof hook
+        run: python scripts/prove_paypal_sandbox.py --report-path proof-ci/paypal-sandbox-proof.json
 
       - name: Deployment readiness/live-proof hook
         run: python scripts/prove_deployment_readiness.py --report-path proof-ci/deployment-readiness-proof.json
@@ -82,10 +82,10 @@ jobs:
           # Backend Proof Summary
 
           Commands:
-          - python -m py_compile backend/orchestration/build_integrity_validator.py backend/orchestration/targeted_dag_retry.py backend/orchestration/import_doctor.py backend/automation/executor.py backend/orchestration/auto_runner.py scripts/verify_claim_evidence_parity.py scripts/verify_1010_readiness.py scripts/prove_braintree_sandbox.py scripts/prove_deployment_readiness.py
+          - python -m py_compile backend/orchestration/build_integrity_validator.py backend/orchestration/targeted_dag_retry.py backend/orchestration/import_doctor.py backend/automation/executor.py backend/orchestration/auto_runner.py scripts/verify_claim_evidence_parity.py scripts/verify_1010_readiness.py scripts/prove_paypal_sandbox.py scripts/prove_deployment_readiness.py
           - python scripts/verify_claim_evidence_parity.py
           - python scripts/verify_1010_readiness.py --report-path proof-ci/1010-readiness.json
-          - python scripts/prove_braintree_sandbox.py --report-path proof-ci/braintree-sandbox-proof.json
+          - python scripts/prove_paypal_sandbox.py --report-path proof-ci/paypal-sandbox-proof.json
           - python scripts/prove_deployment_readiness.py --report-path proof-ci/deployment-readiness-proof.json
           - python -m pytest backend/tests/test_build_integrity_validator.py backend/tests/test_import_doctor.py backend/tests/test_automation_run_agent_safety.py backend/tests/test_platform_1010_readiness.py -q
           - python -m pytest -q --basetemp=/tmp/crucibai-pytest-proof
@@ -99,7 +99,7 @@ jobs:
           path: |
             proof-ci/backend-proof-summary.md
             proof-ci/1010-readiness.json
-            proof-ci/braintree-sandbox-proof.json
+            proof-ci/paypal-sandbox-proof.json
             proof-ci/deployment-readiness-proof.json
 
   frontend-proof:

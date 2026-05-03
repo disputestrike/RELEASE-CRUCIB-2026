@@ -161,7 +161,6 @@ _CATEGORY_PATTERNS: Dict[str, Dict[str, Tuple[str, ...]]] = {
         "jwt": ("jwt",),
     },
     "payments": {
-        "Braintree": ("Braintree",),
         "paypal": ("paypal",),
         "lemonsqueezy": ("lemonsqueezy", "lemon squeezy"),
         "paddle": ("paddle",),

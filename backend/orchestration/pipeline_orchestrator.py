@@ -192,7 +192,7 @@ def _pick_generate_caller(use_anthropic: bool):
             )
             return _make_anthropic_caller(claude_key, model), "native"
 
-    # Cerebras / text-mode fallback
+    # Cerebras / text-mode default
     return _make_cerebras_text_caller(), "text"
 
 
@@ -308,7 +308,9 @@ A working scaffold has already been written to the workspace. Read the existing 
 then build the complete application on top of them. Run npm install, then npm run build.
 Fix every error. Stop only when the build exits with code 0."""
 
-    use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    use_anthropic = os.environ.get(
+        "CRUCIBAI_PIPELINE_USE_HAIKU_TOOL_LOOP", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
     caller, loop_type = _pick_generate_caller(use_anthropic)
 
     if on_progress:
@@ -499,7 +501,9 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
     if on_progress:
         await on_progress("repair_started", {"errors_preview": error_output[:200]})
 
-    use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    use_anthropic = os.environ.get(
+        "CRUCIBAI_PIPELINE_USE_HAIKU_TOOL_LOOP", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
     caller, loop_type = _pick_generate_caller(use_anthropic)
 
     if loop_type == "native":
@@ -546,19 +550,19 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
 
 # ─── Main pipeline entry point ────────────────────────────────────────────────
 
-async def _check_job_alive(job_id: str) -> bool:
-    """Return False if the job has been cancelled or paused (caller should abort pipeline)."""
+async def _pause_cancel_status(job_id: str) -> Optional[str]:
     try:
         from backend.orchestration.runtime_state import get_job as _gj
-        j = await _gj(job_id)
-        if not j:
-            return False
-        status = (j.get("status") or "").lower()
-        if status in ("cancelled", "canceled", "paused"):
-            return False
+
+        job = await _gj(job_id)
+        status = ((job or {}).get("status") or "").lower()
+        if status in ("cancelled", "canceled"):
+            return "cancelled"
+        if status == "paused":
+            return "paused"
     except Exception:
         pass
-    return True
+    return None
 
 
 async def run_pipeline_job(
@@ -637,9 +641,10 @@ async def run_pipeline_job(
         })
 
         # Cancel/pause gate between stages
-        if not await _check_job_alive(job_id):
-            await update_job_state(job_id, job["status"] if job else "cancelled")
-            return {"status": "cancelled", "stages_completed": stages_completed}
+        abort_status = await _pause_cancel_status(job_id)
+        if abort_status:
+            await update_job_state(job_id, abort_status)
+            return {"status": abort_status, "stages_completed": stages_completed}
 
         # ── Stage 2: Generate ────────────────────────────────────────────────
         # Inject working scaffold BEFORE agent runs — prevents cold-start failures
@@ -665,8 +670,10 @@ async def run_pipeline_job(
         })
 
         # Cancel/pause gate
-        if not await _check_job_alive(job_id):
-            return {"status": "cancelled", "stages_completed": stages_completed}
+        abort_status = await _pause_cancel_status(job_id)
+        if abort_status:
+            await update_job_state(job_id, abort_status)
+            return {"status": abort_status, "stages_completed": stages_completed}
 
         # ── Stage 3: Assemble ────────────────────────────────────────────────
         await _emit("stage_started", {"stage": "assemble", "label": "Installing dependencies"})
@@ -680,8 +687,10 @@ async def run_pipeline_job(
         await _emit("stage_completed", {"stage": "assemble", "npm_success": assemble_result.get("success")})
 
         # Cancel/pause gate
-        if not await _check_job_alive(job_id):
-            return {"status": "cancelled", "stages_completed": stages_completed}
+        abort_status = await _pause_cancel_status(job_id)
+        if abort_status:
+            await update_job_state(job_id, abort_status)
+            return {"status": abort_status, "stages_completed": stages_completed}
 
         # ── Stage 4: Verify ──────────────────────────────────────────────────
         await _emit("stage_started", {"stage": "verify", "label": "Running the build"})

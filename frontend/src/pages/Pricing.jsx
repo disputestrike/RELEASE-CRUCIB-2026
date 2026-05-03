@@ -13,9 +13,9 @@ import { logApiError } from '../utils/apiError';
 const DEFAULT_BUNDLES = {
   free:    { credits: 100,  price: 0,   name: 'Free' },
   builder: { credits: 500,  price: 15,  name: 'Builder' },
-  pro:     { credits: 1500, price: 50,  name: 'Pro' },
-  scale:   { credits: 3000, price: 100, name: 'Scale' },
-  teams:   { credits: 6000, price: 200, name: 'Teams' },
+  pro:     { credits: 1000, price: 30,  name: 'Pro' },
+  scale:   { credits: 2000, price: 60,  name: 'Scale' },
+  teams:   { credits: 5000, price: 150, name: 'Teams' },
 };
 const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
@@ -72,7 +72,7 @@ function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api,
     try {
       navigate('/app/tokens', { state: { customCredits: credits } });
     } catch (e) {
-      logApiError('Open Braintree credit checkout', e);
+      logApiError('Open PayPal credit checkout', e);
     } finally {
       setLoading(false);
     }
@@ -174,7 +174,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
-  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 199.99, pro: 499.99, scale: 999.99, teams: 1999.99 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 150, pro: 300, scale: 600, teams: 1500 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
   const [customAddon, setCustomAddon] = useState({ min_credits: CUSTOM_CREDITS_MIN, max_credits: CUSTOM_CREDITS_MAX, price_per_credit: PRICE_PER_CREDIT });
 

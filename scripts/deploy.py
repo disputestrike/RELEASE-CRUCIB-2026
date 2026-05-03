@@ -372,7 +372,7 @@ Get your token:
   → Set JWT_SECRET (openssl rand -base64 32)
   → Set ANTHROPIC_API_KEY
   → Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
-  → Set STRIPE_SECRET_KEY (for payments)
+  → Set PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (for payments)
   → Set CEREBRAS_API_KEY_1 through _5
 
 {BLUE}Production URL:{RESET}

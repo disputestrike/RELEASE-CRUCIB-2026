@@ -28,7 +28,7 @@ async def collect_connector_fixtures() -> Tuple[List[NormalizedRow], Dict[str, A
             "failure_detail": "Set CRUCIB_CONNECTOR_FIXTURE_JSON or CRUCIB_CONNECTOR_FIXTURE_PATH for connector rows.",
             "rows_returned": 0,
             "latency_ms": 0.0,
-            "supported": ["slack", "github", "jira", "stripe", "posthog", "snowflake", "bigquery"],
+            "supported": ["slack", "github", "jira", "paypal", "posthog", "snowflake", "bigquery"],
         }
 
     items: List[Dict[str, Any]] = []
@@ -53,7 +53,7 @@ async def collect_connector_fixtures() -> Tuple[List[NormalizedRow], Dict[str, A
             "failure_detail": str(exc)[:500],
             "rows_returned": 0,
             "latency_ms": round((time.perf_counter() - started) * 1000, 2),
-            "supported": ["slack", "github", "jira", "stripe"],
+            "supported": ["slack", "github", "jira", "paypal"],
         }
 
     rows: List[NormalizedRow] = []
@@ -92,5 +92,5 @@ async def collect_connector_fixtures() -> Tuple[List[NormalizedRow], Dict[str, A
         "failure_detail": None if rows else "Fixture contained no valid http URLs.",
         "rows_returned": len(rows),
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
-        "supported_future": ["slack", "github", "jira", "stripe", "posthog", "linear"],
+        "supported_future": ["slack", "github", "jira", "paypal", "posthog", "linear"],
     }

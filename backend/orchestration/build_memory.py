@@ -276,7 +276,7 @@ def _estimate_complexity(goal: str) -> int:
     goal_lower = goal.lower()
     score = 3  # baseline
     # High complexity signals
-    high = ["auth", "authentication", "payment", "braintree", "billing", "saas", "multi-tenant",
+    high = ["auth", "authentication", "payment", "paypal", "billing", "saas", "multi-tenant",
             "real-time", "websocket", "microservice", "kubernetes", "docker", "deployment",
             "security", "rbac", "permissions", "admin", "dashboard", "analytics", "reporting",
             "search", "elasticsearch", "ai", "ml", "machine learning", "recommendation"]

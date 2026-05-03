@@ -20,7 +20,7 @@ All 6 hero images have been successfully uploaded to Manus CDN.
 <section className="hero-section">
   <div className="hero-text">
     <h1>Inevitable AI</h1>
-    <p>Intelligence that doesn't just act. Intelligence that guarantees.</p>
+    <p>Build with planning, proof, preview, and deploy readiness.</p>
     <button>Make It Inevitable</button>
   </div>
   <div className="hero-image">

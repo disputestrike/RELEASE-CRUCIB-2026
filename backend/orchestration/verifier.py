@@ -822,10 +822,10 @@ async def verify_step(
 
                 ts = await verify_tenancy_smoke_workspace(workspace_path or "")
                 return _result(ts["passed"], ts["score"], ts["issues"], ts["proof"])
-            if step_key == "verification.stripe_replay":
-                from .verification_stripe_replay import verify_stripe_replay_workspace
+            if step_key == "verification.payment_replay":
+                from .verification_payment_replay import verify_payment_replay_workspace
 
-                sr = verify_stripe_replay_workspace(workspace_path or "")
+                sr = verify_payment_replay_workspace(workspace_path or "")
                 return _result(sr["passed"], sr["score"], sr["issues"], sr["proof"])
             if step_key == "verification.rbac_enforcement":
                 from .verification_rbac import verify_rbac_enforcement_workspace

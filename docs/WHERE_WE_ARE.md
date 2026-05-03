@@ -1,7 +1,7 @@
-# Where We Are — Current State Snapshot
+﻿# Where We Are â€” Current State Snapshot
 
 **Repo:** disputestrike/CrucibAI (CrucibAI-remote).  
-**As of:** Latest pull — commit `2ebc594`.  
+**As of:** Latest pull â€” commit `2ebc594`.  
 **Branch:** `main`, up to date with `origin/main`.
 
 ---
@@ -15,14 +15,14 @@
 
 | Area | Change |
 |------|--------|
-| Backend | System prompt: company-name and competitor guardrails (no code on vague mentions; “I just build” on competitor questions). |
-| Frontend | **Model Manager** (`/app/models`), **Fine-Tuning** (`/app/fine-tuning`), **Safety Dashboard** (`/app/safety`) — new pages, routed in App.js, linked in Sidebar under **Engine Room**. |
+| Backend | System prompt: company-name and competitor guardrails (no code on vague mentions; â€œI just buildâ€ on competitor questions). |
+| Frontend | **Model Manager** (`/app/models`), **Fine-Tuning** (`/app/fine-tuning`), **Safety Dashboard** (`/app/safety`) â€” new pages, routed in App.js, linked in Sidebar under **Engine Room**. |
 | Sidebar | Engine Room section includes Model Manager, Fine-Tuning, Safety Dashboard; ShieldCheck icon for Safety. |
 | Lockfiles | frontend/package-lock.json, yarn.lock updated. |
 
 ---
 
-## What’s in the product right now
+## Whatâ€™s in the product right now
 
 - **Merge baseline:** Landing (their), dashboard/layout/workspace/export (ours), token/pricing (theirs), 32/32 items wired, build history, quick build, mobile path (Expo + store prep), ZIP upload (bring your code).
 - **Second pass:** Engine Room (Model Manager, Fine-Tuning, Safety Dashboard), system prompt guardrails.
@@ -34,11 +34,11 @@
 
 | Doc | Use |
 |-----|-----|
-| **WHERE_WE_ARE.md** (this file) | One-page “where we are” and latest commit. |
+| **WHERE_WE_ARE.md** (this file) | One-page â€œwhere we areâ€ and latest commit. |
 | **docs/RATE_RANK_COMPARE_CURRENT.md** | Full rate-rank-compare including second pass; 10/10. |
-| **docs/PLAYGROUND_COMPARE.md** | CrucibAI vs playground-style tools; why CrucibAI ranks #1 on breadth. |
-| **docs/RATE_RANK_COMPARE_MERGED.md** | Post-merge baseline (pre–Engine Room). |
-| **docs/LAUNCH_GTM.md** | GTM and “the moment” (mobile submit tweet). |
+| **docs/PLAYGROUND_COMPARE.md** | CrucibAI vs playground-style tools; evidence-gated breadth comparison. |
+| **docs/RATE_RANK_COMPARE_MERGED.md** | Post-merge baseline (preâ€“Engine Room). |
+| **docs/LAUNCH_GTM.md** | GTM and â€œthe momentâ€ (mobile submit tweet). |
 | **VERIFICATION_32_ITEMS.md** | 32-item proof. |
 | **docs/MASTER_TEST_9_SECTIONS_45_CHECKS.md** | Launch audit checklist. |
 
@@ -46,11 +46,12 @@
 
 ## Status
 
-- **Saved:** All changes from your latest commit are pulled; working tree clean; nothing to stage or commit for “bringing it here.”
+- **Saved:** All changes from your latest commit are pulled; working tree clean; nothing to stage or commit for â€œbringing it here.â€
 - **Rate-rank-compare:** Updated in RATE_RANK_COMPARE_CURRENT.md (10/10; includes Engine Room and guardrails).
-- **Playground compare:** New doc PLAYGROUND_COMPARE.md (CrucibAI vs playground builders; CrucibAI #1 on breadth).
-- **Nothing missing** for the current “where we are” snapshot.
+- **Playground compare:** New doc PLAYGROUND_COMPARE.md (CrucibAI vs playground builders; CrucibAI has a strong breadth case).
+- **Nothing missing** for the current â€œwhere we areâ€ snapshot.
 
 ---
 
 *To run: see MERGE_DONE_CHECKLIST.md and DEVELOPMENT.md. To deploy: see docs/RAILWAY_DEPLOY_100_PERCENT.md.*
+

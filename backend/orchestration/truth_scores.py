@@ -37,7 +37,7 @@ def compute_production_readiness(
         score += min(8, 100 - score)
         reasons.append("tenancy_sql_sketch_in_security_proof")
     if any(
-        ("payment webhook" in t or "stripe" in t) and "idempotency" in t
+        ("payment webhook" in t or "paypal" in t) and "idempotency" in t
         for t in titles_lower
     ):
         score += min(8, 100 - score)
@@ -62,9 +62,7 @@ def compute_production_readiness(
         reasons.append("tenancy_smoke_live_isolation")
 
     if any(
-        (i.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven"
-        or (i.get("payload") or {}).get("check")
-        == "payment_webhook_idempotency_proven"
+        (i.get("payload") or {}).get("check") == "payment_webhook_idempotency_proven"
         for i in flat
     ):
         score += min(10, 100 - score)

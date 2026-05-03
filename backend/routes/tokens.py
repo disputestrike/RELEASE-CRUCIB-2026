@@ -54,7 +54,7 @@ def _get_token_constants():
     return (
         server.TOKEN_BUNDLES,
         server.ANNUAL_PRICES,
-        server.BRAINTREE_CONFIGURED,
+        server.PAYPAL_CONFIGURED,
         server.FRONTEND_URL,
         server.REFERRAL_CAP_PER_MONTH,
         server.CREDITS_PER_TOKEN,
@@ -220,16 +220,16 @@ async def get_credit_balance(user: dict = Depends(_get_optional_user())):
 
 @router.post("/tokens/purchase")
 async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())):
-    """Direct credit grant. In production (Braintree configured), use Braintree checkout instead."""
+    """Direct credit grant. In production (PayPal configured), use PayPal checkout instead."""
     db = _get_db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    TOKEN_BUNDLES, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
+    TOKEN_BUNDLES, _, PAYPAL_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
     _user_credits, _ensure_credit_balance = _get_credit_helpers()
-    if BRAINTREE_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
+    if PAYPAL_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
         raise HTTPException(
-            status_code=400 if BRAINTREE_CONFIGURED else 503,
-            detail="Use Credit Center -> Pay with Braintree to purchase credits. Direct credit grants are dev-only and disabled by default.",
+            status_code=400 if PAYPAL_CONFIGURED else 503,
+            detail="Use Billing -> PayPal checkout to purchase credits. Direct credit grants are dev-only and disabled by default.",
         )
     if data.bundle not in TOKEN_BUNDLES:
         raise HTTPException(status_code=400, detail="Invalid bundle")
@@ -270,16 +270,16 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(_get_auth())
 async def purchase_tokens_custom(
     data: TokenPurchaseCustom, user: dict = Depends(_get_auth())
 ):
-    """Custom credit purchase via slider. When Braintree is enabled, use Braintree checkout instead."""
+    """Custom credit purchase via slider. When PayPal is enabled, use PayPal checkout instead."""
     db = _get_db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    _, _, BRAINTREE_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
+    _, _, PAYPAL_CONFIGURED, _, _, CREDITS_PER_TOKEN, _ = _get_token_constants()
     _user_credits, _ensure_credit_balance = _get_credit_helpers()
-    if BRAINTREE_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
+    if PAYPAL_CONFIGURED or os.environ.get("CRUCIBAI_ALLOW_DEV_CREDIT_GRANTS", "").lower() not in {"1", "true", "yes"}:
         raise HTTPException(
-            status_code=400 if BRAINTREE_CONFIGURED else 503,
-            detail="Use Credit Center -> Pay with Braintree to purchase credits. Direct credit grants are dev-only and disabled by default.",
+            status_code=400 if PAYPAL_CONFIGURED else 503,
+            detail="Use Billing -> PayPal checkout to purchase credits. Direct credit grants are dev-only and disabled by default.",
         )
     from ..pricing_plans import CUSTOM_CREDIT_MAX, CUSTOM_CREDIT_MIN, CUSTOM_CREDIT_PRICE
 

@@ -99,7 +99,7 @@ def classify_failure(
             "verification failed",
             "tenancy smoke",
             "rls migration",
-            "stripe replay",
+            "payment replay",
             "rbac smoke",
             "tenant context",
             "set_config",
@@ -109,7 +109,7 @@ def classify_failure(
         return "verification_error"
     if any(
         k in combined
-        for k in ["stripe", "openai", "anthropic", "api key", "integration"]
+        for k in ["paypal", "openai", "anthropic", "api key", "integration"]
     ):
         return "integration_error"
     if any(k in combined for k in ["file missing", "not found", "no such file"]):

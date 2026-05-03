@@ -6,6 +6,6 @@
  *   {FEATURE_FLAGS.revenueAnalytics && <RevenueAnalyticsDashboard />}
  */
 export const FEATURE_FLAGS = {
-  // behind-flag: revenue dashboard requires Braintree webhook integration (Wave 5)
+  // behind-flag: revenue dashboard requires PayPal webhook integration (Wave 5)
   revenueAnalytics: false,
 };

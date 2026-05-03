@@ -96,7 +96,7 @@ DOMAIN_POLICIES: Dict[str, Dict[str, Any]] = {
             "customer sentiment",
             "experiment or rollout plan",
         ],
-        "preferred_connectors": ["Braintree", "Salesforce", "warehouse", "support export", "targeted Tavily search"],
+        "preferred_connectors": ["PayPal", "Salesforce", "warehouse", "support export", "targeted Tavily search"],
         "minimum_coverage": 0.6,
         "official_required_for_strong_verdict": False,
         "verdict_style": "recommendation_with_expected_impact",

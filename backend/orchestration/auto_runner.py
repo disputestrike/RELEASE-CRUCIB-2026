@@ -374,6 +374,78 @@ async def run_job_to_completion(
             except Exception as _fpe:
                 logger.warning("[FAST PATH] Exception (falling back to full DAG): %s", _fpe)
 
+        # Claude Code fusion path: one persistent tool loop, then one verify/repair pass.
+        # Legacy DAG fallback is sealed behind an explicit environment flag.
+        try:
+            from .pipeline_orchestrator import pipeline_enabled, run_pipeline_job
+
+            if pipeline_enabled():
+                await append_job_event(
+                    job_id,
+                    "pipeline_dispatch",
+                    {"engine": "claude_style_five_stage", "legacy_fallback": False},
+                )
+                pipeline_result = await run_pipeline_job(
+                    job_id=job_id,
+                    workspace_path=workspace_path,
+                    goal=(job.get("goal") or "").strip(),
+                    db_pool=db_pool,
+                    proof_service=proof_service,
+                )
+                pipeline_status = str(pipeline_result.get("status") or "").lower()
+                if pipeline_status in {"completed", "success"}:
+                    return {
+                        "success": True,
+                        "status": "completed",
+                        "pipeline": True,
+                        **pipeline_result,
+                    }
+                if pipeline_status in {"cancelled", "canceled", "paused"}:
+                    return {
+                        "success": False,
+                        "status": "cancelled" if pipeline_status == "canceled" else pipeline_status,
+                        "pipeline": True,
+                        **pipeline_result,
+                    }
+
+                allow_legacy = os.environ.get(
+                    "CRUCIBAI_PIPELINE_FALLBACK_TO_LEGACY", ""
+                ).strip().lower() in {"1", "true", "yes", "on"}
+                if not allow_legacy:
+                    return {
+                        "success": False,
+                        "status": "failed",
+                        "pipeline": True,
+                        **pipeline_result,
+                    }
+                await append_job_event(
+                    job_id,
+                    "pipeline_legacy_fallback",
+                    {"reason": pipeline_result.get("error") or pipeline_status or "pipeline_failed"},
+                )
+        except Exception as _pipeline_exc:
+            logger.exception("auto_runner: pipeline dispatch failed: %s", _pipeline_exc)
+            allow_legacy = os.environ.get(
+                "CRUCIBAI_PIPELINE_FALLBACK_TO_LEGACY", ""
+            ).strip().lower() in {"1", "true", "yes", "on"}
+            if not allow_legacy:
+                await _finalize_job_with_failure(
+                    job_id,
+                    "pipeline_dispatch_failed",
+                    f"{type(_pipeline_exc).__name__}: {_pipeline_exc}",
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "reason": "pipeline_dispatch_failed",
+                    "details": str(_pipeline_exc),
+                }
+            await append_job_event(
+                job_id,
+                "pipeline_legacy_fallback",
+                {"reason": f"{type(_pipeline_exc).__name__}: {_pipeline_exc}"},
+            )
+
         # ── Pre-build intelligence briefing ────────────────────────────────────
         # Ensure brain memory tables exist
         try:

@@ -10,7 +10,7 @@ const BUILTIN_SKILLS = [
   { id: 'deploy-app', name: 'Deploy App', description: 'Railway/Vercel deployment', trigger: ['deploy','ship','launch','production'] },
   { id: 'security-review', name: 'Security Review', description: 'AgentShield security scan', trigger: ['security','scan','vulnerability'] },
   { id: 'test-suite', name: 'Test Suite', description: 'Unit + integration tests', trigger: ['test','tests','testing','coverage'] },
-  { id: 'Braintree-payments', name: 'Braintree Payments', description: 'Payment integration', trigger: ['Braintree','payment','billing','checkout'] },
+  { id: 'paypal-payments', name: 'PayPal Payments', description: 'Payment integration', trigger: ['paypal','payment','billing','checkout'] },
 ];
 
 let _customSkills = [];

@@ -10,8 +10,8 @@ metadata:
 
 # Automation Builder
 
-> **PAYMENT RULE**: Default payment integration is **Stripe** (Checkout, Billing, Customer Portal).
-> Never implement Braintree unless the user explicitly names Braintree. BIV enforces this.
+> **PAYMENT RULE**: Default payment integration is **PayPal** (Checkout, subscriptions, webhooks).
+> Never implement Stripe or Braintree unless the user explicitly names that provider. BIV enforces this.
 
 
 
@@ -41,7 +41,7 @@ Production-ready automation workflows:
 2. **Webhook Trigger** — runs when an event fires
    - New lead → enrich → CRM create → Slack notify
    - GitHub PR → AI code review → post comment
-   - Stripe payment → send custom invoice → update sheet
+   - PayPal payment → send custom invoice → update sheet
    - Form submission → validate → notify + log
 
 3. **Chained Pipeline** — sequential or parallel steps
@@ -108,3 +108,4 @@ Output includes:
 - `/server/automations/competitor-digest.ts` — complete automation
 - `/server/scheduler.ts` — cron setup
 - UI: dashboard showing last run + preview of sent message
+

@@ -30,7 +30,7 @@ export default function WorkspaceVNext() {
   const [modeNotice, setModeNotice] = useState('');
   const [runtimeTelemetry, setRuntimeTelemetry] = useState(null);
   const [surface, setSurfaceState] = useState(() => readRequestedSurface(searchParams));
-  const [whatIfScenario, setWhatIfScenario] = useState('What if we replace Braintree with LemonSqueezy in the billing flow?');
+  const [whatIfScenario, setWhatIfScenario] = useState('What if we replace PayPal with another approved billing flow?');
   const [whatIfLoading, setWhatIfLoading] = useState(false);
   const [whatIfResult, setWhatIfResult] = useState(null);
   const [whatIfError, setWhatIfError] = useState('');

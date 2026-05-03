@@ -170,7 +170,7 @@ CrucibAI is an AI-powered app builder where users describe what they want in nat
 - [ ] Custom domains
 - [ ] Team collaboration
 - [ ] Database integrations (Supabase)
-- [ ] Payment integration (Stripe)
+- [ ] Payment integration (PayPal)
 
 ### P3 - Cleanup
 - [ ] Remove legacy components (ProjectBuilder, AgentMonitor, etc.)

@@ -11,10 +11,10 @@ import pytest
     "plan,expected_credits,expected_price",
     [
         ("free", 100, 0),
-        ("builder", 500, 20),
-        ("pro", 1500, 50),
-        ("scale", 3000, 100),
-        ("teams", 6000, 200),
+        ("builder", 500, 15),
+        ("pro", 1000, 30),
+        ("scale", 2000, 60),
+        ("teams", 5000, 150),
     ],
 )
 def test_credit_plans_has_correct_plans_and_values(

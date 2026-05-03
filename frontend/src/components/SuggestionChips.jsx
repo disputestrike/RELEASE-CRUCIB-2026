@@ -4,9 +4,9 @@ const SUGGESTIONS = [
   { icon: '🌐', label: 'Build website', prompt: 'Build a multi-page website with hero, features, pricing, and contact sections' },
   { icon: '⚙️', label: 'Develop app', prompt: 'Build a full-stack web app with user authentication and dashboard' },
   { icon: '📱', label: 'Mobile app', prompt: 'Build a React Native mobile app with navigation and multiple screens' },
-  { icon: '🛒', label: 'E-commerce store', prompt: 'Build an e-commerce store with product catalog, cart, and Braintree checkout' },
+  { icon: '🛒', label: 'E-commerce store', prompt: 'Build an e-commerce store with product catalog, cart, and PayPal checkout' },
   { icon: '🤖', label: 'AI chatbot', prompt: 'Build an AI chatbot with a knowledge base and multi-agent support' },
-  { icon: '📊', label: 'SaaS MVP', prompt: 'Build a SaaS MVP with authentication, Braintree billing, and user dashboard' },
+  { icon: '📊', label: 'SaaS MVP', prompt: 'Build a SaaS MVP with authentication, PayPal billing, and user dashboard' },
   { icon: '⚡', label: 'Automation', prompt: 'Build an automation that runs daily and sends results to Slack or email' },
   { icon: '🛠️', label: 'Internal tool', prompt: 'Build an internal admin tool with data tables, forms, and approval workflows' },
 ];

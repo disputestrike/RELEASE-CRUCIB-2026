@@ -43,7 +43,7 @@ _SMALL_CHANGE_VERBS = (
 
 _LARGE_CHANGE_SIGNALS = (
     "build ", "create ", "generate ", "implement ", "develop ",
-    "add authentication", "add auth", "add payments", "add stripe",
+    "add authentication", "add auth", "add payments", "add paypal",
     "database", "from scratch", "entire", "whole ", "full ",
     "new app", "new project", "new feature",
 )

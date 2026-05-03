@@ -119,11 +119,9 @@ MONGO_URL=mongodb://localhost:27017
 JWT_SECRET=your_secret_key
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
-BRAINTREE_ENVIRONMENT=sandbox
-BRAINTREE_MERCHANT_ID=your_braintree_merchant_id
-BRAINTREE_PUBLIC_KEY=your_braintree_public_key
-BRAINTREE_PRIVATE_KEY=your_braintree_private_key
-BRAINTREE_MERCHANT_ACCOUNT_ID=your_default_merchant_account_id
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_ID=your_paypal_client_id
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret
 ```
 
 ### 2. Frontend Setup

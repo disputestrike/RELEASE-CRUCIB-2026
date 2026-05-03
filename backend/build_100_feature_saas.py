@@ -284,7 +284,7 @@ class SaaS100FeatureBuilder:
         tier5 = [
             {
                 "id": 41,
-                "name": "Stripe Integration",
+                "name": "PayPal Integration",
                 "category": "Payments",
                 "complexity": "high",
             },

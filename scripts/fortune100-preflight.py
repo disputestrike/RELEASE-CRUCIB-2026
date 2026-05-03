@@ -21,7 +21,7 @@ ENDPOINTS = [
     {"id": "health", "path": "/api/health", "kind": "json"},
     {"id": "llm_health", "path": "/api/health/llm", "kind": "json"},
     {"id": "runtime_health", "path": "/api/orchestrator/runtime-health", "kind": "json"},
-    {"id": "braintree_status", "path": "/api/payments/braintree/status", "kind": "json"},
+    {"id": "paypal_status", "path": "/api/billing/config", "kind": "json"},
     {"id": "benchmark_summary", "path": "/api/trust/benchmark-summary", "kind": "json"},
     {"id": "security_posture", "path": "/api/trust/security-posture", "kind": "json"},
     {"id": "full_systems_summary", "path": "/api/trust/full-systems-summary", "kind": "json"},
@@ -86,17 +86,17 @@ def check_contract(records: list[dict[str, Any]], require_payments_configured: b
         "All public readiness endpoints/pages must return 2xx/3xx and valid JSON where expected.",
     )
 
-    braintree = by_id.get("braintree_status", {}).get("json") or {}
+    paypal = by_id.get("paypal_status", {}).get("json") or {}
     add(
-        "payment_provider_is_braintree",
-        braintree.get("provider") == "braintree",
-        f"provider={braintree.get('provider')} configured={braintree.get('configured')}",
+        "payment_provider_is_paypal",
+        paypal.get("provider") == "paypal",
+        f"provider={paypal.get('provider')} configured={paypal.get('configured')}",
     )
     if require_payments_configured:
         add(
-            "braintree_credentials_configured",
-            braintree.get("configured") is True,
-            f"configured={braintree.get('configured')} required_config={braintree.get('required_config')}",
+            "paypal_credentials_configured",
+            paypal.get("configured") is True,
+            f"configured={paypal.get('configured')} required_config={paypal.get('required_config')}",
         )
 
     benchmark = by_id.get("benchmark_summary", {}).get("json") or {}
@@ -165,7 +165,7 @@ def main() -> int:
     parser.add_argument(
         "--require-payments-configured",
         action="store_true",
-        help="Fail the readiness gate unless Braintree reports configured=true.",
+        help="Fail the readiness gate unless PayPal reports configured=true.",
     )
     args = parser.parse_args()
 

@@ -41,11 +41,6 @@ COPY backend/ ./backend/
 RUN echo "Backend files copied to /app/backend"
 COPY --from=frontend /app/build ./backend/static
 RUN echo "Frontend static files copied to /app/backend/static"
-COPY proof/benchmarks/repeatability_v1/summary.json /proof/benchmarks/repeatability_v1/summary.json
-COPY proof/benchmarks/repeatability_v1/PASS_FAIL.md /proof/benchmarks/repeatability_v1/PASS_FAIL.md
-COPY proof/full_systems/summary.json /proof/full_systems/summary.json
-COPY proof/full_systems/PASS_FAIL.md /proof/full_systems/PASS_FAIL.md
-RUN echo "Benchmark and full systems proof files copied"
 
 ENV PORT=8000
 EXPOSE 8000

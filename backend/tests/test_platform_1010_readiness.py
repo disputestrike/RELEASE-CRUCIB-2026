@@ -38,22 +38,20 @@ def test_1010_readiness_script_proves_all_build_profiles():
     }.issubset(labels)
 
 
-def test_braintree_sandbox_proof_hook_skips_without_credentials_and_can_require_live():
+def test_paypal_sandbox_proof_hook_skips_without_credentials_and_can_require_live():
     env = os.environ.copy()
     for key in (
-        "BRAINTREE_ENVIRONMENT",
-        "BRAINTREE_MERCHANT_ID",
-        "BRAINTREE_PUBLIC_KEY",
-        "BRAINTREE_PRIVATE_KEY",
-        "BRAINTREE_MERCHANT_ACCOUNT_ID",
+        "PAYPAL_MODE",
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
     ):
         env.pop(key, None)
 
-    skipped = run_script("scripts/prove_braintree_sandbox.py", env=env)
+    skipped = run_script("scripts/prove_paypal_sandbox.py", env=env)
     assert skipped.returncode == 0, skipped.stderr + skipped.stdout
     assert json.loads(skipped.stdout)["status"] == "skipped_missing_credentials"
 
-    required = run_script("scripts/prove_braintree_sandbox.py", "--require-live", env=env)
+    required = run_script("scripts/prove_paypal_sandbox.py", "--require-live", env=env)
     assert required.returncode == 2
     assert json.loads(required.stdout)["required_live"] is True
 

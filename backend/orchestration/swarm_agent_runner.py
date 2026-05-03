@@ -231,46 +231,44 @@ SWARM_STEP_PREFIX = "agents"
 # ---------------------------------------------------------------------------
 # Per-agent model tier classification
 # ---------------------------------------------------------------------------
-# "anthropic" = deep reasoning tasks (architecture, planning, multi-file generation,
-#               security, auth, database schema, final audit)
-# "cerebras"  = fast tasks (boilerplate, config, docs, simple writes, export agents)
+# "haiku"    = reasoning / validation quality gates.
+# "cerebras" = volume workers and generation tasks.
 #
-# IMPORTANT: Anthropic has NO credits on Railway — every "anthropic" agent MUST
-# have Cerebras as a real fallback so the build never hard-fails.
+# Sonnet is never selected from the swarm runner.
 # ---------------------------------------------------------------------------
 AGENT_MODEL_TIER: Dict[str, str] = {
     # ── DEEP REASONING (Anthropic primary, Cerebras fallback) ──────────────
-    "Planner": "anthropic",
-    "Requirements Clarifier": "anthropic",
-    "Stack Selector": "anthropic",
-    "Frontend Generation": "anthropic",
-    "Backend Generation": "anthropic",
-    "Database Agent": "anthropic",
-    "Auth Setup Agent": "anthropic",
-    "Security Checker": "anthropic",
-    "API Integration": "anthropic",
-    "Payment Setup Agent": "anthropic",
-    "Multi-tenant Agent": "anthropic",
-    "RBAC Agent": "anthropic",
-    "SSO Agent": "anthropic",
-    "GraphQL Agent": "anthropic",
-    "WebSocket Agent": "anthropic",
-    "Migration Agent": "anthropic",
-    "Schema Validation Agent": "anthropic",
-    "E2E Agent": "anthropic",
-    "Penetration Test Agent": "anthropic",
-    "Incident Response Agent": "anthropic",
-    "HIPAA Agent": "anthropic",
-    "SOC2 Agent": "anthropic",
-    "Deployment Agent": "anthropic",
-    "DevOps Agent": "anthropic",
-    "Workflow Agent": "anthropic",
-    "Queue Agent": "anthropic",
-    "Test Generation": "anthropic",
-    "Test Executor": "anthropic",
-    "Code Review Agent": "anthropic",
-    "Error Recovery": "anthropic",
-    "Validation Agent": "anthropic",
+    "Planner": "haiku",
+    "Requirements Clarifier": "haiku",
+    "Stack Selector": "haiku",
+    "Frontend Generation": "cerebras",
+    "Backend Generation": "cerebras",
+    "Database Agent": "cerebras",
+    "Auth Setup Agent": "cerebras",
+    "Security Checker": "haiku",
+    "API Integration": "cerebras",
+    "Payment Setup Agent": "cerebras",
+    "Multi-tenant Agent": "cerebras",
+    "RBAC Agent": "cerebras",
+    "SSO Agent": "cerebras",
+    "GraphQL Agent": "cerebras",
+    "WebSocket Agent": "cerebras",
+    "Migration Agent": "cerebras",
+    "Schema Validation Agent": "haiku",
+    "E2E Agent": "cerebras",
+    "Penetration Test Agent": "haiku",
+    "Incident Response Agent": "haiku",
+    "HIPAA Agent": "haiku",
+    "SOC2 Agent": "haiku",
+    "Deployment Agent": "haiku",
+    "DevOps Agent": "cerebras",
+    "Workflow Agent": "cerebras",
+    "Queue Agent": "cerebras",
+    "Test Generation": "cerebras",
+    "Test Executor": "haiku",
+    "Code Review Agent": "haiku",
+    "Error Recovery": "haiku",
+    "Validation Agent": "haiku",
     # ── FAST / SIMPLE (Cerebras primary, Anthropic fallback) ───────────────
     "Native Config Agent": "cerebras",
     "Store Prep Agent": "cerebras",
@@ -315,7 +313,7 @@ AGENT_MODEL_TIER: Dict[str, str] = {
     "Session Agent": "cerebras",
     "OAuth Provider Agent": "cerebras",
     "2FA Agent": "cerebras",
-    "Braintree Subscription Agent": "cerebras",
+    "PayPal Subscription Agent": "cerebras",
     "Invoice Agent": "cerebras",
     "CDN Agent": "cerebras",
     "SSR Agent": "cerebras",
@@ -368,14 +366,10 @@ def _get_agent_model_chain(
     """
     Build the model chain for a specific agent based on AGENT_MODEL_TIER.
 
-    Anthropic agents: [anthropic, cerebras] — deep reasoning first, fast fallback
-    Cerebras agents:  [cerebras, anthropic] — fast first, deep fallback
+    Haiku agents:    [haiku, cerebras] for reasoning and validation.
+    Cerebras agents: [cerebras] for volume worker generation.
 
-    IMPORTANT: Anthropic has NO credits on Railway. If Anthropic fails, Cerebras
-    MUST be in the chain so the build continues. Never return an Anthropic-only chain.
-
-    PRIMARY_LLM_PROVIDER=cerebras — put Cerebras first for *all* tiers (free testing;
-    Anthropic remains as fallback when the key is set).
+    PRIMARY_LLM_PROVIDER=cerebras puts Cerebras first for Haiku-tier agents too.
     """
     from ..llm_router import CEREBRAS_MODEL
     from ..anthropic_models import ANTHROPIC_HAIKU_MODEL
@@ -390,31 +384,22 @@ def _get_agent_model_chain(
     force_cerebras_first = _primary_llm_is_cerebras()
 
     if force_cerebras_first:
-        # Same order as "cerebras tier": fast first, Claude when needed / on failure
         chain = []
         if cerebras_key:
             chain.append(cerebras_entry)
-        if anthropic_key:
+        if tier in {"haiku", "anthropic"} and anthropic_key:
             chain.append(anthropic_entry)
-        return chain if chain else [anthropic_entry]
+        return chain
 
-    if tier == "anthropic":
-        # Anthropic primary — but always include Cerebras as fallback
+    if tier in {"haiku", "anthropic"}:
         chain = []
         if anthropic_key:
             chain.append(anthropic_entry)
         if cerebras_key:
             chain.append(cerebras_entry)
-        # If neither key is set, return empty (will raise downstream)
-        return chain if chain else [cerebras_entry]
+        return chain
     else:
-        # Cerebras primary — Anthropic as fallback if key exists
-        chain = []
-        if cerebras_key:
-            chain.append(cerebras_entry)
-        if anthropic_key:
-            chain.append(anthropic_entry)
-        return chain if chain else [anthropic_entry]
+        return [cerebras_entry] if cerebras_key else []
 
 
 _COMPLEX_SWARM_MARKERS = (

@@ -459,7 +459,7 @@ def validate_workspace_integrity(
     _score_integration(files, text, profile, phase, issues, proof, scores)
     _score_security(files, profile, phase, issues, proof)
 
-    # ── Hard gates: content purity, manifest, stripe-first ──
+    # ── Hard gates: content purity, manifest, PayPal-only payments ──
     purity_violations = _check_content_type_purity(files)
     if purity_violations:
         for v in purity_violations[:8]:
@@ -485,11 +485,11 @@ def validate_workspace_integrity(
             )
         )
 
-    stripe_issues = _check_stripe_first(files)
-    for si in stripe_issues[:4]:
+    payment_issues = _check_paypal_only(files)
+    for si in payment_issues[:4]:
         issues.append(
             _issue(
-                "stripe_first_violation",
+                "payment_provider_violation",
                 si,
                 phase,
                 severity="blocker",
@@ -1144,40 +1144,39 @@ def _check_manifest_vs_disk(workspace_path: str, files: Mapping[str, str]) -> Li
     return issues
 
 
-# ── Stripe-First Payment Enforcement Gate ────────────────────────────────────
-_BRAINTREE_PATTERNS = (
+# ── PayPal-Only Payment Enforcement Gate ─────────────────────────────────────
+_LEGACY_PAYMENT_PATTERNS = (
     re.compile(r"braintree", re.IGNORECASE),
     re.compile(r"BraintreeGateway", re.IGNORECASE),
     re.compile(r"sandbox\.braintreegateway", re.IGNORECASE),
+    re.compile(r"\bstripe\b", re.IGNORECASE),
+    re.compile(r"api\.stripe\.com", re.IGNORECASE),
 )
 _PAYMENT_EXTENSIONS = {".py", ".ts", ".js", ".jsx", ".tsx"}
 
 
-def _check_stripe_first(
+def _check_paypal_only(
     files: Mapping[str, str],
-    user_requested_braintree: bool = False,
+    user_requested_legacy_provider: bool = False,
 ) -> List[str]:
-    """Fail if Braintree appears in generated customer app code without explicit user request."""
-    if user_requested_braintree:
+    """Fail if legacy non-PayPal payment providers appear in generated app code."""
+    if user_requested_legacy_provider:
         return []
     violations: List[str] = []
     for rel, source in files.items():
         ext = Path(rel).suffix.lower()
         if ext not in _PAYMENT_EXTENSIONS:
             continue
-        # Only check generated customer app code, not CrucibAI platform billing
+        # Only check generated customer app code, not CrucibAI platform files.
         low = rel.lower()
-        is_platform_billing = any(
-            seg in low for seg in ("routes/braintree", "services/braintree", "migrations/018", "migrations/019")
-        )
+        is_platform_billing = low.startswith("backend/") or low.startswith("frontend/")
         if is_platform_billing:
             continue
-        for pattern in _BRAINTREE_PATTERNS:
+        for pattern in _LEGACY_PAYMENT_PATTERNS:
             if pattern.search(source):
                 violations.append(
-                    f"STRIPE_FIRST_VIOLATION: {rel} contains Braintree integration. "
-                    f"Use Stripe Checkout/Billing/Customer Portal for generated apps. "
-                    f"Only use Braintree when user explicitly requests it."
+                    f"PAYPAL_ONLY_VIOLATION: {rel} contains legacy payment-provider code. "
+                    f"Use PayPal Checkout/Subscriptions for generated apps."
                 )
                 break
     return violations

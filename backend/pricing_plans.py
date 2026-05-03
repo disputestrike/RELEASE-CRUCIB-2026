@@ -3,7 +3,9 @@
 # 1 credit = 500 tokens
 TOKENS_PER_CREDIT = 500
 CREDITS_PER_TOKEN = TOKENS_PER_CREDIT  # Back-compat import name used by server/routes.
-CREDIT_PRICE_USD = 0.05
+BUNDLED_CREDIT_VALUE_USD = 0.03
+TOPUP_CREDIT_PRICE_USD = 0.05
+CREDIT_PRICE_USD = TOPUP_CREDIT_PRICE_USD
 
 CREDIT_PLANS = {
     "free": {
@@ -23,8 +25,8 @@ CREDIT_PLANS = {
         "swarm": True,
     },
     "pro": {
-        "credits": 1500,
-        "price": 50,
+        "credits": 1000,
+        "price": 30,
         "name": "Pro",
         "speed_tiers": ["lite", "pro", "max"],
         "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"},
@@ -32,8 +34,8 @@ CREDIT_PLANS = {
         "max_swarm": True,
     },
     "scale": {
-        "credits": 3000,
-        "price": 100,
+        "credits": 2000,
+        "price": 60,
         "name": "Scale",
         "speed_tiers": ["lite", "pro", "max"],
         "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"},
@@ -41,8 +43,8 @@ CREDIT_PLANS = {
         "max_swarm": True,
     },
     "teams": {
-        "credits": 6000,
-        "price": 200,
+        "credits": 5000,
+        "price": 150,
         "name": "Teams",
         "speed_tiers": ["lite", "pro", "max"],
         "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"},
@@ -51,11 +53,11 @@ CREDIT_PLANS = {
     },
 }
 ADDONS = {}  # Slider only. No fixed add-ons.
-ANNUAL_PRICES = {"builder": 199.99, "pro": 499.99, "scale": 999.99, "teams": 1999.99}
+ANNUAL_PRICES = {"builder": 150, "pro": 300, "scale": 600, "teams": 1500}
 CUSTOM_CREDIT_MIN = 500
 CUSTOM_CREDIT_MAX = 20000
 CUSTOM_CREDIT_STEP = 500
-CUSTOM_CREDIT_PRICE = CREDIT_PRICE_USD
+CUSTOM_CREDIT_PRICE = TOPUP_CREDIT_PRICE_USD
 
 TOKEN_BUNDLES = {}
 for k, v in CREDIT_PLANS.items():

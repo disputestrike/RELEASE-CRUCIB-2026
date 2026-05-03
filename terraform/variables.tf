@@ -36,3 +36,33 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "primary_alias_dns_name" {
+  description = "DNS name for the primary regional load balancer or API endpoint"
+  type        = string
+}
+
+variable "primary_alias_zone_id" {
+  description = "Route53 hosted zone ID for the primary regional alias target"
+  type        = string
+}
+
+variable "secondary_alias_dns_name" {
+  description = "DNS name for the secondary regional load balancer or API endpoint"
+  type        = string
+}
+
+variable "secondary_alias_zone_id" {
+  description = "Route53 hosted zone ID for the secondary regional alias target"
+  type        = string
+}
+
+variable "tertiary_alias_dns_name" {
+  description = "DNS name for the tertiary regional load balancer or API endpoint"
+  type        = string
+}
+
+variable "tertiary_alias_zone_id" {
+  description = "Route53 hosted zone ID for the tertiary regional alias target"
+  type        = string
+}

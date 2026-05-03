@@ -429,7 +429,7 @@ export default function Billing() {
                 </div>
                 <div className="rounded-lg bg-stone-50 p-4">
                   <p className="text-xs uppercase text-stone-500">Product</p>
-                  <p className="mt-1 text-lg font-semibold text-stone-950">Crucible AI</p>
+                  <p className="mt-1 text-lg font-semibold text-stone-950">CrucibAI</p>
                   <p className="text-sm text-stone-500">By Starlight Global LLC.</p>
                 </div>
               </div>

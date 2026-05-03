@@ -84,7 +84,7 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {
         "retry_policy": {"max_retries": 2, "backoff": "linear"},
         "verification_classes": ["presence", "syntax"],
     },
-    "backend.stripe": {
+    "backend.paypal": {
         "runtime": "python",
         "entry": "handle_backend_route",
         "expected_artifacts": ["backend/main.py"],
@@ -142,7 +142,7 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {
         "entry": "verify_step (security + optional RLS files + behavior bundle)",
         "expected_artifacts": [
             "security checklist proof",
-            "tenancy_smoke / stripe_replay / rbac (merged)",
+            "tenancy_smoke / payment_replay / rbac (merged)",
         ],
         "timeout_sec": 240,
         "retry_policy": {"max_retries": 1, "backoff": "none"},
@@ -151,7 +151,7 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {
     "verification.behavior": {
         "runtime": "python",
         "entry": "verify_behavior_bundle_workspace",
-        "expected_artifacts": ["tenancy_smoke", "stripe_replay", "rbac_smoke proofs"],
+        "expected_artifacts": ["tenancy_smoke", "payment_replay", "rbac_smoke proofs"],
         "timeout_sec": 180,
         "retry_policy": {"max_retries": 1, "backoff": "linear"},
         "verification_classes": ["runtime"],
@@ -172,9 +172,9 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {
         "retry_policy": {"max_retries": 1, "backoff": "linear"},
         "verification_classes": ["runtime"],
     },
-    "verification.stripe_replay": {
+    "verification.payment_replay": {
         "runtime": "python",
-        "entry": "verify_stripe_replay_workspace",
+        "entry": "verify_payment_replay_workspace",
         "expected_artifacts": ["idempotent insert proof"],
         "timeout_sec": 30,
         "retry_policy": {"max_retries": 1, "backoff": "none"},

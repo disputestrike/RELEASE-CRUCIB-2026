@@ -598,4 +598,71 @@ export default function ShellLayout({ children }) {
 """
 
         if "src/styles/global.css" not in files:
-            files
+            files["src/styles/global.css"] = """\
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #111; line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font: inherit; }
+input, textarea { font: inherit; }
+"""
+
+        # ── CRITICAL FOUNDATION FILES ──────────────────────────────────────
+        # package.json, vite.config.js, and index.html MUST exist or
+        # npm install and npm run build will always fail. These are injected
+        # last so the LLM can override them with a goal-specific version —
+        # but if the LLM didn't produce them, these safe defaults guarantee
+        # the build can run.
+
+        if "package.json" not in files:
+            files["package.json"] = """\
+{
+  "name": "crucibai-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8"
+  }
+}
+"""
+
+        if "vite.config.js" not in files and "vite.config.ts" not in files:
+            files["vite.config.js"] = """\
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dist',
+  },
+});
+"""
+
+        if "index.html" not in files:
+            files["index.html"] = """\
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+"""

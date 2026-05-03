@@ -1,16 +1,16 @@
-# Playground Compare — CrucibAI vs “Playground” Builders
+﻿# Playground Compare â€” CrucibAI vs â€œPlaygroundâ€ Builders
 
-**Purpose:** Compare CrucibAI to tools people use as **playgrounds** — try in-browser, tinker, build without leaving the product.  
-**Date:** March 2026 (post–second pass).
+**Purpose:** Compare CrucibAI to tools people use as **playgrounds** â€” try in-browser, tinker, build without leaving the product.  
+**Date:** March 2026 (postâ€“second pass).
 
 ---
 
-## What “playground” means here
+## What â€œplaygroundâ€ means here
 
 - **Try before you sign up** (or minimal signup).
-- **Build in the browser** — no local IDE required to see results.
-- **Iterate fast** — change prompt or code, see preview quickly.
-- **Export or deploy** when ready — not locked in.
+- **Build in the browser** â€” no local IDE required to see results.
+- **Iterate fast** â€” change prompt or code, see preview quickly.
+- **Export or deploy** when ready â€” not locked in.
 
 ---
 
@@ -18,27 +18,27 @@
 
 | Playground trait | CrucibAI | Notes |
 |------------------|----------|--------|
-| Try before signup | ✅ | Landing: “What can I do for you?” + input/voice; guest session; CTA into workspace. |
-| Build in browser | ✅ | Dashboard → ProjectBuilder → AgentMonitor → Workspace (Monaco + Sandpack preview). |
-| Iterate fast | ✅ | Quick build (~2 min preview); full build; edit in Workspace; AI chat in workspace. |
-| Export / deploy | ✅ | ExportCenter: ZIP, GitHub, Vercel, Netlify, Railway; deploy from UI. |
-| One place for everything | ✅ | Landing → dashboard → workspace → export; Engine Room for models/safety/fine-tuning. |
-| Mobile path | ✅ | Prompt → Expo + App Store/Play submission guides (unique in this set). |
+| Try before signup | âœ… | Landing: â€œWhat can I do for you?â€ + input/voice; guest session; CTA into workspace. |
+| Build in browser | âœ… | Dashboard â†’ ProjectBuilder â†’ AgentMonitor â†’ Workspace (Monaco + Sandpack preview). |
+| Iterate fast | âœ… | Quick build (~2 min preview); full build; edit in Workspace; AI chat in workspace. |
+| Export / deploy | âœ… | ExportCenter: ZIP, GitHub, Vercel, Netlify, Railway; deploy from UI. |
+| One place for everything | âœ… | Landing â†’ dashboard â†’ workspace â†’ export; Engine Room for models/safety/fine-tuning. |
+| Mobile path | âœ… | Prompt â†’ Expo + App Store/Play submission guides (unique in this set). |
 
 ---
 
 ## Side-by-side vs other playgrounds
 
-| Tool | Try before signup | In-browser build | Preview | Export/deploy | Mobile to store | “Engine Room” (models/safety/fine-tune) |
+| Tool | Try before signup | In-browser build | Preview | Export/deploy | Mobile to store | â€œEngine Roomâ€ (models/safety/fine-tune) |
 |------|-------------------|------------------|--------|----------------|-----------------|----------------------------------------|
-| **CrucibAI** | ✅ Guest / landing | ✅ Full flow | ✅ Sandpack + quick build | ✅ ZIP, GitHub, Vercel, Netlify, Railway | ✅ Expo + store guides | ✅ Model Manager, Fine-Tuning, Safety |
-| **Lovable** | ✅ | ✅ | ✅ | ✅ | ❌ Web focus | ❌ |
-| **v0 / Vercel** | ✅ | ✅ Components | ✅ | ✅ Vercel | ❌ | ❌ |
-| **Replit** | ✅ | ✅ Repls | ✅ | ✅ Deploy | ❌ | ❌ (separate tools) |
-| **Bolt** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Cursor** | ❌ Local IDE | ✅ In IDE | ✅ | ✅ Via integrations | ❌ | ❌ (IDE, not app builder) |
-| **Figma → code** | Varies | ✅ Design in browser | ✅ | ✅ | ❌ | ❌ |
-| **Codeium / Windsurf** | ❌ IDE | ✅ In IDE | ✅ | ✅ | ❌ | ❌ |
+| **CrucibAI** | âœ… Guest / landing | âœ… Full flow | âœ… Sandpack + quick build | âœ… ZIP, GitHub, Vercel, Netlify, Railway | âœ… Expo + store guides | âœ… Model Manager, Fine-Tuning, Safety |
+| **Lovable** | âœ… | âœ… | âœ… | âœ… | âŒ Web focus | âŒ |
+| **v0 / Vercel** | âœ… | âœ… Components | âœ… | âœ… Vercel | âŒ | âŒ |
+| **Replit** | âœ… | âœ… Repls | âœ… | âœ… Deploy | âŒ | âŒ (separate tools) |
+| **Bolt** | âœ… | âœ… | âœ… | âœ… | âŒ | âŒ |
+| **Cursor** | âŒ Local IDE | âœ… In IDE | âœ… | âœ… Via integrations | âŒ | âŒ (IDE, not app builder) |
+| **Figma â†’ code** | Varies | âœ… Design in browser | âœ… | âœ… | âŒ | âŒ |
+| **Codeium / Windsurf** | âŒ IDE | âœ… In IDE | âœ… | âœ… | âŒ | âŒ |
 
 ---
 
@@ -47,17 +47,17 @@
 1. **Single playground for web + mobile**  
    One prompt can lead to web app **and** Expo project with App Store/Play submission guides. Others are either web-only or separate mobile products.
 
-2. **Playground + “AI company” controls in one product**  
+2. **Playground + â€œAI companyâ€ controls in one product**  
    Engine Room (Model Manager, Fine-Tuning, Safety Dashboard) lives inside the same app as the build flow. Others typically use separate dashboards or no equivalent.
 
 3. **Quick build as part of the playground**  
-   Optional ~2-minute preview (first two phases) so users can “play” and see something fast, then run full build when ready.
+   Optional ~2-minute preview (first two phases) so users can â€œplayâ€ and see something fast, then run full build when ready.
 
-4. **Clear “build only” guardrails**  
-   System prompt keeps the assistant on-build (e.g. company/competitor mentions don’t trigger code); the playground stays focused on making things.
+4. **Clear â€œbuild onlyâ€ guardrails**  
+   System prompt keeps the assistant on-build (e.g. company/competitor mentions donâ€™t trigger code); the playground stays focused on making things.
 
-5. **Landing → build → export in one narrative**  
-   No context switch: landing intent → dashboard → project → AgentMonitor → Workspace → ExportCenter. Same product, same session.
+5. **Landing â†’ build â†’ export in one narrative**  
+   No context switch: landing intent â†’ dashboard â†’ project â†’ AgentMonitor â†’ Workspace â†’ ExportCenter. Same product, same session.
 
 ---
 
@@ -72,14 +72,15 @@
 
 ## Summary
 
-**CrucibAI is a full “playground”** (try in browser, build, preview, export/deploy) **and** adds:
+**CrucibAI is a full â€œplaygroundâ€** (try in browser, build, preview, export/deploy) **and** adds:
 
 - **Mobile to store** in the same flow.
 - **Engine Room** (model routing, fine-tuning UX, safety dashboard) in-app.
 - **Quick build** and **build history** so the playground is both fast and traceable.
 
-For “playground compare,” CrucibAI ranks **#1** on **breadth** (web + mobile + store + model/safety/fine-tune in one product). It trades some depth in a single niche (e.g. v0’s components, Replit’s repls) for the only **single-product playground that goes to App Store/Play with an in-app Engine Room**.
+For â€œplayground compare,â€ CrucibAI has a strong **breadth** case (web + mobile + store + model/safety/fine-tune in one product). It trades some depth in a single niche (e.g. v0â€™s components, Replitâ€™s repls) for a single product surface for web, mobile, store prep, and an in-app Engine Room.
 
 ---
 
 *For full rate-rank-compare and current state, see RATE_RANK_COMPARE_CURRENT.md and WHERE_WE_ARE.md.*
+

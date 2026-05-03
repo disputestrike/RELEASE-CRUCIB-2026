@@ -534,24 +534,22 @@ RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
 # The Pricing page /tokens/bundles endpoint reads these values, so they MUST match
 # the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
-    "builder": {"name": "Builder", "tokens": 250_000, "credits": 500, "price": 20},
-    "pro": {"name": "Pro", "tokens": 750_000, "credits": 1500, "price": 50},
-    "scale": {"name": "Scale", "tokens": 1_500_000, "credits": 3000, "price": 100},
-    "teams": {"name": "Teams", "tokens": 3_000_000, "credits": 6000, "price": 200},
+    "builder": {"name": "Builder", "tokens": 250_000, "credits": 500, "price": 15},
+    "pro": {"name": "Pro", "tokens": 500_000, "credits": 1000, "price": 30},
+    "scale": {"name": "Scale", "tokens": 1_000_000, "credits": 2000, "price": 60},
+    "teams": {"name": "Teams", "tokens": 2_500_000, "credits": 5000, "price": 150},
 }
 ANNUAL_PRICES: Dict[str, Any] = {
-    "builder": 200,
-    "pro": 500,
-    "scale": 1000,
-    "teams": 2000,
+    "builder": 150,
+    "pro": 300,
+    "scale": 600,
+    "teams": 1500,
 }
 PAYMENT_PROVIDER = "paypal"
-BRAINTREE_ENVIRONMENT = os.environ.get("BRAINTREE_ENVIRONMENT", "sandbox")
-BRAINTREE_MERCHANT_ID = os.environ.get("BRAINTREE_MERCHANT_ID", "")
-BRAINTREE_PUBLIC_KEY = os.environ.get("BRAINTREE_PUBLIC_KEY", "")
-BRAINTREE_PRIVATE_KEY = os.environ.get("BRAINTREE_PRIVATE_KEY", "")
-BRAINTREE_MERCHANT_ACCOUNT_ID = os.environ.get("BRAINTREE_MERCHANT_ACCOUNT_ID", "")
-BRAINTREE_CONFIGURED = bool(BRAINTREE_MERCHANT_ID and BRAINTREE_PUBLIC_KEY and BRAINTREE_PRIVATE_KEY)
+PAYPAL_MODE = os.environ.get("PAYPAL_MODE", "sandbox")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_CONFIGURED = bool(PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET)
 REFERRAL_CAP_PER_MONTH = 10
 MAX_TOKEN_USAGE_LIST = 100
 MIN_CREDITS_FOR_LLM = 0
@@ -710,7 +708,7 @@ def _is_conversational_message(message: str) -> bool:
     if len(flat) >= 160:
         tech_signals = [
             'react native', 'ios', 'android', 'expo', 'jest', 'playwright',
-            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'braintree',
+            'e2e', 'swagger', 'microservice', 'rest api', 'graphql', 'paypal',
             'postgres', 'mongodb', 'tailwind', 'fastapi', 'next.js', 'vite',
             'kubernetes', 'docker', 'offline', 'multi-tenant', 'saas',
             'dashboard', 'crm', 'oauth', 'jwt', 'websocket', 'redis',
@@ -2239,6 +2237,4 @@ else:
     logger.warning(
         f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
     )
-
-
 

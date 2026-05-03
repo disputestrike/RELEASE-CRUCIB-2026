@@ -89,7 +89,7 @@ def main() -> int:
         return 0 if artifact_pass else 1
 
     checks = []
-    for path in ("/api/health", "/api/doctor/routes", "/api/payments/braintree/status"):
+    for path in ("/api/health", "/api/doctor/routes", "/api/billing/config"):
         status, data = fetch_json(args.app_url, path, args.timeout)
         checks.append({"path": path, "status_code": status, "ok": 200 <= status < 500 and status != 404, "response": data})
     live_pass = artifact_pass and all(item["ok"] for item in checks)

@@ -30,7 +30,7 @@ This file is **not** a certification, policy, or substitute for counsel.
 ## Payments (if you process cards or move funds)
 
 - [ ] **PCI scope** — SAQ / ROC path with your acquirer; no PAN/CVC in app logs or non-PCI storage
-- [ ] **Webhooks** — signature verification + idempotency (see `stripe_events_processed` sketch if present)
+- [ ] **Webhooks** — signature verification + idempotency (see `paypal_events_processed` sketch if present)
 - [ ] **Settlement / reconciliation** — finance-owned processes
 
 ## Healthcare / PHI (if applicable)

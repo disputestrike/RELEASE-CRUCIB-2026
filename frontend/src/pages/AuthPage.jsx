@@ -490,8 +490,8 @@ const AuthPage = () => {
           <div className="grid grid-cols-3 gap-6">
             {[
               { value: 'Swarm', label: 'Agents & sub-agents' },
-              { value: '99.2%', label: 'Success rate' },
-              { value: '<72h', label: 'Delivery' },
+              { value: '50', label: 'Benchmark categories' },
+              { value: 'Railway', label: 'Deploy target' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
