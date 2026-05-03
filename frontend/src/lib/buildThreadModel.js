@@ -91,7 +91,7 @@ const PHASE_FRIENDLY = {
   final_assembly: 'Finalizing the app',
   export: 'Preparing delivery',
   export_gate: 'Preparing delivery',
-  repair: 'Repairing the build',
+  repair: 'Applying a targeted fix',
   deploy: 'Preparing delivery',
   deployment: 'Preparing delivery',
   file_tool: 'Building the frontend',
@@ -108,9 +108,9 @@ const stripAgentPrefix = (s) =>
     .trim();
 
 const prettyPhase = (phase) => {
-  if (!phase || typeof phase !== 'string') return 'Build progress';
+  if (!phase || typeof phase !== 'string') return 'Execution loop';
   const stripped = stripAgentPrefix(phase);
-  if (!stripped) return 'Build progress';
+  if (!stripped) return 'Execution loop';
   const key = stripped.toLowerCase().replace(/\s+/g, '_');
   if (PHASE_FRIENDLY[key]) return PHASE_FRIENDLY[key];
   for (const k of Object.keys(PHASE_FRIENDLY)) {
@@ -576,7 +576,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     }
 
     if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
-      runningTitle = t === 'repair_started' ? 'Repairing the build' : 'Verifying the build';
+      runningTitle = t === 'repair_started' ? 'Applying a targeted fix' : 'Verifying the build';
       runningStatus = 'running';
     }
 
@@ -602,7 +602,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
       runningTitle = runningTitle || 'Build complete';
       runningStatus = 'success';
     } else if (/(failed|blocked|error)$/.test(lt)) {
-      runningTitle = runningTitle || 'Repairing the build';
+      runningTitle = runningTitle || 'Applying a targeted fix';
       runningStatus = 'running';
     }
   }

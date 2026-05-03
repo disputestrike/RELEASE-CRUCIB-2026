@@ -371,7 +371,7 @@ function BuildProgressCard({ item }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   return (
     <div className="p4-block p4-build-progress">
-      <div className="p4-build-progress-head">Build progress</div>
+      <div className="p4-build-progress-head">Execution loop</div>
       <div className="p4-build-progress-rows">
         {order.map((key) => {
           const cell = item.phases[key];
@@ -432,18 +432,18 @@ function RepairBlock({ item }) {
     item.status === 'success'
       ? 'Done'
       : item.status === 'failed'
-      ? 'Repairing'
+      ? 'Fixing'
       : isNeedsFix
-      ? 'Repairing'
+      ? 'Fixing'
       : `Pass ${item.attempt || 1}`;
   const headTitle =
     item.status === 'success'
       ? 'Repair complete'
       : item.status === 'failed'
-      ? 'Continuing repair'
+      ? 'Continuing targeted fix'
       : isNeedsFix
-      ? item.title || 'Repairing verification issue'
-      : 'Repair in progress';
+      ? item.title || 'Fixing verification issue'
+      : 'Targeted fix running';
   const detail = (item.technicalDetail || '').trim();
   return (
     <div
@@ -631,6 +631,41 @@ function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser, deliveryContext })
   }
 }
 
+function MissionHeader({ jobStatus, eventCount, itemCount, previewUrl, truthSurface }) {
+  const status = jobStatus ? String(jobStatus).replace(/_/g, ' ') : 'ready';
+  const previewSource = previewUrl
+    ? 'verified preview URL'
+    : truthSurface?.preview_source
+      ? `preview source: ${truthSurface.preview_source}`
+      : 'preview waits for runtime proof';
+  const contract = truthSurface?.prompt_contract_passed === false ? 'contract needs repair' : 'contract tracked';
+
+  return (
+    <div className="p4-mission-header" role="status" aria-label="CrucibAI builder status">
+      <div className="p4-mission-kicker">CrucibAI Builder OS</div>
+      <div className="p4-mission-title">Goal to files to preview to proof</div>
+      <div className="p4-mission-grid">
+        <span className="p4-mission-cell">
+          <strong>Status</strong>
+          <span>{status}</span>
+        </span>
+        <span className="p4-mission-cell">
+          <strong>Preview</strong>
+          <span>{previewSource}</span>
+        </span>
+        <span className="p4-mission-cell">
+          <strong>Proof</strong>
+          <span>{contract}</span>
+        </span>
+        <span className="p4-mission-cell">
+          <strong>Events</strong>
+          <span>{eventCount} streamed, {itemCount} surfaced</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function BrainGuidancePanel({
   userMessages = [],
   events = [],
@@ -722,6 +757,14 @@ export default function BrainGuidancePanel({
           <BuildTargetChip meta={buildTargetMeta} id={buildTargetId} />
         </div>
       ) : null}
+
+      <MissionHeader
+        jobStatus={jobStatus}
+        eventCount={Array.isArray(events) ? events.length : 0}
+        itemCount={items.length}
+        previewUrl={previewUrl}
+        truthSurface={proofTruthSurface}
+      />
 
       {items.map((item) => (
         <ThreadItem

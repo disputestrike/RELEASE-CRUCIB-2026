@@ -104,7 +104,7 @@ export default function CommandCenter({ onSubmit, isRunning = false, placeholder
   };
 
   const defaultPlaceholder = isRunning
-    ? "Steer anytime - 'make it dark mode', 'add PayPal', 'skip tests'..."
+    ? "Tell CrucibAI the next change - e.g. add PayPal, dark mode, or stricter tests."
     : "Describe what you want to build…";
 
   return (
@@ -152,7 +152,12 @@ export default function CommandCenter({ onSubmit, isRunning = false, placeholder
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKey}
           onFocus={() => setShowSuggestions(true)}
-          placeholder={placeholder || defaultPlaceholder}
+          placeholder={
+            placeholder ||
+            (isRunning
+              ? defaultPlaceholder
+              : "Describe the app, automation, or repair CrucibAI should build.")
+          }
           rows={1}
           style={{ width:'100%', padding:'12px 16px 4px', border:'none', outline:'none',
             background:'transparent', fontSize:14, resize:'none', lineHeight:1.5,

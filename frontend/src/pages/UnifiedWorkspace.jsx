@@ -72,6 +72,18 @@ import '../components/workspace-v4/workspace-v4.css';
 
 const RIGHT_ORDER = ['preview', 'live', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
 
+const RIGHT_LABELS = {
+  preview: 'Preview',
+  live: 'Runtime',
+  proof: 'Proof',
+  systems: 'Systems',
+  explorer: 'Files',
+  replay: 'Replay',
+  failure: 'Issues',
+  timeline: 'Events',
+  code: 'Code',
+};
+
 function sanitizePane(raw) {
   const pane = String(raw || '').trim().toLowerCase();
   return RIGHT_ORDER.includes(pane) ? pane : 'preview';
@@ -1939,6 +1951,21 @@ export default function App() {
     [events, effectiveJobId]
   );
 
+  const buildStateLabel = useMemo(() => {
+    if (job?.status) return String(job.status).replace(/_/g, ' ');
+    if (stage === 'plan') return 'plan ready';
+    if (stage === 'input') return 'ready';
+    return String(stage || 'ready').replace(/_/g, ' ');
+  }, [job?.status, stage]);
+
+  const previewTruthLabel = previewUrl
+    ? 'verified preview URL'
+    : sandpackIsFallback
+      ? 'diagnostic preview'
+      : previewStatus === 'building'
+        ? 'preview pending'
+        : 'no preview yet';
+
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
@@ -1963,7 +1990,15 @@ export default function App() {
                 showWordmark
                 nameClassName="sidebar-logo-text"
               />
-              <span className="uw-center-pane-brand-version" aria-hidden>1.0</span>
+              <span className="uw-center-pane-brand-version" aria-hidden>Builder OS</span>
+            </div>
+            <div className="uw-builder-command-strip" aria-label="Current builder state">
+              <span className="uw-builder-pill uw-builder-pill--primary">single build path</span>
+              <span className="uw-builder-pill">{buildStateLabel}</span>
+              <span className="uw-builder-pill">{previewTruthLabel}</span>
+              {currentActivity?.title ? (
+                <span className="uw-builder-pill uw-builder-pill--activity">{currentActivity.title}</span>
+              ) : null}
             </div>
           </header>
 
@@ -2035,11 +2070,11 @@ export default function App() {
               inputPlaceholder={
                 job?.status === 'failed' || job?.status === 'cancelled'
                   ? 'Tell me what to change - Enter sends in this conversation.'
-                  : job?.status === 'blocked'
+                : job?.status === 'blocked'
                     ? 'What should we do next? Enter sends and moves us forward.'
                     : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
-                      ? 'Steer anytime - Enter sends in this conversation.'
-                      : 'Goal or follow-up - Enter to send, Shift+Enter for a new line.'
+                      ? 'Tell CrucibAI the next change. Enter sends.'
+                      : 'Describe the app, automation, or repair. Enter sends.'
               }
               composerVariant="workspace"
             />
@@ -2055,6 +2090,12 @@ export default function App() {
 
           {!rightCollapsed && (
             <>
+              <div className="arp-right-titlebar">
+                <div>
+                  <span className="arp-right-title">Evidence Console</span>
+                  <span className="arp-right-subtitle">{previewTruthLabel}</span>
+                </div>
+              </div>
               <div className="arp-right-toolbar">
                 <button
                   type="button"
@@ -2135,7 +2176,7 @@ export default function App() {
               <div className="arp-pane-tabs">
                 {visibleRightPanes.map((p) => (
                   <button key={p} type="button" className={`arp-pane-tab ${activePane === p ? 'active' : ''}`} onClick={() => setActivePane(p)}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {RIGHT_LABELS[p] || p.charAt(0).toUpperCase() + p.slice(1)}
                   </button>
                 ))}
               </div>

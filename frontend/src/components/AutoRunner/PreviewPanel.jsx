@@ -186,6 +186,7 @@ export default function PreviewPanel({
         : hasSandpack
         ? 'Preview (fallback)'
         : 'Next up';
+  const previewTitle = useRemote ? 'Live Preview' : 'Preview Console';
   const readiness = derivePreviewReadiness({
     previewStatus: status,
     previewUrl: resolvedRemoteUrl || remotePreviewUrl,
@@ -219,7 +220,7 @@ export default function PreviewPanel({
       <div className="pp-preview-header">
         <div className="pp-preview-title-row">
           <span className="pp-preview-dot" style={{ background: statusColor }} />
-          <span className="pp-preview-title">Live Preview</span>
+          <span className="pp-preview-title">{previewTitle}</span>
           <span className="pp-preview-status">{devServerUrl && !previewUrl ? 'Hot reload' : statusLabel}</span>
         </div>
         <div className="pp-preview-actions">
