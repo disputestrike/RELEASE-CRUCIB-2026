@@ -148,7 +148,7 @@ export default function WorkspaceLiveControl({
         </div>
         <div className="wlc-summary-pill">
           <StatusIcon status={overall} />
-          <span>{hasFailure ? 'Repairing' : jobStatus}</span>
+              <span>{hasFailure ? 'Fixing' : jobStatus}</span>
         </div>
       </div>
 
@@ -204,7 +204,7 @@ export default function WorkspaceLiveControl({
           label="Proof"
           value={hasProof ? `${proofItemCount} items` : 'No proof yet'}
           status={hasProof ? 'ok' : jobStatus === 'completed' ? 'error' : hasJob ? 'waiting' : 'idle'}
-          detail={hasProof ? 'Verification evidence is attached to this run.' : 'Completion must produce proof before claims are safe.'}
+            detail={hasProof ? 'Proof evidence is attached to this run.' : 'Completion must produce proof before claims are safe.'}
           actionLabel="Proof"
           onAction={onOpenProof}
         />

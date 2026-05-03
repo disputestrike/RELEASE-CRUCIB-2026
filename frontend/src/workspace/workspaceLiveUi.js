@@ -339,7 +339,7 @@ export function derivePreviewReadiness({
     return {
       state: 'waiting_for_workspace',
       label: 'Waiting for files',
-      detail: 'No preview workspace is ready yet. The build may still be planning or writing files.',
+      detail: 'No preview workspace is ready yet. CrucibAI may still be routing intent or writing files.',
       severity: 'working',
     };
   }
@@ -380,7 +380,7 @@ export function computeDockMetaPreJob({ stage, loading }) {
   }
   if (stage === 'plan') {
     return {
-      title: 'Review the plan',
+      title: 'Review the checklist',
       progress: null,
       stateKey: 'waiting',
       stateLabel: 'Waiting for you',

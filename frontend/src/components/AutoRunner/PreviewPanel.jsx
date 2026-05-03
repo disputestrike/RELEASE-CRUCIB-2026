@@ -180,7 +180,7 @@ export default function PreviewPanel({
   const statusLabel = useRemote
     ? 'Live (dev server)'
     : status === 'blocked'
-      ? 'Repairing'
+      ? 'Fixing'
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
@@ -208,7 +208,7 @@ export default function PreviewPanel({
     const files = payload.files || payload.changed_files || payload.output_files || [];
     return {
       eventType: last?.type || null,
-      phase: payload.phase || payload.step || payload.step_key || 'planning',
+      phase: payload.phase || payload.step || payload.step_key || 'intent routing',
       agent: payload.agent || payload.agent_name || payload.tool || 'orchestrator',
       files: Array.isArray(files) ? files.slice(0, 4) : [],
       missing: Array.isArray(missing) ? missing.slice(0, 4) : [],
@@ -261,7 +261,7 @@ export default function PreviewPanel({
           <div className="pp-preview-truth-banner pp-preview-truth-live" role="status">
             <span className="pp-preview-truth-icon">OK</span>
             <span className="pp-preview-truth-text">
-              Live dev server running
+              Runtime preview serving
             </span>
           </div>
         )}
@@ -276,11 +276,11 @@ export default function PreviewPanel({
         />
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
-            <span className="pp-preview-blocked-title">Preview repairing — continuing automatically</span>
+            <span className="pp-preview-blocked-title">Preview fix continuing automatically</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail.trim()
                 ? blockedDetail
-                : 'Add a short note below — what you see here is the last good snapshot.'}
+                : 'Add a short note below - what you see here is the last good snapshot.'}
             </p>
           </div>
         )}
@@ -295,7 +295,7 @@ export default function PreviewPanel({
 
         {status === 'blocked' && !hasSandpack && (
           <div className="pp-preview-blocked-full">
-            <span className="pp-preview-blocked-title">Repairing preview now</span>
+            <span className="pp-preview-blocked-title">Fixing preview now</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail
                 ? blockedDetail
@@ -309,7 +309,7 @@ export default function PreviewPanel({
             <div className="pp-preview-shimmer" />
             <span className="pp-preview-building-text">Assembling your preview...</span>
             <div className="pp-build-activity" role="status">
-              <div className="pp-build-activity-head">Building your app...</div>
+              <div className="pp-build-activity-head">Generating workspace files...</div>
               <div className="pp-build-activity-row">Current phase: {activity.phase}</div>
               <div className="pp-build-activity-row">Active agent: {activity.agent}</div>
               {activity.files.length > 0 && (
@@ -339,7 +339,7 @@ export default function PreviewPanel({
           <div className="pp-preview-ready-fallback">
             <div className="pp-preview-fallback-message">
               <span className="pp-preview-idle-text">
-                Build complete! Add your UI files below or use Sync to pull generated code.
+                Workspace files ready. Sync generated code or add UI files below.
               </span>
             </div>
             {/* Show minimal Sandpack shell for immediate interactivity */}

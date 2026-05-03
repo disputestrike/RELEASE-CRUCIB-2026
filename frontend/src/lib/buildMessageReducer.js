@@ -55,11 +55,11 @@ const HIGH = {
 const PHASE_ORDER = [HIGH.PLANNING, HIGH.BUILDING, HIGH.VERIFYING, HIGH.REPAIRING, HIGH.DELIVERING];
 
 const LABELS = {
-  [HIGH.PLANNING]: 'Planning',
-  [HIGH.BUILDING]: 'Building',
-  [HIGH.VERIFYING]: 'Verifying',
-  [HIGH.REPAIRING]: 'Repairing',
-  [HIGH.DELIVERING]: 'Delivering',
+  [HIGH.PLANNING]: 'Intent routed',
+  [HIGH.BUILDING]: 'Files written',
+  [HIGH.VERIFYING]: 'Runtime proof',
+  [HIGH.REPAIRING]: 'Fix loop',
+  [HIGH.DELIVERING]: 'Workspace handoff',
 };
 
 function emptyPhases() {

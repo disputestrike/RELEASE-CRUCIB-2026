@@ -67,16 +67,16 @@ export function narrateBuildEvent(event) {
       return 'Your new instruction is merged into the run; downstream steps will follow it.';
     case 'job_completed': {
       if (qScore != null && qScore > 0) {
-        return `Build finished. Quality check scored ${Math.round(qScore)}/100 — you can review the preview and proof tabs next.`;
+        return `Workspace ready. Quality check scored ${Math.round(qScore)}/100 - you can review the preview and proof tabs next.`;
       }
-      return 'Build finished. Open the preview when you are ready, and check proof for export readiness.';
+      return 'Workspace ready. Open the preview when you are ready, and check proof for export readiness.';
     }
     case 'job_failed':
       return humanIssueSummary(event) || 'This run needs attention before we can ship.';
     case 'step_failed':
-      return humanIssueSummary(event) || 'A build step needs a quick fix; continuing the run.';
+      return humanIssueSummary(event) || 'A workspace step needs a quick fix; continuing the run.';
     case 'plan_created':
-      return "Here is the plan: screens and routes, data shape, and how we'll verify the build before you ship it.";
+      return "Execution checklist locked: screens, routes, data shape, preview, and proof before handoff.";
     case 'phase_started':
       return phase
         ? `Moving into ${phase.toLowerCase()} — this is where the scaffold and core files take shape.`
@@ -97,26 +97,26 @@ export function narrateBuildEvent(event) {
     case 'step_completed':
     case 'dag_node_completed': {
       const label = (p.name || phase || 'That step').trim();
-      return `${label} is done; wiring continues toward preview and verification.`;
+      return `${label} is done; wiring continues toward preview and proof.`;
     }
     case 'tool_call':
       return `Running ${p.name || 'the requested tool'}.`;
     case 'tool_result':
       return 'The tool returned; continuing the run.';
     case 'verifier_started':
-      return `Running checks for ${phase ? phase.toLowerCase() : 'this stage'} before moving on.`;
+      return `Checking proof for ${phase ? phase.toLowerCase() : 'this stage'} before moving on.`;
     case 'verifier_passed':
       return narrationVerifierPassed(phase ? `${phase} checks` : '');
     case 'verifier_failed':
       return missing.length
-        ? `Verification noted missing items (${list(missing)}). I am aligning the workspace and continuing.`
-        : `Verification did not pass for ${phase || 'this stage'} yet. I am repairing and continuing the run.`;
+        ? `Proof noted missing items (${list(missing)}). I am aligning the workspace and continuing.`
+        : `Proof did not pass for ${phase || 'this stage'} yet. I am fixing and continuing the run.`;
     case 'assembly_failed':
       return 'Assembly failed. I am inspecting what is missing.';
     case 'export_gate_blocked':
-      return 'Export gate is blocked. I will fix the missing requirements before exporting.';
+      return 'Handoff gate is blocked. I will fix the missing requirements before export.';
     case 'export_gate_ready':
-      return 'Export gate passed. This build is ready.';
+      return 'Handoff gate passed. This workspace is ready.';
     case 'repair_started':
       return narrationRepairStarted();
     case 'repair_completed':

@@ -17,7 +17,7 @@ const TABS = [
 ];
 
 const BUILT_IN_AGENTS = [
-  { name: 'PlannerAgent',     role: 'Decomposes goal into structured build plan' },
+  { name: 'IntentRouter',     role: 'Preserves and routes the requested outcome' },
   { name: 'FrontendAgent',    role: 'Generates React components, pages, routing' },
   { name: 'BackendAgent',     role: 'Creates FastAPI routes, handlers, auth' },
   { name: 'DatabaseAgent',    role: 'Writes migrations, seeds, schema definitions' },

@@ -81,7 +81,7 @@ export default function BuildCompletionCard({
           </svg>
         </div>
         <div className="bcc-header">
-          <div className="bcc-title">Build Complete</div>
+        <div className="bcc-title">Workspace Ready</div>
           <div className="bcc-subtitle">{job?.goal?.slice(0, 80) || 'Your project is ready.'}</div>
         </div>
       </div>

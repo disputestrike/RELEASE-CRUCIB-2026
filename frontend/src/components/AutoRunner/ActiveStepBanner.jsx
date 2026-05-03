@@ -28,7 +28,7 @@ export default function ActiveStepBanner({ activity, jobStatus }) {
         <div className="asb-root asb-root--success asb-root--static" role="status">
           <CheckCircle2 size={13} className="asb-icon-ok" />
           <div className="asb-body">
-            <span className="asb-title">Build complete</span>
+            <span className="asb-title">Workspace ready</span>
           </div>
         </div>
       );

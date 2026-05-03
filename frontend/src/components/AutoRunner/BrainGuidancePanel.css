@@ -445,7 +445,7 @@
   text-align: right;
 }
 
-/* High-level build phases (Planning → Delivering) */
+/* Runtime execution loop */
 .p4-build-progress {
   padding: 10px 12px;
   background: var(--crucibai-panel-soft);

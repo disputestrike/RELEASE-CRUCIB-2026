@@ -49,19 +49,19 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'step_completed':
       return name && name !== 'Step' ? `Done: ${name}` : 'Step completed';
     case 'step_failed':
-      return name && name !== 'Step' ? `Repairing: ${name}` : 'Repairing the next item';
+      return name && name !== 'Step' ? `Fixing: ${name}` : 'Fixing the next item';
     case 'step_retrying':
       return name && name !== 'Step' ? `Retrying: ${name}` : 'Retrying step';
     case 'job_started':
-      return 'Build started';
+      return 'Runtime started';
     case 'job_completed':
-      return 'Build completed';
+      return 'Workspace ready';
     case 'job_status_changed': {
       const status = String(payload.status || '').replace(/_/g, ' ');
       return status ? `Job status: ${status}` : null;
     }
     case 'job_failed': {
-      return 'Continuing with a repair pass';
+      return 'Fix loop continuing';
     }
     case 'dag_node_started':
       return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
@@ -89,8 +89,8 @@ export function formatWorkspaceActivityEvent(ev) {
       const files = Array.isArray(payload.files) ? payload.files : [];
       const label = payload.failure_type ? ` after ${String(payload.failure_type).replace(/_/g, ' ')}` : '';
       return files.length
-        ? `Repair applied${label}: ${files.slice(0, 3).map(shortPath).join(', ')}${files.length > 3 ? '...' : ''}`
-        : `Repair applied${label}`;
+        ? `Fix applied${label}: ${files.slice(0, 3).map(shortPath).join(', ')}${files.length > 3 ? '...' : ''}`
+        : `Fix applied${label}`;
     }
     case 'user_steering':
       return 'Steering applied';
@@ -129,17 +129,17 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'verification_result': {
       const ok = payload.passed === true || payload.passed === 'true';
       const sc = payload.score;
-      if (ok) return typeof sc === 'number' ? `Verify: passed (${sc})` : 'Verify: passed';
-      return typeof sc === 'number' ? `Verify: needs work (${sc})` : 'Verify: needs work';
+      if (ok) return typeof sc === 'number' ? `Proof: passed (${sc})` : 'Proof: passed';
+      return typeof sc === 'number' ? `Proof: needs work (${sc})` : 'Proof: needs work';
     }
     case 'verification_attempt_failed':
       return 'Checking again after an update';
     case 'step_retry_exhausted':
-      return 'Continuing with a smaller repair pass';
+      return 'Continuing with a smaller fix pass';
     case 'step_infrastructure_failure':
       return 'Infrastructure issue: run stopped for a host or dependency failure';
     case 'step_verifying':
-      return name && name !== 'Step' ? `Verifying: ${name}` : 'Verifying step';
+      return name && name !== 'Step' ? `Checking proof: ${name}` : 'Checking proof';
     case 'scheduler_deadlock_detected':
       return 'Scheduler: deadlock resolved';
     case 'execution_authority':

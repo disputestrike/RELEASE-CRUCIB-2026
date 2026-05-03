@@ -23,7 +23,7 @@ const CATEGORIES = [
   { key: 'files', label: 'Files', Icon: FileCode2 },
   { key: 'routes', label: 'Routes', Icon: Route },
   { key: 'database', label: 'Database', Icon: Database },
-  { key: 'verification', label: 'Verification', Icon: ShieldCheck },
+  { key: 'verification', label: 'Proof Checks', Icon: ShieldCheck },
   { key: 'deploy', label: 'Deploy', Icon: Rocket },
 ];
 
@@ -31,7 +31,7 @@ const CATEGORY_LABELS = {
   files: 'Files',
   routes: 'Routes',
   database: 'Database',
-  verification: 'Verification',
+  verification: 'Proof Checks',
   deploy: 'Deploy',
   generic: 'Other',
 };
@@ -47,7 +47,7 @@ function payloadSummary(payload) {
 
 function formatProofTypeLabel(t) {
   if (t === 'milestone') return 'Milestone';
-  if (t === 'verification_failed') return 'Verification failed';
+  if (t === 'verification_failed') return 'Proof check failed';
   if (t === 'step_exception') return 'Step error';
   return t || '';
 }
@@ -264,7 +264,7 @@ export default function ProofPanel({
               disabled={repairBusy}
               title="Run validation repair on files saved in this job workspace"
             >
-              {repairBusy ? 'Repairing…' : 'Repair this build'}
+              {repairBusy ? 'Fixing...' : 'Fix this workspace'}
             </button>
           ) : null}
           {jobId && token && API ? (

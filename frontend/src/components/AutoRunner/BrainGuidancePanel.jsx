@@ -8,7 +8,7 @@
  *  - User prompt appears as compact dark right-aligned bubble.
  *  - "CrucibAI" handle appears below with a small status pill ("Working..."
  *    or "Build paused, send a new message to continue").
- *  - As events stream in, plan / phases / tool chips / failures / repairs
+ *  - As events stream in, checklist / runtime loop / tool chips / failures / fixes
  *    / proof appear below in chronological order (top-down).
  *  - The whole thread is freely scrollable up and down.
  *
@@ -56,7 +56,7 @@ function buildFollowupSuggestions(truthSurface) {
   if (src === 'sandpack_fallback' || src === 'diagnostic_fallback' || src === 'main_app_shell') {
     out.push('Continue from saved workspace and regenerate a real generated-artifact preview.');
   }
-  out.push('Run one more verification pass and summarize any blockers in one repair card.');
+  out.push('Run one more proof pass and summarize any blockers in one fix card.');
   return out.slice(0, 3);
 }
 
@@ -201,7 +201,7 @@ function StatusPill({ jobStatus, isTyping }) {
     return (
       <div className="p4-status-pill p4-status-pill--paused">
         <AlertTriangle size={11} />
-        <span>Repairing</span>
+        <span>Fixing</span>
       </div>
     );
   }
@@ -283,8 +283,8 @@ function ToolGroup({ item }) {
   const total = item.children.length;
   const doneCount = item.children.filter((c) => c.status === 'success' || c.status === 'completed').length;
   const summary =
-    item.status === 'failed' ? 'Repairing'
-    : item.status === 'running' ? 'Running'
+    item.status === 'failed' ? 'Fixing'
+    : item.status === 'running' ? 'Active'
     : 'Done';
   const progressLabel = total > 0 ? `${doneCount}/${total}` : '';
   const visibleChips = open ? item.children : item.children.slice(0, 4);
@@ -360,9 +360,9 @@ function FailureBlock({ item }) {
 
 function phaseStatusLabel(st) {
   if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Repairing';
-  if (st === 'running') return 'Running';
-  return 'Pending';
+  if (st === 'failed') return 'Needs fix';
+  if (st === 'running') return 'Active';
+  return 'Queued';
 }
 
 function BuildProgressCard({ item }) {
@@ -371,7 +371,7 @@ function BuildProgressCard({ item }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   return (
     <div className="p4-block p4-build-progress">
-      <div className="p4-build-progress-head">Execution loop</div>
+      <div className="p4-build-progress-head">Runtime execution loop</div>
       <div className="p4-build-progress-rows">
         {order.map((key) => {
           const cell = item.phases[key];
@@ -438,11 +438,11 @@ function RepairBlock({ item }) {
       : `Pass ${item.attempt || 1}`;
   const headTitle =
     item.status === 'success'
-      ? 'Repair complete'
+      ? 'Fix complete'
       : item.status === 'failed'
       ? 'Continuing targeted fix'
       : isNeedsFix
-      ? item.title || 'Fixing verification issue'
+      ? item.title || 'Fixing proof issue'
       : 'Targeted fix running';
   const detail = (item.technicalDetail || '').trim();
   return (
@@ -743,7 +743,7 @@ export default function BrainGuidancePanel({
       <div className="bgp-thread-empty">
         <div className="bgp-empty-inner">
           <p className="bgp-empty-text">
-            {`Describe what you want to build in the composer below. I'll plan, build, and verify it live.`}
+            {`Describe the outcome below. CrucibAI will route intent, write files, run preview, and attach proof.`}
           </p>
         </div>
       </div>

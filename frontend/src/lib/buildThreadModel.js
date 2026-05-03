@@ -6,7 +6,7 @@
  *  - user_message
  *  - assistant_message
  *  - plan_block
- *  - build_progress_card (five high-level phases; noisy tool steps folded into Details)
+ *  - build_progress_card (runtime loop; noisy tool steps folded into Details)
  *  - repair_block (merged failure + repair pass; deduped by failure key / repair hint)
  *  - delivery_card (real job_completed)
  *  - issue_notice / tool_group / failure_block / proof_block — legacy; omitted from default compile path
@@ -16,7 +16,7 @@
  *    No backend event, regardless of ts, can render above it.
  *  - Events with a job_id that does not match activeJobId are filtered out.
  *  - Tool/step events update build_progress_card phases only (no per-event thread rows).
- *  - Failures, repairs, proof events render inline at their actual time.
+ *  - Failures, fixes, proof events render inline at their actual time.
  *
  * Also exposes deriveCurrentActivity({ events, activeJobId }) used by the
  * "Active step" banner pinned above the composer.
@@ -67,34 +67,34 @@ const parseTs = (event) => {
  * an activity-oriented label. Agent names are intentionally not surfaced in
  * the thread - the user does not need to see "Agents X" for every step. */
 const PHASE_FRIENDLY = {
-  planner: 'Planning the build',
-  planning: 'Planning the build',
-  requirements_clarifier: 'Planning the build',
-  requirements: 'Planning the build',
-  phase_01: 'Planning the build',
-  phase_02: 'Planning the build',
+  planner: 'Reading the request',
+  planning: 'Reading the request',
+  requirements_clarifier: 'Locking the intent',
+  requirements: 'Locking the intent',
+  phase_01: 'Reading the request',
+  phase_02: 'Locking the intent',
   phase_03: 'Setting up the project',
   scaffold: 'Setting up the project',
   scaffolding: 'Setting up the project',
-  routing: 'Building the frontend',
-  navigation: 'Building the frontend',
-  frontend: 'Building the frontend',
-  backend: 'Building the backend',
+  routing: 'Writing routes',
+  navigation: 'Writing navigation',
+  frontend: 'Writing frontend files',
+  backend: 'Writing backend files',
   database: 'Setting up the database',
-  styling: 'Building the frontend',
-  ui: 'Building the frontend',
-  ux: 'Building the frontend',
-  testing: 'Verifying the build',
-  verification: 'Verifying the build',
-  preview_verification: 'Verifying the build',
+  styling: 'Writing interface styles',
+  ui: 'Writing interface files',
+  ux: 'Writing interface flow',
+  testing: 'Checking runtime proof',
+  verification: 'Checking runtime proof',
+  preview_verification: 'Checking preview proof',
   assembly: 'Finalizing the app',
   final_assembly: 'Finalizing the app',
-  export: 'Preparing delivery',
-  export_gate: 'Preparing delivery',
+  export: 'Preparing workspace handoff',
+  export_gate: 'Preparing workspace handoff',
   repair: 'Applying a targeted fix',
-  deploy: 'Preparing delivery',
-  deployment: 'Preparing delivery',
-  file_tool: 'Building the frontend',
+  deploy: 'Preparing workspace handoff',
+  deployment: 'Preparing workspace handoff',
+  file_tool: 'Writing files',
 };
 
 const stripAgentPrefix = (s) =>
@@ -163,9 +163,9 @@ const deriveToolTitle = (ev) => {
   if (t === 'tool_result') return `${agent || 'Tool'} returned`;
   if (t === 'verifier_started') {
     const v = friendlyStepLabel(p.step_key, phase);
-    return v ? `Verify ${v}` : 'Run verification';
+    return v ? `Check ${v}` : 'Check proof';
   }
-  if (t === 'verifier_passed') return `${phase || 'Verification'} passed`;
+  if (t === 'verifier_passed') return `${phase || 'Proof'} passed`;
   if (t === 'step_started' || t === 'dag_node_started') {
     const sk = p.step_key || '';
     return friendlyStepLabel(sk, p.name) || p.name || phase || 'Step started';
@@ -281,7 +281,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
   }
 
   /**
-   * Timeline compiler: one build_progress_card (five phases) plus deduped
+   * Timeline compiler: one build_progress_card plus deduped
    * repair_block rows keyed by failureDedupeKey / repairDedupeKey. Tool and
    * phase micro-events update the card only — they are not rendered as pills.
    */
@@ -304,13 +304,13 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'job_started') {
       bumpPhaseStatus(card.phases, 'planning', 'running');
-      recordPhaseAction(card.phases, 'planning', 'Run queued', '');
+      recordPhaseAction(card.phases, 'planning', 'Intent queued', '');
       return;
     }
     if (t === 'plan_created') {
       bumpPhaseStatus(card.phases, 'planning', 'done');
       bumpPhaseStatus(card.phases, 'building', 'running');
-      recordPhaseAction(card.phases, 'planning', 'Plan saved', '');
+      recordPhaseAction(card.phases, 'planning', 'Intent locked', '');
       return;
     }
     if (t === 'verifier_started') {
@@ -435,7 +435,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
         findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target) ||
         failureRepairByKey.get(rk);
       const startNarration =
-        'Build verification found an issue. Applying a targeted fix and rerunning the check.';
+        'Runtime proof found an issue. Applying a targeted fix and rerunning the check.';
       if (!item) {
         item = {
           kind: 'repair_block',
@@ -446,7 +446,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
           filesChanged: [],
           status: 'running',
           narration: startNarration,
-          title: issueCardTitle(ev) || 'Repair pass',
+          title: issueCardTitle(ev) || 'Fix pass',
           technicalDetail: '',
           repeatCount: 1,
           dedupeKey: rk,
@@ -487,7 +487,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }
 
     if (t === 'job_completed') {
-      pushAssistantOnce(narrateBuildEvent(ev) || 'The build finished.', ts, newId('am'));
+      pushAssistantOnce(narrateBuildEvent(ev) || 'Workspace files are ready.', ts, newId('am'));
       restItems.push({
         kind: 'delivery_card',
         narration:
@@ -500,13 +500,13 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
     if (t === 'plan_created') {
       pushAssistantOnce(
-        narrateBuildEvent(ev) || "I've reviewed your request. Here's the plan I'll follow.",
+        narrateBuildEvent(ev) || 'I parsed the request and am moving through the workspace runtime loop.',
         ts,
         newId('am'),
       );
       const steps = extractPlanSteps(ev);
       if (steps.length) {
-        restItems.push({ kind: 'plan_block', title: 'Build plan', steps, ts, id: newId('pb') });
+        restItems.push({ kind: 'plan_block', title: 'Execution checklist', steps, ts, id: newId('pb') });
       }
       continue;
     }
@@ -576,7 +576,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     }
 
     if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
-      runningTitle = t === 'repair_started' ? 'Applying a targeted fix' : 'Verifying the build';
+      runningTitle = t === 'repair_started' ? 'Applying a targeted fix' : 'Checking runtime proof';
       runningStatus = 'running';
     }
 
@@ -599,7 +599,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
   if (latest) {
     const lt = latest.type || latest.event_type || '';
     if (/^(export_gate_ready|run_snapshot|done|job_completed)$/.test(lt)) {
-      runningTitle = runningTitle || 'Build complete';
+      runningTitle = runningTitle || 'Workspace ready';
       runningStatus = 'success';
     } else if (/(failed|blocked|error)$/.test(lt)) {
       runningTitle = runningTitle || 'Applying a targeted fix';
