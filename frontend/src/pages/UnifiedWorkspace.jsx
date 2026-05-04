@@ -1951,21 +1951,6 @@ export default function App() {
     [events, effectiveJobId]
   );
 
-  const buildStateLabel = useMemo(() => {
-    if (job?.status) return String(job.status).replace(/_/g, ' ');
-    if (stage === 'plan') return 'plan ready';
-    if (stage === 'input') return 'ready';
-    return String(stage || 'ready').replace(/_/g, ' ');
-  }, [job?.status, stage]);
-
-  const previewTruthLabel = previewUrl
-    ? 'verified preview URL'
-    : sandpackIsFallback
-      ? 'diagnostic preview'
-      : previewStatus === 'building'
-        ? 'preview pending'
-        : 'no preview yet';
-
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
@@ -1990,16 +1975,12 @@ export default function App() {
                 showWordmark
                 nameClassName="sidebar-logo-text"
               />
-              <span className="uw-center-pane-brand-version" aria-hidden>Builder OS</span>
             </div>
-            <div className="uw-builder-command-strip" aria-label="Current builder state">
-              <span className="uw-builder-pill uw-builder-pill--primary">single build path</span>
-              <span className="uw-builder-pill">{buildStateLabel}</span>
-              <span className="uw-builder-pill">{previewTruthLabel}</span>
-              {currentActivity?.title ? (
+            {currentActivity?.title ? (
+              <div className="uw-builder-command-strip" aria-label="Current activity">
                 <span className="uw-builder-pill uw-builder-pill--activity">{currentActivity.title}</span>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </header>
 
           <div className="arp-center-pane-scroll arp-center-pane-scroll--top">
@@ -2093,7 +2074,7 @@ export default function App() {
               <div className="arp-right-titlebar">
                 <div>
                   <span className="arp-right-title">Evidence Console</span>
-                  <span className="arp-right-subtitle">{previewTruthLabel}</span>
+                  <span className="arp-right-subtitle">{rightRailSubtitle || 'Runtime evidence'}</span>
                 </div>
               </div>
               <div className="arp-right-toolbar">

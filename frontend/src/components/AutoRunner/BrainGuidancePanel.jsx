@@ -1,669 +1,310 @@
-/**
- * Phase4LiveExecutionSurface
- * --------------------------
- * Conversation-first center pane for /app/workspace.
- *
- * Manus-style first-state replication:
- *  - Build target chip (e.g. "Website") shown at top right of the thread.
- *  - User prompt appears as compact dark right-aligned bubble.
- *  - "CrucibAI" handle appears below with a small status pill ("Working..."
- *    or "Build paused, send a new message to continue").
- *  - As events stream in, checklist / runtime loop / tool chips / failures / fixes
- *    / proof appear below in chronological order (top-down).
- *  - The whole thread is freely scrollable up and down.
- *
- * Exported as the default of `BrainGuidancePanel` so the existing mount
- * path in `UnifiedWorkspace` picks it up without renaming files.
- */
-
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CheckCircle2,
   AlertTriangle,
-  Wrench,
-  ShieldCheck,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  FileEdit,
-  Loader2,
-  Sparkles,
-  Hammer,
   CircleDot,
-  RefreshCcw,
+  Edit3,
+  FileText,
   Globe,
-  Smartphone,
-  Server,
-  MoreHorizontal,
+  ListChecks,
+  Loader2,
   Pause as PauseIcon,
   Play as PlayIcon,
-  RotateCcw,
+  Search,
+  Server,
+  ShieldCheck,
+  Smartphone,
+  SquareTerminal,
+  Wrench,
   X as XIcon,
   RefreshCw,
-  Package,
-  Rocket,
 } from 'lucide-react';
 import { buildThreadModel } from '../../lib/buildThreadModel';
-import { phaseLabels } from '../../lib/buildMessageReducer';
 import './BrainGuidancePanel.css';
-
-function buildFollowupSuggestions(truthSurface) {
-  const src = String(truthSurface?.preview_source || 'unknown');
-  const contractOk = truthSurface?.prompt_contract_passed !== false;
-  const out = [];
-  if (!contractOk) {
-    out.push('Add missing ecommerce surfaces (catalog, cart, checkout, PayPal stub).');
-  }
-  if (src === 'sandpack_fallback' || src === 'diagnostic_fallback' || src === 'main_app_shell') {
-    out.push('Continue from saved workspace and regenerate a real generated-artifact preview.');
-  }
-  out.push('Run one more proof pass and summarize any blockers in one fix card.');
-  return out.slice(0, 3);
-}
 
 const targetIcon = (id) => {
   const k = String(id || '').toLowerCase();
-  if (/(react_native|expo|mobile|android|ios|flutter)/.test(k)) return <Smartphone size={11} />;
-  if (/(api|fastapi|express|node|backend|server)/.test(k)) return <Server size={11} />;
-  return <Globe size={11} />;
+  if (/(react_native|expo|mobile|android|ios|flutter)/.test(k)) return <Smartphone size={12} />;
+  if (/(api|fastapi|express|node|backend|server)/.test(k)) return <Server size={12} />;
+  return <Globe size={12} />;
 };
 
 const targetLabel = (meta, id) => {
   if (meta?.label) return meta.label;
   if (meta?.name) return meta.name;
   const k = String(id || '').toLowerCase();
-  if (/internal_admin|admin_tool|admin_panel|backoffice|back_office/.test(k)) return 'Internal Admin Tool';
-  if (/react_native|expo/.test(k)) return 'Mobile App';
-  if (/next/.test(k)) return 'Next.js';
-  if (/vite/.test(k)) return 'Website';
+  if (/react_native|expo/.test(k)) return 'Mobile app';
   if (/api|fastapi|express|node/.test(k)) return 'API';
-  return 'Website';
-};
-
-const ToolIcon = ({ kind, status }) => {
-  if (status === 'running') return <Loader2 size={11} className="p4-spin" />;
-  if (status === 'failed') return <AlertTriangle size={11} className="p4-bad" />;
-  switch (kind) {
-    case 'edit': return <FileEdit size={11} className="p4-muted" />;
-    case 'sync': return <RefreshCcw size={11} className="p4-muted" />;
-    case 'check': return <CheckCircle2 size={11} className="p4-ok" />;
-    case 'spark': return <Sparkles size={11} className="p4-accent" />;
-    case 'tool': return <Hammer size={11} className="p4-muted" />;
-    default: return <CircleDot size={11} className="p4-muted" />;
-  }
+  if (/next/.test(k)) return 'Next.js app';
+  return 'Web app';
 };
 
 function BuildTargetChip({ meta, id }) {
-  const label = targetLabel(meta, id);
   return (
-    <div className="p4-target-row">
-      <span className="p4-target-chip">
-        {targetIcon(id)}
-        <span>{label}</span>
-      </span>
-    </div>
+    <span className="cc-target-chip">
+      {targetIcon(id)}
+      <span>{targetLabel(meta, id)}</span>
+    </span>
   );
 }
 
-/** Inline run-control bar — Stop / Pause / Continue always visible, no hidden overflow menu. */
 function RunControls({ jobStatus, onPause, onResume, onCancel, onSync, canSync }) {
   const isRunning = jobStatus === 'running';
-  const isPaused = jobStatus === 'paused';
-  const canResume = jobStatus === 'failed' || jobStatus === 'blocked' || isPaused;
-  const showStop = jobStatus && !['completed', 'cancelled', 'canceled'].includes(jobStatus);
+  const canResume = ['failed', 'blocked', 'paused', 'waiting_for_user'].includes(String(jobStatus || ''));
+  const showStop = jobStatus && !['completed', 'cancelled', 'canceled'].includes(String(jobStatus));
 
   if (!isRunning && !canResume && !showStop && !canSync) return null;
 
   return (
-    <div className="p4-run-controls" role="toolbar" aria-label="Build controls">
+    <div className="cc-run-controls" role="toolbar" aria-label="Run controls">
       {isRunning ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--pause"
-          onClick={() => onPause?.()}
-          title="Pause build"
-        >
-          <PauseIcon size={12} />
-          <span>Pause</span>
+        <button type="button" className="cc-icon-btn" onClick={() => onPause?.()} title="Pause">
+          <PauseIcon size={13} />
         </button>
       ) : null}
       {canResume ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--resume"
-          onClick={() => onResume?.()}
-          title="Continue build"
-        >
-          <PlayIcon size={12} />
-          <span>Continue</span>
+        <button type="button" className="cc-icon-btn" onClick={() => onResume?.()} title="Continue">
+          <PlayIcon size={13} />
         </button>
       ) : null}
       {showStop ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--stop"
-          onClick={() => onCancel?.()}
-          title="Stop build"
-        >
-          <XIcon size={12} />
-          <span>Stop</span>
+        <button type="button" className="cc-icon-btn cc-icon-btn--danger" onClick={() => onCancel?.()} title="Stop">
+          <XIcon size={13} />
         </button>
       ) : null}
       {canSync ? (
-        <button
-          type="button"
-          className="p4-ctrl-btn p4-ctrl-btn--sync"
-          onClick={() => onSync?.()}
-          title="Sync workspace"
-        >
-          <RefreshCw size={12} />
-          <span>Sync</span>
+        <button type="button" className="cc-icon-btn" onClick={() => onSync?.()} title="Sync workspace">
+          <RefreshCw size={13} />
         </button>
       ) : null}
     </div>
   );
 }
 
-function UserPrompt({ content, ts: _ts, pinned = false }) {
+function Avatar({ logoOk, onLogoFail }) {
   return (
-    <div className={`p4-row p4-row-user${pinned ? ' p4-row-user--pinned' : ''}`}>
-      <div className="p4-user-bubble">
-        <div className="p4-user-text">{content}</div>
-      </div>
-    </div>
-  );
-}
-
-function CrucibAIHandle({ logoOk, onLogoFail }) {
-  return (
-    <div className="p4-row p4-row-assistant p4-row-handle">
-      <div className="p4-avatar" aria-hidden>
-        {logoOk ? (
-          <img src="/logo.png" alt="" onError={onLogoFail} className="p4-avatar-img" />
-        ) : (
-          <span className="p4-avatar-fallback">C</span>
-        )}
-      </div>
-      <span className="p4-assist-name p4-assist-name--header sidebar-logo-text">CrucibAI</span>
-    </div>
-  );
-}
-
-function StatusPill({ jobStatus, isTyping }) {
-  if (isTyping || jobStatus === 'running') {
-    return (
-      <div className="p4-status-pill p4-status-pill--running">
-        <Loader2 size={11} className="p4-spin" />
-        <span>Working</span>
-      </div>
-    );
-  }
-  if (jobStatus === 'failed' || jobStatus === 'cancelled' || jobStatus === 'blocked' || jobStatus === 'waiting_for_user') {
-    return (
-      <div className="p4-status-pill p4-status-pill--paused">
-        <AlertTriangle size={11} />
-        <span>Fixing</span>
-      </div>
-    );
-  }
-  if (jobStatus === 'completed') {
-    return (
-      <div className="p4-status-pill p4-status-pill--success">
-        <CheckCircle2 size={11} />
-        <span>Workspace ready</span>
-      </div>
-    );
-  }
-  if (isTyping) {
-    return (
-      <div className="p4-status-pill p4-status-pill--queued">
-        <Loader2 size={11} className="p4-spin" />
-        <span>Working</span>
-      </div>
-    );
-  }
-  return (
-    <div className="p4-status-pill p4-status-pill--queued">
-      <CircleDot size={11} />
-      <span>Ready</span>
-    </div>
-  );
-}
-
-function AssistantSay({ content, ts: _ts, logoOk, onLogoFail }) {
-  return (
-    <div className="p4-row p4-row-assistant">
-      <div className="p4-avatar" aria-hidden>
-        {logoOk ? (
-          <img src="/logo.png" alt="" onError={onLogoFail} className="p4-avatar-img" />
-        ) : (
-          <span className="p4-avatar-fallback">C</span>
-        )}
-      </div>
-      <div className="p4-assist-col">
-        <div className="p4-assist-handle">
-          <span className="p4-assist-name">CrucibAI</span>
-        </div>
-        <div className="p4-assist-text">{content}</div>
-      </div>
-    </div>
-  );
-}
-
-function PlanBlock({ title, steps }) {
-  const [open, setOpen] = useState(false);
-  const stepIcon = (status) => {
-    if (status === 'completed' || status === 'success') return <CheckCircle2 size={12} className="p4-ok" />;
-    if (status === 'failed') return <AlertTriangle size={12} className="p4-bad" />;
-    if (status === 'running' || status === 'in_progress') return <Loader2 size={12} className="p4-spin" />;
-    return <span className="p4-step-dot" />;
-  };
-  return (
-    <div className="p4-block p4-plan-block">
-      <button type="button" className="p4-section-head" onClick={() => setOpen((v) => !v)}>
-        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <span className="p4-section-title">{title}</span>
-        <span className="p4-section-counter">{steps.length}</span>
-      </button>
-      {open && (
-        <ul className="p4-plan-list">
-          {steps.map((s) => (
-            <li key={s.id} className={`p4-plan-step p4-plan-step--${s.status || 'pending'}`}>
-              {stepIcon(s.status)}
-              <span className="p4-plan-step-label">{s.label}</span>
-            </li>
-          ))}
-        </ul>
+    <span className="cc-avatar" aria-hidden>
+      {logoOk ? (
+        <img src="/logo.png" alt="" onError={onLogoFail} className="cc-avatar-img" />
+      ) : (
+        <span className="cc-avatar-fallback">C</span>
       )}
+    </span>
+  );
+}
+
+function UserMessage({ item, pinned }) {
+  return (
+    <div className={`cc-row cc-row--user${pinned ? ' cc-row--pinned' : ''}`}>
+      <div className="cc-user-text">{item.content}</div>
+    </div>
+  );
+}
+
+function AssistantMessage({ item, logoOk, onLogoFail }) {
+  return (
+    <div className="cc-row cc-row--assistant">
+      <Avatar logoOk={logoOk} onLogoFail={onLogoFail} />
+      <div className="cc-message-col">
+        <div className="cc-name">CrucibAI</div>
+        <div className="cc-assistant-text">{item.content}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ status }) {
+  const label =
+    status === 'running' ? 'Running'
+    : status === 'failed' ? 'Needs fix'
+    : status === 'success' ? 'Done'
+    : 'Queued';
+  return <span className={`cc-tool-status cc-tool-status--${status || 'queued'}`}>{label}</span>;
+}
+
+function ToolIcon({ tool, status }) {
+  if (status === 'running') return <Loader2 size={14} className="cc-spin" />;
+  if (status === 'failed') return <AlertTriangle size={14} className="cc-bad" />;
+  const t = String(tool || '').toLowerCase();
+  if (/bash|terminal/.test(t)) return <SquareTerminal size={14} />;
+  if (/edit|write/.test(t)) return <Edit3 size={14} />;
+  if (/read/.test(t)) return <FileText size={14} />;
+  if (/grep|glob|search/.test(t)) return <Search size={14} />;
+  if (/todo/.test(t)) return <ListChecks size={14} />;
+  if (/proof|check/.test(t)) return <ShieldCheck size={14} />;
+  if (/fix/.test(t)) return <Wrench size={14} />;
+  return <CircleDot size={14} />;
+}
+
+function RawDetails({ item }) {
+  const hasInput = String(item.input || '').trim().length > 0;
+  const hasResult = String(item.result || '').trim().length > 0;
+  const hasDetail = String(item.detail || '').trim().length > 0;
+  const hasRaw = item.raw && Object.keys(item.raw).length > 0;
+  if (!hasInput && !hasResult && !hasDetail && !hasRaw) return null;
+
+  return (
+    <details className="cc-tool-details">
+      <summary>Details</summary>
+      {hasInput ? (
+        <div className="cc-tool-detail-row">
+          <span>Input</span>
+          <pre>{String(item.input)}</pre>
+        </div>
+      ) : null}
+      {hasResult ? (
+        <div className="cc-tool-detail-row">
+          <span>Result</span>
+          <pre>{String(item.result)}</pre>
+        </div>
+      ) : null}
+      {hasDetail ? (
+        <div className="cc-tool-detail-row">
+          <span>Trace</span>
+          <pre>{String(item.detail)}</pre>
+        </div>
+      ) : null}
+      {hasRaw ? (
+        <div className="cc-tool-detail-row">
+          <span>Raw</span>
+          <pre>{JSON.stringify(item.raw, null, 2)}</pre>
+        </div>
+      ) : null}
+    </details>
+  );
+}
+
+function ToolUseBlock({ item, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen || item.status === 'failed' || item.status === 'running');
+  return (
+    <div className={`cc-tool cc-tool--${item.status || 'queued'}`}>
+      <button type="button" className="cc-tool-head" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <ToolIcon tool={item.tool} status={item.status} />
+        <span className="cc-tool-name">{item.tool}</span>
+        <span className="cc-tool-title">{item.title}</span>
+        <StatusPill status={item.status} />
+      </button>
+      {open ? (
+        <div className="cc-tool-body">
+          {item.result ? <div className="cc-tool-result">{item.result}</div> : null}
+          <RawDetails item={item} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function ToolGroup({ item }) {
-  const [open, setOpen] = useState(true);
-  const total = item.children.length;
-  const doneCount = item.children.filter((c) => c.status === 'success' || c.status === 'completed').length;
-  const summary =
-    item.status === 'failed' ? 'Fixing'
-    : item.status === 'running' ? 'Active'
-    : 'Done';
-  const progressLabel = total > 0 ? `${doneCount}/${total}` : '';
-  const visibleChips = open ? item.children : item.children.slice(0, 4);
-  const hidden = Math.max(0, total - visibleChips.length);
+  const [open, setOpen] = useState(false);
   return (
-    <div className={`p4-chapter p4-chapter--phase p4-chapter--${item.status || 'success'}`}>
-      <button type="button" className="p4-chapter-head" onClick={() => setOpen((v) => !v)}>
-        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <span className="p4-chapter-title">{item.title}</span>
-        <span className="p4-chapter-progress" aria-hidden>{progressLabel}</span>
-        <span className={`p4-chapter-status p4-chapter-status--${item.status || 'success'}`}>{summary}</span>
+    <div className={`cc-tool cc-tool--${item.status || 'success'}`}>
+      <button type="button" className="cc-tool-head" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <Search size={14} />
+        <span className="cc-tool-name">Search</span>
+        <span className="cc-tool-title">{item.title}</span>
+        <StatusPill status={item.status} />
       </button>
-      {item.description ? <p className="p4-chapter-desc">{item.description}</p> : null}
-      {total > 0 ? (
-        <div className="p4-chip-list p4-chip-list--pills">
-          {visibleChips.map((c) => (
-            <div key={c.id} className={`p4-chip p4-chip--pill p4-chip--${c.status}`}>
-              <ToolIcon kind={c.iconKey} status={c.status} />
-              <span className="p4-chip-title">{c.title}</span>
-            </div>
+      {open ? (
+        <div className="cc-tool-body cc-tool-body--stack">
+          {item.children.map((child) => (
+            <ToolUseBlock key={child.id} item={child} />
           ))}
-          {hidden > 0 ? (
-            <button type="button" className="p4-chip p4-chip--more" onClick={() => setOpen(true)}>
-              +{hidden} more
-            </button>
-          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-function FailureBlock({ item }) {
-  const niceReason = (item.reason || '').toString().trim();
-  // Show the real reason if we have one. Only fall back to generic if reason is empty
-  // or is a raw internal error key (orchestrator_error, background_crash, etc).
-  const isGenericInternalReason =
-    !niceReason ||
-    /^(orchestrator_error|background_crash|job_not_found|execution_timeout|watchdog_timeout)$/i.test(niceReason);
-  const friendlyReason = isGenericInternalReason
-    ? 'Something went wrong during the build. Send a follow-up message below and I will pick up from the saved files.'
-    : niceReason;
-  const raw = (item.rawDetail || '').toString().trim();
-  // Show technical detail if it adds information beyond the friendly reason
-  const showTechnical = raw.length > 0 && raw !== friendlyReason && raw !== niceReason;
+function TodoList({ item }) {
   return (
-    <div className="p4-chapter p4-chapter--diagnostic">
-      <div className="p4-chapter-head p4-chapter-head--static">
-        <AlertTriangle size={13} className="p4-bad" />
-        <span className="p4-chapter-title">{item.title || 'Build issue'}</span>
-        <span className="p4-chapter-status p4-chapter-status--failed">Needs fix</span>
+    <div className="cc-tool cc-tool--todo">
+      <div className="cc-tool-head cc-tool-head--static">
+        <ListChecks size={14} />
+        <span className="cc-tool-name">{item.title}</span>
       </div>
-      <p className="p4-chapter-desc">{friendlyReason}</p>
-      {showTechnical ? (
-        <details className="p4-tech-details">
-          <summary className="p4-tech-details-summary">What went wrong</summary>
-          <pre className="p4-tech-details-pre">{raw}</pre>
-        </details>
-      ) : null}
-      {Array.isArray(item.missingItems) && item.missingItems.length > 0 ? (
-        <div className="p4-chip-list">
-          {item.missingItems.map((m, i) => (
-            <div key={`${i}-${String(m)}`} className="p4-chip p4-chip--failed">
-              <AlertTriangle size={11} className="p4-bad" />
-              <span className="p4-chip-title">{String(m)}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function phaseStatusLabel(st) {
-  if (st === 'done') return 'Done';
-  if (st === 'failed') return 'Needs fix';
-  if (st === 'running') return 'Active';
-  return 'Queued';
-}
-
-function BuildProgressCard({ item }) {
-  const meta = phaseLabels();
-  const order = meta.order;
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  return (
-    <div className="p4-block p4-build-progress">
-      <div className="p4-build-progress-head">Runtime execution loop</div>
-      <div className="p4-build-progress-rows">
-        {order.map((key) => {
-          const cell = item.phases[key];
-          const st = cell?.status || 'pending';
+      <ul className="cc-todo-list">
+        {item.steps.map((step) => {
+          const done = ['completed', 'success', 'done'].includes(String(step.status || '').toLowerCase());
+          const running = ['running', 'in_progress', 'active'].includes(String(step.status || '').toLowerCase());
           return (
-            <div key={key} className="p4-build-progress-row">
-              <span className="p4-bpr-label">{meta[key]}</span>
-              <span className={`p4-bpr-status p4-bpr-status--${st}`}>{phaseStatusLabel(st)}</span>
-            </div>
+            <li key={step.id} className={`cc-todo-item${done ? ' cc-todo-item--done' : ''}${running ? ' cc-todo-item--running' : ''}`}>
+              {done ? <CheckCircle2 size={13} /> : running ? <Loader2 size={13} className="cc-spin" /> : <CircleDot size={13} />}
+              <span>{step.label}</span>
+            </li>
           );
         })}
-      </div>
-      <button
-        type="button"
-        className="p4-build-progress-details-btn"
-        onClick={() => setDetailsOpen((v) => !v)}
-        aria-expanded={detailsOpen}
-      >
-        {detailsOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        Details
-      </button>
-      {detailsOpen ? (
-        <div className="p4-build-progress-details">
-          {order.map((key) => {
-            const cell = item.phases[key];
-            const actions = cell?.actions || [];
-            const details = cell?.details || [];
-            if (!actions.length && !details.length) return null;
-            return (
-              <div key={`d-${key}`} className="p4-bpd-phase">
-                <div className="p4-bpd-phase-name">{meta[key]}</div>
-                {actions.length ? (
-                  <ul>
-                    {actions.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                {details.length ? (
-                  <ul className="p4-bpd-muted">
-                    {details.map((d, i) => (
-                      <li key={`${i}-${d}`}>{d}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
+      </ul>
     </div>
   );
 }
 
-function RepairBlock({ item }) {
-  const isNeedsFix = item.status === 'needs_fix';
-  const stateLabel =
-    item.status === 'success'
-      ? 'Done'
-      : item.status === 'failed'
-      ? 'Fixing'
-      : isNeedsFix
-      ? 'Fixing'
-      : `Pass ${item.attempt || 1}`;
-  const headTitle =
-    item.status === 'success'
-      ? 'Fix complete'
-      : item.status === 'failed'
-      ? 'Continuing targeted fix'
-      : isNeedsFix
-      ? item.title || 'Fixing proof issue'
-      : 'Targeted fix running';
-  const detail = (item.technicalDetail || '').trim();
+function Checkpoint({ item }) {
   return (
-    <div
-      className={`p4-inline-card p4-card-repair p4-card-repair--${isNeedsFix ? 'needs_fix' : item.status || 'running'}`}
-    >
-      <div className="p4-inline-head">
-        <Wrench size={13} className="p4-warn" />
-        <span className="p4-inline-title">{headTitle}</span>
-        <span className="p4-inline-state">{stateLabel}</span>
+    <div className={`cc-checkpoint cc-checkpoint--${item.tone || 'proof'}`}>
+      <ShieldCheck size={15} />
+      <div>
+        <div className="cc-checkpoint-title">{item.title}</div>
+        {item.body ? <div className="cc-checkpoint-body">{item.body}</div> : null}
       </div>
-      {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}
-      {item.repeatCount > 1 ? (
-        <p className="p4-repair-meta">Same check still failing (×{item.repeatCount})</p>
-      ) : null}
-      {detail ? (
-        <details className="p4-tech-details">
-          <summary className="p4-tech-details-summary">Details</summary>
-          <pre className="p4-tech-details-pre">{detail}</pre>
-        </details>
-      ) : null}
-      {Array.isArray(item.filesChanged) && item.filesChanged.length > 0 ? (
-        <ul className="p4-inline-files">
-          {item.filesChanged.map((f, i) => (
-            <li key={`${i}-${String(f)}`}>{String(f)}</li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }
 
-function ProofBlock({ item }) {
-  const label =
-    item.proofType === 'export_gate_ready' ? 'Export gate ready' :
-    item.proofType === 'run_snapshot' ? 'Runtime proof captured' :
-    item.proofType === 'contract_delta_created' ? 'Contract updated' : 'Proof';
+function Delivery({ item, context }) {
   return (
-    <div className="p4-inline-card p4-card-proof">
-      <div className="p4-inline-head">
-        <ShieldCheck size={13} className="p4-ok" />
-        <span className="p4-inline-title">{label}</span>
-      </div>
-      {item.narration ? <p className="p4-inline-text">{item.narration}</p> : null}
-    </div>
-  );
-}
-
-function IssueNoticeCard({ item }) {
-  const detail = (item.technicalDetail || '').trim();
-  return (
-    <div className="p4-surface-card p4-issue-notice">
-      <div className="p4-surface-card-head">
-        <AlertTriangle size={14} className="p4-warn" />
-        <span className="p4-surface-card-title">{item.title || 'Update'}</span>
-      </div>
-      {item.summary ? <p className="p4-surface-card-body">{item.summary}</p> : null}
-      {detail ? (
-        <details className="p4-tech-details">
-          <summary className="p4-tech-details-summary">What the system saw</summary>
-          <pre className="p4-tech-details-pre">{detail}</pre>
-        </details>
-      ) : null}
-    </div>
-  );
-}
-
-function CheckpointCard({ item }) {
-  return (
-    <div className="p4-surface-card p4-checkpoint-card">
-      <div className="p4-checkpoint-icon-wrap" aria-hidden>
-        <Package size={18} />
-      </div>
-      <div className="p4-checkpoint-body">
-        <div className="p4-surface-card-title">{item.title}</div>
-        {item.subtitle ? <p className="p4-checkpoint-sub">{item.subtitle}</p> : null}
-      </div>
-      <CheckCircle2 size={16} className="p4-checkpoint-ok" aria-hidden />
-    </div>
-  );
-}
-
-function DeliveryCard({ item, context }) {
-  const [thumbUrl, setThumbUrl] = useState(null);
-  const [thumbErr, setThumbErr] = useState('');
-  const truth = context?.truthSurface || null;
-  const previewSource = String(truth?.preview_source || 'unknown');
-  const suggestions = useMemo(() => buildFollowupSuggestions(truth), [truth]);
-  useEffect(() => {
-    let dead = false;
-    let objUrl = null;
-    const load = async () => {
-      if (!context?.jobId || !context?.token || !context?.apiBase) return;
-      try {
-        const u = `${context.apiBase}/jobs/${encodeURIComponent(context.jobId)}/workspace/file/raw`;
-        const p = '.crucibai/preview/screenshot.png';
-        const res = await fetch(`${u}?path=${encodeURIComponent(p)}`, {
-          headers: { Authorization: `Bearer ${context.token}` },
-        });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        if (dead || !blob || blob.size === 0) return;
-        objUrl = URL.createObjectURL(blob);
-        setThumbUrl(objUrl);
-        setThumbErr('');
-      } catch (e) {
-        if (!dead) setThumbErr(String(e?.message || ''));
-      }
-    };
-    load();
-    return () => {
-      dead = true;
-      if (objUrl) URL.revokeObjectURL(objUrl);
-    };
-  }, [context?.jobId, context?.token, context?.apiBase]);
-  return (
-    <div className="p4-surface-card p4-delivery-card">
-      <div className="p4-delivery-row">
-        <Rocket size={16} className="p4-accent" aria-hidden />
-        <div className="p4-delivery-main">
-          <div className="p4-surface-card-title">Build delivered to this workspace</div>
-          {item.narration ? <p className="p4-surface-card-body p4-delivery-sub">{item.narration}</p> : null}
-          <div className="p4-delivery-meta">
-            <span className="p4-delivery-chip">preview_source: {previewSource}</span>
-            {truth ? (
-              <span className="p4-delivery-chip">
-                contract: {truth.prompt_contract_passed === false ? 'failed' : 'passed'}
-              </span>
-            ) : null}
+    <div className="cc-checkpoint cc-checkpoint--success">
+      <CheckCircle2 size={15} />
+      <div>
+        <div className="cc-checkpoint-title">{item.title}</div>
+        {item.body ? <div className="cc-checkpoint-body">{item.body}</div> : null}
+        {context?.truthSurface ? (
+          <div className="cc-proof-row">
+            <span>contract: {context.truthSurface.prompt_contract_passed === false ? 'needs fix' : 'tracked'}</span>
+            <span>preview: {context.previewUrl ? 'live URL' : context.truthSurface.preview_source || 'pending'}</span>
           </div>
-          {thumbUrl ? (
-            <div className="p4-delivery-thumb-wrap">
-              <img src={thumbUrl} alt="Build preview thumbnail" className="p4-delivery-thumb" />
-            </div>
-          ) : null}
-          {!thumbUrl && thumbErr ? (
-            <p className="p4-delivery-thumb-note">Preview thumbnail unavailable right now.</p>
-          ) : null}
-          {suggestions.length ? (
-            <div className="p4-delivery-followups">
-              {suggestions.map((s) => (
-                <button
-                  type="button"
-                  key={s}
-                  className="p4-delivery-followup-btn"
-                  onClick={() => context?.onUseSuggestion?.(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <ChevronRight size={16} className="p4-muted-icon" aria-hidden />
+        ) : null}
       </div>
     </div>
   );
 }
 
-function ThreadItem({ item, logoOk, onLogoFail, isPinnedUser, deliveryContext }) {
+function ThinkingRow({ logoOk, onLogoFail }) {
+  return (
+    <div className="cc-row cc-row--assistant cc-row--thinking" aria-busy="true">
+      <Avatar logoOk={logoOk} onLogoFail={onLogoFail} />
+      <div className="cc-message-col">
+        <div className="cc-thinking">
+          <Loader2 size={14} className="cc-spin" />
+          <span>Thinking</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThreadItem({ item, logoOk, onLogoFail, pinnedUserId, deliveryContext }) {
   switch (item.kind) {
     case 'user_message':
-      return <UserPrompt content={item.content} ts={item.ts} pinned={isPinnedUser} />;
+      return <UserMessage item={item} pinned={item.id === pinnedUserId} />;
     case 'assistant_message':
-      return <AssistantSay content={item.content} ts={item.ts} logoOk={logoOk} onLogoFail={onLogoFail} />;
-    case 'plan_block':
-      return <PlanBlock title={item.title} steps={item.steps} />;
-    case 'build_progress_card':
-      return <BuildProgressCard item={item} />;
+      return <AssistantMessage item={item} logoOk={logoOk} onLogoFail={onLogoFail} />;
+    case 'tool_use':
+      return <ToolUseBlock item={item} />;
     case 'tool_group':
       return <ToolGroup item={item} />;
-    case 'failure_block':
-      return <FailureBlock item={item} />;
-    case 'repair_block':
-      return <RepairBlock item={item} />;
-    case 'proof_block':
-      return <ProofBlock item={item} />;
-    case 'issue_notice':
-      return <IssueNoticeCard item={item} />;
-    case 'checkpoint_card':
-      return <CheckpointCard item={item} />;
-    case 'delivery_card':
-      return <DeliveryCard item={item} context={deliveryContext} />;
+    case 'todo_list':
+      return <TodoList item={item} />;
+    case 'checkpoint':
+      return <Checkpoint item={item} />;
+    case 'delivery':
+      return <Delivery item={item} context={deliveryContext} />;
     default:
       return null;
   }
-}
-
-function MissionHeader({ jobStatus, eventCount, itemCount, previewUrl, truthSurface }) {
-  const status = jobStatus ? String(jobStatus).replace(/_/g, ' ') : 'ready';
-  const previewSource = previewUrl
-    ? 'verified preview URL'
-    : truthSurface?.preview_source
-      ? `preview source: ${truthSurface.preview_source}`
-      : 'preview waits for runtime proof';
-  const contract = truthSurface?.prompt_contract_passed === false ? 'contract needs repair' : 'contract tracked';
-
-  return (
-    <div className="p4-mission-header" role="status" aria-label="CrucibAI builder status">
-      <div className="p4-mission-kicker">CrucibAI Builder OS</div>
-      <div className="p4-mission-title">Goal to files to preview to proof</div>
-      <div className="p4-mission-grid">
-        <span className="p4-mission-cell">
-          <strong>Status</strong>
-          <span>{status}</span>
-        </span>
-        <span className="p4-mission-cell">
-          <strong>Preview</strong>
-          <span>{previewSource}</span>
-        </span>
-        <span className="p4-mission-cell">
-          <strong>Proof</strong>
-          <span>{contract}</span>
-        </span>
-        <span className="p4-mission-cell">
-          <strong>Events</strong>
-          <span>{eventCount} streamed, {itemCount} surfaced</span>
-        </span>
-      </div>
-    </div>
-  );
 }
 
 export default function BrainGuidancePanel({
@@ -683,38 +324,33 @@ export default function BrainGuidancePanel({
   canSync = false,
   previewUrl = null,
   proofTruthSurface = null,
-  token = null,
-  apiBase = '',
-  onUseSuggestion,
-  /** Workspace: fixed header shows CrucibAI — hide duplicate handle + pill in the scroll stream */
-  omitInlineBrandChrome = false,
+  token: _token = null,
+  apiBase: _apiBase = '',
+  onUseSuggestion: _onUseSuggestion,
+  omitInlineBrandChrome: _omitInlineBrandChrome = false,
 }) {
   const scrollRef = useRef(null);
-  const [logoFailed, setLogoFailed] = useState(false);
   const userIsScrollingRef = useRef(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const { items, scrollLayoutKey } = useMemo(() => {
     const list = buildThreadModel({ userMessages, events, activeJobId: jobId });
-    const key = list.map((i) => (i.kind === 'build_progress_card' ? `bpc:${i.id}` : `${i.kind}:${i.id}`)).join('|');
+    const key = list.map((i) => `${i.kind}:${i.id}:${i.status || ''}`).join('|');
     return { items: list, scrollLayoutKey: key };
   }, [userMessages, events, jobId]);
 
-  const hasUserPrompt = items.some((i) => i.kind === 'user_message');
-  const hasAssistantNarration = items.some((i) => i.kind === 'assistant_message');
+  const firstUserId = useMemo(() => items.find((i) => i.kind === 'user_message')?.id ?? null, [items]);
   const shouldRenderEmptyState = items.length === 0 && !isTyping && !jobId && !hasTaskOrJobContext;
-  const firstUserId = useMemo(() => {
-    const u = items.find((i) => i.kind === 'user_message');
-    return u?.id ?? null;
-  }, [items]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      console.info('[PHASE4_ACTIVE] Phase4LiveExecutionSurface mounted');
-      console.info('[PHASE4_ACTIVE] activeJobId=', jobId);
-      console.info('[PHASE4_ACTIVE] renderedThreadItems=', items.length);
+      console.info('[CRUCIBAI_TRANSCRIPT_ACTIVE] supplied-code transcript surface mounted', {
+        activeJobId: jobId,
+        renderedThreadItems: items.length,
+      });
     } catch {
-      /* ignore console in non-browser */
+      /* browser console only */
     }
   }, [jobId, items.length]);
 
@@ -724,9 +360,7 @@ export default function BrainGuidancePanel({
     const scroller = node?.parentElement;
     if (!scroller) return;
     const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
-    if (distanceFromBottom < 200) {
-      scroller.scrollTop = scroller.scrollHeight;
-    }
+    if (distanceFromBottom < 220) scroller.scrollTop = scroller.scrollHeight;
   }, [scrollLayoutKey, isTyping]);
 
   const handleScroll = () => {
@@ -734,37 +368,31 @@ export default function BrainGuidancePanel({
     const scroller = node?.parentElement;
     if (!scroller) return;
     const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
-    userIsScrollingRef.current = distanceFromBottom > 200;
+    userIsScrollingRef.current = distanceFromBottom > 220;
     onScroll?.({ isNearBottom: distanceFromBottom < 120 });
   };
 
   if (shouldRenderEmptyState) {
     return (
-      <div className="bgp-thread-empty">
-        <div className="bgp-empty-inner">
-          <p className="bgp-empty-text">
-            {`Describe the outcome below. CrucibAI will route intent, write files, run preview, and attach proof.`}
-          </p>
-        </div>
+      <div className="cc-thread-empty">
+        <div className="cc-empty-title">What should CrucibAI build?</div>
       </div>
     );
   }
 
   return (
-    <div ref={scrollRef} onScrollCapture={handleScroll} className="bgp-thread-only bgp-thread-only--top">
-      {(buildTargetMeta || buildTargetId) ? (
-        <div className="p4-thread-head">
-          <BuildTargetChip meta={buildTargetMeta} id={buildTargetId} />
-        </div>
-      ) : null}
-
-      <MissionHeader
-        jobStatus={jobStatus}
-        eventCount={Array.isArray(events) ? events.length : 0}
-        itemCount={items.length}
-        previewUrl={previewUrl}
-        truthSurface={proofTruthSurface}
-      />
+    <div ref={scrollRef} onScrollCapture={handleScroll} className="cc-thread">
+      <div className="cc-thread-topbar">
+        {(buildTargetMeta || buildTargetId) ? <BuildTargetChip meta={buildTargetMeta} id={buildTargetId} /> : <span />}
+        <RunControls
+          jobStatus={jobStatus}
+          onPause={onPause}
+          onResume={onResume}
+          onCancel={onCancel}
+          onSync={onSync}
+          canSync={canSync}
+        />
+      </div>
 
       {items.map((item) => (
         <ThreadItem
@@ -772,43 +400,15 @@ export default function BrainGuidancePanel({
           item={item}
           logoOk={!logoFailed}
           onLogoFail={() => setLogoFailed(true)}
-          isPinnedUser={item.kind === 'user_message' && item.id === firstUserId}
+          pinnedUserId={firstUserId}
           deliveryContext={{
             previewUrl,
             truthSurface: proofTruthSurface,
-            jobId: jobId || null,
-            token,
-            apiBase,
-            onUseSuggestion,
           }}
         />
       ))}
 
-      {/* Initial-state CrucibAI handle + status pill, rendered when the user
-          has spoken but the system has not narrated anything yet. */}
-      {!omitInlineBrandChrome && hasUserPrompt && !hasAssistantNarration ? (
-        <>
-          <CrucibAIHandle logoOk={!logoFailed} onLogoFail={() => setLogoFailed(true)} />
-          <div className="p4-handle-pill-row">
-            <StatusPill jobStatus={jobStatus} isTyping={isTyping} />
-          </div>
-        </>
-      ) : null}
-
-      {isTyping && (hasAssistantNarration || items.length > 0) ? (
-        <div className={`p4-row p4-row-assistant p4-row-typing${isTyping ? ' p4-row-typing--alive' : ''}`} aria-busy={isTyping}>
-          <div className="p4-avatar" aria-hidden>
-            {!logoFailed ? (
-              <img src="/logo.png" alt="" onError={() => setLogoFailed(true)} className="p4-avatar-img" />
-            ) : (
-              <span className="p4-avatar-fallback">C</span>
-            )}
-          </div>
-          <div className="p4-assist-col">
-            <div className="p4-typing-dots"><span /> <span /> <span /></div>
-          </div>
-        </div>
-      ) : null}
+      {isTyping ? <ThinkingRow logoOk={!logoFailed} onLogoFail={() => setLogoFailed(true)} /> : null}
     </div>
   );
 }

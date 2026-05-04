@@ -2,15 +2,15 @@ import React from 'react';
 
 const STATUS_MESSAGES = {
   queued: 'Thinking',
-  planning: 'Planning the workspace',
-  running: 'Building the workspace',
+  planning: 'Reading the workspace',
+  running: 'Writing workspace files',
   frontend: 'Rendering the interface',
   backend: 'Connecting the backend',
   database: 'Preparing the data layer',
   testing: 'Checking the workspace',
   deploying: 'Starting the preview',
   live: 'Preview ready',
-  failed: 'Repairing preview',
+  failed: 'Preview check running',
 };
 
 export default function PreviewSkeleton({ stage = 'running', currentPhase = '', previewUrl = null }) {
@@ -40,7 +40,7 @@ export default function PreviewSkeleton({ stage = 'running', currentPhase = '', 
           display: 'flex', alignItems: 'center', paddingLeft: 10,
         }}>
           <span style={{ fontSize: 11, color: '#777777' }}>
-            {stage === 'failed' ? 'Repairing preview' : 'Thinking'}
+            {stage === 'failed' ? 'Preview check running' : 'Thinking'}
           </span>
         </div>
       </div>

@@ -1,44 +1,23 @@
-/**
- * buildThreadModel — turn raw user messages + backend job events into an ordered
- * conversation-first thread for the workspace center pane.
+/*
+ * Supplied-code transcript compiler.
  *
- * Output kinds:
- *  - user_message
- *  - assistant_message
- *  - plan_block
- *  - build_progress_card (runtime loop; noisy tool steps folded into Details)
- *  - repair_block (merged failure + repair pass; deduped by failure key / repair hint)
- *  - delivery_card (real job_completed)
- *  - issue_notice / tool_group / failure_block / proof_block — legacy; omitted from default compile path
- *
- * Hard guarantees:
- *  - The first user message of the active job ALWAYS appears at index 0.
- *    No backend event, regardless of ts, can render above it.
- *  - Events with a job_id that does not match activeJobId are filtered out.
- *  - Tool/step events update build_progress_card phases only (no per-event thread rows).
- *  - Failures, fixes, proof events render inline at their actual time.
- *
- * Also exposes deriveCurrentActivity({ events, activeJobId }) used by the
- * "Active step" banner pinned above the composer.
+ * The center workspace must behave like a code-agent transcript, not a fixed
+ * phase board. This model keeps the user's goal pinned first, then emits the
+ * same kinds of blocks the supplied code renders: assistant text, thinking,
+ * tool use, tool result, grouped read/search activity, todos, proof, and
+ * handoff checkpoints.
  */
 
-import { narrateBuildEvent, fileBasename } from './narrateBuildEvent';
+import { fileBasename } from './narrateBuildEvent';
 import {
-  friendlyStepLabel,
   humanIssueSummary,
   humanVerificationFailureSummary,
-  issueCardTitle,
   technicalDetailLines,
-  narrationJobStarted,
 } from './presentBuildThread';
-import {
-  bumpPhaseStatus,
-  createBuildProgressCard,
-  failureDedupeKey,
-  recordPhaseAction,
-  routeEventToHighPhase,
-  repairDedupeKey,
-} from './buildMessageReducer';
+
+const READ_SEARCH_TOOLS = new Set(['Read', 'Grep', 'Glob', 'Search']);
+const FAILURE_EVENT_TYPES =
+  /^(step_failed|job_failed|verifier_failed|assembly_failed|export_gate_blocked|error|dag_node_failed)$/;
 
 const readPayload = (event) => {
   if (event?.payload && typeof event.payload === 'object') return event.payload;
@@ -54,7 +33,7 @@ const readPayload = (event) => {
 };
 
 const parseTs = (event) => {
-  const c = event?.created_at;
+  const c = event?.created_at || event?.ts || event?.timestamp;
   if (typeof c === 'number') return c < 1e12 ? c * 1000 : c;
   if (typeof c === 'string') {
     const t = new Date(c).getTime();
@@ -63,84 +42,111 @@ const parseTs = (event) => {
   return Date.now();
 };
 
-/** Map raw backend phase keys (often "agents.foo" / "Agents Phase 01") to
- * an activity-oriented label. Agent names are intentionally not surfaced in
- * the thread - the user does not need to see "Agents X" for every step. */
-const PHASE_FRIENDLY = {
-  planner: 'Reading the request',
-  planning: 'Reading the request',
-  requirements_clarifier: 'Locking the intent',
-  requirements: 'Locking the intent',
-  phase_01: 'Reading the request',
-  phase_02: 'Locking the intent',
-  phase_03: 'Setting up the project',
-  scaffold: 'Setting up the project',
-  scaffolding: 'Setting up the project',
-  routing: 'Writing routes',
-  navigation: 'Writing navigation',
-  frontend: 'Writing frontend files',
-  backend: 'Writing backend files',
-  database: 'Setting up the database',
-  styling: 'Writing interface styles',
-  ui: 'Writing interface files',
-  ux: 'Writing interface flow',
-  testing: 'Checking runtime proof',
-  verification: 'Checking runtime proof',
-  preview_verification: 'Checking preview proof',
-  assembly: 'Finalizing the app',
-  final_assembly: 'Finalizing the app',
-  export: 'Preparing workspace handoff',
-  export_gate: 'Preparing workspace handoff',
-  repair: 'Applying a targeted fix',
-  deploy: 'Preparing workspace handoff',
-  deployment: 'Preparing workspace handoff',
-  file_tool: 'Writing files',
+const text = (value) => String(value || '').trim();
+
+const compact = (value, max = 240) => {
+  const s = text(value).replace(/\s+/g, ' ');
+  if (s.length <= max) return s;
+  return `${s.slice(0, max - 1)}...`;
 };
 
-const stripAgentPrefix = (s) =>
-  String(s || '')
-    .replace(/^[-_.\s]+|[-_.\s]+$/g, '')
-    // remove a leading "agents", "agent", or trailing "agent" word so we never
-    // surface "Agents Planner" / "Agents Phase 01" / "File Tool Agent"
-    .replace(/^agents?[\s._-]+/i, '')
-    .replace(/[\s._-]+agents?$/i, '')
+const titleCase = (value) =>
+  text(value)
     .replace(/[._-]+/g, ' ')
-    .trim();
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
-const prettyPhase = (phase) => {
-  if (!phase || typeof phase !== 'string') return 'Execution loop';
-  const stripped = stripAgentPrefix(phase);
-  if (!stripped) return 'Execution loop';
-  const key = stripped.toLowerCase().replace(/\s+/g, '_');
-  if (PHASE_FRIENDLY[key]) return PHASE_FRIENDLY[key];
-  for (const k of Object.keys(PHASE_FRIENDLY)) {
-    if (key.includes(k)) return PHASE_FRIENDLY[k];
-  }
-  return stripped.replace(/\b\w/g, (c) => c.toUpperCase());
+const firstOf = (...values) => values.map(text).find(Boolean) || '';
+
+const filterEventsForJob = (events, activeJobId) =>
+  (events || []).filter((ev) => {
+    if (!ev) return false;
+    if (!activeJobId) return true;
+    const evJob = ev.job_id || ev.jobId || readPayload(ev).job_id || readPayload(ev).jobId;
+    return !evJob || evJob === activeJobId;
+  });
+
+const pathFromPayload = (p) =>
+  firstOf(
+    p.file,
+    p.path,
+    p.file_path,
+    p.filePath,
+    p.target,
+    p.proof_path,
+    p.check_id,
+    p.step_key,
+  );
+
+const stepName = (event) => {
+  const p = readPayload(event);
+  return firstOf(
+    p.name,
+    p.title,
+    p.label,
+    p.step,
+    p.step_key,
+    p.node_id,
+    p.phase,
+    event.step_key,
+  );
 };
 
-const getPhase = (ev) => {
-  const p = readPayload(ev);
-  return p.phase || p.step || p.step_key || p.node_id || ev.step_key || '';
+const prettyStep = (event, fallback = 'Run task') => {
+  const raw = stepName(event);
+  if (!raw) return fallback;
+  return titleCase(raw)
+    .replace(/\bDag\b/g, 'Task')
+    .replace(/\bUi\b/g, 'UI')
+    .replace(/\bApi\b/g, 'API');
 };
 
-/** Intentionally returns empty string. We do not surface agent names in
- * the thread per product direction; the orchestrator/agent identities stay
- * in the backend. Kept as a helper so callers stay structurally consistent. */
-const getAgent = () => '';
+const eventStatus = (type) => {
+  if (/(started|queued|running|repair_started|tool_call)$/i.test(type)) return 'running';
+  if (/(failed|blocked|error)$/i.test(type)) return 'failed';
+  if (/(completed|passed|ready|written|updated|result|snapshot|created)$/i.test(type)) return 'success';
+  return 'success';
+};
 
-const extractPlanSteps = (ev) => {
-  const p = readPayload(ev);
+const toolNameFromCall = (p) => {
+  const raw = firstOf(p.name, p.tool_name, p.tool, p.command_name, p.kind);
+  const low = raw.toLowerCase();
+  if (/bash|shell|terminal|cmd|command/.test(low)) return 'Bash';
+  if (/read|open|cat/.test(low)) return 'Read';
+  if (/write|create/.test(low)) return 'Write';
+  if (/edit|patch|mutation|replace/.test(low)) return 'Edit';
+  if (/grep|search/.test(low)) return 'Grep';
+  if (/glob|list/.test(low)) return 'Glob';
+  if (/web/.test(low)) return 'Web';
+  if (/todo/.test(low)) return 'TodoWrite';
+  return raw ? titleCase(raw) : 'Tool';
+};
+
+const toolInputFromPayload = (p) =>
+  firstOf(
+    p.command,
+    p.input,
+    p.query,
+    p.pattern,
+    p.path,
+    p.file,
+    p.file_path,
+    p.url,
+    p.detail,
+    p.summary,
+  );
+
+const extractPlanSteps = (event) => {
+  const p = readPayload(event);
   const candidate =
     p.steps || p.plan_steps || p.checklist || (p.plan && (p.plan.steps || p.plan.checklist));
   if (!Array.isArray(candidate)) return [];
   return candidate
     .map((s, i) => {
-      if (typeof s === 'string') return { id: `s${i}`, label: s, status: 'pending' };
+      if (typeof s === 'string') return { id: `todo-${i}`, label: s, status: 'pending' };
       if (s && typeof s === 'object') {
         return {
-          id: s.id || `s${i}`,
-          label: String(s.label || s.title || s.name || s.text || `Step ${i + 1}`),
+          id: s.id || `todo-${i}`,
+          label: firstOf(s.label, s.title, s.name, s.text, `Task ${i + 1}`),
           status: s.status || 'pending',
         };
       }
@@ -149,88 +155,287 @@ const extractPlanSteps = (ev) => {
     .filter(Boolean);
 };
 
-const deriveToolTitle = (ev) => {
-  const t = ev.type || ev.event_type || '';
-  const p = readPayload(ev);
-  const agent = getAgent(ev);
-  const phase = prettyPhase(getPhase(ev));
-  if (t === 'file_written' || t === 'file_write') {
-    const base = fileBasename(p.file || p.path);
-    return base ? `Create ${base}` : 'Create file';
+const assistantTextForEvent = (event) => {
+  const p = readPayload(event);
+  const body = firstOf(p.message, p.text, p.content, p.narration, p.summary);
+  if (body) return body;
+  const t = event.type || event.event_type || '';
+  if (t === 'job_started') {
+    return "I'm on it. I'll inspect the request, edit the workspace, run checks, and keep the proof visible as the app takes shape.";
   }
-  if (t === 'workspace_files_updated') return 'Sync workspace';
-  if (t === 'tool_call') return `Run ${agent || p.name || 'tool'}`;
-  if (t === 'tool_result') return `${agent || 'Tool'} returned`;
-  if (t === 'verifier_started') {
-    const v = friendlyStepLabel(p.step_key, phase);
-    return v ? `Check ${v}` : 'Check proof';
+  if (t === 'plan_created' && !extractPlanSteps(event).length) {
+    return 'I have the work scoped. I am moving into the code path now.';
   }
-  if (t === 'verifier_passed') return `${phase || 'Proof'} passed`;
-  if (t === 'step_started' || t === 'dag_node_started') {
-    const sk = p.step_key || '';
-    return friendlyStepLabel(sk, p.name) || p.name || phase || 'Step started';
+  if (t === 'repair_started') {
+    return 'I found the failing check and I am applying a focused fix.';
   }
-  if (t === 'step_completed' || t === 'dag_node_completed') {
-    const sk = p.step_key || '';
-    return `${friendlyStepLabel(sk, p.name) || p.name || phase || 'Step'} done`;
+  if (t === 'job_completed') {
+    return 'The workspace has been updated and proof is ready to inspect.';
   }
-  if (t === 'code_mutation') {
-    const base = fileBasename(p.file || p.path);
-    return base ? `Edit ${base}` : 'Apply edit';
-  }
-  return phase || (t ? t.replace(/_/g, ' ') : 'Activity');
+  return '';
 };
 
-const isToolEvent = (t) =>
-  [
-    'tool_call',
-    'tool_result',
-    'step_started',
-    'step_completed',
-    'dag_node_started',
-    'dag_node_completed',
-    'phase_started',
-    'phase_completed',
-    'phase_advanced',
-    'verifier_started',
-    'verifier_passed',
-    'file_written',
-    'file_write',
-    'workspace_files_updated',
-    'code_mutation',
-  ].includes(t);
+const failureText = (event) => {
+  const t = event.type || event.event_type || '';
+  if (t === 'verifier_failed') return humanVerificationFailureSummary(readPayload(event));
+  if (t === 'job_failed') {
+    const p = readPayload(event);
+    const plain = firstOf(p.message, p.summary, p.reason, p.failure_reason);
+    if (plain && plain.length < 180 && !/npm err|stack trace|stderr|verification\.|steps_failed/i.test(plain)) {
+      return plain;
+    }
+    return 'The last run failed. I am using the error details below to patch the workspace and rerun proof.';
+  }
+  return humanIssueSummary(event);
+};
 
-const FAILURE_EVENT_TYPES =
-  /^(step_failed|job_failed|verifier_failed|assembly_failed|export_gate_blocked|error)$/;
+const toolBlockForEvent = (event) => {
+  const t = event.type || event.event_type || '';
+  const p = readPayload(event);
+  const status = eventStatus(t);
+  const path = pathFromPayload(p);
+  const base = fileBasename(path);
 
-/** Match an in-flight merged repair card to a repair_started event by step_key. */
-const findFailureCardByStepKey = (frMap, jobId, stepKey) => {
-  const sk = String(stepKey || '').trim();
-  if (!jobId || !sk) return null;
-  const needle = `::${sk}::`;
-  for (const [k, item] of frMap.entries()) {
-    if (String(k).startsWith(`${jobId}::`) && k.includes(needle)) return item;
+  if (t === 'tool_call') {
+    const tool = toolNameFromCall(p);
+    return {
+      tool,
+      title: firstOf(p.title, p.label, `${tool} ${compact(toolInputFromPayload(p), 80)}`),
+      input: toolInputFromPayload(p),
+      status: 'running',
+      result: '',
+      raw: p,
+    };
+  }
+
+  if (t === 'tool_result') {
+    const tool = toolNameFromCall(p);
+    const result = firstOf(p.output, p.result, p.summary, p.message, p.error);
+    return {
+      tool,
+      title: firstOf(p.title, p.label, `${tool} result`),
+      input: toolInputFromPayload(p),
+      status: p.error ? 'failed' : 'success',
+      result,
+      raw: p,
+    };
+  }
+
+  if (t === 'file_written' || t === 'file_write') {
+    return {
+      tool: 'Write',
+      title: base ? `Write ${base}` : 'Write file',
+      input: path,
+      status: 'success',
+      result: 'File saved to the workspace.',
+      raw: p,
+    };
+  }
+
+  if (t === 'code_mutation') {
+    return {
+      tool: 'Edit',
+      title: base ? `Edit ${base}` : 'Apply edit',
+      input: path,
+      status: 'success',
+      result: firstOf(p.summary, p.message, 'Patch applied.'),
+      raw: p,
+    };
+  }
+
+  if (t === 'workspace_files_updated') {
+    return {
+      tool: 'Write',
+      title: 'Sync workspace files',
+      input: path,
+      status: 'success',
+      result: firstOf(p.summary, p.message, 'Workspace files updated.'),
+      raw: p,
+    };
+  }
+
+  if (t === 'verifier_started') {
+    return {
+      tool: 'Bash',
+      title: firstOf(p.title, p.label, 'Run proof checks'),
+      input: firstOf(p.command, p.check_id, p.step_key, 'runtime proof'),
+      status: 'running',
+      result: '',
+      raw: p,
+    };
+  }
+
+  if (t === 'verifier_passed') {
+    return {
+      tool: 'Bash',
+      title: firstOf(p.title, p.label, 'Proof checks passed'),
+      input: firstOf(p.command, p.check_id, p.step_key),
+      status: 'success',
+      result: firstOf(p.summary, p.message, 'Check passed.'),
+      raw: p,
+    };
+  }
+
+  if (FAILURE_EVENT_TYPES.test(t)) {
+    return {
+      tool: t === 'verifier_failed' ? 'Bash' : 'Tool',
+      title: firstOf(p.title, p.label, t === 'verifier_failed' ? 'Proof check failed' : 'Tool failed'),
+      input: firstOf(p.command, p.check_id, p.step_key, path),
+      status: 'failed',
+      result: failureText(event),
+      detail: technicalDetailLines(event),
+      raw: p,
+    };
+  }
+
+  if (t === 'repair_started') {
+    return {
+      tool: 'Edit',
+      title: firstOf(p.title, p.label, 'Apply focused fix'),
+      input: firstOf(p.repair_target, p.step_key, p.file, p.path),
+      status: 'running',
+      result: '',
+      raw: p,
+    };
+  }
+
+  if (t === 'repair_completed') {
+    const files = Array.isArray(p.files_changed) ? p.files_changed : Array.isArray(p.files) ? p.files : [];
+    return {
+      tool: 'Edit',
+      title: 'Fix applied',
+      input: files.join('\n'),
+      status: 'success',
+      result: firstOf(p.summary, p.message, files.length ? `${files.length} file(s) changed.` : 'Fix completed.'),
+      raw: p,
+    };
+  }
+
+  if (t === 'repair_failed') {
+    return {
+      tool: 'Edit',
+      title: 'Fix needs another pass',
+      input: firstOf(p.repair_target, p.step_key, p.file, p.path),
+      status: 'failed',
+      result: failureText(event),
+      detail: technicalDetailLines(event),
+      raw: p,
+    };
+  }
+
+  if (/^(step_started|dag_node_started|phase_started)$/.test(t)) {
+    return {
+      tool: 'Task',
+      title: prettyStep(event, 'Start task'),
+      input: firstOf(p.description, p.detail, p.step_key, p.node_id),
+      status: 'running',
+      result: '',
+      raw: p,
+    };
+  }
+
+  if (/^(step_completed|dag_node_completed|phase_completed|phase_advanced)$/.test(t)) {
+    return {
+      tool: 'Task',
+      title: prettyStep(event, 'Task complete'),
+      input: firstOf(p.description, p.detail, p.step_key, p.node_id),
+      status: 'success',
+      result: firstOf(p.summary, p.message, 'Done.'),
+      raw: p,
+    };
+  }
+
+  return null;
+};
+
+const checkpointForEvent = (event) => {
+  const t = event.type || event.event_type || '';
+  const p = readPayload(event);
+  if (t === 'run_snapshot') {
+    return {
+      kind: 'checkpoint',
+      title: 'Runtime snapshot captured',
+      body: firstOf(p.summary, p.message, p.snapshot_url, 'Preview evidence has been captured.'),
+      tone: 'proof',
+    };
+  }
+  if (t === 'contract_delta_created') {
+    return {
+      kind: 'checkpoint',
+      title: 'Prompt contract updated',
+      body: firstOf(p.summary, p.message, 'The requested scope is tracked against the generated files.'),
+      tone: 'proof',
+    };
+  }
+  if (t === 'export_gate_ready') {
+    return {
+      kind: 'checkpoint',
+      title: 'Workspace handoff ready',
+      body: firstOf(p.summary, p.message, 'Export proof is ready.'),
+      tone: 'success',
+    };
   }
   return null;
 };
 
-const filterEventsForJob = (events, activeJobId) =>
-  (events || []).filter((ev) => {
-    if (!ev) return false;
-    if (!activeJobId) return true;
-    const evJob = ev.job_id || ev.jobId;
-    return !evJob || evJob === activeJobId;
-  });
+const dedupeKey = (block) => {
+  if (!block) return '';
+  if (block.kind === 'user_message') return `${block.kind}:${block.id}`;
+  if (block.kind === 'tool_use') {
+    return `${block.kind}:${block.tool}:${block.title}:${block.input}:${block.status}:${block.result}`;
+  }
+  return `${block.kind}:${block.title || ''}:${block.content || block.body || ''}:${block.status || ''}`;
+};
+
+const pushUnique = (items, seen, block) => {
+  if (!block) return;
+  const key = dedupeKey(block);
+  if (key && seen.has(key)) return;
+  if (key) seen.add(key);
+  items.push(block);
+};
+
+const collapseReadSearchGroups = (items) => {
+  const out = [];
+  let group = null;
+
+  const flush = () => {
+    if (!group) return;
+    if (group.children.length === 1) out.push(group.children[0]);
+    else {
+      out.push({
+        kind: 'tool_group',
+        id: group.id,
+        ts: group.ts,
+        title: `${group.children.length} read/search operations`,
+        status: group.children.some((c) => c.status === 'failed') ? 'failed' : 'success',
+        children: group.children,
+      });
+    }
+    group = null;
+  };
+
+  for (const item of items) {
+    if (item.kind === 'tool_use' && READ_SEARCH_TOOLS.has(item.tool) && item.status !== 'running') {
+      if (!group) group = { id: `read-search-${item.id}`, ts: item.ts, children: [] };
+      group.children.push(item);
+      continue;
+    }
+    flush();
+    out.push(item);
+  }
+  flush();
+  return out;
+};
 
 export function buildThreadModel({ userMessages = [], events = [], activeJobId = null } = {}) {
   const idCounter = { n: 0 };
   const newId = (prefix) => `${prefix}_${idCounter.n++}`;
 
   const filteredEvents = filterEventsForJob(events, activeJobId);
-
   const userMsgs = (userMessages || [])
     .filter((m) => !activeJobId || !m?.jobId || m.jobId === activeJobId)
-    .filter((m) => (m?.body || '').trim().length > 0)
+    .filter((m) => text(m?.body).length > 0)
     .map((m) => ({
       ...m,
       ts: m.ts || Date.now(),
@@ -238,141 +443,22 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     }))
     .sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
-  /**
-   * HARD GUARANTEE: the first user message renders at index 0.
-   * - We pin the first message whose role is 'user' (assistant brain_guidance
-   *   messages can be timestamped earlier than the goal in some races - they
-   *   must NEVER be promoted to the top user prompt).
-   * - All other messages (subsequent user steering + assistant chat) flow
-   *   through restItems and are sorted by ts.
-   */
   const firstUserIdx = userMsgs.findIndex((m) => m.role === 'user');
   const firstUser = firstUserIdx >= 0 ? userMsgs[firstUserIdx] : null;
   const restUserMsgs = userMsgs.filter((_, i) => i !== firstUserIdx);
 
   const restItems = [];
-
-  /**
-   * Dedupe consecutive assistant messages with identical content. The backend
-   * emits brain_guidance both as a chat message (via UnifiedWorkspace's
-   * brainEvents effect) and as a job event - we only want to surface it once.
-   */
-  const lastAssistantContentRef = { value: null };
-  const pushAssistantOnce = (content, ts, id) => {
-    const trimmed = (content || '').trim();
-    if (!trimmed) return;
-    if (lastAssistantContentRef.value === trimmed) return;
-    lastAssistantContentRef.value = trimmed;
-    restItems.push({ kind: 'assistant_message', role: 'assistant', content: trimmed, ts, id });
-  };
+  const seen = new Set();
 
   for (const m of restUserMsgs) {
-    if (m.role === 'assistant') {
-      pushAssistantOnce(m.body, m.ts, m.id || newId('am'));
-    } else {
-      restItems.push({
-        kind: 'user_message',
-        role: 'user',
-        content: m.body,
-        ts: m.ts,
-        id: m.id || newId('um'),
-      });
-    }
+    pushUnique(restItems, seen, {
+      kind: m.role === 'assistant' ? 'assistant_message' : 'user_message',
+      role: m.role,
+      content: m.body,
+      ts: m.ts,
+      id: m.id || newId(m.role === 'assistant' ? 'am' : 'um'),
+    });
   }
-
-  /**
-   * Timeline compiler: one build_progress_card plus deduped
-   * repair_block rows keyed by failureDedupeKey / repairDedupeKey. Tool and
-   * phase micro-events update the card only — they are not rendered as pills.
-   */
-  let progressCard = null;
-  const failureRepairByKey = new Map();
-
-  const ensureProgress = (ts) => {
-    if (!progressCard) {
-      progressCard = createBuildProgressCard(newId('bpc'), ts);
-      restItems.push(progressCard);
-    }
-    return progressCard;
-  };
-
-  const applyProgressForEvent = (ev, ts) => {
-    const t = ev.type || ev.event_type || '';
-    const p = readPayload(ev);
-    const card = ensureProgress(ts);
-    const hi = routeEventToHighPhase(t, p, getPhase(ev));
-
-    if (t === 'job_started') {
-      bumpPhaseStatus(card.phases, 'planning', 'running');
-      recordPhaseAction(card.phases, 'planning', 'Intent queued', '');
-      return;
-    }
-    if (t === 'plan_created') {
-      bumpPhaseStatus(card.phases, 'planning', 'done');
-      bumpPhaseStatus(card.phases, 'building', 'running');
-      recordPhaseAction(card.phases, 'planning', 'Intent locked', '');
-      return;
-    }
-    if (t === 'verifier_started') {
-      bumpPhaseStatus(card.phases, 'building', 'done');
-      bumpPhaseStatus(card.phases, 'verifying', 'running');
-      recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), '');
-      return;
-    }
-    if (t === 'verifier_passed') {
-      bumpPhaseStatus(card.phases, 'verifying', 'done');
-      return;
-    }
-    if (FAILURE_EVENT_TYPES.test(t)) {
-      bumpPhaseStatus(card.phases, 'verifying', 'failed');
-      bumpPhaseStatus(card.phases, 'repairing', 'running');
-      return;
-    }
-    if (/^repair_/.test(t)) {
-      if (t === 'repair_started') bumpPhaseStatus(card.phases, 'repairing', 'running');
-      if (t === 'repair_completed') {
-        bumpPhaseStatus(card.phases, 'repairing', 'done');
-        bumpPhaseStatus(card.phases, 'verifying', 'running');
-      }
-      if (t === 'repair_failed') bumpPhaseStatus(card.phases, 'repairing', 'failed');
-      return;
-    }
-    if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
-      bumpPhaseStatus(card.phases, 'building', 'done');
-      bumpPhaseStatus(card.phases, 'verifying', 'done');
-      bumpPhaseStatus(card.phases, 'delivering', 'running');
-      const delLabel =
-        t === 'export_gate_ready'
-          ? 'Export gate'
-          : t === 'run_snapshot'
-          ? 'Runtime snapshot'
-          : 'Contract update';
-      recordPhaseAction(card.phases, 'delivering', delLabel, '');
-      return;
-    }
-    if (t === 'job_completed') {
-      bumpPhaseStatus(card.phases, 'planning', 'done');
-      bumpPhaseStatus(card.phases, 'building', 'done');
-      bumpPhaseStatus(card.phases, 'verifying', 'done');
-      bumpPhaseStatus(card.phases, 'repairing', 'done');
-      bumpPhaseStatus(card.phases, 'delivering', 'done');
-      return;
-    }
-    if (isToolEvent(t)) {
-      if (hi === 'planning') {
-        bumpPhaseStatus(card.phases, 'planning', 'running');
-        recordPhaseAction(card.phases, 'planning', deriveToolTitle(ev), t);
-        return;
-      }
-      if (hi === 'verifying') {
-        bumpPhaseStatus(card.phases, 'verifying', 'running');
-        recordPhaseAction(card.phases, 'verifying', deriveToolTitle(ev), t);
-        return;
-      }
-      bumpPhaseStatus(card.phases, 'building', 'running');
-      recordPhaseAction(card.phases, 'building', deriveToolTitle(ev), t);
-    }
-  };
 
   const sorted = [...filteredEvents]
     .map((ev) => ({ ev, ts: parseTs(ev) }))
@@ -380,148 +466,94 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
 
   for (const { ev, ts } of sorted) {
     const t = ev.type || ev.event_type || '';
-    if (!t) continue;
-    if (t === 'user_instruction' || t === 'workspace_transcript') continue;
-    if (t === 'dag_node_failed') continue;
-    if (t === 'brain_guidance' || t === 'message') continue;
+    if (!t || t === 'user_instruction' || t === 'workspace_transcript') continue;
 
-    applyProgressForEvent(ev, ts);
-
-    if (t === 'job_started') {
-      pushAssistantOnce(narrationJobStarted(), ts, newId('am'));
-      continue;
-    }
-
-    if (FAILURE_EVENT_TYPES.test(t)) {
-      const key = failureDedupeKey(ev, activeJobId);
-      const title = issueCardTitle(ev);
-      const summary =
-        t === 'verifier_failed'
-          ? humanVerificationFailureSummary(readPayload(ev))
-          : humanIssueSummary(ev);
-      const detail = technicalDetailLines(ev);
-      let item = failureRepairByKey.get(key);
-      if (item) {
-        item.repeatCount = (item.repeatCount || 1) + 1;
-        item.title = title;
-        item.narration = summary;
-        item.technicalDetail = detail;
-        if (item.status === 'success') item.status = 'needs_fix';
-      } else {
-        item = {
-          kind: 'repair_block',
-          id: newId('rb'),
+    if (t === 'brain_guidance' || t === 'message') {
+      const content = assistantTextForEvent(ev);
+      if (content) {
+        pushUnique(restItems, seen, {
+          kind: 'assistant_message',
+          role: 'assistant',
+          content,
           ts,
-          agent: '',
-          attempt: 0,
-          filesChanged: [],
-          status: 'needs_fix',
-          narration: summary,
-          title,
-          technicalDetail: detail,
-          repeatCount: 1,
-          dedupeKey: key,
-        };
-        failureRepairByKey.set(key, item);
-        restItems.push(item);
+          id: newId('am'),
+        });
       }
       continue;
     }
 
-    if (t === 'repair_started') {
-      const p = readPayload(ev);
-      const rk = repairDedupeKey(ev, activeJobId);
-      let item =
-        findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target) ||
-        failureRepairByKey.get(rk);
-      const startNarration =
-        'Runtime proof found an issue. Applying a targeted fix and rerunning the check.';
-      if (!item) {
-        item = {
-          kind: 'repair_block',
-          id: newId('rb'),
+    if (t === 'job_started' || t === 'repair_started') {
+      const content = assistantTextForEvent(ev);
+      if (content) {
+        pushUnique(restItems, seen, {
+          kind: 'assistant_message',
+          role: 'assistant',
+          content,
           ts,
-          agent: '',
-          attempt: Number(p.attempt || 1),
-          filesChanged: [],
-          status: 'running',
-          narration: startNarration,
-          title: issueCardTitle(ev) || 'Fix pass',
-          technicalDetail: '',
-          repeatCount: 1,
-          dedupeKey: rk,
-        };
-        failureRepairByKey.set(rk, item);
-        restItems.push(item);
-      } else {
-        if (item.dedupeKey && item.dedupeKey !== rk) failureRepairByKey.set(rk, item);
-        item.status = 'running';
-        const fromPayload = Number(p.attempt);
-        item.attempt = Number.isFinite(fromPayload) && fromPayload > 0
-          ? fromPayload
-          : (item.attempt || 0) + 1;
-        item.narration = item.narration?.trim() ? item.narration : startNarration;
-        failureRepairByKey.set(rk, item);
+          id: newId('am'),
+        });
+      }
+    }
+
+    if (t === 'plan_created') {
+      const content = assistantTextForEvent(ev);
+      if (content) {
+        pushUnique(restItems, seen, {
+          kind: 'assistant_message',
+          role: 'assistant',
+          content,
+          ts,
+          id: newId('am'),
+        });
+      }
+      const steps = extractPlanSteps(ev);
+      if (steps.length) {
+        pushUnique(restItems, seen, {
+          kind: 'todo_list',
+          title: 'TodoWrite',
+          steps,
+          ts,
+          id: newId('todo'),
+        });
       }
       continue;
     }
 
-    if (t === 'repair_completed' || t === 'repair_failed') {
-      const p = readPayload(ev);
-      const rk = repairDedupeKey(ev, activeJobId);
-      const fc = Array.isArray(p.files_changed) ? p.files_changed : Array.isArray(p.files) ? p.files : [];
-      let item =
-        failureRepairByKey.get(rk) ||
-        findFailureCardByStepKey(failureRepairByKey, activeJobId, p.step_key || p.repair_target);
-      if (item) {
-        item.status = t === 'repair_completed' ? 'success' : 'failed';
-        if (fc.length) {
-          const prev = new Set((item.filesChanged || []).map(String));
-          for (const f of fc) prev.add(String(f));
-          item.filesChanged = [...prev];
-        }
-        const extra = narrateBuildEvent(ev);
-        if (extra && t === 'repair_completed' && !item.narration?.trim()) item.narration = extra;
-      }
+    const checkpoint = checkpointForEvent(ev);
+    if (checkpoint) {
+      pushUnique(restItems, seen, { ...checkpoint, ts, id: newId('cp') });
       continue;
     }
 
     if (t === 'job_completed') {
-      pushAssistantOnce(narrateBuildEvent(ev) || 'Workspace files are ready.', ts, newId('am'));
-      restItems.push({
-        kind: 'delivery_card',
-        narration:
-          'Open Preview for the live surface and Proof for export readiness. Send a follow-up here anytime to steer the next pass.',
+      const content = assistantTextForEvent(ev);
+      if (content) {
+        pushUnique(restItems, seen, {
+          kind: 'assistant_message',
+          role: 'assistant',
+          content,
+          ts,
+          id: newId('am'),
+        });
+      }
+      pushUnique(restItems, seen, {
+        kind: 'delivery',
+        title: 'Done',
+        body: 'Open Preview for the live surface and Proof for the evidence trail.',
         ts,
         id: newId('dl'),
       });
       continue;
     }
 
-    if (t === 'plan_created') {
-      pushAssistantOnce(
-        narrateBuildEvent(ev) || 'I parsed the request and am moving through the workspace runtime loop.',
+    const tool = toolBlockForEvent(ev);
+    if (tool) {
+      pushUnique(restItems, seen, {
+        kind: 'tool_use',
         ts,
-        newId('am'),
-      );
-      const steps = extractPlanSteps(ev);
-      if (steps.length) {
-        restItems.push({ kind: 'plan_block', title: 'Execution checklist', steps, ts, id: newId('pb') });
-      }
-      continue;
-    }
-
-    if (t === 'export_gate_ready' || t === 'run_snapshot' || t === 'contract_delta_created') {
-      continue;
-    }
-
-    if (isToolEvent(t)) {
-      continue;
-    }
-
-    const fallback = narrateBuildEvent(ev);
-    if (fallback && /^(phase_|workspace_|goal_)/.test(t)) {
-      pushAssistantOnce(fallback, ts, newId('am'));
+        id: newId('tu'),
+        ...tool,
+      });
     }
   }
 
@@ -537,16 +569,11 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       id: firstUser.id || newId('um'),
     });
   }
-  for (const item of restItems) out.push(item);
 
+  for (const item of collapseReadSearchGroups(restItems)) out.push(item);
   return out;
 }
 
-/**
- * deriveCurrentActivity — what is the system doing right NOW?
- * Returns null if nothing active.
- * Used by the pinned ActiveStepBanner above the composer.
- */
 export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) {
   const filtered = filterEventsForJob(events, activeJobId);
   if (!filtered.length) return null;
@@ -555,70 +582,51 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     .map((ev) => ({ ev, ts: parseTs(ev) }))
     .sort((a, b) => b.ts - a.ts);
 
-  // Walk back to find the latest meaningful active event.
-  let activePhase = null;
-  let runningTitle = null;
-  let runningStatus = 'running';
-  const recentFiles = [];
-  let totalSteps = 0;
-  let stepIndex = 0;
-  let detailLine = '';
-
+  const files = [];
   for (const { ev } of sorted) {
     const t = ev.type || ev.event_type || '';
     const p = readPayload(ev);
+    const path = pathFromPayload(p);
+    if (files.length < 3 && path && /file|code_mutation|workspace_files_updated/.test(t)) {
+      if (!files.includes(path)) files.push(path);
+    }
+  }
+
+  for (const { ev } of sorted) {
+    const t = ev.type || ev.event_type || '';
     if (!t) continue;
-
-    if (!activePhase && (t === 'phase_started' || t === 'dag_node_started' || t === 'step_started')) {
-      activePhase = prettyPhase(getPhase(ev));
-      runningTitle = p.name || activePhase || 'Working';
-      runningStatus = 'running';
+    const p = readPayload(ev);
+    if (t === 'job_completed' || t === 'export_gate_ready') {
+      return { title: 'Workspace ready', status: 'success', files, phase: '', detailLine: '' };
     }
-
-    if (!runningTitle && (t === 'verifier_started' || t === 'repair_started')) {
-      runningTitle = t === 'repair_started' ? 'Applying a targeted fix' : 'Checking runtime proof';
-      runningStatus = 'running';
+    if (FAILURE_EVENT_TYPES.test(t) || t === 'repair_failed') {
+      return {
+        title: 'Applying a focused fix',
+        status: 'running',
+        files,
+        phase: '',
+        detailLine: firstOf(p.check_id, p.step_key, p.error, p.failure_reason),
+      };
     }
-
-    if (t === 'verifier_started' || t === 'verifier_failed') {
-      const hint = String(p.file || p.path || p.proof_path || p.check_id || p.step_key || '').trim();
-      if (hint && !detailLine) detailLine = hint;
-    }
-
-    if (recentFiles.length < 3 && (t === 'file_written' || t === 'file_write' || t === 'code_mutation')) {
-      const f = p.file || p.path;
-      if (f && !recentFiles.includes(f)) recentFiles.push(f);
-    }
-
-    if (!totalSteps && Array.isArray(p.steps)) totalSteps = p.steps.length;
-    if (!stepIndex && typeof p.step_index === 'number') stepIndex = p.step_index + 1;
-  }
-
-  // Detect "complete" / "failed" terminal states from the most recent event
-  const latest = sorted[0]?.ev;
-  if (latest) {
-    const lt = latest.type || latest.event_type || '';
-    if (/^(export_gate_ready|run_snapshot|done|job_completed)$/.test(lt)) {
-      runningTitle = runningTitle || 'Workspace ready';
-      runningStatus = 'success';
-    } else if (/(failed|blocked|error)$/.test(lt)) {
-      runningTitle = runningTitle || 'Applying a targeted fix';
-      runningStatus = 'running';
+    const tool = toolBlockForEvent(ev);
+    if (tool) {
+      return {
+        title: tool.status === 'running' ? tool.title : `${tool.tool}: ${tool.title}`,
+        status: tool.status === 'failed' ? 'failed' : tool.status === 'success' ? 'success' : 'running',
+        files,
+        phase: tool.tool,
+        detailLine: firstOf(tool.input, tool.result),
+      };
     }
   }
 
-  if (!runningTitle && !activePhase && recentFiles.length === 0) return null;
-
-  return {
-    title: runningTitle || activePhase || 'Working',
-    phase: activePhase || '',
-    agent: '',
-    files: recentFiles,
-    status: runningStatus,
-    stepIndex: stepIndex || 0,
-    totalSteps: totalSteps || 0,
-    detailLine,
-  };
+  return null;
 }
 
-export const __test__ = { readPayload, parseTs, prettyPhase, getPhase, getAgent, isToolEvent };
+export const __test__ = {
+  readPayload,
+  parseTs,
+  toolBlockForEvent,
+  collapseReadSearchGroups,
+  filterEventsForJob,
+};

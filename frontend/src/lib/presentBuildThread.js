@@ -93,7 +93,7 @@ function humanJobFailedSummary(p) {
   if (short && short.length < 180 && !looksLikeRawLog(short)) {
     return short;
   }
-  return 'The run hit a blocking issue. Check technical details below, or send a follow-up to steer the next pass.';
+  return 'The last tool run failed. I am using the details below to patch the workspace and rerun proof.';
 }
 
 function looksLikeRawLog(s) {
