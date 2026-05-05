@@ -138,44 +138,6 @@ function ToolIcon({ tool, status }) {
   return <CircleDot size={14} />;
 }
 
-function RawDetails({ item }) {
-  const hasInput = String(item.input || '').trim().length > 0;
-  const hasResult = String(item.result || '').trim().length > 0;
-  const hasDetail = String(item.detail || '').trim().length > 0;
-  const hasRaw = item.raw && Object.keys(item.raw).length > 0;
-  if (!hasInput && !hasResult && !hasDetail && !hasRaw) return null;
-
-  return (
-    <details className="cc-tool-details">
-      <summary>Details</summary>
-      {hasInput ? (
-        <div className="cc-tool-detail-row">
-          <span>Input</span>
-          <pre>{String(item.input)}</pre>
-        </div>
-      ) : null}
-      {hasResult ? (
-        <div className="cc-tool-detail-row">
-          <span>Result</span>
-          <pre>{String(item.result)}</pre>
-        </div>
-      ) : null}
-      {hasDetail ? (
-        <div className="cc-tool-detail-row">
-          <span>Trace</span>
-          <pre>{String(item.detail)}</pre>
-        </div>
-      ) : null}
-      {hasRaw ? (
-        <div className="cc-tool-detail-row">
-          <span>Raw</span>
-          <pre>{JSON.stringify(item.raw, null, 2)}</pre>
-        </div>
-      ) : null}
-    </details>
-  );
-}
-
 function ToolUseBlock({ item, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen || item.status === 'failed' || item.status === 'running');
   return (
@@ -190,7 +152,6 @@ function ToolUseBlock({ item, defaultOpen = false }) {
       {open ? (
         <div className="cc-tool-body">
           {item.result ? <div className="cc-tool-result">{item.result}</div> : null}
-          <RawDetails item={item} />
         </div>
       ) : null}
     </div>

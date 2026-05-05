@@ -703,10 +703,6 @@ async def run_pipeline_job(
             "engine": "claude_code_tool_loop",
             "legacy_dag": False,
         })
-        await _emit("message", {
-            "content": "I am on it. I will inspect the workspace, use tools to write the app, run the proof checks, and keep the evidence visible as the build moves.",
-            "engine": "claude_code_tool_loop",
-        })
         await update_job_state(
             job_id,
             "running",

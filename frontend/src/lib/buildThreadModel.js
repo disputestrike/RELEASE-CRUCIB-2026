@@ -157,9 +157,15 @@ const extractPlanSteps = (event) => {
 
 const assistantTextForEvent = (event) => {
   const p = readPayload(event);
-  const body = firstOf(p.message, p.text, p.content, p.narration, p.summary);
-  if (body) return body;
   const t = event.type || event.event_type || '';
+  if (t === 'plan_created' && extractPlanSteps(event).length) {
+    return '';
+  }
+  const body = firstOf(p.message, p.text, p.content, p.narration, p.summary);
+  if (body && /i am on it|i will inspect the workspace|use tools to write/i.test(body)) {
+    return '';
+  }
+  if (body) return body;
   if (t === 'job_started') {
     return "I'm on it. I'll inspect the workspace, make the changes, run checks, and keep the evidence visible as the build moves.";
   }

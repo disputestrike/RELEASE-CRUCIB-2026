@@ -154,7 +154,7 @@ export function humanVerificationFailureSummary(p) {
   if (fr.includes('missing') && Array.isArray(missingArr) && missingArr.length) {
     return `Proof found missing pieces before handoff. I will align the workspace to the contract and continue.`;
   }
-  const subject = label === 'This step' ? 'This step' : `The ${label}`;
+  const subject = label === 'This step' ? 'The proof check' : `The ${label}`;
   return `${subject} did not pass yet. I am applying fixes and continuing the run.`;
 }
 

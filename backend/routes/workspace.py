@@ -452,22 +452,49 @@ async def resolve_workspace_session(
     resolved_project_id = str(projectId or "").strip() or _project_id_from_session_id(sessionId)
 
     if resolved_job_id:
-        job = await _load_job_for_session(resolved_job_id, user)
-        resolved_project_id = str(job.get("project_id") or resolved_project_id or resolved_job_id)
-        workspace = _project_workspace_path(resolved_project_id)
-        files = _collect_job_workspace_files(workspace, resolved_job_id)
-        return {
-            "success": True,
-            "session": _workspace_session_payload(
-                job=job,
-                job_id=resolved_job_id,
-                task_id=taskId,
-                project_id=resolved_project_id,
-                workspace=workspace,
-                files=files,
-                resolved_from="job",
-            ),
-        }
+        try:
+            job = await _load_job_for_session(resolved_job_id, user)
+            resolved_project_id = str(job.get("project_id") or resolved_project_id or resolved_job_id)
+            workspace = _project_workspace_path(resolved_project_id)
+            files = _collect_job_workspace_files(workspace, resolved_job_id)
+            return {
+                "success": True,
+                "session": _workspace_session_payload(
+                    job=job,
+                    job_id=resolved_job_id,
+                    task_id=taskId,
+                    project_id=resolved_project_id,
+                    workspace=workspace,
+                    files=files,
+                    resolved_from="job",
+                ),
+            }
+        except HTTPException as exc:
+            if exc.status_code != 404 or not resolved_project_id:
+                raise
+            logger.info(
+                "workspace session: stale job %s; falling back to latest job for project %s",
+                resolved_job_id,
+                resolved_project_id,
+            )
+            latest_job = await _load_latest_job_for_project(resolved_project_id, user)
+            if not latest_job or not latest_job.get("id"):
+                raise
+            latest_job_id = str(latest_job.get("id") or "").strip()
+            workspace = _project_workspace_path(str(latest_job.get("project_id") or resolved_project_id))
+            files = _collect_job_workspace_files(workspace, latest_job_id)
+            return {
+                "success": True,
+                "session": _workspace_session_payload(
+                    job=latest_job,
+                    job_id=latest_job_id,
+                    task_id=taskId,
+                    project_id=str(latest_job.get("project_id") or resolved_project_id),
+                    workspace=workspace,
+                    files=files,
+                    resolved_from="project_latest_job_after_stale_job",
+                ),
+            }
 
     if resolved_project_id:
         # Sidebar/project reopen often lands with only projectId. Recover latest
