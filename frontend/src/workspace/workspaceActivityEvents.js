@@ -54,6 +54,35 @@ export function formatWorkspaceActivityEvent(ev) {
       return name && name !== 'Step' ? `Retrying: ${name}` : 'Retrying step';
     case 'job_started':
       return 'Runtime started';
+    case 'claude_code_backend_selected':
+      return 'Claude Code backend selected';
+    case 'pipeline_dispatch':
+    case 'pipeline_started':
+      return 'Claude Code runtime started';
+    case 'legacy_steps_cleared':
+      return 'Legacy backend steps removed';
+    case 'plan_created':
+      return 'TodoWrite plan created';
+    case 'tool_call': {
+      const tool = payload.tool || payload.name || payload.tool_name || 'Tool';
+      const target = payload.input || payload.command || payload.path || payload.pattern || '';
+      return target ? `${tool}: ${String(target).slice(0, 120)}` : `${tool}: running`;
+    }
+    case 'tool_result': {
+      const tool = payload.tool || payload.name || payload.tool_name || 'Tool';
+      if (payload.success === false) return `${tool}: needs fix`;
+      return `${tool}: done`;
+    }
+    case 'verifier_started':
+      return 'Proof: running build checks';
+    case 'verifier_passed':
+      return 'Proof: build checks passed';
+    case 'verifier_failed':
+      return 'Proof: build check needs repair';
+    case 'repair_started':
+      return 'Repair: applying focused fix';
+    case 'repair_completed':
+      return payload.passed === false ? 'Repair: proof still needs work' : 'Repair: proof rerun complete';
     case 'job_completed':
       return 'Workspace ready';
     case 'job_status_changed': {

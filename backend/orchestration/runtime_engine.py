@@ -20,7 +20,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from backend.tool_executor import is_allowlisted_run_command
 
@@ -32,6 +32,8 @@ PARALLEL_READ_LIMIT = 10
 
 # Default max wall time for a single run_command (npm build, tests, etc.)
 _DEFAULT_CMD_TIMEOUT_S = float(os.environ.get("CRUCIB_SWARM_CMD_TIMEOUT_S", "600"))
+
+RuntimeEventCallback = Callable[[str, Dict[str, Any]], Awaitable[None] | None]
 
 THINKING_AGENTS = frozenset({
     "planner", "architect", "architecture", "security", "security_review",
@@ -269,6 +271,60 @@ READ_ONLY_TOOLS = {"read_file", "list_files", "search_files"}
 WRITE_TOOLS = {"write_file", "edit_file"}
 
 
+def _display_tool_name(tool_name: str) -> str:
+    return {
+        "read_file": "Read",
+        "list_files": "Glob",
+        "search_files": "Grep",
+        "write_file": "Write",
+        "edit_file": "Edit",
+        "run_command": "Bash",
+    }.get(str(tool_name or ""), str(tool_name or "Tool"))
+
+
+def _tool_input_label(tool_name: str, tool_input: Dict[str, Any]) -> str:
+    if tool_name == "run_command":
+        argv = tool_input.get("argv") if "argv" in tool_input else tool_input.get("command")
+        if isinstance(argv, list):
+            return " ".join(str(x) for x in argv)
+        return str(argv or "")
+    if tool_name == "search_files":
+        return str(tool_input.get("pattern") or "")
+    if tool_name == "list_files":
+        return str(tool_input.get("subdir") or ".")
+    return str(tool_input.get("path") or "")
+
+
+def _short_result(content: str, limit: int = 4000) -> str:
+    value = str(content or "")
+    if len(value) <= limit:
+        return value
+    return value[: limit - 20] + "\n[truncated]"
+
+
+def _path_from_write_result(content: str) -> Optional[str]:
+    raw = str(content or "").strip()
+    for prefix in ("[written:", "[edited:"):
+        if raw.startswith(prefix):
+            return raw[len(prefix):].rstrip("]").strip()
+    return None
+
+
+async def _emit_runtime_event(
+    on_event: Optional[RuntimeEventCallback],
+    event_type: str,
+    payload: Dict[str, Any],
+) -> None:
+    if on_event is None:
+        return
+    try:
+        result = on_event(event_type, payload)
+        if asyncio.iscoroutine(result):
+            await result
+    except Exception:
+        logger.debug("runtime_engine: event callback failed for %s", event_type, exc_info=True)
+
+
 # ─── Tool executor ────────────────────────────────────────────────────────────
 
 async def _execute_tool(tool_name: str, tool_input: Dict[str, Any], workspace_path: str) -> str:
@@ -291,6 +347,7 @@ async def _execute_tool(tool_name: str, tool_input: Dict[str, Any], workspace_pa
 async def _execute_tools_batch(
     tool_uses: List[Dict[str, Any]],
     workspace_path: str,
+    on_event: Optional[RuntimeEventCallback] = None,
 ) -> List[Dict[str, Any]]:
     """Execute tools. Parallelize only homogeneous read-only batches; otherwise sequential."""
 
@@ -301,19 +358,70 @@ async def _execute_tools_batch(
     def _pure_reads() -> bool:
         return names and all(n in READ_ONLY_TOOLS for n in names)
 
+    async def _run_one(tool: Dict[str, Any]) -> tuple[str, str]:
+        tool_input = tool.get("input", {}) or {}
+        tool_name = tool["name"]
+        display_name = _display_tool_name(tool_name)
+        input_label = _tool_input_label(tool_name, tool_input)
+        await _emit_runtime_event(
+            on_event,
+            "tool_call",
+            {
+                "tool_use_id": tool.get("id"),
+                "tool_name": tool_name,
+                "name": display_name,
+                "tool": display_name,
+                "input": input_label,
+                "path": tool_input.get("path"),
+                "pattern": tool_input.get("pattern"),
+                "command": input_label if tool_name == "run_command" else None,
+            },
+        )
+        result = await _execute_tool(tool_name, tool_input, workspace_path)
+        await _emit_runtime_event(
+            on_event,
+            "tool_result",
+            {
+                "tool_use_id": tool.get("id"),
+                "tool_name": tool_name,
+                "name": display_name,
+                "tool": display_name,
+                "input": input_label,
+                "path": tool_input.get("path"),
+                "pattern": tool_input.get("pattern"),
+                "command": input_label if tool_name == "run_command" else None,
+                "output": _short_result(result),
+                "success": not str(result).startswith(("[error", "[write rejected", "[edit failed", "[run_command rejected")),
+            },
+        )
+        written_path = _path_from_write_result(result)
+        if written_path:
+            await _emit_runtime_event(
+                on_event,
+                "file_written" if tool_name == "write_file" else "code_mutation",
+                {
+                    "path": written_path,
+                    "tool_use_id": tool.get("id"),
+                    "tool_name": tool_name,
+                    "summary": "File saved to the workspace." if tool_name == "write_file" else "Patch applied.",
+                },
+            )
+        return tool["id"], result
+
     if _pure_reads():
         semaphore = asyncio.Semaphore(PARALLEL_READ_LIMIT)
 
         async def _one(tool: Dict[str, Any]):
             async with semaphore:
-                return tool["id"], await _execute_tool(tool["name"], tool.get("input", {}), workspace_path)
+                return await _run_one(tool)
 
         pairs = await asyncio.gather(*[_one(t) for t in tool_uses])
         results_map = dict(pairs)
     else:
         results_map = {}
         for t in tool_uses:
-            results_map[t["id"]] = await _execute_tool(t["name"], t.get("input", {}) or {}, workspace_path)
+            tool_id, result = await _run_one(t)
+            results_map[tool_id] = result
 
     return [
         {"type": "tool_result", "tool_use_id": t["id"], "content": results_map.get(t["id"], "[no result]")}
@@ -372,6 +480,7 @@ async def run_agent_loop(
     workspace_path: str,
     call_llm: Callable,  # async fn(messages, system, tools, thinking) -> response dict
     max_iterations: int = MAX_LOOP_ITERATIONS,
+    on_event: Optional[RuntimeEventCallback] = None,
 ) -> Dict[str, Any]:
     """
     Run a while(True) agentic loop for a single agent.
@@ -447,7 +556,7 @@ async def run_agent_loop(
                 logger.warning("runtime_engine: agent=%s stop_reason=tool_use but no tool_use blocks", agent_name)
                 break
 
-            tool_results = await _execute_tools_batch(tool_uses, workspace_path)
+            tool_results = await _execute_tools_batch(tool_uses, workspace_path, on_event=on_event)
 
             # Track files written
             for result in tool_results:
@@ -484,6 +593,7 @@ async def run_text_agent_loop(
     workspace_path: str,
     call_text_llm: Callable,
     max_iterations: int = 5,
+    on_event: Optional[RuntimeEventCallback] = None,
 ) -> Dict[str, Any]:
     """Provider-neutral tool loop for non-native tool-calling models.
 
@@ -565,7 +675,7 @@ Do not wrap JSON in markdown.
                 break
             continue
 
-        results = await _execute_tools_batch(tool_uses, workspace_path)
+        results = await _execute_tools_batch(tool_uses, workspace_path, on_event=on_event)
         for result in results:
             content_str = str(result.get("content") or "")
             if content_str.startswith("[written:") or content_str.startswith("[edited:"):

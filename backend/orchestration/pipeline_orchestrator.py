@@ -23,6 +23,7 @@ import asyncio
 import json
 import logging
 import os
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -48,9 +49,42 @@ except ImportError:
 # ─── Pipeline feature flag ────────────────────────────────────────────────────
 
 def pipeline_enabled() -> bool:
-    """Return True unless explicitly disabled via env var."""
+    """Return True unless legacy DAG execution is explicitly re-enabled."""
+    allow_legacy = (os.environ.get("CRUCIBAI_ALLOW_LEGACY_DAG") or "").strip().lower()
+    if allow_legacy not in {"1", "true", "yes", "on"}:
+        return True
     val = os.environ.get("CRUCIBAI_USE_PIPELINE", "1").strip().lower()
     return val not in ("0", "false", "no", "off")
+
+
+def _command_argv(value: Any, default: List[str]) -> List[str]:
+    if isinstance(value, list):
+        out = [str(item).strip() for item in value if str(item).strip()]
+        return out or list(default)
+    if isinstance(value, str) and value.strip():
+        try:
+            return shlex.split(value)
+        except ValueError:
+            return value.strip().split()
+    return list(default)
+
+
+def _todo_steps_from_plan(plan: Dict[str, Any]) -> List[Dict[str, str]]:
+    manifest = plan.get("file_manifest") if isinstance(plan, dict) else []
+    file_count = len(manifest) if isinstance(manifest, list) else 0
+    build_cmd = " ".join(_command_argv(plan.get("build_command"), ["npm", "run", "build"]))
+    return [
+        {"id": "inspect", "label": "Inspect scaffold and existing workspace", "status": "completed"},
+        {
+            "id": "generate",
+            "label": f"Build the requested app files{f' ({file_count} planned)' if file_count else ''}",
+            "status": "pending",
+        },
+        {"id": "install", "label": "Install dependencies from the generated package manifest", "status": "pending"},
+        {"id": "verify", "label": f"Run proof check: {build_cmd}", "status": "pending"},
+        {"id": "repair", "label": "Patch any failing build output and verify again", "status": "pending"},
+        {"id": "deliver", "label": "Expose preview, files, and proof", "status": "pending"},
+    ]
 
 
 # ─── Stage timeouts ───────────────────────────────────────────────────────────
@@ -280,8 +314,8 @@ async def _stage_generate(
     from backend.orchestration.runtime_engine import run_agent_loop, run_text_agent_loop
 
     manifest_text = "\n".join(plan.get("file_manifest") or [])
-    build_cmd = " ".join(plan.get("build_command") or ["npm", "run", "build"])
-    install_cmd = " ".join(plan.get("install_command") or ["npm", "install"])
+    build_cmd = " ".join(_command_argv(plan.get("build_command"), ["npm", "run", "build"]))
+    install_cmd = " ".join(_command_argv(plan.get("install_command"), ["npm", "install"]))
 
     # Enrich goal with detected intent + requirements before passing to agent
     enriched_goal = goal
@@ -328,6 +362,7 @@ Fix every error. Stop only when the build exits with code 0."""
                 workspace_path=workspace_path,
                 call_llm=caller,
                 max_iterations=GEN_MAX_ITER,
+                on_event=on_progress,
             ),
             timeout=GEN_TIMEOUT_S,
         )
@@ -340,6 +375,7 @@ Fix every error. Stop only when the build exits with code 0."""
                 workspace_path=workspace_path,
                 call_text_llm=caller,
                 max_iterations=min(GEN_MAX_ITER, 20),  # text loop has higher per-iter overhead
+                on_event=on_progress,
             ),
             timeout=GEN_TIMEOUT_S,
         )
@@ -393,10 +429,17 @@ async def _stage_assemble(
     on_progress=None,
 ) -> Dict[str, Any]:
     """Stage 3: Run npm install and ensure the workspace is ready to build."""
-    install_cmd = plan.get("install_command") or ["npm", "install"]
+    install_cmd = _command_argv(plan.get("install_command"), ["npm", "install"])
 
     if on_progress:
-        await on_progress("assemble_started", {"install_command": install_cmd})
+        await on_progress("tool_call", {
+            "name": "Bash",
+            "tool": "Bash",
+            "tool_name": "run_command",
+            "command": " ".join(str(x) for x in install_cmd),
+            "input": " ".join(str(x) for x in install_cmd),
+            "title": "Install dependencies",
+        })
 
     # Check if package.json exists
     pkg_json = Path(workspace_path) / "package.json"
@@ -419,6 +462,19 @@ async def _stage_assemble(
     if not success:
         logger.warning("pipeline assemble: npm install exit=%d: %s", rc, stderr[:500])
 
+    if on_progress:
+        await on_progress("tool_result", {
+            "name": "Bash",
+            "tool": "Bash",
+            "tool_name": "run_command",
+            "command": " ".join(str(x) for x in install_cmd),
+            "input": " ".join(str(x) for x in install_cmd),
+            "title": "Install dependencies",
+            "success": success,
+            "returncode": rc,
+            "output": ((stdout or "") + ("\n" if stdout and stderr else "") + (stderr or ""))[:4000],
+        })
+
     return {
         "success": success,
         "returncode": rc,
@@ -436,10 +492,15 @@ async def _stage_verify(
     on_progress=None,
 ) -> Dict[str, Any]:
     """Stage 4: Run the build once and capture the result."""
-    build_cmd = plan.get("build_command") or ["npm", "run", "build"]
+    build_cmd = _command_argv(plan.get("build_command"), ["npm", "run", "build"])
 
+    command_text = " ".join(str(x) for x in build_cmd)
     if on_progress:
-        await on_progress("verify_started", {"build_command": build_cmd})
+        await on_progress("verifier_started", {
+            "check_id": command_text,
+            "command": command_text,
+            "title": "Run proof checks",
+        })
 
     rc, stdout, stderr = await asyncio.to_thread(
         _run_command_sync, build_cmd, workspace_path, VERIFY_TIMEOUT_S
@@ -453,6 +514,18 @@ async def _stage_verify(
         "pipeline verify: exit=%d, dist_exists=%s, passed=%s",
         rc, dist_exists, passed,
     )
+
+    if on_progress:
+        event_name = "verifier_passed" if passed else "verifier_failed"
+        await on_progress(event_name, {
+            "check_id": command_text,
+            "command": command_text,
+            "returncode": rc,
+            "dist_exists": dist_exists,
+            "summary": "Build completed and preview files are present." if passed else "Build check returned errors.",
+            "stdout": stdout[:4000],
+            "stderr": stderr[:4000],
+        })
 
     return {
         "passed": passed,
@@ -476,7 +549,8 @@ async def _stage_repair(
     from backend.orchestration.runtime_engine import run_agent_loop, run_text_agent_loop
 
     error_output = (verify_result.get("stderr") or "") + "\n" + (verify_result.get("stdout") or "")
-    build_cmd_str = " ".join(plan.get("build_command") or ["npm", "run", "build"])
+    build_cmd = _command_argv(plan.get("build_command"), ["npm", "run", "build"])
+    build_cmd_str = " ".join(build_cmd)
 
     # Build an actionable repair hint
     repair_hint = ""
@@ -515,6 +589,7 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
                 workspace_path=workspace_path,
                 call_llm=caller,
                 max_iterations=REPAIR_MAX_ITER,
+                on_event=on_progress,
             ),
             timeout=REPAIR_TIMEOUT_S,
         )
@@ -527,12 +602,13 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
                 workspace_path=workspace_path,
                 call_text_llm=caller,
                 max_iterations=min(REPAIR_MAX_ITER, 10),
+                on_event=on_progress,
             ),
             timeout=REPAIR_TIMEOUT_S,
         )
 
     # Re-verify after repair
-    re_verify = await _stage_verify(workspace_path, plan)
+    re_verify = await _stage_verify(workspace_path, plan, on_progress=on_progress)
 
     logger.info(
         "pipeline repair: iterations=%d, files_written=%d, re_verify_passed=%s",
@@ -540,6 +616,13 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
         len(repair_result.get("files_written") or []),
         re_verify.get("passed"),
     )
+
+    if on_progress:
+        await on_progress("repair_completed", {
+            "passed": re_verify.get("passed", False),
+            "files_changed": repair_result.get("files_written") or [],
+            "summary": "Repair pass finished and proof was rerun.",
+        })
 
     return {
         "repair_result": repair_result,
@@ -580,6 +663,7 @@ async def run_pipeline_job(
     """
     from backend.orchestration.runtime_state import (
         append_job_event,
+        clear_steps,
         update_job_state,
     )
     from backend.orchestration.event_bus import publish
@@ -612,8 +696,22 @@ async def run_pipeline_job(
             logger.warning("pipeline[%s] could not resolve workspace_path: %s", job_id, _wpe)
 
     try:
-        await _emit("pipeline_started", {"goal": goal[:200], "workspace": workspace_path})
-        await update_job_state(job_id, "running")
+        await clear_steps(job_id, reason="claude_code_backend_replaced_legacy_dag")
+        await _emit("pipeline_started", {
+            "goal": goal[:200],
+            "workspace": workspace_path,
+            "engine": "claude_code_tool_loop",
+            "legacy_dag": False,
+        })
+        await _emit("message", {
+            "content": "I am on it. I will inspect the workspace, use tools to write the app, run the proof checks, and keep the evidence visible as the build moves.",
+            "engine": "claude_code_tool_loop",
+        })
+        await update_job_state(
+            job_id,
+            "running",
+            extra={"current_phase": "claude_code_runtime", "engine": "claude_code_tool_loop"},
+        )
 
         # ── Stage 1: Plan ────────────────────────────────────────────────────
         await _emit("stage_started", {"stage": "plan", "label": "Planning your build"})
@@ -633,6 +731,13 @@ async def run_pipeline_job(
                 "summary": goal[:200],
             }
         stages_completed.append("plan")
+        await _emit("plan_created", {
+            "summary": plan.get("summary") or goal[:200],
+            "build_type": plan.get("build_type"),
+            "stack": plan.get("stack"),
+            "file_manifest": (plan.get("file_manifest") or [])[:120],
+            "steps": _todo_steps_from_plan(plan),
+        })
         await _emit("stage_completed", {
             "stage": "plan",
             "file_count": len(plan.get("file_manifest") or []),
@@ -656,6 +761,12 @@ async def run_pipeline_job(
                 scaffold_files = write_scaffold_to_workspace(workspace_path, app_name)
                 logger.info("pipeline[%s] scaffold injected: %d files (app=%s)", job_id, len(scaffold_files), app_name)
                 await _emit("scaffold_ready", {"app_name": app_name, "files": len(scaffold_files)})
+                for scaffold_path in scaffold_files[:80]:
+                    await _emit("file_written", {
+                        "path": str(scaffold_path).replace("\\", "/"),
+                        "summary": "Scaffold file saved to the workspace.",
+                        "source": "claude_code_scaffold",
+                    })
             except Exception as _se:
                 logger.warning("pipeline[%s] scaffold injection failed (non-fatal): %s", job_id, _se)
 
@@ -741,7 +852,7 @@ async def run_pipeline_job(
             await _emit("job_failed", {
                 "stages": stages_completed,
                 "elapsed_seconds": elapsed,
-                "failure_reason": "Build did not pass after generate + repair",
+                "failure_reason": "Claude Code tool loop needs another pass; build proof is still failing.",
                 "build_stderr": (verify_result.get("stderr") or "")[:500],
             })
 

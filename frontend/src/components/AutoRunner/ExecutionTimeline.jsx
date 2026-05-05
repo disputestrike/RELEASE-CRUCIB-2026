@@ -3,11 +3,125 @@
  * SVG/CSS status icons, filter tabs, expandable inline logs + deep detail.
  * Props: steps, events, job, onRetryStep, onJumpToCode, isConnected
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { RefreshCw, Code2, ChevronDown, ChevronRight } from 'lucide-react';
 import './ExecutionTimeline.css';
 
 const FILTERS = ['All', 'Active', 'Errors', 'Retries'];
+
+const CLAUDE_RUNTIME_EVENTS = new Set([
+  'claude_code_backend_selected',
+  'pipeline_dispatch',
+  'pipeline_started',
+  'legacy_steps_cleared',
+  'plan_created',
+  'tool_call',
+  'tool_result',
+  'file_written',
+  'code_mutation',
+  'verifier_started',
+  'verifier_passed',
+  'verifier_failed',
+  'repair_started',
+  'repair_completed',
+  'repair_failed',
+  'job_completed',
+  'job_failed',
+]);
+
+const payloadOf = (event) => {
+  if (event?.payload && typeof event.payload === 'object') return event.payload;
+  try {
+    return JSON.parse(event?.payload_json || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const typeOf = (event) => event?.type || event?.event_type || '';
+
+const isClaudeRuntimeEvent = (event) => {
+  const payload = payloadOf(event);
+  return CLAUDE_RUNTIME_EVENTS.has(typeOf(event)) || payload.engine === 'claude_code_tool_loop';
+};
+
+const isLegacyAgentStep = (step) => {
+  const key = String(step?.step_key || '').toLowerCase();
+  const agent = String(step?.agent_name || '').toLowerCase();
+  const phase = String(step?.phase || '').toLowerCase();
+  return key.startsWith('agents.') || agent.startsWith('agents.') || phase === 'orchestration';
+};
+
+const compact = (value, max = 220) => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+};
+
+const titleCase = (value) =>
+  String(value || '')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const eventStatus = (type, payload) => {
+  if (type === 'tool_result' && payload.success === false) return 'failed';
+  if (/failed|error|blocked/i.test(type)) return 'failed';
+  if (/started|call|dispatch/i.test(type)) return 'running';
+  return 'completed';
+};
+
+const eventTitle = (type, payload) => {
+  if (type === 'plan_created') return 'TodoWrite plan created';
+  if (type === 'pipeline_started') return 'Claude Code runtime started';
+  if (type === 'legacy_steps_cleared') return 'Legacy backend steps removed';
+  if (type === 'tool_call') return `${payload.tool || payload.name || 'Tool'} ${compact(payload.input || payload.command || payload.path, 80)}`.trim();
+  if (type === 'tool_result') return `${payload.tool || payload.name || 'Tool'} result`;
+  if (type === 'file_written') return `Write ${String(payload.path || 'file').split('/').pop()}`;
+  if (type === 'code_mutation') return `Edit ${String(payload.path || 'file').split('/').pop()}`;
+  if (type === 'verifier_started') return payload.title || 'Run proof checks';
+  if (type === 'verifier_passed') return 'Proof checks passed';
+  if (type === 'verifier_failed') return 'Proof check failed';
+  if (type === 'repair_started') return 'Repair pass started';
+  if (type === 'repair_completed') return 'Repair pass completed';
+  if (type === 'job_completed') return 'Workspace ready';
+  if (type === 'job_failed') return 'Run needs another pass';
+  return titleCase(type) || 'Runtime event';
+};
+
+const buildClaudeRows = (events) =>
+  (events || [])
+    .filter(isClaudeRuntimeEvent)
+    .map((event, index) => {
+      const payload = payloadOf(event);
+      const type = typeOf(event);
+      const status = eventStatus(type, payload);
+      const input = payload.input || payload.command || payload.path || payload.pattern || '';
+      const output =
+        payload.output ||
+        payload.summary ||
+        payload.message ||
+        payload.failure_reason ||
+        payload.stderr ||
+        '';
+      return {
+        id: event.id || `${type}-${index}`,
+        is_event: true,
+        status,
+        step_key: eventTitle(type, payload),
+        agent_name: payload.tool || payload.name || payload.tool_name || 'Claude Code',
+        phase: 'claude_code_runtime',
+        input,
+        output: compact(output, 1400),
+        result_json: payload,
+        created_at: (() => {
+          const ts = event.created_at || event.ts || event.timestamp;
+          return typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts;
+        })(),
+        order_index: index,
+      };
+    });
 
 function StatusIcon({ status }) {
   switch (status) {
@@ -64,17 +178,22 @@ export default function ExecutionTimeline({
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
+  const claudeRuntimeActive = useMemo(() => events.some(isClaudeRuntimeEvent), [events]);
+  const timelineRows = useMemo(
+    () => (claudeRuntimeActive ? buildClaudeRows(events) : steps.filter((step) => !isLegacyAgentStep(step))),
+    [claudeRuntimeActive, events, steps],
+  );
 
   // Auto-expand every in-flight step (parallel batches can have multiple running)
   useEffect(() => {
-    const runningIds = steps.filter(s => s.status === 'running').map(s => s.id);
+    const runningIds = timelineRows.filter(s => s.status === 'running').map(s => s.id);
     if (!runningIds.length) return;
     setExpandedSteps(prev => {
       const next = new Set(prev);
       runningIds.forEach(id => next.add(id));
       return next;
     });
-  }, [steps]);
+  }, [timelineRows]);
 
   useEffect(() => {
     if (!userScrolled) {
@@ -98,9 +217,9 @@ export default function ExecutionTimeline({
     });
   };
 
-  const currentPhase = job?.current_phase || 'planning';
+  const currentPhase = claudeRuntimeActive ? 'Claude Code tool loop' : (job?.current_phase || 'planning');
 
-  const filteredSteps = steps.filter(s => {
+  const filteredSteps = timelineRows.filter(s => {
     switch (filter) {
       case 'Active': return ['running', 'verifying'].includes(s.status);
       case 'Errors': return ['failed', 'blocked'].includes(s.status);
@@ -109,8 +228,8 @@ export default function ExecutionTimeline({
     }
   });
 
-  const completedCount = steps.filter(s => s.status === 'completed').length;
-  const totalCount = steps.length;
+  const completedCount = timelineRows.filter(s => s.status === 'completed').length;
+  const totalCount = timelineRows.length;
 
   const getStepLogs = (stepId) =>
     events
@@ -170,9 +289,9 @@ export default function ExecutionTimeline({
       <div className="et-steps" ref={scrollRef} onScroll={handleScroll}>
         {filteredSteps.length === 0 ? (
           <div className="et-empty">
-            {steps.length === 0
-              ? 'Waiting for execution to begin. Steps will appear here in real-time.'
-              : 'No steps match the current filter.'}
+            {timelineRows.length === 0
+              ? 'Waiting for the Claude Code runtime to emit tool activity.'
+              : 'No events match the current filter.'}
           </div>
         ) : (
           filteredSteps.map(step => {
@@ -258,7 +377,7 @@ export default function ExecutionTimeline({
                 )}
 
                 {/* Actions for failed steps */}
-                {isFailed && (
+                {isFailed && !step.is_event && (
                   <div className="et-step-actions">
                     <button
                       className="et-action-btn"

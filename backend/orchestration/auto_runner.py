@@ -319,10 +319,9 @@ async def run_job_to_completion(
             {"mode": job.get("mode"), "goal": job.get("goal", ""), **_bp_meta},
         )
 
-        # ── Phase 4: FAST PATH for small targeted changes ─────────────────────
-        # If the workspace already has files and the goal is a targeted edit
-        # (≤3 files), skip the full DAG and patch in <30 seconds.
-        if not os.environ.get("CRUCIBAI_DISABLE_FAST_PATH", "").strip():
+        # Legacy shortcut is opt-in only. The default backend is the Claude
+        # Code tool loop for every request, including targeted edits.
+        if (os.environ.get("CRUCIBAI_ENABLE_FAST_PATH") or "").strip().lower() in {"1", "true", "yes", "on"}:
             _goal_text = (job.get("goal") or "").strip()
             _ws = workspace_path or ""
             try:
@@ -363,16 +362,16 @@ async def run_job_to_completion(
                             "duration_ms": fp_result.get("duration_ms", 0),
                         }
                     else:
-                        # Fast path failed — fall through to full DAG
+                        # Fast path failed; fall through to the Claude Code runtime.
                         logger.warning(
-                            "[FAST PATH] Failed (falling back to full DAG): %s",
+                            "[FAST PATH] Failed (falling back to Claude Code runtime): %s",
                             fp_result.get("error", "unknown"),
                         )
                         await append_job_event(job_id, "fast_path_fallback", {
                             "reason": fp_result.get("error", "unknown")
                         })
             except Exception as _fpe:
-                logger.warning("[FAST PATH] Exception (falling back to full DAG): %s", _fpe)
+                logger.warning("[FAST PATH] Exception (falling back to Claude Code runtime): %s", _fpe)
 
         # Claude Code fusion path: one persistent tool loop, then one verify/repair pass.
         # Legacy DAG fallback is sealed behind an explicit environment flag.

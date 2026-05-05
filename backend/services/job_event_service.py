@@ -16,6 +16,42 @@ SubscribeCallable = Callable[[str], Awaitable[Any]]
 UnsubscribeCallable = Callable[[str, Any], Awaitable[None]]
 StoredEventsCallable = Callable[..., Awaitable[list]]
 
+CLAUDE_RUNTIME_EVENT_TYPES = {
+    "claude_code_backend_selected",
+    "pipeline_dispatch",
+    "pipeline_started",
+    "plan_created",
+    "tool_call",
+    "tool_result",
+    "file_written",
+    "code_mutation",
+    "verifier_started",
+    "verifier_passed",
+    "verifier_failed",
+    "repair_started",
+    "repair_completed",
+    "legacy_steps_cleared",
+}
+
+
+def _is_legacy_agent_step(step: Dict[str, Any]) -> bool:
+    key = str(step.get("step_key") or "").strip().lower()
+    agent = str(step.get("agent_name") or "").strip().lower()
+    phase = str(step.get("phase") or "").strip().lower()
+    return (
+        key.startswith("agents.")
+        or agent.startswith("agents.")
+        or phase == "orchestration"
+    )
+
+
+def _claude_runtime_active(events: list) -> bool:
+    for event in events or []:
+        event_type = event.get("event_type") or event.get("type")
+        if event_type in CLAUDE_RUNTIME_EVENT_TYPES:
+            return True
+    return False
+
 
 async def _load_job(
     *,
@@ -51,6 +87,9 @@ async def get_job_steps_service(
         assert_owner=assert_owner,
     )
     steps = await runtime_state.get_steps(job_id)
+    events = await runtime_state.get_job_events(job_id, limit=120)
+    if _claude_runtime_active(events):
+        steps = [step for step in steps if not _is_legacy_agent_step(step)]
     return {"success": True, "steps": steps, "count": len(steps)}
 
 

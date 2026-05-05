@@ -155,6 +155,23 @@ class RuntimeStateAdapter:
         rows.sort(key=lambda s: (int(s.get("order_index") or 0), float(s.get("created_at") or 0)))
         return rows
 
+    async def clear_steps(self, job_id: str, *, reason: str = "claude_code_runtime") -> None:
+        """Remove persisted legacy step rows for a job.
+
+        The Claude Code runtime is event/transcript driven. Keeping historical
+        DAG rows makes the UI render the old multi-agent backend even when the
+        real runner has moved to a single tool loop.
+        """
+        existing = self._load_steps(job_id)
+        if not existing:
+            return
+        self._save_steps(job_id, [])
+        await self.append_job_event(
+            job_id,
+            "legacy_steps_cleared",
+            {"reason": reason, "removed": len(existing)},
+        )
+
     async def get_step(self, step_id: str) -> Optional[Dict[str, Any]]:
         for project_id in self._list_projects():
             for path in self._job_dir_candidates(project_id):
@@ -501,6 +518,10 @@ async def create_step(
 
 async def get_steps(job_id: str) -> List[Dict[str, Any]]:
     return await runtime_state.get_steps(job_id)
+
+
+async def clear_steps(job_id: str, *, reason: str = "claude_code_runtime") -> None:
+    await runtime_state.clear_steps(job_id, reason=reason)
 
 
 async def get_step(step_id: str) -> Optional[Dict[str, Any]]:

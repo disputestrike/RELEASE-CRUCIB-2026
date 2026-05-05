@@ -1,13 +1,45 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
-from ..services.runtime.execution_authority import build_runtime_native_step_defs
 from ..services.runtime_contract import require_canonical_db
 
 _logger = logging.getLogger(__name__)
+
+
+def _claude_code_plan(goal: str) -> Dict[str, Any]:
+    return {
+        "engine": "claude_code_tool_loop",
+        "goal": str(goal or ""),
+        "orchestration_mode": "claude_code_tool_loop",
+        "recommended_build_target": "full_system_generator",
+        "phase_count": 0,
+        "selected_agent_count": 0,
+        "selected_agents": [],
+        "legacy_job_steps": False,
+        "summary": str(goal or "")[:500],
+        "phases": [],
+        "steps": [
+            "Inspect the scaffold and workspace files",
+            "Write the requested application through file tools",
+            "Install dependencies",
+            "Run build proof checks",
+            "Repair failing output and verify again",
+            "Expose preview, files, and proof",
+        ],
+    }
+
+
+def _legacy_job_steps_enabled() -> bool:
+    return (os.environ.get("CRUCIBAI_LEGACY_JOB_STEPS") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 async def create_job_service(
@@ -38,7 +70,11 @@ async def create_job_service(
     if resolve_project_id is not None:
         project_id = await resolve_project_id(project_id, user)
 
-    plan = await generate_plan(body.goal, project_state=planner_project_state or {})
+    use_legacy_steps = _legacy_job_steps_enabled()
+    if use_legacy_steps:
+        plan = await generate_plan(body.goal, project_state=planner_project_state or {})
+    else:
+        plan = _claude_code_plan(body.goal)
     if update_last_build_state is not None:
         try:
             update_last_build_state(plan)
@@ -67,8 +103,10 @@ async def create_job_service(
             "created_at": _dt.now(_tz.utc).isoformat(),
         }
 
-    step_defs = build_runtime_native_step_defs(plan)
-    if pool:
+    if pool and use_legacy_steps:
+        from ..services.runtime.execution_authority import build_runtime_native_step_defs
+
+        step_defs = build_runtime_native_step_defs(plan)
         for idx, sd in enumerate(step_defs):
             await rs.create_step(
                 job_id=job["id"],
@@ -78,6 +116,15 @@ async def create_job_service(
                 depends_on=sd["depends_on"],
                 order_index=idx,
             )
+    elif pool:
+        await rs.append_job_event(
+            job["id"],
+            "claude_code_backend_selected",
+            {
+                "engine": "claude_code_tool_loop",
+                "legacy_job_steps": False,
+            },
+        )
     return {
         "success": True,
         "job": job,

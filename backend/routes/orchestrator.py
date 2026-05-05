@@ -367,6 +367,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         )
 
         runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
+        from ..services.job_service import _claude_code_plan, _legacy_job_steps_enabled
+
+        use_legacy_steps = _legacy_job_steps_enabled()
         try:
             from ..db_pg import get_pg_pool
 
@@ -415,10 +418,14 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             except Exception as exc:
                 logger.warning("orchestrator/plan: project FK preflight skipped: %s", exc)
 
-        # Generate plan
-        plan = await planner_mod.generate_plan(
-            body.goal, project_state=await _orchestrator_planner_project_state(user)
-        )
+        # Generate the public plan. The default workspace path is now the
+        # Claude Code runtime contract; the old multi-agent DAG is opt-in only.
+        if use_legacy_steps:
+            plan = await planner_mod.generate_plan(
+                body.goal, project_state=await _orchestrator_planner_project_state(user)
+            )
+        else:
+            plan = _claude_code_plan(body.goal)
         _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
         bt = normalize_build_target(
@@ -457,18 +464,25 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             except Exception as e:
                 logger.warning("Could not store build plan in DB: %s", e)
 
-        # Persist plan steps as job_steps
-        from ..orchestration.dag_engine import build_dag_from_plan
+        step_defs = []
+        if use_legacy_steps:
+            from ..orchestration.dag_engine import build_dag_from_plan
 
-        step_defs = build_dag_from_plan(plan)
-        for idx, sd in enumerate(step_defs):
-            await runtime_state.create_step(
-                job_id=job["id"],
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
+            step_defs = build_dag_from_plan(plan)
+            for idx, sd in enumerate(step_defs):
+                await runtime_state.create_step(
+                    job_id=job["id"],
+                    step_key=sd["step_key"],
+                    agent_name=sd["agent_name"],
+                    phase=sd["phase"],
+                    depends_on=sd["depends_on"],
+                    order_index=idx,
+                )
+        else:
+            await runtime_state.append_job_event(
+                job["id"],
+                "claude_code_backend_selected",
+                {"engine": "claude_code_tool_loop", "legacy_job_steps": False},
             )
 
         from ..orchestration.capability_notice import capability_notice_lines
