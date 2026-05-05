@@ -44,7 +44,7 @@ describe('workspaceActivityEvents', () => {
         type: 'code_repair_applied',
         payload_json: JSON.stringify({ failure_type: 'syntax_error', files: ['src/App.jsx'] }),
       }),
-    ).toBe('Fix applied after syntax error: App.jsx');
+    ).toBe('Repair applied after syntax error: App.jsx');
   });
 
   test('formats repair and artifact delta events', () => {
@@ -53,7 +53,7 @@ describe('workspaceActivityEvents', () => {
         type: 'code_repair_applied',
         payload: { failure_type: 'syntax_error', files: ['src/App.jsx'] },
       }),
-    ).toBe('Fix applied after syntax error: App.jsx');
+    ).toBe('Repair applied after syntax error: App.jsx');
     expect(formatWorkspaceActivityEvent({ type: 'artifact_delta', payload: { added: 2, changed: 3, removed: 1 } })).toBe(
       'Files changed: 2 added, 3 updated, 1 removed',
     );
@@ -61,7 +61,7 @@ describe('workspaceActivityEvents', () => {
 
   test('formats failure and infrastructure events', () => {
     expect(formatWorkspaceActivityEvent({ type: 'job_failed', payload: { failure_reason: 'preview_gate_failed' } })).toBe(
-      'Proof failed - checking error',
+      'Proof failed - details available',
     );
     expect(formatWorkspaceActivityEvent({ type: 'step_infrastructure_failure', payload: {} })).toBe(
       'Infrastructure issue: run stopped for a host or dependency failure',

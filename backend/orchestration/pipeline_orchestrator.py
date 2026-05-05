@@ -836,8 +836,8 @@ async def run_pipeline_job(
             await _emit("job_failed", {
                 "stages": stages_completed,
                 "elapsed_seconds": elapsed,
-                "failure_reason": "Proof did not pass after the repair pass.",
-                "message": "Proof did not pass after the repair pass. See the failed check output for the exact error.",
+                "failure_reason": "Proof failed on the build command.",
+                "message": "The generated app did not build yet. Details include the exact command output.",
                 "build_stderr": str(error_excerpt)[:1200],
             })
 

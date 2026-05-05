@@ -51,7 +51,7 @@ function eventToReplayStep(event, index) {
       ? steps.map((step) => `+ ${typeof step === 'string' ? step : step?.label || step?.title || step?.name || 'Planned task'}`)
       : [];
     return {
-      name: 'Build plan',
+      name: 'Work checklist',
       before: 'User goal received',
       change: lines.length ? lines.join('\n') : '+ Build scope prepared',
       after: 'Plan is available to the runtime',
@@ -109,15 +109,15 @@ function eventToReplayStep(event, index) {
       name: 'Proof needs fix',
       before: payload.command || payload.check_id || 'Proof check',
       change: compact(payload.failure_reason || payload.message || payload.summary || payload.stderr || 'Build proof did not pass'),
-      after: 'Next fix pass continuing',
+      after: 'Proof error stays visible',
     };
   }
 
   if (type === 'repair_started') {
     return {
-      name: 'Fix pass',
+      name: 'Repair pass',
       before: compact(payload.errors_preview || payload.failure_reason || 'Proof issue detected'),
-      change: '+ Applying repair',
+      change: '+ Repairing from proof output',
       after: 'Proof will run again',
     };
   }
@@ -125,7 +125,7 @@ function eventToReplayStep(event, index) {
   if (type === 'repair_completed') {
     const files = Array.isArray(payload.files_changed) ? payload.files_changed : Array.isArray(payload.files) ? payload.files : [];
     return {
-      name: 'Fix applied',
+      name: 'Workspace patched',
       before: 'Workspace before fix',
       change: files.length ? files.map((f) => `+ ${f}`).join('\n') : '+ Fix completed',
       after: payload.passed === false ? 'Proof still needs work' : 'Proof rerun complete',

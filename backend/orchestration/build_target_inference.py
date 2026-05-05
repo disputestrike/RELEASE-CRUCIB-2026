@@ -230,7 +230,7 @@ def ask_for_build_target(goal: str) -> dict:
             "options": [
                 {
                     "id": "full_system_generator",
-                    "label": "Full system generator",
+                    "label": "Workspace build",
                     "description": "..."
                 },
                 ...

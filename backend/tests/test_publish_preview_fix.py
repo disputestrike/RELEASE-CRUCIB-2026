@@ -144,6 +144,28 @@ def test_preview_serve_root_requires_index_html(workspace_root):
     assert preview_serve._resolve_serve_root(workspace) == (workspace / "dist").resolve()
 
 
+def test_preview_serve_does_not_mark_vite_source_index_live(workspace_root):
+    from backend.routes import preview_serve
+
+    workspace = workspace_root / "source-only-vite"
+    workspace.mkdir()
+    (workspace / "package.json").write_text(
+        '{"scripts":{"build":"vite build"},"dependencies":{"@vitejs/plugin-react":"latest"}}',
+        encoding="utf-8",
+    )
+    (workspace / "index.html").write_text(
+        '<!doctype html><div id="root"></div><script type="module" src="/src/main.tsx"></script>',
+        encoding="utf-8",
+    )
+    (workspace / "src").mkdir()
+    (workspace / "src" / "main.tsx").write_text("console.log('source only')", encoding="utf-8")
+
+    assert preview_serve._resolve_serve_root(workspace) is None
+    snapshot = preview_serve._preview_readiness_snapshot(workspace, None)
+    assert snapshot["state"] == "waiting_for_build"
+    assert snapshot["reason"] == "source_index_needs_build"
+
+
 def test_dev_preview_base_prefers_request_origin(monkeypatch):
     from backend.routes import preview_serve
 

@@ -199,7 +199,7 @@ export default function WorkspaceOrchestrationBoard({
       <section className="wsv4-grid-2">
         <div className="wsv4-card">
           <div className="wsv4-card-head">
-            <div className="wsv4-card-title"><Bot size={16} /> Build plan</div>
+            <div className="wsv4-card-title"><Bot size={16} /> Work checklist</div>
             <button type="button" className="wsv4-link-btn" onClick={() => onOpenPane('preview')}>Open preview</button>
           </div>
           <div className="wsv4-plan-summary">{safeString(plan?.summary) || safeString(plan?.headline) || 'Full-stack execution plan anchored to this workspace.'}</div>

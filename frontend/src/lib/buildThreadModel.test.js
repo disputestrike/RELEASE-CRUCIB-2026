@@ -21,7 +21,7 @@ test('compiles job events into a code-agent transcript instead of a phase card',
 
   expect(items[0]).toMatchObject({ kind: 'user_message', content: 'Build a SaaS dashboard' });
   expect(items.some((item) => item.kind === 'build_progress_card')).toBe(false);
-  expect(items.some((item) => item.kind === 'todo_list' && item.title === 'Build plan')).toBe(true);
+  expect(items.some((item) => item.kind === 'todo_list' && item.title === 'Work checklist')).toBe(true);
   expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Files')).toBe(true);
   expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Checks')).toBe(true);
 });

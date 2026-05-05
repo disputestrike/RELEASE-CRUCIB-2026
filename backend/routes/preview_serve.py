@@ -153,22 +153,44 @@ def _resolve_serve_root(workspace: Path) -> Optional[Path]:
         if candidate.exists() and candidate.is_dir() and (candidate / "index.html").exists():
             return candidate.resolve()
     if (workspace / "index.html").exists():
+        if _workspace_root_index_needs_build(workspace):
+            return None
         return workspace.resolve()
     return None
+
+
+def _workspace_root_index_needs_build(workspace: Path) -> bool:
+    """Return True when root index.html is a source entry, not a built preview."""
+    index = workspace / "index.html"
+    if not index.exists() or not (workspace / "package.json").exists():
+        return False
+    try:
+        html = index.read_text(encoding="utf-8", errors="replace")[:12000]
+    except OSError:
+        return False
+    return bool(
+        re.search(r"""<script[^>]+type=(["'])module\1[^>]+src=(["'])/src/[^"']+\.(tsx|ts|jsx|js)\2""", html, re.I)
+        or re.search(r"""<script[^>]+src=(["'])/src/[^"']+\.(tsx|ts|jsx|js)\1""", html, re.I)
+    )
 
 
 def _preview_readiness_snapshot(workspace: Path, serve_root: Optional[Path]) -> Dict[str, Any]:
     """Return a compact preview state descriptor for UI and support."""
     checked_roots = [str(workspace / sub) for sub in ("build", "dist", "out", "public")]
     if serve_root is None:
+        reason = "workspace_not_found" if not workspace.exists() else "no_serve_root"
+        state = "waiting_for_workspace"
+        if workspace.exists() and _workspace_root_index_needs_build(workspace):
+            reason = "source_index_needs_build"
+            state = "waiting_for_build"
         return {
             "workspace_exists": workspace.exists(),
             "serve_root": None,
             "has_index": False,
             "file_count": 0,
             "checked_roots": checked_roots,
-            "state": "waiting_for_workspace",
-            "reason": "workspace_not_found" if not workspace.exists() else "no_serve_root",
+            "state": state,
+            "reason": reason,
         }
     try:
         files = [p for p in serve_root.rglob("*") if p.is_file()]
@@ -474,14 +496,25 @@ async def dev_preview(job_id: str, request: Request):
         readiness["materialize"] = materialize
 
     if serve_root is None:
+        preview_state = "waiting_for_workspace"
+        status = "pending"
+        detail = "Workspace not ready yet - build may still be running"
+        if materialize and not materialize.get("ok"):
+            preview_state = "build_failed"
+            status = "blocked"
+            detail = "The generated app did not produce a built preview. Check Proof for the exact build error."
+        elif readiness.get("reason") == "source_index_needs_build":
+            preview_state = "waiting_for_build"
+            status = "building"
+            detail = "Workspace has source files, but no built preview bundle is ready yet."
         return JSONResponse(
             status_code=202,
             content={
                 "dev_server_url": None,
-                "status": "pending",
-                "preview_state": "waiting_for_workspace",
+                "status": status,
+                "preview_state": preview_state,
                 "readiness": readiness,
-                "detail": "Workspace not ready yet — build may still be running",
+                "detail": detail,
             },
         )
 

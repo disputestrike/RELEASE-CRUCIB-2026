@@ -2055,7 +2055,7 @@ export default function App() {
               composerSubtitle={null}
               inputPlaceholder={
                 job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Tell me what to change - Enter sends in this conversation.'
+                  ? 'Write a message...'
                 : job?.status === 'blocked'
                     ? 'What should we do next? Enter sends and moves us forward.'
                     : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })

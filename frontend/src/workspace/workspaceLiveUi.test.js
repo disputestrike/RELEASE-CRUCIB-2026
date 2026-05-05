@@ -162,6 +162,7 @@ describe('derivePreviewReadiness', () => {
   test('shows remote URL as live', () => {
     const r = derivePreviewReadiness({ previewUrl: 'https://example.com', hasSandpack: false });
     expect(r.state).toBe('remote_live');
+    expect(r.label).toBe('Preview URL');
     expect(r.severity).toBe('ok');
   });
 
@@ -179,6 +180,26 @@ describe('derivePreviewReadiness', () => {
     });
     expect(r.state).toBe('waiting_for_index');
     expect(r.detail).toContain('7 files');
+  });
+
+  test('reports source-only preview as waiting for build instead of live', () => {
+    const r = derivePreviewReadiness({
+      previewStatus: 'building',
+      hasSandpack: false,
+      devPreviewStatus: { preview_state: 'waiting_for_build', readiness: { reason: 'source_index_needs_build' } },
+    });
+    expect(r.state).toBe('waiting_for_build');
+    expect(r.label).toBe('Building preview');
+  });
+
+  test('reports failed preview materialization as a real error', () => {
+    const r = derivePreviewReadiness({
+      hasSandpack: false,
+      devPreviewStatus: { status: 'blocked', preview_state: 'build_failed', detail: 'npm run build failed' },
+    });
+    expect(r.state).toBe('build_failed');
+    expect(r.severity).toBe('error');
+    expect(r.detail).toContain('npm run build failed');
   });
 
   test('reports completed build without preview target as warning', () => {

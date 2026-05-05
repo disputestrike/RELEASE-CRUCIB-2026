@@ -87,7 +87,7 @@ describe('PreviewPanel', () => {
         blockedDetail="Type error in App.jsx"
       />,
     );
-    expect(screen.getByText(/Preview fix continuing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Preview needs proof to pass/i)).toBeInTheDocument();
     expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
     expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Fixing/i);
   });
@@ -129,6 +129,6 @@ describe('PreviewPanel', () => {
     await waitFor(() => expect(axios.get).toHaveBeenCalled());
     expect(screen.getByTestId('sandpack-preview')).toBeInTheDocument();
     expect(screen.queryByText(/Starting live preview/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Booting a workspace dev server/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Checking the workspace for a built preview/i)).not.toBeInTheDocument();
   });
 });

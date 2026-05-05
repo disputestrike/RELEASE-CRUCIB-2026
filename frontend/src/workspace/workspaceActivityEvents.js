@@ -64,7 +64,7 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'runtime_resume_prepared':
       return 'Runtime resumed';
     case 'plan_created':
-      return 'Build plan ready';
+      return 'Work checklist ready';
     case 'tool_call': {
       const tool = payload.tool || payload.name || payload.tool_name || 'Tool';
       const target = payload.input || payload.command || payload.path || payload.pattern || '';
@@ -82,9 +82,9 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'verifier_failed':
       return 'Proof: build check needs repair';
     case 'repair_started':
-      return 'Fix: applying next change';
+      return 'Repairing from proof error';
     case 'repair_completed':
-      return payload.passed === false ? 'Fix: proof still needs work' : 'Fix: proof rerun complete';
+      return payload.passed === false ? 'Proof still needs work' : 'Proof rerun complete';
     case 'job_completed':
       return 'Workspace ready';
     case 'job_status_changed': {
@@ -92,7 +92,7 @@ export function formatWorkspaceActivityEvent(ev) {
       return status ? `Job status: ${status}` : null;
     }
     case 'job_failed': {
-      return 'Proof failed - checking error';
+      return 'Proof failed - details available';
     }
     case 'dag_node_started':
       return name && name !== 'Step' ? `Starting ${name}` : 'Starting next task';
@@ -120,8 +120,8 @@ export function formatWorkspaceActivityEvent(ev) {
       const files = Array.isArray(payload.files) ? payload.files : [];
       const label = payload.failure_type ? ` after ${String(payload.failure_type).replace(/_/g, ' ')}` : '';
       return files.length
-        ? `Fix applied${label}: ${files.slice(0, 3).map(shortPath).join(', ')}${files.length > 3 ? '...' : ''}`
-        : `Fix applied${label}`;
+        ? `Repair applied${label}: ${files.slice(0, 3).map(shortPath).join(', ')}${files.length > 3 ? '...' : ''}`
+        : `Repair applied${label}`;
     }
     case 'user_steering':
       return 'Steering applied';

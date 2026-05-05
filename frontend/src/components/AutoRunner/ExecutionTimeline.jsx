@@ -74,7 +74,7 @@ const eventStatus = (type, payload) => {
 };
 
 const eventTitle = (type, payload) => {
-  if (type === 'plan_created') return 'Build plan ready';
+  if (type === 'plan_created') return 'Work checklist ready';
   if (type === 'pipeline_started') return 'Runtime started';
   if (type === 'runtime_backend_selected') return 'Runtime selected';
   if (type === 'runtime_steps_cleared') return 'Runtime rows refreshed';
@@ -86,10 +86,10 @@ const eventTitle = (type, payload) => {
   if (type === 'verifier_started') return payload.title || 'Run proof checks';
   if (type === 'verifier_passed') return 'Proof checks passed';
   if (type === 'verifier_failed') return 'Proof check failed';
-  if (type === 'repair_started') return 'Fix pass started';
-  if (type === 'repair_completed') return 'Fix pass completed';
+  if (type === 'repair_started') return 'Repairing from proof error';
+  if (type === 'repair_completed') return 'Workspace patched';
   if (type === 'job_completed') return 'Workspace ready';
-  if (type === 'job_failed') return 'Proof failed - checking error';
+  if (type === 'job_failed') return 'Proof failed - details available';
   return titleCase(type) || 'Runtime event';
 };
 

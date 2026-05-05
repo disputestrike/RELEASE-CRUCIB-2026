@@ -190,7 +190,7 @@ const failureText = (event) => {
     if (plain && plain.length < 180 && !/claude|tool loop|npm err|stack trace|stderr|verification\.|steps_failed/i.test(plain)) {
       return plain;
     }
-    return 'The build check is still failing. I am using the error details to patch the workspace and rerun proof.';
+    return 'Proof is still failing. The check output is being used to repair the workspace and rerun proof.';
   }
   return humanIssueSummary(event);
 };
@@ -285,7 +285,7 @@ const toolBlockForEvent = (event) => {
   if (FAILURE_EVENT_TYPES.test(t)) {
     return {
       tool: t === 'verifier_failed' ? 'Checks' : 'Work',
-      title: firstOf(p.title, p.label, t === 'verifier_failed' ? 'Proof check failed' : 'Needs fix'),
+      title: firstOf(p.title, p.label, t === 'verifier_failed' ? 'Proof check failed' : 'Proof still failing'),
       input: firstOf(p.command, p.check_id, p.step_key, path),
       status: 'failed',
       result: failureText(event),
@@ -297,7 +297,7 @@ const toolBlockForEvent = (event) => {
   if (t === 'repair_started') {
     return {
       tool: 'Fix',
-      title: firstOf(p.title, p.label, 'Applying a fix'),
+      title: firstOf(p.title, p.label, 'Repairing from proof error'),
       input: firstOf(p.repair_target, p.step_key, p.file, p.path),
       status: 'running',
       result: '',
@@ -309,7 +309,7 @@ const toolBlockForEvent = (event) => {
     const files = Array.isArray(p.files_changed) ? p.files_changed : Array.isArray(p.files) ? p.files : [];
     return {
       tool: 'Fix',
-      title: 'Fix applied',
+      title: 'Workspace patched',
       input: files.join('\n'),
       status: 'success',
       result: firstOf(p.summary, p.message, files.length ? `${files.length} file(s) changed.` : 'Fix completed.'),
@@ -536,7 +536,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       if (steps.length) {
         pushUnique(restItems, seen, {
           kind: 'todo_list',
-          title: 'Build plan',
+          title: 'Work checklist',
           steps,
           ts,
           id: newId('todo'),
@@ -627,7 +627,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     }
     if (FAILURE_EVENT_TYPES.test(t) || t === 'repair_failed') {
       return {
-        title: 'Applying the next fix',
+        title: 'Reading proof error',
         status: 'running',
         files,
         phase: '',

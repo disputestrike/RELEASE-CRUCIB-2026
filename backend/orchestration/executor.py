@@ -948,7 +948,7 @@ async def handle_planning_step(
     if workspace_path:
         plan_path = "PLAN.md"
         body = (
-            f"# Build plan\n\n## Goal\n\n{job.get('goal', '').strip() or '(none)'}\n\n"
+            f"# Work checklist\n\n## Goal\n\n{job.get('goal', '').strip() or '(none)'}\n\n"
             f"## Step\n\n`{step.get('step_key', '')}`\n"
         )
         if _safe_write(workspace_path, plan_path, body):

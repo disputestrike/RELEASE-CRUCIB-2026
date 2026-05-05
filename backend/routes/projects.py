@@ -669,7 +669,7 @@ async def build_plan(
             f"Goal: {goal}",
             "Runtime: files, preview, and proof are driven by one tool run",
             "",
-            "Build plan:",
+            "Work checklist:",
         ]
         for step in plan.get("steps") or []:
             lines.append(f"- {step}")

@@ -23,7 +23,7 @@ _DIRECTORY_CONTRACTS: Dict[str, Dict[str, Any]] = {
         "required_all_of": [["server.py"]],
     },
     "full_system_generator": {
-        "label": "Full system generator (multi-stack)",
+        "label": "Workspace build (multi-stack)",
         "required_any_of": [["package.json"], ["pyproject.toml"], ["requirements.txt"]],
         "required_all_of": [],
     },

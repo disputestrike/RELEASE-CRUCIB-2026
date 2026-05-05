@@ -178,7 +178,7 @@ export default function PreviewPanel({
       : 'static';
   
   const statusLabel = useRemote
-    ? 'Live (dev server)'
+    ? 'Preview loaded'
     : status === 'blocked'
       ? 'Fixing'
       : status === 'building'
@@ -186,7 +186,7 @@ export default function PreviewPanel({
         : hasSandpack
         ? 'Preview (fallback)'
         : 'Next up';
-  const previewTitle = useRemote ? 'Live Preview' : 'Preview Console';
+  const previewTitle = useRemote ? 'Preview' : 'Preview Console';
   const readiness = derivePreviewReadiness({
     previewStatus: status,
     previewUrl: resolvedRemoteUrl || remotePreviewUrl,
@@ -197,7 +197,7 @@ export default function PreviewPanel({
   });
   const showBootingOverlay = isBootingDevPreview && !useRemote && !hasSandpack;
   const overlayMessage = devPreviewError || (showBootingOverlay
-    ? 'Booting a workspace dev server so preview updates without a manual refresh.'
+    ? 'Checking the workspace for a built preview.'
     : null);
   const overlayTitle = devPreviewError ? 'Preview issue' : 'Starting live preview';
   const activity = useMemo(() => {
@@ -261,7 +261,7 @@ export default function PreviewPanel({
           <div className="pp-preview-truth-banner pp-preview-truth-live" role="status">
             <span className="pp-preview-truth-icon">OK</span>
             <span className="pp-preview-truth-text">
-              Preview is live
+              Preview loaded
             </span>
           </div>
         )}
@@ -276,7 +276,7 @@ export default function PreviewPanel({
         />
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
-            <span className="pp-preview-blocked-title">Preview fix continuing automatically</span>
+            <span className="pp-preview-blocked-title">Preview needs proof to pass</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail.trim()
                 ? blockedDetail
@@ -295,11 +295,11 @@ export default function PreviewPanel({
 
         {status === 'blocked' && !hasSandpack && (
           <div className="pp-preview-blocked-full">
-            <span className="pp-preview-blocked-title">Fixing preview now</span>
+            <span className="pp-preview-blocked-title">Preview needs a passing build</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail
                 ? blockedDetail
-                : 'The brain is applying fixes and will keep this run moving automatically.'}
+                : 'The failed proof output is being used to repair the workspace.'}
             </p>
           </div>
         )}
@@ -309,9 +309,8 @@ export default function PreviewPanel({
             <div className="pp-preview-shimmer" />
             <span className="pp-preview-building-text">Assembling your preview...</span>
             <div className="pp-build-activity" role="status">
-              <div className="pp-build-activity-head">Generating workspace files...</div>
-              <div className="pp-build-activity-row">Current phase: {activity.phase}</div>
-              <div className="pp-build-activity-row">Active agent: {activity.agent}</div>
+              <div className="pp-build-activity-head">Preparing workspace files...</div>
+              <div className="pp-build-activity-row">Current work: {activity.phase}</div>
               {activity.files.length > 0 && (
                 <div className="pp-build-activity-list">
                   {activity.files.map((f, i) => (

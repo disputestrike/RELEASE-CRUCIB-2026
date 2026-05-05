@@ -266,7 +266,7 @@ export function isWorkspaceLiveBuildPhase({ jobStatus, stage }) {
  * PreviewPanel status: keep in sync with workspace run lifecycle (Sandpack / remote URL).
  */
 export function selectWorkspacePreviewStatus({ jobStatus, stage, isCompleted }) {
-  if (jobStatus === 'cancelled') return 'blocked';
+  if (jobStatus === 'cancelled' || jobStatus === 'failed' || jobStatus === 'blocked') return 'blocked';
   if (isCompleted) return 'ready';
   if (isWorkspaceLiveBuildPhase({ jobStatus, stage })) {
     return 'building';
@@ -293,8 +293,8 @@ export function derivePreviewReadiness({
   if (previewUrl) {
     return {
       state: 'remote_live',
-      label: 'Live URL',
-      detail: 'Rendering from a real preview or deployment URL.',
+      label: 'Preview URL',
+      detail: 'Serving the generated app preview.',
       severity: 'ok',
     };
   }
@@ -305,6 +305,24 @@ export function derivePreviewReadiness({
       label: 'Dev preview ready',
       detail: 'Backend preview server returned a loadable app URL.',
       severity: 'ok',
+    };
+  }
+  if (serverState === 'build_failed' || devPreviewStatus?.status === 'blocked') {
+    const logs = devPreviewStatus?.readiness?.materialize?.logs;
+    const lastLog = Array.isArray(logs) && logs.length ? logs[logs.length - 1]?.log : '';
+    return {
+      state: 'build_failed',
+      label: 'Build failed',
+      detail: devPreviewError || devPreviewStatus?.detail || lastLog || 'The generated app did not produce a built preview.',
+      severity: 'error',
+    };
+  }
+  if (serverState === 'waiting_for_build') {
+    return {
+      state: 'waiting_for_build',
+      label: 'Building preview',
+      detail: 'Source files are present, but the production preview bundle is not ready yet.',
+      severity: 'working',
     };
   }
   if (hasSandpack) {

@@ -81,7 +81,7 @@ DISPLAY_ORDER = [
 BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
     "full_system_generator": {
         "id": "full_system_generator",
-        "label": "Full system generator",
+        "label": "Workspace build",
         "tagline": "Single runtime build path for complex prompts across frontend, backend, data, infra, tests, and docs.",
         "guarantees": [
             "Routes complex prompts through one persistent build loop instead of the old fixed agent DAG.",

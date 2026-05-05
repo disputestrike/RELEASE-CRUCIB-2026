@@ -89,7 +89,7 @@ export default function KanbanBoard({ jobId }) {
               <strong>{controller.recommended_focus || 'Await new work'}</strong>
             </div>
             <div className={styles.controllerCard}>
-              <span className={styles.controllerLabel}>Active agents</span>
+              <span className={styles.controllerLabel}>Active work</span>
               <strong>{controller.active_agent_count || 0}</strong>
               {(controller.active_agents || []).length > 0 ? (
                 <span className={styles.controllerMeta}>{controller.active_agents.join(', ')}</span>
