@@ -854,6 +854,51 @@ export const Sidebar = ({
         </div>
       </div>
 
+      {workspaceHeadlineLayout ? (
+        <>
+          <div className="sidebar-workspace-command">
+            <button
+              type="button"
+              onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+              className="sidebar-workspace-new"
+            >
+              <Plus size={16} />
+              <span>New run</span>
+            </button>
+            <div className="sidebar-workspace-links">
+              <Link to="/app/agents" className={isActivePrefix('/app/agents') ? 'active' : ''}>
+                <FolderOpen size={15} />
+                <span>Agents</span>
+              </Link>
+              <Link to="/app/what-if" className={isActivePrefix('/app/what-if') ? 'active' : ''}>
+                <GitBranch size={15} />
+                <span>Simulate</span>
+              </Link>
+              <Link to="/app/settings" className={isActivePrefix('/app/settings') ? 'active' : ''}>
+                <Settings size={15} />
+                <span>Settings</span>
+              </Link>
+            </div>
+          </div>
+
+          {listItems.length > 0 && (
+            <div className="sidebar-section sidebar-section-tasks sidebar-section-tasks--workspace">
+              <div className="sidebar-section-header sidebar-section-header--workspace">
+                <h3 className="sidebar-section-title">Sessions</h3>
+                <span className="sidebar-section-count">{recentHistoryItems.length}</span>
+              </div>
+              <div className="sidebar-section-items sidebar-section-items-scroll">
+                {recentHistoryItems.length > 0 ? (
+                  recentHistoryItems.map((item) => renderHistoryRow(item))
+                ) : (
+                  <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No sessions yet'}</div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
       {/* Grouped navigation — Create / Work / Knowledge (Engine Room stays secondary, below) */}
       <nav className="sidebar-nav" aria-label="Primary">
         <div className="sidebar-nav-group-label">Create</div>
@@ -953,6 +998,8 @@ export const Sidebar = ({
           )}
         </div>
       </div>
+      )}
+        </>
       )}
 
       {/* Delete confirmation — portaled to body so .sidebar overflow/transform never traps it in the left rail */}

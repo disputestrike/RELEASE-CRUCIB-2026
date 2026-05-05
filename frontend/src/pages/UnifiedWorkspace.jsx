@@ -8,36 +8,9 @@ import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { useJobStream } from '../hooks/useJobStream';
-import {
-  Rocket,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  ShieldCheck,
-  Share2,
-  FileArchive,
-  Wrench,
-} from 'lucide-react';
-import GoalComposer from '../components/AutoRunner/GoalComposer';
-import PlanApproval from '../components/AutoRunner/PlanApproval';
-import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
-import ProofPanel from '../components/AutoRunner/ProofPanel';
-import EnhancedProofPanel from '../components/Proof/EnhancedProofPanel';
 import { workspaceZipQuery } from '../lib/workspaceZip';
-import SystemExplorer from '../components/AutoRunner/SystemExplorer';
-import FailureDrawer from '../components/AutoRunner/FailureDrawer';
-import BuildReplay from '../components/AutoRunner/BuildReplay';
-import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
-import Logo from '../components/Logo';
-import ActiveStepBanner from '../components/AutoRunner/ActiveStepBanner';
 import { deriveCurrentActivity } from '../lib/buildThreadModel';
-import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
-import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
-import WorkspaceLiveControl from '../components/AutoRunner/WorkspaceLiveControl';
-import PreviewPanel from '../components/AutoRunner/PreviewPanel';
-import ResizableDivider from '../components/AutoRunner/ResizableDivider';
-import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
-import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
+import ClaudeCodeWorkspace from '../components/ClaudeCodeWorkspace/ClaudeCodeWorkspace';
 import { DEFAULT_FILES } from '../components/workspace/constants';
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
 import {
@@ -71,18 +44,6 @@ import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
 
 const RIGHT_ORDER = ['preview', 'live', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
-
-const RIGHT_LABELS = {
-  preview: 'Preview',
-  live: 'Runtime',
-  proof: 'Proof',
-  systems: 'Systems',
-  explorer: 'Files',
-  replay: 'Replay',
-  failure: 'Issues',
-  timeline: 'Events',
-  code: 'Code',
-};
 
 function sanitizePane(raw) {
   const pane = String(raw || '').trim().toLowerCase();
@@ -1958,416 +1919,80 @@ export default function App() {
 
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
-    <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
-      <div className="arp-layout arp-layout--no-inner-rail">
-        <div className="arp-center-pane arp-center-pane--composer-bottom arp-center-pane--no-toolbar">
-
-          <header
-            className="uw-center-pane-brand"
-            data-build-active={
-              Boolean(loading || job?.status === 'running' || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))
-                ? 'true'
-                : undefined
-            }
-          >
-            <div className="uw-center-pane-brand-left">
-              <Logo
-                variant="full"
-                height={34}
-                href={null}
-                className="sidebar-logo uw-center-pane-brand-logo"
-                showTagline={false}
-                showWordmark
-                nameClassName="sidebar-logo-text"
-              />
-            </div>
-            {currentActivity?.title ? (
-              <div className="uw-builder-command-strip" aria-label="Current activity">
-                <span className="uw-builder-pill uw-builder-pill--activity">{currentActivity.title}</span>
-              </div>
-            ) : null}
-          </header>
-
-          <div className="arp-center-pane-scroll arp-center-pane-scroll--top">
-            <BrainGuidancePanel
-              userMessages={userChatMessages.filter((m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId)}
-              events={events}
-              jobStatus={job?.status}
-              jobId={effectiveJobId || null}
-              previewUrl={previewUrl}
-              proofTruthSurface={proof?.truth_surface || null}
-              token={token}
-              apiBase={API}
-              onUseSuggestion={(text) => setGoal(String(text || ''))}
-              hasTaskOrJobContext={Boolean(effectiveJobId || sessionTaskId || taskIdFromUrl)}
-              buildTargetMeta={buildTargetMeta}
-              buildTargetId={buildTarget}
-              isTyping={Boolean(loading || isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage }))}
-              omitInlineBrandChrome
-              onPause={handlePause}
-              onResume={handleResume}
-              onCancel={handleCancel}
-              onSync={reloadWorkspaceFromServer}
-              canSync={Boolean((effectiveProjectId || effectiveJobId) && token)}
-            />
-
-            {stage === 'plan' && plan && (
-              <PlanApproval
-                plan={plan}
-                estimate={estimate}
-                capabilityNotice={capabilityNotice}
-                buildTargetMeta={buildTargetMeta}
-                onApprove={() => handleApprove()}
-                onRunAuto={() => handleApprove()}
-                onEdit={() => setStage('input')}
-                loading={loading}
-              />
-            )}
-
-          </div>
-
-          <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
-
-          <div className="arp-center-pane-composer">
-            <GoalComposer
-              goal={goal}
-              onGoalChange={setGoal}
-              onSubmit={handleSend}
-              onStop={handleCancel}
-              jobStatus={job?.status}
-              loading={loading}
-              error={null}
-              errorRaw={null}
-              token={token}
-              onEstimateReady={setEstimate}
-              authLoading={authLoading}
-              buildTarget={buildTarget}
-              onBuildTargetChange={setBuildTarget}
-              buildTargets={buildTargets}
-              showExecutionTargets={false}
-              showContinuation={false}
-              showQuickChips={false}
-              showCostEstimator={false}
-              showSmartTags={false}
-              showComposerHeader={false}
-              enterSends
-              composerInputRows={3}
-              composerSubtitle={null}
-              inputPlaceholder={
-                job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Write a message...'
-                : job?.status === 'blocked'
-                    ? 'What should we do next? Enter sends and moves us forward.'
-                    : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
-                      ? 'Tell CrucibAI the next change. Enter sends.'
-                      : 'Describe the app, automation, or repair. Enter sends.'
-              }
-              composerVariant="workspace"
-            />
-          </div>
-        </div>
-
-        {!rightCollapsed && <ResizableDivider onResize={handleResize} onDoubleClick={handleResetWidth} />}
-
-        <div className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`} style={!rightCollapsed ? { width: `${rightWidth}px` } : undefined}>
-          <div className="arp-right-toggle" onClick={() => setRightCollapsed(!rightCollapsed)}>
-            {rightCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-          </div>
-
-          {!rightCollapsed && (
-            <>
-              <div className="arp-right-titlebar">
-                <div>
-                  <span className="arp-right-title">Evidence Console</span>
-                  <span className="arp-right-subtitle">{rightRailSubtitle || 'Runtime evidence'}</span>
-                </div>
-              </div>
-              <div className="arp-right-toolbar">
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Preview"
-                  aria-label="Preview"
-                  onClick={() => {
-                    setActivePane('preview');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Open preview when ready"
-                  aria-label="Open preview"
-                  onClick={() => {
-                    setActivePane('preview');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Rocket size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Proof"
-                  aria-label="Proof"
-                  onClick={() => {
-                    setActivePane('proof');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <ShieldCheck size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn"
-                  title="Systems"
-                  aria-label="Systems"
-                  onClick={() => {
-                    setActivePane('systems');
-                    setRightCollapsed(false);
-                  }}
-                >
-                  <Wrench size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
-                  title="Share — copy link"
-                  aria-label="Share"
-                  onClick={handleShare}
-                >
-                  <Share2 size={16} />
-                </button>
-                <div className="arp-mode-switch" title="Simple vs Dev — which tools show in the right pane">
-                  <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>
-                    Simple
-                  </button>
-                  <button type="button" className={`arp-ux-btn ${uxMode === 'pro' ? 'active' : ''}`} onClick={() => toggleUxMode('pro')}>
-                    Dev
-                  </button>
-                </div>
-                <SystemStatusHUD
-                  variant="minimal"
-                  connectionMode={connectionMode}
-                  activeAgentCount={activeAgentCount}
-                  jobStatus={job?.status}
-                  steps={steps}
-                  healthLatencyMs={healthMs}
-                  eventCount={events.length}
-                  proofItemCount={proofItemCount}
-                />
-              </div>
-              <div className="arp-pane-tabs">
-                {visibleRightPanes.map((p) => (
-                  <button key={p} type="button" className={`arp-pane-tab ${activePane === p ? 'active' : ''}`} onClick={() => setActivePane(p)}>
-                    {RIGHT_LABELS[p] || p.charAt(0).toUpperCase() + p.slice(1)}
-                  </button>
-                ))}
-              </div>
-              {rightRailSubtitle ? (
-                <div className="arp-right-context-line" title={rightRailSubtitle}>
-                  {rightRailSubtitle}
-                </div>
-              ) : null}
-
-              <div className="arp-pane-content">
-                {activePane === 'preview' && (
-                  <PreviewPanel
-                    previewUrl={previewUrl}
-                    status={previewStatus}
-                    sandpackFiles={sandpackFiles}
-                    sandpackDeps={sandpackDeps}
-                    filesReadyKey={filesReadyKey}
-                    sandpackIsFallback={sandpackIsFallback}
-                    blockedDetail={previewBlockedDetail}
-                    jobId={effectiveJobId}
-                    token={token}
-                    apiBase={API}
-                    jobStatus={job?.status}
-                    events={events}
-                  />
-                )}
-                {activePane === 'live' && (
-                  <WorkspaceLiveControl
-                    job={job}
-                    stage={stage}
-                    steps={steps}
-                    events={events}
-                    proof={proof}
-                    previewStatus={previewStatus}
-                    previewUrl={previewUrl}
-                    hasSandpack={Boolean(sandpackFiles && Object.keys(sandpackFiles).length > 0)}
-                    workspacePathCount={wsPaths.length}
-                    latestFailure={latestFailure}
-                    blockedDetail={previewBlockedDetail}
-                    connectionMode={connectionMode}
-                    isConnected={isConnected}
-                    proofItemCount={proofItemCount}
-                    activeAgentCount={activeAgentCount}
-                    healthLatencyMs={healthMs}
-                    onOpenPreview={() => setActivePane('preview')}
-                    onOpenProof={() => setActivePane('proof')}
-                    onOpenCode={() => setActivePane('code')}
-                    onOpenFailure={() => setActivePane('failure')}
-                  />
-                )}
-                {activePane === 'timeline' && (
-                  <ExecutionTimeline
-                    steps={steps}
-                    events={events}
-                    job={job}
-                    onRetryStep={handleRetryStep}
-                    onJumpToCode={jumpStepToCode}
-                    isConnected={isConnected}
-                    connectionMode={connectionMode}
-                  />
-                )}
-                {activePane === 'proof' && (() => {
-                  // Progressive enhancement: use EnhancedProofPanel when proof has the new artifact format
-                  const hasEnhancedProof = proof && (proof.final_status || proof.selected_stack || proof.generated_files?.count !== undefined);
-                  if (hasEnhancedProof) {
-                    return (
-                      <EnhancedProofPanel
-                        proof={proof}
-                        jobId={effectiveJobId}
-                        jobStatus={job?.status}
-                        openWorkspacePath={openWorkspacePath}
-                        onRepair={async () => {
-                          if (!token || !API || !effectiveJobId) return;
-                          try {
-                            const res = await axios.post(
-                              `${API}/jobs/${encodeURIComponent(effectiveJobId)}/repair-from-proof`,
-                              { job_id: effectiveJobId, selected_repair_target: 'validation' },
-                              { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 },
-                            );
-                            if (res.data?.success) {
-                              refresh && refresh();
-                            }
-                          } catch (e) {
-                            console.error('Repair from proof failed:', e);
-                          }
-                        }}
-                        onReplay={async () => {
-                          if (!token || !API || !effectiveJobId) return;
-                          try {
-                            const res = await axios.post(
-                              `${API}/jobs/${encodeURIComponent(effectiveJobId)}/replay`,
-                              {},
-                              { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 },
-                            );
-                            if (res.data?.replay_job_id) {
-                              navigate(`/app/workspace?jobId=${encodeURIComponent(res.data.replay_job_id)}`);
-                            }
-                          } catch (e) {
-                            console.error('Replay failed:', e);
-                          }
-                        }}
-                      />
-                    );
-                  }
-                  return (
-                    <ProofPanel
-                      proof={proof}
-                      jobId={effectiveJobId}
-                      jobStatus={job?.status}
-                      onExport={() => {}}
-                      openWorkspacePath={openWorkspacePath}
-                      milestoneBatch={milestoneBatch}
-                      repairQueueLen={repairQueueLen}
-                      onRepairComplete={refresh}
-                    />
-                  );
-                })()}
-                {activePane === 'systems' && uxMode === 'pro' && (
-                  <WorkspaceSystemsPanel
-                    jobId={effectiveJobId}
-                    projectId={effectiveProjectId}
-                    token={token}
-                    events={events}
-                    proof={proof}
-                  />
-                )}
-                {activePane === 'explorer' && uxMode === 'pro' && (
-                  <SystemExplorer
-                    steps={steps}
-                    proof={proof}
-                    job={job}
-                    projectId={effectiveProjectId}
-                    token={token}
-                    openWorkspacePath={openWorkspacePath}
-                  />
-                )}
-                {activePane === 'replay' && uxMode === 'pro' && <BuildReplay events={events} steps={steps} />}
-                {activePane === 'failure' &&
-                  (failureStep ? (
-                    <FailureDrawer
-                      step={failureStep}
-                      onRetry={handleRetryStep}
-                      onOpenCode={jumpStepToCode}
-                      onPauseJob={handleCancel}
-                      onClose={() => setFailedStep(null)}
-                      openWorkspacePath={openWorkspacePath}
-                    />
-                  ) : (
-                    <div className="arp-failure-empty">No repair steps need attention.</div>
-                  ))}
-                {activePane === 'code' && uxMode === 'pro' && (
-                  <div className="code-pane-wrap">
-                    <div className="code-pane-actions">
-                      {effectiveJobId && token ? (
-                        <button
-                          type="button"
-                          className="arp-topbar-btn"
-                          style={{ fontSize: 11 }}
-                          disabled={zipBusy}
-                          title={
-                            ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
-                              ? 'Download verified generated code and workspace files as a ZIP.'
-                              : 'Download an interim workspace ZIP. Final export stays gated until the build passes.'
-                          }
-                          onClick={handleDownloadWorkspaceZip}
-                        >
-                          <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                          {zipBusy
-                            ? 'Downloading...'
-                            : ['completed', 'success', 'done'].includes(String(job?.status || '').toLowerCase())
-                              ? 'Download Code'
-                              : String(job?.status || '').toLowerCase() === 'failed'
-                                ? 'Download Failed Workspace'
-                                : 'Download Draft Workspace'}
-                        </button>
-                      ) : null}
-                      <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>
-                    </div>
-                    <div className="code-pane-main">
-                      <WorkspaceFileTree
-                        paths={wsPaths}
-                        selectedPath={activeWsPath}
-                        onSelectPath={(p) => {
-                          setActiveWsPath(p);
-                          setTreeRevealTick((t) => t + 1);
-                        }}
-                        revealTick={treeRevealTick}
-                        loading={wsListLoading}
-                      />
-                      <WorkspaceFileViewer
-                        activePathPosix={activeWsPath}
-                        entry={wsFileCache[activeWsPath]}
-                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
-                        editorColorMode={editorColorMode}
-                        onTextChange={handleCodeChange}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+      <ClaudeCodeWorkspace
+        uxMode={uxMode}
+        toggleUxMode={toggleUxMode}
+        loading={loading}
+        job={job}
+        stage={stage}
+        currentActivity={currentActivity}
+        userChatMessages={userChatMessages}
+        effectiveJobId={effectiveJobId}
+        effectiveProjectId={effectiveProjectId}
+        sessionTaskId={sessionTaskId}
+        taskIdFromUrl={taskIdFromUrl}
+        goal={goal}
+        setGoal={setGoal}
+        handleSend={handleSend}
+        handleCancel={handleCancel}
+        authLoading={authLoading}
+        buildTarget={buildTarget}
+        setBuildTarget={setBuildTarget}
+        buildTargets={buildTargets}
+        buildTargetMeta={buildTargetMeta}
+        handlePause={handlePause}
+        handleResume={handleResume}
+        reloadWorkspaceFromServer={reloadWorkspaceFromServer}
+        rightCollapsed={rightCollapsed}
+        setRightCollapsed={setRightCollapsed}
+        rightWidth={rightWidth}
+        handleResize={handleResize}
+        handleResetWidth={handleResetWidth}
+        visibleRightPanes={visibleRightPanes}
+        activePane={activePane}
+        setActivePane={setActivePane}
+        rightRailSubtitle={rightRailSubtitle}
+        handleShare={handleShare}
+        connectionMode={connectionMode}
+        isConnected={isConnected}
+        activeAgentCount={activeAgentCount}
+        healthMs={healthMs}
+        events={events}
+        steps={steps}
+        proof={proof}
+        proofItemCount={proofItemCount}
+        previewUrl={previewUrl}
+        previewStatus={previewStatus}
+        sandpackFiles={sandpackFiles}
+        sandpackDeps={sandpackDeps}
+        filesReadyKey={filesReadyKey}
+        sandpackIsFallback={sandpackIsFallback}
+        previewBlockedDetail={previewBlockedDetail}
+        latestFailure={latestFailure}
+        failureStep={failureStep}
+        setFailedStep={setFailedStep}
+        handleRetryStep={handleRetryStep}
+        jumpStepToCode={jumpStepToCode}
+        token={token}
+        apiBase={API}
+        openWorkspacePath={openWorkspacePath}
+        milestoneBatch={milestoneBatch}
+        repairQueueLen={repairQueueLen}
+        refresh={refresh}
+        wsPaths={wsPaths}
+        activeWsPath={activeWsPath}
+        setActiveWsPath={setActiveWsPath}
+        treeRevealTick={treeRevealTick}
+        setTreeRevealTick={setTreeRevealTick}
+        wsListLoading={wsListLoading}
+        wsFileCache={wsFileCache}
+        traceByPath={traceByPath}
+        editorColorMode={editorColorMode}
+        handleCodeChange={handleCodeChange}
+        zipBusy={zipBusy}
+        handleDownloadWorkspaceZip={handleDownloadWorkspaceZip}
+        navigate={navigate}
+      />
     </WorkspaceNavProvider>
   );
 }

@@ -117,7 +117,7 @@ const toolNameFromCall = (p) => {
   if (/edit|patch|mutation|replace/.test(low)) return 'Edit';
   if (/grep|search/.test(low)) return 'Search';
   if (/web/.test(low)) return 'Web';
-  if (/todo|plan/.test(low)) return 'Plan';
+  if (/todo|plan/.test(low)) return 'Tasks';
   return raw ? titleCase(raw) : 'Work';
 };
 
@@ -536,7 +536,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       if (steps.length) {
         pushUnique(restItems, seen, {
           kind: 'todo_list',
-          title: 'Work checklist',
+          title: 'Tasks',
           steps,
           ts,
           id: newId('todo'),

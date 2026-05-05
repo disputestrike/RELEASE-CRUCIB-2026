@@ -1,0 +1,396 @@
+.ccw-root {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--uw-bg-root);
+  color: var(--uw-text);
+  overflow: hidden;
+}
+
+.ccw-layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) 10px auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--uw-bg-root);
+}
+
+.ccw-center {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: var(--uw-bg-root);
+}
+
+.ccw-header,
+.ccw-artifact-header {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-root);
+}
+
+.ccw-brand,
+.ccw-header-actions,
+.ccw-artifact-actions,
+.ccw-artifact-toolbar,
+.ccw-mode-switch,
+.ccw-pane-tab,
+.ccw-code-actions,
+.ccw-code-download {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ccw-brand {
+  min-width: 0;
+  gap: 12px;
+}
+
+.ccw-logo {
+  min-width: 0;
+}
+
+.ccw-state {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-elevated);
+  color: var(--uw-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 650;
+}
+
+.ccw-state--working {
+  color: var(--uw-accent-success);
+  border-color: color-mix(in srgb, var(--uw-accent-success) 35%, var(--uw-border-subtle));
+}
+
+.ccw-state--ready {
+  color: var(--uw-accent-success);
+}
+
+.ccw-state--attention {
+  color: var(--uw-accent-error);
+  border-color: color-mix(in srgb, var(--uw-accent-error) 42%, var(--uw-border-subtle));
+}
+
+.ccw-header-actions {
+  gap: 8px;
+  color: var(--uw-text-muted);
+  font-size: 12px;
+}
+
+.ccw-counter {
+  padding: 3px 7px;
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-surface);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ccw-icon-btn,
+.ccw-collapse-btn {
+  width: 31px;
+  height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-surface);
+  color: var(--uw-text-muted);
+  cursor: pointer;
+}
+
+.ccw-icon-btn:hover,
+.ccw-collapse-btn:hover {
+  color: var(--uw-text);
+  border-color: var(--uw-border-strong);
+}
+
+.ccw-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ccw-live-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--uw-border-subtle);
+  color: var(--uw-text);
+  background: var(--uw-bg-root);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ccw-live-strip small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--uw-text-muted);
+}
+
+.ccw-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--uw-accent-success);
+  box-shadow: 0 0 0 3px var(--uw-accent-success-dim);
+  flex: 0 0 auto;
+}
+
+.ccw-transcript {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--uw-bg-root);
+}
+
+.ccw-transcript .cc-thread {
+  width: min(940px, 100%);
+  margin: 0 auto;
+  padding: 18px 28px 26px;
+}
+
+.ccw-transcript .cc-thread-topbar {
+  min-height: 24px;
+}
+
+.ccw-transcript .cc-tool,
+.ccw-transcript .cc-checkpoint,
+.ccw-transcript .cc-message-col {
+  width: min(820px, calc(100% - 34px));
+}
+
+.ccw-composer {
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--uw-border-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--uw-bg-root) 72%, transparent), var(--uw-bg-root) 36%);
+}
+
+.ccw-composer .goal-composer {
+  width: min(900px, 100%);
+  margin: 0 auto;
+}
+
+.ccw-artifact-pane {
+  position: relative;
+  min-height: 0;
+  min-width: 300px;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  border-left: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-root);
+}
+
+.ccw-artifact-pane.is-collapsed {
+  width: 34px;
+  min-width: 34px;
+  display: block;
+  border-left: 1px solid var(--uw-border-subtle);
+}
+
+.ccw-collapse-btn {
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  z-index: 4;
+  background: var(--uw-bg-root);
+}
+
+.ccw-artifact-header {
+  padding-left: 52px;
+}
+
+.ccw-artifact-header strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.ccw-artifact-header span {
+  display: block;
+  max-width: min(420px, 48vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--uw-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ccw-artifact-actions {
+  gap: 6px;
+}
+
+.ccw-artifact-toolbar {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--uw-border-subtle);
+}
+
+.ccw-mode-switch {
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-surface);
+}
+
+.ccw-mode-switch button {
+  border: 0;
+  background: transparent;
+  color: var(--uw-text-muted);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ccw-mode-switch button.is-active {
+  background: var(--uw-bg-elevated);
+  color: var(--uw-text);
+}
+
+.ccw-pane-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px 0;
+  border-bottom: 1px solid var(--uw-border-subtle);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.ccw-pane-tab {
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--uw-text-muted);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ccw-pane-tab:hover {
+  color: var(--uw-text);
+}
+
+.ccw-pane-tab.is-active {
+  color: var(--uw-text);
+  border-bottom-color: var(--uw-text);
+}
+
+.ccw-pane-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.ccw-empty-pane {
+  padding: 16px;
+  color: var(--uw-text-muted);
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-surface);
+  font-size: 13px;
+}
+
+.ccw-code-pane {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.ccw-code-actions {
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  color: var(--uw-text-muted);
+  font-size: 12px;
+}
+
+.ccw-code-download {
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-surface);
+  color: var(--uw-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ccw-code-download:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ccw-code-main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(0, 1.6fr);
+  gap: 10px;
+}
+
+.ccw-artifact-pane .preview-panel,
+.ccw-artifact-pane .workspace-live-control,
+.ccw-artifact-pane .proof-panel,
+.ccw-artifact-pane .execution-timeline,
+.ccw-artifact-pane .system-explorer {
+  height: 100%;
+}
+
+@media (max-width: 980px) {
+  .ccw-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(320px, 45vh);
+  }
+
+  .ccw-layout > .resizable-divider {
+    display: none;
+  }
+
+  .ccw-artifact-pane,
+  .ccw-artifact-pane.is-collapsed {
+    width: 100% !important;
+    min-width: 0;
+    border-left: 0;
+    border-top: 1px solid var(--uw-border-subtle);
+  }
+
+  .ccw-artifact-pane.is-collapsed {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 720px) {
+  .ccw-header {
+    padding: 0 12px;
+  }
+
+  .ccw-header-actions .ccw-counter {
+    display: none;
+  }
+
+  .ccw-transcript .cc-thread {
+    padding: 14px 14px 22px;
+  }
+
+  .ccw-composer {
+    padding: 10px 12px 14px;
+  }
+}

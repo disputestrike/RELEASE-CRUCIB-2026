@@ -310,6 +310,20 @@
   word-break: break-word;
 }
 
+.cc-tool-code {
+  max-height: 280px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-panel);
+  color: var(--cc-text);
+  font-family: 'Fira Code', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
 .cc-tool-details {
   font-size: 11.5px;
   color: var(--cc-muted);
@@ -345,6 +359,18 @@
   color: var(--cc-text);
   font-size: 11px;
   line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cc-tool-detail-stack {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--cc-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }

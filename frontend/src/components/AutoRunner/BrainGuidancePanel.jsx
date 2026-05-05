@@ -41,6 +41,49 @@ const targetLabel = (meta, id) => {
   return 'Web app';
 };
 
+const compactText = (value, max = 520) => {
+  const raw = String(value || '').trim();
+  if (raw.length <= max) return { preview: raw, overflow: '' };
+  return {
+    preview: `${raw.slice(0, max).trimEnd()}...`,
+    overflow: raw,
+  };
+};
+
+const looksLikeCode = (value) => {
+  const s = String(value || '');
+  return s.includes('\n') && (/[{};]/.test(s) || /^\s*(import|export|const|let|function|class|<\w+)/m.test(s));
+};
+
+function ToolResult({ text, detail }) {
+  const { preview, overflow } = compactText(text);
+  if (!preview && !detail?.length) return null;
+  return (
+    <>
+      {preview ? (
+        looksLikeCode(preview) ? (
+          <pre className="cc-tool-code">{preview}</pre>
+        ) : (
+          <div className="cc-tool-result">{preview}</div>
+        )
+      ) : null}
+      {(overflow || detail?.length) ? (
+        <details className="cc-tool-details">
+          <summary>Details</summary>
+          {overflow ? <pre>{overflow}</pre> : null}
+          {detail?.length ? (
+            <div className="cc-tool-detail-stack">
+              {detail.map((line, i) => (
+                <div key={`${line}-${i}`}>{line}</div>
+              ))}
+            </div>
+          ) : null}
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 function BuildTargetChip({ meta, id }) {
   return (
     <span className="cc-target-chip">
@@ -132,7 +175,7 @@ function ToolIcon({ tool, status }) {
   if (/edit|write|file/.test(t)) return <Edit3 size={14} />;
   if (/read/.test(t)) return <FileText size={14} />;
   if (/grep|glob|search/.test(t)) return <Search size={14} />;
-  if (/todo/.test(t)) return <ListChecks size={14} />;
+  if (/todo|task/.test(t)) return <ListChecks size={14} />;
   if (/proof|check/.test(t)) return <ShieldCheck size={14} />;
   if (/fix/.test(t)) return <Wrench size={14} />;
   return <CircleDot size={14} />;
@@ -151,7 +194,7 @@ function ToolUseBlock({ item, defaultOpen = false }) {
       </button>
       {open ? (
         <div className="cc-tool-body">
-          {item.result ? <div className="cc-tool-result">{item.result}</div> : null}
+          <ToolResult text={item.result} detail={item.detail} />
         </div>
       ) : null}
     </div>
