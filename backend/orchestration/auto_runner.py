@@ -362,18 +362,18 @@ async def run_job_to_completion(
                             "duration_ms": fp_result.get("duration_ms", 0),
                         }
                     else:
-                        # Fast path failed; fall through to the Claude Code runtime.
+                        # Fast path failed; fall through to the persistent runtime.
                         logger.warning(
-                            "[FAST PATH] Failed (falling back to Claude Code runtime): %s",
+                            "[FAST PATH] Failed (falling back to persistent runtime): %s",
                             fp_result.get("error", "unknown"),
                         )
                         await append_job_event(job_id, "fast_path_fallback", {
                             "reason": fp_result.get("error", "unknown")
                         })
             except Exception as _fpe:
-                logger.warning("[FAST PATH] Exception (falling back to Claude Code runtime): %s", _fpe)
+                logger.warning("[FAST PATH] Exception (falling back to persistent runtime): %s", _fpe)
 
-        # Claude Code fusion path: one persistent tool loop, then one verify/repair pass.
+        # Fused build path: one persistent tool loop, then one verify/repair pass.
         # Legacy DAG fallback is sealed behind an explicit environment flag.
         try:
             from .pipeline_orchestrator import pipeline_enabled, run_pipeline_job

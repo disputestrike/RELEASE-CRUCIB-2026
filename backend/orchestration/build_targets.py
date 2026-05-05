@@ -82,9 +82,9 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
     "full_system_generator": {
         "id": "full_system_generator",
         "label": "Full system generator",
-        "tagline": "Claude Code tool-loop runtime for complex prompts across frontend, backend, data, infra, tests, and docs.",
+        "tagline": "Single runtime build path for complex prompts across frontend, backend, data, infra, tests, and docs.",
         "guarantees": [
-            "Routes complex prompts through one persistent Claude Code style tool loop instead of the old fixed agent DAG.",
+            "Routes complex prompts through one persistent build loop instead of the old fixed agent DAG.",
             "Uses file, search, edit, shell, verification, and repair events as the runtime contract.",
             "Fails explicitly when build proof still fails instead of silently downgrading to a scaffold or legacy pack.",
         ],

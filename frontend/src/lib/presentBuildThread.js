@@ -70,7 +70,7 @@ export function humanIssueSummary(ev) {
   const label = friendlyStepLabel(p.step_key, p.name);
   const fr = String(p.failure_reason || '').toLowerCase();
   if (fr.includes('browser_preview') || fr.includes('preview') || /preview/i.test(label)) {
-    return 'The preview proof found an issue in the generated workspace. I am applying a targeted fix and continuing the run.';
+    return 'The preview proof found an issue in the generated workspace. I am applying the next fix and continuing the run.';
   }
   if (fr.includes('api_smoke') || fr.includes('health') || /api health/i.test(label)) {
     return 'The API health check found a gap in the generated workspace. I am patching it and rerunning verification.';
@@ -93,7 +93,7 @@ function humanJobFailedSummary(p) {
   if (short && short.length < 180 && !looksLikeRawLog(short)) {
     return short;
   }
-  return 'The last tool run failed. I am using the details below to patch the workspace and rerun proof.';
+  return 'The last build step failed. I am using the details below to patch the workspace and rerun proof.';
 }
 
 function looksLikeRawLog(s) {
@@ -133,7 +133,7 @@ export function narrationJobStarted() {
 }
 
 export function narrationRepairStarted() {
-  return 'Running a fix pass - I found an issue in the generated workspace, so I am applying a targeted fix and keeping the run moving.';
+  return 'Running a fix pass. The generated workspace needs one more change, so I am patching it and keeping the run moving.';
 }
 
 export function narrationRepairCompleted() {
@@ -154,7 +154,8 @@ export function humanVerificationFailureSummary(p) {
   if (fr.includes('missing') && Array.isArray(missingArr) && missingArr.length) {
     return `Proof found missing pieces before handoff. I will align the workspace to the contract and continue.`;
   }
-  return `The ${label} did not pass yet. I am applying fixes and continuing the run.`;
+  const subject = label === 'This step' ? 'This step' : `The ${label}`;
+  return `${subject} did not pass yet. I am applying fixes and continuing the run.`;
 }
 
 export const __test__ = { readPayload, friendlyStepLabel, looksLikeRawLog };

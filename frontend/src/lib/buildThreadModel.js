@@ -1,10 +1,10 @@
 /*
- * Supplied-code transcript compiler.
+ * Builder transcript compiler.
  *
  * The center workspace must behave like a code-agent transcript, not a fixed
  * phase board. This model keeps the user's goal pinned first, then emits the
- * same kinds of blocks the supplied code renders: assistant text, thinking,
- * tool use, tool result, grouped read/search activity, todos, proof, and
+ * same kinds of blocks the best code builders render: assistant text, thinking,
+ * grouped progress, proof, and
  * handoff checkpoints.
  */
 
@@ -15,7 +15,8 @@ import {
   technicalDetailLines,
 } from './presentBuildThread';
 
-const READ_SEARCH_TOOLS = new Set(['Read', 'Grep', 'Glob', 'Search']);
+const INSPECTION_TOOLS = new Set(['Inspect', 'Search']);
+const FILE_TOOLS = new Set(['Files', 'Edit']);
 const FAILURE_EVENT_TYPES =
   /^(step_failed|job_failed|verifier_failed|assembly_failed|export_gate_blocked|error|dag_node_failed)$/;
 
@@ -110,15 +111,14 @@ const eventStatus = (type) => {
 const toolNameFromCall = (p) => {
   const raw = firstOf(p.name, p.tool_name, p.tool, p.command_name, p.kind);
   const low = raw.toLowerCase();
-  if (/bash|shell|terminal|cmd|command/.test(low)) return 'Bash';
-  if (/read|open|cat/.test(low)) return 'Read';
-  if (/write|create/.test(low)) return 'Write';
+  if (/bash|shell|terminal|cmd|command/.test(low)) return 'Checks';
+  if (/read|open|cat|glob|list/.test(low)) return 'Inspect';
+  if (/write|create/.test(low)) return 'Files';
   if (/edit|patch|mutation|replace/.test(low)) return 'Edit';
-  if (/grep|search/.test(low)) return 'Grep';
-  if (/glob|list/.test(low)) return 'Glob';
+  if (/grep|search/.test(low)) return 'Search';
   if (/web/.test(low)) return 'Web';
-  if (/todo/.test(low)) return 'TodoWrite';
-  return raw ? titleCase(raw) : 'Tool';
+  if (/todo|plan/.test(low)) return 'Plan';
+  return raw ? titleCase(raw) : 'Work';
 };
 
 const toolInputFromPayload = (p) =>
@@ -161,13 +161,13 @@ const assistantTextForEvent = (event) => {
   if (body) return body;
   const t = event.type || event.event_type || '';
   if (t === 'job_started') {
-    return "I'm on it. I'll inspect the request, edit the workspace, run checks, and keep the proof visible as the app takes shape.";
+    return "I'm on it. I'll inspect the workspace, make the changes, run checks, and keep the evidence visible as the build moves.";
   }
   if (t === 'plan_created' && !extractPlanSteps(event).length) {
     return 'I have the work scoped. I am moving into the code path now.';
   }
   if (t === 'repair_started') {
-    return 'I found the failing check and I am applying a focused fix.';
+    return 'The check failed. I am applying the next fix and rerunning proof.';
   }
   if (t === 'job_completed') {
     return 'The workspace has been updated and proof is ready to inspect.';
@@ -181,10 +181,10 @@ const failureText = (event) => {
   if (t === 'job_failed') {
     const p = readPayload(event);
     const plain = firstOf(p.message, p.summary, p.reason, p.failure_reason);
-    if (plain && plain.length < 180 && !/npm err|stack trace|stderr|verification\.|steps_failed/i.test(plain)) {
+    if (plain && plain.length < 180 && !/claude|tool loop|npm err|stack trace|stderr|verification\.|steps_failed/i.test(plain)) {
       return plain;
     }
-    return 'The last run failed. I am using the error details below to patch the workspace and rerun proof.';
+    return 'The build check is still failing. I am using the error details to patch the workspace and rerun proof.';
   }
   return humanIssueSummary(event);
 };
@@ -223,11 +223,11 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'file_written' || t === 'file_write') {
     return {
-      tool: 'Write',
-      title: base ? `Write ${base}` : 'Write file',
+      tool: 'Files',
+      title: base ? `Saved ${base}` : 'Saved file',
       input: path,
       status: 'success',
-      result: 'File saved to the workspace.',
+      result: 'File saved.',
       raw: p,
     };
   }
@@ -245,8 +245,8 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'workspace_files_updated') {
     return {
-      tool: 'Write',
-      title: 'Sync workspace files',
+      tool: 'Files',
+      title: 'Updated workspace files',
       input: path,
       status: 'success',
       result: firstOf(p.summary, p.message, 'Workspace files updated.'),
@@ -256,8 +256,8 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'verifier_started') {
     return {
-      tool: 'Bash',
-      title: firstOf(p.title, p.label, 'Run proof checks'),
+      tool: 'Checks',
+      title: firstOf(p.title, p.label, 'Running proof checks'),
       input: firstOf(p.command, p.check_id, p.step_key, 'runtime proof'),
       status: 'running',
       result: '',
@@ -267,7 +267,7 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'verifier_passed') {
     return {
-      tool: 'Bash',
+      tool: 'Checks',
       title: firstOf(p.title, p.label, 'Proof checks passed'),
       input: firstOf(p.command, p.check_id, p.step_key),
       status: 'success',
@@ -278,8 +278,8 @@ const toolBlockForEvent = (event) => {
 
   if (FAILURE_EVENT_TYPES.test(t)) {
     return {
-      tool: t === 'verifier_failed' ? 'Bash' : 'Tool',
-      title: firstOf(p.title, p.label, t === 'verifier_failed' ? 'Proof check failed' : 'Tool failed'),
+      tool: t === 'verifier_failed' ? 'Checks' : 'Work',
+      title: firstOf(p.title, p.label, t === 'verifier_failed' ? 'Proof check failed' : 'Needs fix'),
       input: firstOf(p.command, p.check_id, p.step_key, path),
       status: 'failed',
       result: failureText(event),
@@ -290,8 +290,8 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'repair_started') {
     return {
-      tool: 'Edit',
-      title: firstOf(p.title, p.label, 'Apply focused fix'),
+      tool: 'Fix',
+      title: firstOf(p.title, p.label, 'Applying a fix'),
       input: firstOf(p.repair_target, p.step_key, p.file, p.path),
       status: 'running',
       result: '',
@@ -302,7 +302,7 @@ const toolBlockForEvent = (event) => {
   if (t === 'repair_completed') {
     const files = Array.isArray(p.files_changed) ? p.files_changed : Array.isArray(p.files) ? p.files : [];
     return {
-      tool: 'Edit',
+      tool: 'Fix',
       title: 'Fix applied',
       input: files.join('\n'),
       status: 'success',
@@ -313,7 +313,7 @@ const toolBlockForEvent = (event) => {
 
   if (t === 'repair_failed') {
     return {
-      tool: 'Edit',
+      tool: 'Fix',
       title: 'Fix needs another pass',
       input: firstOf(p.repair_target, p.step_key, p.file, p.path),
       status: 'failed',
@@ -395,9 +395,16 @@ const pushUnique = (items, seen, block) => {
   items.push(block);
 };
 
-const collapseReadSearchGroups = (items) => {
+const collapseProgressGroups = (items) => {
   const out = [];
   let group = null;
+
+  const groupKind = (item) => {
+    if (item.kind !== 'tool_use' || item.status === 'running') return '';
+    if (INSPECTION_TOOLS.has(item.tool)) return 'inspect';
+    if (FILE_TOOLS.has(item.tool) && item.status === 'success') return 'files';
+    return '';
+  };
 
   const flush = () => {
     if (!group) return;
@@ -407,7 +414,10 @@ const collapseReadSearchGroups = (items) => {
         kind: 'tool_group',
         id: group.id,
         ts: group.ts,
-        title: `${group.children.length} read/search operations`,
+        tool: group.tool,
+        title: group.kind === 'files'
+          ? `${group.children.length} file updates`
+          : `${group.children.length} workspace checks`,
         status: group.children.some((c) => c.status === 'failed') ? 'failed' : 'success',
         children: group.children,
       });
@@ -416,8 +426,18 @@ const collapseReadSearchGroups = (items) => {
   };
 
   for (const item of items) {
-    if (item.kind === 'tool_use' && READ_SEARCH_TOOLS.has(item.tool) && item.status !== 'running') {
-      if (!group) group = { id: `read-search-${item.id}`, ts: item.ts, children: [] };
+    const kind = groupKind(item);
+    if (kind) {
+      if (!group || group.kind !== kind) {
+        flush();
+        group = {
+          id: `${kind}-${item.id}`,
+          ts: item.ts,
+          kind,
+          tool: kind === 'files' ? 'Files' : 'Inspect',
+          children: [],
+        };
+      }
       group.children.push(item);
       continue;
     }
@@ -510,7 +530,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
       if (steps.length) {
         pushUnique(restItems, seen, {
           kind: 'todo_list',
-          title: 'TodoWrite',
+          title: 'Build plan',
           steps,
           ts,
           id: newId('todo'),
@@ -570,7 +590,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
     });
   }
 
-  for (const item of collapseReadSearchGroups(restItems)) out.push(item);
+  for (const item of collapseProgressGroups(restItems)) out.push(item);
   return out;
 }
 
@@ -601,7 +621,7 @@ export function deriveCurrentActivity({ events = [], activeJobId = null } = {}) 
     }
     if (FAILURE_EVENT_TYPES.test(t) || t === 'repair_failed') {
       return {
-        title: 'Applying a focused fix',
+        title: 'Applying the next fix',
         status: 'running',
         files,
         phase: '',
@@ -627,6 +647,6 @@ export const __test__ = {
   readPayload,
   parseTs,
   toolBlockForEvent,
-  collapseReadSearchGroups,
+  collapseProgressGroups,
   filterEventsForJob,
 };

@@ -419,7 +419,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
                 logger.warning("orchestrator/plan: project FK preflight skipped: %s", exc)
 
         # Generate the public plan. The default workspace path is now the
-        # Claude Code runtime contract; the old multi-agent DAG is opt-in only.
+        # Fused runtime contract; the old multi-agent DAG is opt-in only.
         if use_legacy_steps:
             plan = await planner_mod.generate_plan(
                 body.goal, project_state=await _orchestrator_planner_project_state(user)

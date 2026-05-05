@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 try:
@@ -22,12 +24,16 @@ from backend.project_state import WORKSPACE_ROOT
 from backend.services.events import event_bus
 from backend.services.runtime.task_manager import task_manager
 
+logger = logging.getLogger(__name__)
+
 
 class RuntimeStateAdapter:
-    """RuntimeState compatibility adapter backed by runtime TaskManager storage.
+    """RuntimeState compatibility adapter backed by canonical Postgres state.
 
     This keeps older job/event/step service code working while all execution is
-    owned by RuntimeEngine + TaskManager.
+    owned by RuntimeEngine + TaskManager. Local TaskManager files remain a
+    development fallback, but deployed Railway reads must survive container
+    restarts and replica changes through the jobs/job_events/job_steps tables.
     """
 
     def __init__(self) -> None:
@@ -35,6 +41,111 @@ class RuntimeStateAdapter:
 
     def set_pool(self, pool: Any) -> None:
         self._pool = pool
+
+    def _json_text(self, value: Any) -> str:
+        return json.dumps(value if value is not None else {}, ensure_ascii=True, default=str)
+
+    def _json_loads(self, value: Any, default: Any) -> Any:
+        if value is None:
+            return default
+        if isinstance(value, (dict, list)):
+            return value
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="replace")
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return default
+        return default
+
+    def _to_jsonable(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {str(k): self._to_jsonable(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._to_jsonable(v) for v in value]
+        return value
+
+    def _row_dict(self, row: Any) -> Dict[str, Any]:
+        if not row:
+            return {}
+        try:
+            data = dict(row)
+        except Exception:
+            data = {k: getattr(row, k) for k in dir(row) if not k.startswith("_")}
+        return {str(k): self._to_jsonable(v) for k, v in data.items()}
+
+    def _job_row_to_view(self, row: Any) -> Dict[str, Any]:
+        data = self._row_dict(row)
+        if not data:
+            return {}
+        metadata = {
+            "source": "postgres_jobs",
+            "current_phase": data.get("current_phase"),
+            "retry_count": data.get("retry_count"),
+            "quality_score": data.get("quality_score"),
+        }
+        return {
+            "id": data.get("id"),
+            "project_id": data.get("project_id"),
+            "status": data.get("status"),
+            "mode": data.get("mode") or "guided",
+            "goal": data.get("goal") or "",
+            "user_id": data.get("user_id"),
+            "created_at": data.get("created_at"),
+            "updated_at": data.get("updated_at"),
+            "started_at": data.get("started_at"),
+            "completed_at": data.get("completed_at"),
+            "current_phase": data.get("current_phase"),
+            "retry_count": data.get("retry_count"),
+            "quality_score": data.get("quality_score"),
+            "error_message": data.get("error_message"),
+            "failure_reason": data.get("failure_reason"),
+            "failure_details": data.get("failure_details"),
+            "metadata": metadata,
+        }
+
+    def _step_row_to_view(self, row: Any) -> Dict[str, Any]:
+        data = self._row_dict(row)
+        if not data:
+            return {}
+        depends_on = self._json_loads(data.get("depends_on_json"), [])
+        data["depends_on"] = depends_on if isinstance(depends_on, list) else []
+        return data
+
+    def _event_row_to_view(self, row: Any) -> Dict[str, Any]:
+        data = self._row_dict(row)
+        if not data:
+            return {}
+        payload = data.get("payload_json")
+        if not isinstance(payload, str):
+            data["payload_json"] = self._json_text(payload)
+        return data
+
+    async def _db_fetch_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        if self._pool is None or not job_id:
+            return None
+        try:
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT *
+                    FROM jobs
+                    WHERE id = $1
+                    """,
+                    str(job_id),
+                )
+            return self._job_row_to_view(row) if row else None
+        except Exception:
+            logger.warning("runtime_state: DB job lookup failed for %s", job_id, exc_info=True)
+            return None
+
+    async def _db_project_for_job(self, job_id: str) -> Optional[str]:
+        job = await self._db_fetch_job(job_id)
+        project_id = (job or {}).get("project_id")
+        return str(project_id) if project_id else None
 
     async def ensure_job_fk_prerequisites(self, project_id: str, user_id: Optional[str]) -> None:
         """Ensure the projects row exists before inserting a job with this project_id."""
@@ -80,14 +191,34 @@ class RuntimeStateAdapter:
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         project_id = self._find_project_for_job(job_id)
-        if not project_id:
-            return None
-        task = task_manager.get_task(project_id, job_id)
-        if not task:
-            return None
-        return self._job_view(task)
+        if project_id:
+            task = task_manager.get_task(project_id, job_id)
+            if task:
+                return self._job_view(task)
+        return await self._db_fetch_job(job_id)
 
     async def list_jobs_for_user(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT *
+                        FROM jobs
+                        WHERE user_id = $1
+                        ORDER BY
+                          COALESCE(updated_at, created_at, started_at, completed_at) DESC NULLS LAST,
+                          created_at DESC NULLS LAST
+                        LIMIT $2
+                        """,
+                        str(user_id),
+                        max(1, int(limit)),
+                    )
+                db_jobs = [self._job_row_to_view(row) for row in rows]
+                return [job for job in db_jobs if job.get("id")]
+            except Exception:
+                logger.warning("runtime_state: DB job list failed for user %s", user_id, exc_info=True)
+
         out: List[Dict[str, Any]] = []
         for project_id in self._list_projects():
             rows = task_manager.list_project_tasks(project_id, limit=1000)
@@ -106,12 +237,18 @@ class RuntimeStateAdapter:
         extra: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         project_id = self._find_project_for_job(job_id)
-        if not project_id:
-            return None
-        task = task_manager.update_task(project_id, job_id, status=status, metadata=extra or {})
-        if not task:
-            return None
-        job = self._job_view(task)
+        job: Optional[Dict[str, Any]] = None
+        if project_id:
+            task = task_manager.update_task(project_id, job_id, status=status, metadata=extra or {})
+            if task:
+                job = self._job_view(task)
+        if job is None:
+            job = await self._db_fetch_job(job_id)
+            if not job:
+                return None
+            job["status"] = status
+            if extra:
+                job.update(extra)
         await self._upsert_job_row(job, extra or {})
         await self.append_job_event(job_id, "job_status_changed", {"status": status, **(extra or {})})
 
@@ -147,10 +284,57 @@ class RuntimeStateAdapter:
         steps = self._load_steps(job_id)
         steps.append(step)
         self._save_steps(job_id, steps)
+        if self._pool is not None:
+            async with self._pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO job_steps (
+                        id, job_id, step_key, agent_name, phase, status,
+                        depends_on_json, order_index, retry_count,
+                        created_at, updated_at
+                    )
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        job_id = EXCLUDED.job_id,
+                        step_key = EXCLUDED.step_key,
+                        agent_name = EXCLUDED.agent_name,
+                        phase = EXCLUDED.phase,
+                        status = EXCLUDED.status,
+                        depends_on_json = EXCLUDED.depends_on_json,
+                        order_index = EXCLUDED.order_index,
+                        retry_count = EXCLUDED.retry_count,
+                        updated_at = NOW()
+                    """,
+                    step["id"],
+                    str(job_id),
+                    str(step_key),
+                    str(agent_name),
+                    str(phase),
+                    "pending",
+                    self._json_text(list(depends_on or [])),
+                    int(order_index),
+                    0,
+                )
         await self.append_job_event(job_id, "step_created", {"step_id": step["id"], "step_key": step_key})
         return dict(step)
 
     async def get_steps(self, job_id: str) -> List[Dict[str, Any]]:
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT *
+                        FROM job_steps
+                        WHERE job_id = $1
+                        ORDER BY order_index ASC, created_at ASC, id ASC
+                        """,
+                        str(job_id),
+                    )
+                db_steps = [self._step_row_to_view(row) for row in rows]
+                return [step for step in db_steps if step.get("id")]
+            except Exception:
+                logger.warning("runtime_state: DB step list failed for job %s", job_id, exc_info=True)
         rows = self._load_steps(job_id)
         rows.sort(key=lambda s: (int(s.get("order_index") or 0), float(s.get("created_at") or 0)))
         return rows
@@ -158,21 +342,48 @@ class RuntimeStateAdapter:
     async def clear_steps(self, job_id: str, *, reason: str = "claude_code_runtime") -> None:
         """Remove persisted legacy step rows for a job.
 
-        The Claude Code runtime is event/transcript driven. Keeping historical
+        The fused runtime is event/transcript driven. Keeping historical
         DAG rows makes the UI render the old multi-agent backend even when the
         real runner has moved to a single tool loop.
         """
+        removed = 0
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    result = await conn.execute(
+                        "DELETE FROM job_steps WHERE job_id = $1",
+                        str(job_id),
+                    )
+                try:
+                    removed = int(str(result).split()[-1])
+                except Exception:
+                    removed = 0
+            except Exception:
+                logger.warning("runtime_state: DB step clear failed for job %s", job_id, exc_info=True)
         existing = self._load_steps(job_id)
-        if not existing:
+        if existing:
+            self._save_steps(job_id, [])
+            removed = max(removed, len(existing))
+        if not removed:
             return
-        self._save_steps(job_id, [])
         await self.append_job_event(
             job_id,
             "legacy_steps_cleared",
-            {"reason": reason, "removed": len(existing)},
+            {"reason": reason, "removed": removed},
         )
 
     async def get_step(self, step_id: str) -> Optional[Dict[str, Any]]:
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        "SELECT * FROM job_steps WHERE id = $1",
+                        str(step_id),
+                    )
+                if row:
+                    return self._step_row_to_view(row)
+            except Exception:
+                logger.warning("runtime_state: DB step lookup failed for %s", step_id, exc_info=True)
         for project_id in self._list_projects():
             for path in self._job_dir_candidates(project_id):
                 sp = path / "steps.json"
@@ -193,6 +404,44 @@ class RuntimeStateAdapter:
         status: str,
         extra: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
+        if self._pool is not None:
+            extra = extra or {}
+            try:
+                async with self._pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        """
+                        UPDATE job_steps SET
+                            status = $2,
+                            retry_count = COALESCE($3, retry_count),
+                            output_ref = COALESCE($4, output_ref),
+                            verifier_status = COALESCE($5, verifier_status),
+                            verifier_score = COALESCE($6, verifier_score),
+                            error_message = CASE WHEN $8 THEN $7 ELSE error_message END,
+                            updated_at = NOW(),
+                            started_at = CASE WHEN $2 = 'running' THEN COALESCE(started_at, NOW()) ELSE started_at END,
+                            completed_at = CASE WHEN $2 IN ('completed','complete','failed','blocked') THEN NOW() ELSE completed_at END
+                        WHERE id = $1
+                        RETURNING *
+                        """,
+                        str(step_id),
+                        str(status),
+                        extra.get("retry_count"),
+                        extra.get("output_ref"),
+                        extra.get("verifier_status"),
+                        extra.get("verifier_score"),
+                        extra.get("error_message"),
+                        "error_message" in extra,
+                    )
+                if row:
+                    step = self._step_row_to_view(row)
+                    await self.append_job_event(
+                        step.get("job_id") or "",
+                        "step_status_changed",
+                        {"step_id": step_id, "status": status},
+                    )
+                    return step
+            except Exception:
+                logger.warning("runtime_state: DB step update failed for %s", step_id, exc_info=True)
         for project_id in self._list_projects():
             for path in self._job_dir_candidates(project_id):
                 sp = path / "steps.json"
@@ -244,6 +493,23 @@ class RuntimeStateAdapter:
             "payload_json": json.dumps(event_payload, ensure_ascii=True),
             "created_at": time.time(),
         }
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO job_events (id, job_id, step_id, event_type, payload_json, created_at)
+                        VALUES ($1,$2,$3,$4,$5,NOW())
+                        ON CONFLICT (id) DO NOTHING
+                        """,
+                        event["id"],
+                        str(job_id),
+                        event_payload.get("step_id"),
+                        str(event_type),
+                        event["payload_json"],
+                    )
+            except Exception:
+                logger.warning("runtime_state: DB event append failed for job %s", job_id, exc_info=True)
         rows.append(event)
         if len(rows) > 5000:
             rows = rows[-5000:]
@@ -257,6 +523,37 @@ class RuntimeStateAdapter:
         since_id: Optional[str] = None,
         limit: int = 200,
     ) -> List[Dict[str, Any]]:
+        if self._pool is not None:
+            try:
+                fetch_limit = max(1, int(limit)) + (200 if since_id else 0)
+                async with self._pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT *
+                        FROM (
+                            SELECT *
+                            FROM job_events
+                            WHERE job_id = $1
+                            ORDER BY created_at DESC, id DESC
+                            LIMIT $2
+                        ) recent
+                        ORDER BY created_at ASC, id ASC
+                        """,
+                        str(job_id),
+                        fetch_limit,
+                    )
+                events = [self._event_row_to_view(row) for row in rows]
+                if since_id:
+                    idx = -1
+                    for i, row in enumerate(events):
+                        if str(row.get("id")) == str(since_id):
+                            idx = i
+                            break
+                    if idx >= 0:
+                        events = events[idx + 1 :]
+                return events[-max(1, int(limit)) :]
+            except Exception:
+                logger.warning("runtime_state: DB event list failed for job %s", job_id, exc_info=True)
         rows = self._load_events(job_id)
         if since_id:
             idx = -1
@@ -280,6 +577,25 @@ class RuntimeStateAdapter:
         proof_path.write_text(json.dumps(proof_data, indent=2), encoding="utf-8")
 
     async def save_checkpoint(self, job_id: str, checkpoint_key: str, data: Dict[str, Any]) -> None:
+        if self._pool is not None:
+            try:
+                checkpoint_id = f"chk_{uuid.uuid4().hex[:12]}"
+                async with self._pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO job_checkpoints (id, job_id, checkpoint_key, snapshot_json, created_at)
+                        VALUES ($1,$2,$3,$4,NOW())
+                        ON CONFLICT (job_id, checkpoint_key) DO UPDATE SET
+                            snapshot_json = EXCLUDED.snapshot_json,
+                            created_at = NOW()
+                        """,
+                        checkpoint_id,
+                        str(job_id),
+                        str(checkpoint_key),
+                        self._json_text(data),
+                    )
+            except Exception:
+                logger.warning("runtime_state: DB checkpoint save failed for job %s key %s", job_id, checkpoint_key, exc_info=True)
         cps = self._load_checkpoints(job_id)
         cps[str(checkpoint_key)] = {
             "data": data,
@@ -288,6 +604,26 @@ class RuntimeStateAdapter:
         self._save_checkpoints(job_id, cps)
 
     async def load_checkpoint(self, job_id: str, checkpoint_key: str) -> Optional[Dict[str, Any]]:
+        if self._pool is not None:
+            try:
+                async with self._pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        """
+                        SELECT snapshot_json
+                        FROM job_checkpoints
+                        WHERE job_id = $1 AND checkpoint_key = $2
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        str(job_id),
+                        str(checkpoint_key),
+                    )
+                if row:
+                    data = self._json_loads(self._row_dict(row).get("snapshot_json"), None)
+                    if isinstance(data, dict):
+                        return data
+            except Exception:
+                logger.warning("runtime_state: DB checkpoint load failed for job %s key %s", job_id, checkpoint_key, exc_info=True)
         cps = self._load_checkpoints(job_id)
         row = cps.get(str(checkpoint_key))
         if not row:

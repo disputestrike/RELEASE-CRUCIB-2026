@@ -129,7 +129,7 @@ function ToolIcon({ tool, status }) {
   if (status === 'failed') return <AlertTriangle size={14} className="cc-bad" />;
   const t = String(tool || '').toLowerCase();
   if (/bash|terminal/.test(t)) return <SquareTerminal size={14} />;
-  if (/edit|write/.test(t)) return <Edit3 size={14} />;
+  if (/edit|write|file/.test(t)) return <Edit3 size={14} />;
   if (/read/.test(t)) return <FileText size={14} />;
   if (/grep|glob|search/.test(t)) return <Search size={14} />;
   if (/todo/.test(t)) return <ListChecks size={14} />;
@@ -199,12 +199,13 @@ function ToolUseBlock({ item, defaultOpen = false }) {
 
 function ToolGroup({ item }) {
   const [open, setOpen] = useState(false);
+  const tool = item.tool || 'Progress';
   return (
     <div className={`cc-tool cc-tool--${item.status || 'success'}`}>
       <button type="button" className="cc-tool-head" onClick={() => setOpen((v) => !v)}>
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <Search size={14} />
-        <span className="cc-tool-name">Search</span>
+        <ToolIcon tool={tool} status={item.status} />
+        <span className="cc-tool-name">{tool}</span>
         <span className="cc-tool-title">{item.title}</span>
         <StatusPill status={item.status} />
       </button>

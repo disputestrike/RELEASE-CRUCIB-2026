@@ -69,14 +69,14 @@ function formatEvent(ev) {
       return 'Fix loop continuing';
     }
     case 'dag_node_started':
-      return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
+      return name && name !== 'Step' ? `Starting ${name}` : 'Starting next task';
     case 'dag_node_completed': {
       const files = payload.output_files;
       if (Array.isArray(files) && files.length) {
         const short = files.slice(0, 4).map((x) => String(x).split('/').pop() || x);
         return `Wrote ${files.length} file(s): ${short.join(', ')}${files.length > 4 ? '…' : ''}`;
       }
-      return name && name !== 'Step' ? `DAG: done — ${name}` : 'DAG node completed';
+      return name && name !== 'Step' ? `Done: ${name}` : 'Task completed';
     }
     case 'user_steering':
       return 'Steering applied';

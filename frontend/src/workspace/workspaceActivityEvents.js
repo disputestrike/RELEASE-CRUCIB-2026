@@ -55,14 +55,14 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'job_started':
       return 'Runtime started';
     case 'claude_code_backend_selected':
-      return 'Claude Code backend selected';
+      return 'Build runtime selected';
     case 'pipeline_dispatch':
     case 'pipeline_started':
-      return 'Claude Code runtime started';
+      return 'Build runtime started';
     case 'legacy_steps_cleared':
-      return 'Legacy backend steps removed';
+      return 'Old step rows cleared';
     case 'plan_created':
-      return 'TodoWrite plan created';
+      return 'Build plan ready';
     case 'tool_call': {
       const tool = payload.tool || payload.name || payload.tool_name || 'Tool';
       const target = payload.input || payload.command || payload.path || payload.pattern || '';
@@ -80,9 +80,9 @@ export function formatWorkspaceActivityEvent(ev) {
     case 'verifier_failed':
       return 'Proof: build check needs repair';
     case 'repair_started':
-      return 'Repair: applying focused fix';
+      return 'Fix: applying next change';
     case 'repair_completed':
-      return payload.passed === false ? 'Repair: proof still needs work' : 'Repair: proof rerun complete';
+      return payload.passed === false ? 'Fix: proof still needs work' : 'Fix: proof rerun complete';
     case 'job_completed':
       return 'Workspace ready';
     case 'job_status_changed': {
@@ -93,14 +93,14 @@ export function formatWorkspaceActivityEvent(ev) {
       return 'Fix loop continuing';
     }
     case 'dag_node_started':
-      return name && name !== 'Step' ? `DAG: starting ${name}` : 'DAG: starting next node';
+      return name && name !== 'Step' ? `Starting ${name}` : 'Starting next task';
     case 'dag_node_completed': {
       const files = payload.output_files;
       if (Array.isArray(files) && files.length) {
         const short = files.slice(0, 4).map(shortPath);
         return `Wrote ${files.length} file(s): ${short.join(', ')}${files.length > 4 ? '...' : ''}`;
       }
-      return name && name !== 'Step' ? `DAG: done - ${name}` : 'DAG node completed';
+      return name && name !== 'Step' ? `Done: ${name}` : 'Task completed';
     }
     case 'artifact_delta': {
       const changed = Number(payload.changed || payload.changed_count || 0);

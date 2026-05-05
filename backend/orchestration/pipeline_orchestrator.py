@@ -10,7 +10,7 @@ Replaces the 245-step DAG with a single-conversation generate loop:
   Stage 4: VERIFY    → Run the build ONCE; capture stdout/stderr
   Stage 5: REPAIR    → If failed: ONE repair pass with full error context → re-verify
 
-Architecture principle (from Claude Code analysis):
+Architecture principle:
   "Give one smart agent full tools, full context, and the freedom to iterate —
    then verify the output once before delivery."
 
@@ -433,8 +433,8 @@ async def _stage_assemble(
 
     if on_progress:
         await on_progress("tool_call", {
-            "name": "Bash",
-            "tool": "Bash",
+            "name": "Checks",
+            "tool": "Checks",
             "tool_name": "run_command",
             "command": " ".join(str(x) for x in install_cmd),
             "input": " ".join(str(x) for x in install_cmd),
@@ -464,8 +464,8 @@ async def _stage_assemble(
 
     if on_progress:
         await on_progress("tool_result", {
-            "name": "Bash",
-            "tool": "Bash",
+            "name": "Checks",
+            "tool": "Checks",
             "tool_name": "run_command",
             "command": " ".join(str(x) for x in install_cmd),
             "input": " ".join(str(x) for x in install_cmd),
@@ -852,7 +852,7 @@ async def run_pipeline_job(
             await _emit("job_failed", {
                 "stages": stages_completed,
                 "elapsed_seconds": elapsed,
-                "failure_reason": "Claude Code tool loop needs another pass; build proof is still failing.",
+                "failure_reason": "Build proof is still failing; continuing with another focused pass.",
                 "build_stderr": (verify_result.get("stderr") or "")[:500],
             })
 

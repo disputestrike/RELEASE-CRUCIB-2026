@@ -273,13 +273,13 @@ WRITE_TOOLS = {"write_file", "edit_file"}
 
 def _display_tool_name(tool_name: str) -> str:
     return {
-        "read_file": "Read",
-        "list_files": "Glob",
-        "search_files": "Grep",
-        "write_file": "Write",
+        "read_file": "Inspect",
+        "list_files": "Inspect",
+        "search_files": "Search",
+        "write_file": "Files",
         "edit_file": "Edit",
-        "run_command": "Bash",
-    }.get(str(tool_name or ""), str(tool_name or "Tool"))
+        "run_command": "Checks",
+    }.get(str(tool_name or ""), str(tool_name or "Work"))
 
 
 def _tool_input_label(tool_name: str, tool_input: Dict[str, Any]) -> str:

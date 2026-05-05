@@ -9,7 +9,7 @@ import './ExecutionTimeline.css';
 
 const FILTERS = ['All', 'Active', 'Errors', 'Retries'];
 
-const CLAUDE_RUNTIME_EVENTS = new Set([
+const TOOL_RUNTIME_EVENTS = new Set([
   'claude_code_backend_selected',
   'pipeline_dispatch',
   'pipeline_started',
@@ -42,7 +42,7 @@ const typeOf = (event) => event?.type || event?.event_type || '';
 
 const isClaudeRuntimeEvent = (event) => {
   const payload = payloadOf(event);
-  return CLAUDE_RUNTIME_EVENTS.has(typeOf(event)) || payload.engine === 'claude_code_tool_loop';
+  return TOOL_RUNTIME_EVENTS.has(typeOf(event)) || payload.engine === 'claude_code_tool_loop';
 };
 
 const isLegacyAgentStep = (step) => {
@@ -73,20 +73,20 @@ const eventStatus = (type, payload) => {
 };
 
 const eventTitle = (type, payload) => {
-  if (type === 'plan_created') return 'TodoWrite plan created';
-  if (type === 'pipeline_started') return 'Claude Code runtime started';
-  if (type === 'legacy_steps_cleared') return 'Legacy backend steps removed';
-  if (type === 'tool_call') return `${payload.tool || payload.name || 'Tool'} ${compact(payload.input || payload.command || payload.path, 80)}`.trim();
-  if (type === 'tool_result') return `${payload.tool || payload.name || 'Tool'} result`;
-  if (type === 'file_written') return `Write ${String(payload.path || 'file').split('/').pop()}`;
-  if (type === 'code_mutation') return `Edit ${String(payload.path || 'file').split('/').pop()}`;
+  if (type === 'plan_created') return 'Build plan ready';
+  if (type === 'pipeline_started') return 'Runtime started';
+  if (type === 'legacy_steps_cleared') return 'Old step rows cleared';
+  if (type === 'tool_call') return `${payload.title || payload.label || payload.tool || payload.name || 'Working'} ${compact(payload.input || payload.command || payload.path, 80)}`.trim();
+  if (type === 'tool_result') return `${payload.title || payload.label || payload.tool || payload.name || 'Work'} complete`;
+  if (type === 'file_written') return `Saved ${String(payload.path || 'file').split('/').pop()}`;
+  if (type === 'code_mutation') return `Updated ${String(payload.path || 'file').split('/').pop()}`;
   if (type === 'verifier_started') return payload.title || 'Run proof checks';
   if (type === 'verifier_passed') return 'Proof checks passed';
   if (type === 'verifier_failed') return 'Proof check failed';
-  if (type === 'repair_started') return 'Repair pass started';
-  if (type === 'repair_completed') return 'Repair pass completed';
+  if (type === 'repair_started') return 'Fix pass started';
+  if (type === 'repair_completed') return 'Fix pass completed';
   if (type === 'job_completed') return 'Workspace ready';
-  if (type === 'job_failed') return 'Run needs another pass';
+  if (type === 'job_failed') return 'Fix loop continuing';
   return titleCase(type) || 'Runtime event';
 };
 
@@ -110,8 +110,8 @@ const buildClaudeRows = (events) =>
         is_event: true,
         status,
         step_key: eventTitle(type, payload),
-        agent_name: payload.tool || payload.name || payload.tool_name || 'Claude Code',
-        phase: 'claude_code_runtime',
+        agent_name: payload.category || payload.tool || payload.name || payload.tool_name || 'Runtime',
+        phase: 'runtime',
         input,
         output: compact(output, 1400),
         result_json: payload,
@@ -217,7 +217,7 @@ export default function ExecutionTimeline({
     });
   };
 
-  const currentPhase = claudeRuntimeActive ? 'Claude Code tool loop' : (job?.current_phase || 'planning');
+  const currentPhase = claudeRuntimeActive ? 'Runtime proof flow' : (job?.current_phase || 'planning');
 
   const filteredSteps = timelineRows.filter(s => {
     switch (filter) {
@@ -290,7 +290,7 @@ export default function ExecutionTimeline({
         {filteredSteps.length === 0 ? (
           <div className="et-empty">
             {timelineRows.length === 0
-              ? 'Waiting for the Claude Code runtime to emit tool activity.'
+              ? 'Waiting for build activity.'
               : 'No events match the current filter.'}
           </div>
         ) : (

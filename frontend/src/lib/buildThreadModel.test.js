@@ -21,9 +21,9 @@ test('compiles job events into a code-agent transcript instead of a phase card',
 
   expect(items[0]).toMatchObject({ kind: 'user_message', content: 'Build a SaaS dashboard' });
   expect(items.some((item) => item.kind === 'build_progress_card')).toBe(false);
-  expect(items.some((item) => item.kind === 'todo_list' && item.title === 'TodoWrite')).toBe(true);
-  expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Write')).toBe(true);
-  expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Bash')).toBe(true);
+  expect(items.some((item) => item.kind === 'todo_list' && item.title === 'Build plan')).toBe(true);
+  expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Files')).toBe(true);
+  expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Checks')).toBe(true);
 });
 
 test('groups completed read and search activity like the supplied message stream', () => {
@@ -51,8 +51,8 @@ test('deriveCurrentActivity reports the active tool rather than a generic loop p
   });
 
   expect(activity).toMatchObject({
-    title: 'Run proof checks',
-    phase: 'Bash',
+    title: 'Running proof checks',
+    phase: 'Checks',
     status: 'running',
   });
 });
