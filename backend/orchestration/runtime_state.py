@@ -8,14 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 try:
-    from backend.agent_dag import AGENT_DAG, build_dynamic_dag
-except ImportError:
-    try:
-        from agent_dag import AGENT_DAG, build_dynamic_dag
-    except ImportError:
-        AGENT_DAG = {}
-        def build_dynamic_dag(*a, **kw): return {}
-try:
     from backend.agents.schemas import IntentSchema
 except ImportError:
     IntentSchema = None  # pragma: no cover
@@ -186,7 +178,6 @@ class RuntimeStateAdapter:
         job = self._job_view(task)
         await self.ensure_job_fk_prerequisites(project_id, user_id)
         await self._upsert_job_row(job)
-        await self._create_steps_from_dag(job["id"], project_id, user_id, intent_schema)
         return job
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
@@ -339,12 +330,11 @@ class RuntimeStateAdapter:
         rows.sort(key=lambda s: (int(s.get("order_index") or 0), float(s.get("created_at") or 0)))
         return rows
 
-    async def clear_steps(self, job_id: str, *, reason: str = "claude_code_runtime") -> None:
+    async def clear_steps(self, job_id: str, *, reason: str = "single_tool_runtime") -> None:
         """Remove persisted legacy step rows for a job.
 
-        The fused runtime is event/transcript driven. Keeping historical
-        DAG rows makes the UI render the old multi-agent backend even when the
-        real runner has moved to a single tool loop.
+        The runtime is event/transcript driven. Keeping historical step rows
+        makes the UI render stale backend work instead of the live tool run.
         """
         removed = 0
         if self._pool is not None:
@@ -368,7 +358,7 @@ class RuntimeStateAdapter:
             return
         await self.append_job_event(
             job_id,
-            "legacy_steps_cleared",
+            "runtime_steps_cleared",
             {"reason": reason, "removed": removed},
         )
 
@@ -633,23 +623,8 @@ class RuntimeStateAdapter:
     async def _create_steps_from_dag(
         self, job_id: str, project_id: str, user_id: Optional[str], intent_schema: Optional[IntentSchema]
     ) -> None:
-        if not intent_schema:
-            return
-
-        dynamic_dag = build_dynamic_dag(intent_schema)
-        
-        # Create steps based on the dynamic DAG
-        order_index = 0
-        for agent_name, agent_info in dynamic_dag.items():
-            await self.create_step(
-                job_id=job_id,
-                step_key=agent_name,
-                agent_name=agent_name,
-                phase="orchestration", # All dynamic DAG steps are part of orchestration phase
-                depends_on=agent_info.get("depends_on", []),
-                order_index=order_index,
-            )
-            order_index += 1
+        _ = job_id, project_id, user_id, intent_schema
+        return
 
     async def _collect_proof_data(self, job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
         # Gather all information for proof.json
@@ -657,7 +632,7 @@ class RuntimeStateAdapter:
             "job_id": job_id,
             "prompt": job.get("goal"),
             "intent_schema": job.get("metadata", {}).get("intent_schema"),
-            "dag_structure": build_dynamic_dag(IntentSchema(**job.get("metadata", {}).get("intent_schema"))),
+            "runtime_structure": {"engine": "single_tool_runtime"},
             "steps": await self.get_steps(job_id),
             "files_changed": [],  # To be populated by file_writer events
             "tests_run": [],  # To be populated by test_runner events
@@ -856,7 +831,7 @@ async def get_steps(job_id: str) -> List[Dict[str, Any]]:
     return await runtime_state.get_steps(job_id)
 
 
-async def clear_steps(job_id: str, *, reason: str = "claude_code_runtime") -> None:
+async def clear_steps(job_id: str, *, reason: str = "single_tool_runtime") -> None:
     await runtime_state.clear_steps(job_id, reason=reason)
 
 

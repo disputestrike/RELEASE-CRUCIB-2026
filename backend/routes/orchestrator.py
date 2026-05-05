@@ -11,14 +11,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from ..services.orchestration_service import (
-    estimate_orchestration_service,
-    generate_public_plan_service,
-    planner_project_state_service,
     public_plan_summary_service,
     update_last_build_state_service,
 )
 from pydantic import BaseModel
-from ..deps import get_user_credits
 logger = logging.getLogger(__name__)
 
 def _get_server_helpers():
@@ -43,15 +39,10 @@ def _get_optional_user():
 
 
 def _get_server_globals():
-    # FIX: AGENT_DAG / LAST_BUILD_STATE / RECENT_AGENT_SELECTION_LOGS were
-    # never module-level attributes of server.py — accessing server.AGENT_DAG
-    # always raised AttributeError, crashing the workspace screen.
-    # AGENT_DAG now lives in agent_dag.py; the state containers are in server.py.
-    from ..agent_dag import AGENT_DAG as _dag
     from .. import server as _srv
     _last  = getattr(_srv, "LAST_BUILD_STATE", {})
     _recnt = getattr(_srv, "RECENT_AGENT_SELECTION_LOGS", [])
-    return _dag, _last, _recnt
+    return {}, _last, _recnt
 
 
 
@@ -68,13 +59,29 @@ import sys as _sys
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
     from ..orchestration import auto_runner as ar_mod
-    from ..orchestration import dag_engine
-    from ..orchestration import planner as planner_mod
     from ..orchestration import runtime_state
 
     from ..proof import proof_service as ps_mod
 
-    return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
+    return runtime_state, None, None, ar_mod, ps_mod
+
+
+def _single_runtime_estimate(goal_or_plan: Any) -> Dict[str, Any]:
+    if isinstance(goal_or_plan, dict):
+        goal = str(goal_or_plan.get("goal") or goal_or_plan.get("summary") or "")
+    else:
+        goal = str(goal_or_plan or "")
+    complexity = max(1, min(6, len(goal) // 300 + 1))
+    typical = 5 + complexity * 2
+    return {
+        "estimated_tokens": typical * 1000,
+        "estimated_credits": typical,
+        "cost_range": {
+            "min_credits": max(3, typical - 4),
+            "max_credits": typical + 8,
+            "typical_credits": typical,
+        },
+    }
 
 
 class PlanRequest(BaseModel):
@@ -112,11 +119,6 @@ except ImportError:
         mode: Optional[str] = "guided"
 
 
-async def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
-    """Shared planner context used by orchestrator and job creation."""
-    return await planner_project_state_service(user, user_credits=get_user_credits)
-
-
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
     _, LAST_BUILD_STATE, RECENT_AGENT_SELECTION_LOGS = _get_server_globals()
     return update_last_build_state_service(
@@ -146,94 +148,17 @@ async def list_build_targets():
 
 @router.get("/debug/agent-info")
 async def get_agent_info():
-    """Expose current DAG and last-build agent selection metrics."""
+    """Expose the active build runtime selection."""
     AGENT_DAG, LAST_BUILD_STATE, RECENT_AGENT_SELECTION_LOGS = _get_server_globals()
     return {
+        "engine": "single_tool_runtime",
+        "legacy_agent_dag_enabled": False,
         "total_agents_available": len(AGENT_DAG),
-        "agents_in_dag": sorted(list(AGENT_DAG.keys())),
-        "agent_families": {
-            "3d_webgl": len(
-                [a for a in AGENT_DAG if "3D" in a or "Canvas" in a or "WebGL" in a]
-            ),
-            "ml_ai": len(
-                [a for a in AGENT_DAG if a.startswith("ML ") or "Embeddings" in a]
-            ),
-            "blockchain": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "Blockchain" in a
-                    or "Smart Contract" in a
-                    or "Web3" in a
-                    or "DeFi" in a
-                    or "Contract " in a
-                ]
-            ),
-            "iot": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "IoT" in a
-                    or "Microcontroller" in a
-                    or "Sensor" in a
-                    or "Edge Computing" in a
-                ]
-            ),
-            "data_science": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "Jupyter" in a
-                    or "Data " in a
-                    or "Time Series" in a
-                    or "Statistical" in a
-                    or "Report Generation" in a
-                ]
-            ),
-            "infrastructure": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "Kubernetes" in a
-                    or "Serverless" in a
-                    or "Edge Deployment" in a
-                    or "Load Balancer" in a
-                    or "DevOps" in a
-                    or "Message Queue" in a
-                    or "Disaster Recovery" in a
-                ]
-            ),
-            "testing": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "Chaos" in a
-                    or "Mutation" in a
-                    or "Property-Based" in a
-                    or "Smoke Test" in a
-                    or "Synthetic" in a
-                    or "Load Test" in a
-                    or "E2E" in a
-                ]
-            ),
-            "business_logic": len(
-                [
-                    a
-                    for a in AGENT_DAG
-                    if "Workflow" in a
-                    or "Business Rules" in a
-                    or "Approval" in a
-                    or "Audit & Compliance" in a
-                    or "Notification Rules" in a
-                    or "Scheduling" in a
-                    or "Multi-tenant" in a
-                    or "RBAC" in a
-                ]
-            ),
-        },
+        "agents_in_dag": [],
+        "agent_families": {},
         "last_build": LAST_BUILD_STATE,
         "selection_log_tail": RECENT_AGENT_SELECTION_LOGS,
-        "selection_logic_working": True,
+        "selection_logic_working": False,
     }
 
 
@@ -262,14 +187,10 @@ async def public_build_plan(
     if not goal:
         raise HTTPException(status_code=400, detail="goal is required")
     try:
-        _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await generate_public_plan_service(
-            goal=goal,
-            user=user,
-            planner_mod=planner_mod,
-            planner_project_state=await _orchestrator_planner_project_state(user),
-            update_last_build_state=_update_last_build_state,
-        )
+        from ..services.job_service import _single_runtime_plan
+
+        plan = _single_runtime_plan(goal)
+        _update_last_build_state(plan)
         return {"success": True, "plan": plan}
     except HTTPException:
         raise
@@ -293,14 +214,10 @@ async def public_build_plan_summary(
     if not goal:
         raise HTTPException(status_code=400, detail="goal is required")
     try:
-        _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await generate_public_plan_service(
-            goal=goal,
-            user=user,
-            planner_mod=planner_mod,
-            planner_project_state=await _orchestrator_planner_project_state(user),
-            update_last_build_state=_update_last_build_state,
-        )
+        from ..services.job_service import _single_runtime_plan
+
+        plan = _single_runtime_plan(goal)
+        _update_last_build_state(plan)
         return {"success": True, "plan": _public_plan_summary(plan)}
     except HTTPException:
         raise
@@ -324,15 +241,9 @@ async def estimate_cost(
     try:
         from ..orchestration.build_targets import normalize_build_target
 
-        _, _, planner_mod, _, _ = _get_orchestration()
-        return await estimate_orchestration_service(
-            goal=body.goal,
-            build_target=body.build_target,
-            user=user,
-            planner_mod=planner_mod,
-            normalize_build_target=normalize_build_target,
-            planner_project_state=await _orchestrator_planner_project_state(user),
-        )
+        bt = normalize_build_target(body.build_target)
+        estimate = _single_runtime_estimate(body.goal)
+        return {"success": True, "build_target": bt, "estimate": estimate}
     except Exception as e:
         return {
             "success": False,
@@ -366,10 +277,8 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             normalize_build_target,
         )
 
-        runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
-        from ..services.job_service import _claude_code_plan, _legacy_job_steps_enabled
-
-        use_legacy_steps = _legacy_job_steps_enabled()
+        runtime_state, _dag_engine, _planner_mod, _, _ = _get_orchestration()
+        from ..services.job_service import _single_runtime_plan
         try:
             from ..db_pg import get_pg_pool
 
@@ -418,21 +327,15 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             except Exception as exc:
                 logger.warning("orchestrator/plan: project FK preflight skipped: %s", exc)
 
-        # Generate the public plan. The default workspace path is now the
-        # Fused runtime contract; the old multi-agent DAG is opt-in only.
-        if use_legacy_steps:
-            plan = await planner_mod.generate_plan(
-                body.goal, project_state=await _orchestrator_planner_project_state(user)
-            )
-        else:
-            plan = _claude_code_plan(body.goal)
+        # Generate the public plan from the single runtime contract only.
+        plan = _single_runtime_plan(body.goal)
         _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
         bt = normalize_build_target(
             requested_target or plan.get("recommended_build_target")
         )
         plan["crucib_build_target"] = bt
-        estimate = planner_mod.estimate_tokens(plan)
+        estimate = _single_runtime_estimate(plan)
 
         # Resolve project_id — use provided, or fall back to user id, or generate one
         # Create job record
@@ -465,25 +368,11 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
                 logger.warning("Could not store build plan in DB: %s", e)
 
         step_defs = []
-        if use_legacy_steps:
-            from ..orchestration.dag_engine import build_dag_from_plan
-
-            step_defs = build_dag_from_plan(plan)
-            for idx, sd in enumerate(step_defs):
-                await runtime_state.create_step(
-                    job_id=job["id"],
-                    step_key=sd["step_key"],
-                    agent_name=sd["agent_name"],
-                    phase=sd["phase"],
-                    depends_on=sd["depends_on"],
-                    order_index=idx,
-                )
-        else:
-            await runtime_state.append_job_event(
-                job["id"],
-                "claude_code_backend_selected",
-                {"engine": "claude_code_tool_loop", "legacy_job_steps": False},
-            )
+        await runtime_state.append_job_event(
+            job["id"],
+            "runtime_backend_selected",
+            {"engine": "single_tool_runtime", "legacy_job_steps": False},
+        )
 
         from ..orchestration.capability_notice import capability_notice_lines
 
@@ -960,7 +849,6 @@ async def run_benchmark_job(
 
     try:
         from ..services.job_service import create_job_service
-        from ..orchestration import planner as planner_mod
         from ..orchestration import runtime_state
         from ..db_pg import get_pg_pool
 
@@ -986,7 +874,7 @@ async def run_benchmark_job(
             user=benchmark_user,
             runtime_state_getter=lambda: runtime_state,
             pool_getter=_pool_getter,
-            generate_plan=planner_mod.generate_plan,
+            generate_plan=lambda *args, **kwargs: None,
         )
 
         job = result.get("job") or result

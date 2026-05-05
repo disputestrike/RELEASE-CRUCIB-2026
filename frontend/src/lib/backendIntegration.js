@@ -2,11 +2,10 @@
  * Backend Integration — maps frontend concepts to CrucibAI's real backend
  * 
  * Our backend has:
- * - 245 agents in AGENT_DAG (backend/agent_dag.py)
- * - 37 workflows (backend/workflows.py)
+ * - one durable job runtime for workspace builds
  * - SSE stream at /api/jobs/{id}/stream
  * - WebSocket at /ws/events?jobId={id}  (adapter layer)
- * - REST at /api/build, /api/builds/{id}/interrupt, etc.
+ * - REST panes for job, events, proof, files, preview, and replay
  * 
  * This file is the single source of truth for all API calls.
  */

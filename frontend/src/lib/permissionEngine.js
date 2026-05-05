@@ -1,6 +1,6 @@
 /**
  * Permission Engine — trust tiers + persistent rules + risk-aware approval
- * Beats Claude Code's hidden ML inference by being transparent and user-controlled
+ * Transparent and user-controlled permission inference.
  * 
  * Trust tiers: safe → verified → untrusted → dangerous
  * Rules persist in localStorage and evolve with usage

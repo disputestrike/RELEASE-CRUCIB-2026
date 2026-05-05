@@ -1,7 +1,7 @@
 """
 Worktree routes — filesystem isolation for parallel spawn agents.
 Each spawned agent gets its own isolated directory.
-Mirrors Claude Code's git worktree isolation but without requiring git.
+Git worktree-style isolation without requiring git.
 """
 import os
 import shutil

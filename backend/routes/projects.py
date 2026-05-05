@@ -1,8 +1,8 @@
 """
-projects.py — Core project CRUD + build orchestration via RuntimeEngine.
+projects.py — Core project CRUD + build orchestration via the workspace runtime.
 
 Restored from d406214^ with agent_dag / legacy dependencies removed.
-Build execution is delegated entirely to runtime_engine.execute_with_control().
+Build execution is delegated to the same single runtime used by workspace jobs.
 """
 
 from __future__ import annotations
@@ -19,8 +19,6 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-from ..services.runtime.runtime_engine import runtime_engine
 
 from ..deps import (
     JWT_ALGORITHM,
@@ -113,18 +111,29 @@ async def _ensure_credit_balance(user_id: str) -> None:
 
 
 async def _run_build_background(project_id: str, user_id: str, prompt: str) -> None:
-    """Background task: delegates to RuntimeEngine which is the ONLY executor."""
+    """Background task: delegates to the same single runtime as the workspace."""
     try:
         db = get_db()
         await db.projects.update_one(
             {"id": project_id}, {"$set": {"status": "running"}}
         )
-        result = await runtime_engine.execute_with_control(
-            task_id=project_id,
+        from ..db_pg import get_pg_pool
+        from ..orchestration import runtime_state
+        from ..orchestration.auto_runner import run_job_to_completion
+
+        pool = await get_pg_pool()
+        if pool is not None:
+            runtime_state.set_pool(pool)
+        await runtime_state.ensure_job_fk_prerequisites(project_id, user_id)
+        job = await runtime_state.create_job(
+            project_id=project_id,
+            mode="auto",
+            goal=prompt,
             user_id=user_id,
-            request=prompt,
-            conversation_id=f"project-{project_id}",
         )
+        workspace = _project_workspace_path(project_id)
+        workspace.mkdir(parents=True, exist_ok=True)
+        result = await run_job_to_completion(job["id"], str(workspace), pool)
         status = "completed" if result.get("success") else "failed"
         await db.projects.update_one(
             {"id": project_id},
@@ -132,6 +141,7 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
                 "$set": {
                     "status": status,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "job_id": job["id"],
                     "runtime_result": result,
                 }
             },
@@ -579,10 +589,9 @@ async def build_plan(
     data: BuildPlanRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Generate a real orchestrator plan and create a job with proper DAG steps.
+    """Create a single-runtime build job.
 
-    Returns job_id so the frontend can immediately call /orchestrator/run-auto
-    to fire the agent swarm, plus plan_text for display.
+    Returns job_id so the frontend can immediately call /orchestrator/run-auto.
     """
     import uuid as _uuid
     import json as _json
@@ -592,9 +601,8 @@ async def build_plan(
     goal = (data.prompt or "").strip()
 
     try:
-        from ..orchestration import planner as planner_mod
-        from ..orchestration.dag_engine import build_dag_from_plan
         from ..orchestration import runtime_state
+        from ..services.job_service import _single_runtime_plan
 
         try:
             from ..db_pg import get_pg_pool
@@ -605,8 +613,7 @@ async def build_plan(
         if pool:
             runtime_state.set_pool(pool)
 
-        # Generate a structured plan with real agent phases
-        plan = await planner_mod.generate_plan(goal)
+        plan = _single_runtime_plan(goal)
 
         # Create a project row if needed (FK guard)
         project_id = str((user or {}).get("id") or _uuid.uuid4())
@@ -652,25 +659,20 @@ async def build_plan(
             except Exception as _e:
                 _log.warning("build_plan: could not store plan: %s", _e)
 
-        # Build DAG steps and persist them so auto-runner finds real work
-        step_defs = build_dag_from_plan(plan)
-        for idx, sd in enumerate(step_defs):
-            await runtime_state.create_step(
-                job_id=job_id,
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
-            )
+        await runtime_state.append_job_event(
+            job_id,
+            "runtime_backend_selected",
+            {"engine": "single_tool_runtime", "legacy_job_steps": False},
+        )
 
-        # Build a human-readable plan summary for the UI
-        phases = plan.get("phases") or []
-        lines = [f"Goal: {goal}", f"Build target: {plan.get('crucib_build_target', 'fullstack')}", ""]
-        for ph in phases:
-            ph_key = ph.get("key") or ph.get("name") or "phase"
-            steps = ph.get("steps") or []
-            lines.append(f"Phase: {ph_key} ({len(steps)} agents)")
+        lines = [
+            f"Goal: {goal}",
+            "Runtime: files, preview, and proof are driven by one tool run",
+            "",
+            "Build plan:",
+        ]
+        for step in plan.get("steps") or []:
+            lines.append(f"- {step}")
         plan_text = "\n".join(lines)
 
         return {
@@ -678,21 +680,14 @@ async def build_plan(
             "project_id": project_id,
             "plan_text": plan_text,
             "plan": plan,
-            "step_count": len(step_defs),
+            "step_count": 0,
             "suggestions": [],
             "stream_url": f"/api/jobs/{job_id}/stream",
         }
 
     except Exception as exc:
-        _log.exception("build_plan: orchestrator error — falling back to stub")
-        # Graceful degradation: return stub so the UI never hard-crashes
-        return {
-            "job_id": None,
-            "plan_text": f"Plan for: {goal}",
-            "plan": {"prompt": goal, "project_type": "fullstack"},
-            "step_count": 0,
-            "suggestions": [],
-        }
+        _log.exception("build_plan: runtime job creation failed")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @projects_router.get("/settings/capabilities")

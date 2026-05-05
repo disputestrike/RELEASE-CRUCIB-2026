@@ -2,7 +2,7 @@
 brain_intelligence.py — The capabilities that make CrucibAI's brain
 surpass individual AI assistants like Claude or Codex.
 
-ADVANTAGES OVER CLAUDE/CODEX:
+ADVANTAGES:
 1. Cross-session memory — remembers what fixed what across every build ever
 2. Collective learning — every user's build makes the brain smarter
 3. Web search during repair — looks up error messages, package docs, API changes

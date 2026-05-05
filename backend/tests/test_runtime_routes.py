@@ -52,7 +52,7 @@ async def test_runtime_task_lifecycle_routes():
 
     caps = await route.swarm_capabilities(_user={"id": "user-1"})
     assert caps["success"] is True
-    assert caps["mode"] == "SWAN"
+    assert caps["mode"] == "single_tool_runtime"
     assert "spawn_unbounded" in caps
 
     deleted = await route.delete_runtime_task(task_id=task_id, project_id=project_id, _user={"id": "user-1"})

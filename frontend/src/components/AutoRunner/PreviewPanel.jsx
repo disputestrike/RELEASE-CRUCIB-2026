@@ -261,7 +261,7 @@ export default function PreviewPanel({
           <div className="pp-preview-truth-banner pp-preview-truth-live" role="status">
             <span className="pp-preview-truth-icon">OK</span>
             <span className="pp-preview-truth-text">
-              Runtime preview serving
+              Preview is live
             </span>
           </div>
         )}

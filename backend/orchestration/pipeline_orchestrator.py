@@ -49,12 +49,8 @@ except ImportError:
 # ─── Pipeline feature flag ────────────────────────────────────────────────────
 
 def pipeline_enabled() -> bool:
-    """Return True unless legacy DAG execution is explicitly re-enabled."""
-    allow_legacy = (os.environ.get("CRUCIBAI_ALLOW_LEGACY_DAG") or "").strip().lower()
-    if allow_legacy not in {"1", "true", "yes", "on"}:
-        return True
-    val = os.environ.get("CRUCIBAI_USE_PIPELINE", "1").strip().lower()
-    return val not in ("0", "false", "no", "off")
+    """The single tool runtime is the only supported build backend."""
+    return True
 
 
 def _command_argv(value: Any, default: List[str]) -> List[str]:
@@ -215,16 +211,15 @@ def _make_cerebras_text_caller():
     return _call
 
 
-def _pick_generate_caller(use_anthropic: bool):
+def _pick_generate_caller(use_anthropic: bool = True):
     """Return (caller, loop_type) where loop_type is 'native' or 'text'."""
-    if use_anthropic:
-        claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-        if claude_key:
-            from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-            model = normalize_anthropic_model(
-                os.environ.get("ANTHROPIC_MODEL"), default=ANTHROPIC_HAIKU_MODEL
-            )
-            return _make_anthropic_caller(claude_key, model), "native"
+    claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if use_anthropic and claude_key:
+        from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+        model = normalize_anthropic_model(
+            os.environ.get("ANTHROPIC_MODEL"), default=ANTHROPIC_HAIKU_MODEL
+        )
+        return _make_anthropic_caller(claude_key, model), "native"
 
     # Cerebras / text-mode default
     return _make_cerebras_text_caller(), "text"
@@ -342,10 +337,7 @@ A working scaffold has already been written to the workspace. Read the existing 
 then build the complete application on top of them. Run npm install, then npm run build.
 Fix every error. Stop only when the build exits with code 0."""
 
-    use_anthropic = os.environ.get(
-        "CRUCIBAI_PIPELINE_USE_HAIKU_TOOL_LOOP", ""
-    ).strip().lower() in {"1", "true", "yes", "on"}
-    caller, loop_type = _pick_generate_caller(use_anthropic)
+    caller, loop_type = _pick_generate_caller(True)
 
     if on_progress:
         await on_progress("generate_started", {
@@ -575,10 +567,7 @@ Fix every error above and run `{build_cmd_str}` again. Stop only when exit code 
     if on_progress:
         await on_progress("repair_started", {"errors_preview": error_output[:200]})
 
-    use_anthropic = os.environ.get(
-        "CRUCIBAI_PIPELINE_USE_HAIKU_TOOL_LOOP", ""
-    ).strip().lower() in {"1", "true", "yes", "on"}
-    caller, loop_type = _pick_generate_caller(use_anthropic)
+    caller, loop_type = _pick_generate_caller(True)
 
     if loop_type == "native":
         repair_result = await asyncio.wait_for(
@@ -696,21 +685,21 @@ async def run_pipeline_job(
             logger.warning("pipeline[%s] could not resolve workspace_path: %s", job_id, _wpe)
 
     try:
-        await clear_steps(job_id, reason="claude_code_backend_replaced_legacy_dag")
+        await clear_steps(job_id, reason="single_tool_runtime")
         await _emit("pipeline_started", {
             "goal": goal[:200],
             "workspace": workspace_path,
-            "engine": "claude_code_tool_loop",
+            "engine": "single_tool_runtime",
             "legacy_dag": False,
         })
         await update_job_state(
             job_id,
             "running",
-            extra={"current_phase": "claude_code_runtime", "engine": "claude_code_tool_loop"},
+            extra={"current_phase": "runtime_build", "engine": "single_tool_runtime"},
         )
 
         # ── Stage 1: Plan ────────────────────────────────────────────────────
-        await _emit("stage_started", {"stage": "plan", "label": "Planning your build"})
+        await _emit("stage_started", {"stage": "plan", "label": "Reading the request"})
         logger.info("pipeline[%s] stage=1/plan", job_id)
         try:
             plan = await _stage_plan(goal)
@@ -756,17 +745,11 @@ async def run_pipeline_job(
                 app_name = extract_app_name(goal)
                 scaffold_files = write_scaffold_to_workspace(workspace_path, app_name)
                 logger.info("pipeline[%s] scaffold injected: %d files (app=%s)", job_id, len(scaffold_files), app_name)
-                await _emit("scaffold_ready", {"app_name": app_name, "files": len(scaffold_files)})
-                for scaffold_path in scaffold_files[:80]:
-                    await _emit("file_written", {
-                        "path": str(scaffold_path).replace("\\", "/"),
-                        "summary": "Scaffold file saved to the workspace.",
-                        "source": "claude_code_scaffold",
-                    })
+                await _emit("workspace_foundation_ready", {"app_name": app_name, "files": len(scaffold_files)})
             except Exception as _se:
                 logger.warning("pipeline[%s] scaffold injection failed (non-fatal): %s", job_id, _se)
 
-        await _emit("stage_started", {"stage": "generate", "label": "Building your application"})
+        await _emit("stage_started", {"stage": "generate", "label": "Writing files"})
         logger.info("pipeline[%s] stage=2/generate (%d files)", job_id, len(plan.get("file_manifest") or []))
         gen_result = await _stage_generate(goal, plan, workspace_path, on_progress=_progress)
         stages_completed.append("generate")
@@ -800,7 +783,7 @@ async def run_pipeline_job(
             return {"status": abort_status, "stages_completed": stages_completed}
 
         # ── Stage 4: Verify ──────────────────────────────────────────────────
-        await _emit("stage_started", {"stage": "verify", "label": "Running the build"})
+        await _emit("stage_started", {"stage": "verify", "label": "Running proof"})
         logger.info("pipeline[%s] stage=4/verify", job_id)
         verify_result = await _stage_verify(workspace_path, plan, on_progress=_progress)
         stages_completed.append("verify")
@@ -845,11 +828,17 @@ async def run_pipeline_job(
         else:
             final_status = "failed"
             await update_job_state(job_id, "failed")
+            error_excerpt = (
+                verify_result.get("stderr")
+                or verify_result.get("stdout")
+                or "The build command exited without a usable error message."
+            )
             await _emit("job_failed", {
                 "stages": stages_completed,
                 "elapsed_seconds": elapsed,
-                "failure_reason": "Build proof is still failing; continuing with another focused pass.",
-                "build_stderr": (verify_result.get("stderr") or "")[:500],
+                "failure_reason": "Proof did not pass after the repair pass.",
+                "message": "Proof did not pass after the repair pass. See the failed check output for the exact error.",
+                "build_stderr": str(error_excerpt)[:1200],
             })
 
         return {

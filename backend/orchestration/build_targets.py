@@ -185,8 +185,8 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
         "tagline": "Emphasizes FastAPI routes, OpenAPI-shaped sketches, and persistence; minimal UI.",
         "guarantees": [
             "Python API sketch with route modules and health-style patterns",
-            "SQL / migration stubs when the goal implies data",
-            "Thin or placeholder UI so preview stays valid",
+            "SQL / migration files when the goal implies data",
+            "Minimal UI only when the request is truly API-first",
         ],
         "on_this_run": [
             "Frontend bundle is still generated (for Sandpack) but may stay minimal.",
@@ -199,13 +199,13 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
     "agent_workflow": {
         "id": "agent_workflow",
         "label": "Agents & automation",
-        "tagline": "Crew-style sketches, workflow docs, and hooks into the fixed DAG — not a custom LangGraph runtime.",
+        "tagline": "Automation files and runtime proof through the single build path.",
         "guarantees": [
-            "Planning stubs and optional crew pack files under workspace",
+            "Automation source files under the workspace",
             "Same scaffold as web runs so proofs and preview still apply",
         ],
         "on_this_run": [
-            "Automation is represented as files + docs; orchestration remains the Auto-Runner DAG.",
+            "Automation is represented as files and proof events in the single runtime.",
         ],
         "roadmap": [
             "User-defined agent graphs, schedules, and external tool connectors.",

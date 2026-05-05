@@ -90,8 +90,7 @@ async def workspace_events_ws(websocket: WebSocket):
             if not job_id:
                 continue
 
-            from backend.orchestration import runtime_state as _rs_mod, dag_engine, planner, auto_runner as _ar_mod
-            from backend.proof import proof_service as _ps_mod
+            from backend.orchestration import runtime_state as _rs_mod
             runtime_state = _rs_mod
             pool = await get_pg_pool()
             runtime_state.set_pool(pool)

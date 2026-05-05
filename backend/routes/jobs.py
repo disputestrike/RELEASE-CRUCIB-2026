@@ -270,20 +270,16 @@ async def create_job(
     background_tasks: BackgroundTasks,
     user: dict = Depends(_get_auth()),
 ):
-    """Create a new job (plan + steps) for a project."""
+    """Create a new single-runtime job for a project."""
     try:
-        from ..orchestration import planner as planner_mod
-        # NOTE: build_dag_from_plan is no longer passed — create_job_service uses
-        # services.runtime.execution_authority.build_runtime_native_step_defs directly.
-        # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
-        # keyword argument, which was the root cause of the NoneType-await surface.
+        # create_job_service owns the single-runtime job contract.
 
         result = await create_job_service(
             body=body,
             user=user,
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
-            generate_plan=planner_mod.generate_plan,
+            generate_plan=lambda *args, **kwargs: None,
         )
         job = (result or {}).get("job") or {}
         job_id = job.get("id") or job.get("job_id")
@@ -1219,13 +1215,12 @@ async def replay_build(
         original_file_count = (original_proof.generated_files or {}).get("count", 0) if original_proof else 0
 
         # Create new job
-        from ..orchestration.planner import generate_plan
         result = await create_job_service(
             body=JobCreateRequest(goal=goal, project_id=project_id, mode="guided"),
             user=user,
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
-            generate_plan=generate_plan,
+            generate_plan=lambda *args, **kwargs: None,
         )
 
         new_job = (result or {}).get("job") or {}

@@ -3,7 +3,7 @@
 # Reusable via workflow_call from crucibai-verify.yml (manual / chained gates).
 #
 # 10/10 roadmap — Phase 1 (this file): CI green (#45), automated grade signal build+test (#9).
-# Phase 2: stub policy — crew stubs + dev_stub_llm fail closed when CRUCIBAI_REAL_AGENT_ONLY=1 (orchestrator + dev_stub_llm.stub_build_enabled).
+# Phase 2: real runtime policy — generated workspace builds must fail closed when provider keys are absent.
 # Phase 3: golden eval report — job `verify-all-passed` is the single status check name for branch protection (#10).
 name: Verify full stack
 
@@ -55,7 +55,7 @@ jobs:
       DISABLE_CSRF_FOR_TEST: "1"
       CRUCIBAI_TEST: "1"
       CRUCIBAI_DEV: "1"
-      CRUCIBAI_REAL_AGENT_ONLY: "0"
+      CRUCIBAI_REAL_AGENT_ONLY: "1"
       FRONTEND_URL: http://localhost:3000
       GOOGLE_CLIENT_ID: test.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: test-google-client-secret

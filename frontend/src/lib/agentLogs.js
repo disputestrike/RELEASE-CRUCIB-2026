@@ -1,7 +1,7 @@
 /**
  * Agent Logs — IndexedDB-backed persistent debug logs
  * Every event from every build is stored and searchable
- * Beats Claude Code's hidden telemetry by making logs visible and exportable
+ * Makes runtime telemetry visible and exportable.
  */
 
 const DB_NAME = 'CrucibAI_AgentLogs';

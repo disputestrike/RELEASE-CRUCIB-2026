@@ -1,6 +1,6 @@
 /**
  * Memory Graph — 5-layer dynamic memory with relevance decay
- * Beats Claude Code's 7-layer hidden memory by being transparent + searchable in UI
+ * Transparent, searchable memory graph for the UI.
  * 
  * Layers:
  *   user     — preferences, style, defaults (persists forever)

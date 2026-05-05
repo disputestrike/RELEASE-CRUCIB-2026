@@ -1,6 +1,6 @@
 /**
  * Virtual Filesystem — isolated layers per spawn agent
- * Beats Claude Code's git worktree isolation by working in-memory (no git required)
+ * In-memory workspace isolation without requiring git.
  * Each spawn branch gets its own copy-on-write layer. Merges are explicit and visible.
  */
 

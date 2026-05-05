@@ -23,11 +23,8 @@ load_dotenv(ROOT_DIR / ".env", override=True)
 try:
     from ..anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
     from ..deps import get_optional_user
-    from ..dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
-    from ..dev_stub_llm import detect_build_kind as _stub_detect_build_kind
-    from ..dev_stub_llm import is_real_agent_only
-    from ..dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
-    from ..dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+    from ..real_agent_runtime import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+    from ..real_agent_runtime import is_real_agent_only
     from ..llm_client import CEREBRAS_MODEL, get_cerebras_key as _get_cerebras_key
     from ..llm_client import get_model_chain_entries
     from ..llm_router import classifier
@@ -37,11 +34,8 @@ try:
 except ImportError:  # compatibility for legacy tests importing `services.*`
     from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
     from backend.deps import get_optional_user
-    from backend.dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
-    from backend.dev_stub_llm import detect_build_kind as _stub_detect_build_kind
-    from backend.dev_stub_llm import is_real_agent_only
-    from backend.dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
-    from backend.dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+    from backend.real_agent_runtime import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+    from backend.real_agent_runtime import is_real_agent_only
     from backend.llm_client import CEREBRAS_MODEL, get_cerebras_key as _get_cerebras_key
     from backend.llm_client import get_model_chain_entries
     from backend.llm_router import classifier

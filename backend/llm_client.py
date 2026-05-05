@@ -1,6 +1,6 @@
 """Unified LLM client for CrucibAI.
 
-Routing policy from the approved Claude Code fusion notes:
+Routing policy from the approved runtime fusion notes:
 - Cerebras is the volume execution engine for generation and repair patches.
 - Haiku is the reasoning and validation quality gate.
 - Sonnet is disabled unless ALLOW_SONNET=true and the task is explicitly

@@ -167,13 +167,13 @@ const assistantTextForEvent = (event) => {
   }
   if (body) return body;
   if (t === 'job_started') {
-    return "I'm on it. I'll inspect the workspace, make the changes, run checks, and keep the evidence visible as the build moves.";
+    return '';
   }
   if (t === 'plan_created' && !extractPlanSteps(event).length) {
-    return 'I have the work scoped. I am moving into the code path now.';
+    return '';
   }
   if (t === 'repair_started') {
-    return 'The check failed. I am applying the next fix and rerunning proof.';
+    return '';
   }
   if (t === 'job_completed') {
     return 'The workspace has been updated and proof is ready to inspect.';

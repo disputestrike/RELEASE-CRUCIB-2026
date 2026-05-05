@@ -95,14 +95,17 @@ async def _trigger_auto_repair(app_id: str, improvement_prompt: str) -> None:
     if not AUTO_REPAIR:
         return
     try:
-        from ..orchestration.executor import handle_repair
-        logger.info("[OPT_ENGINE] AUTO_REPAIR: queuing repair for app=%s", app_id)
-        asyncio.create_task(
-            handle_repair(
-                job_id=app_id,
-                repair_instruction=improvement_prompt,
-                source="optimization_engine",
-            )
+        from ..orchestration import runtime_state
+
+        logger.info("[OPT_ENGINE] AUTO_REPAIR: recording repair request for app=%s", app_id)
+        await runtime_state.append_job_event(
+            app_id,
+            "user_steering",
+            {
+                "message": improvement_prompt,
+                "source": "optimization_engine",
+                "resume_required": True,
+            },
         )
     except Exception as exc:
         logger.warning("[OPT_ENGINE] AUTO_REPAIR failed to queue for app=%s: %s", app_id, exc)

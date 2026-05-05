@@ -38,25 +38,16 @@ from .services.llm_service import (
 # from server.py directly. These live in sub-modules; re-exported here so
 # the existing import chains in ai.py/orchestrator.py don't need to change.
 # ─────────────────────────────────────────────────────────────────────────
-try:
-    from .agent_dag import AGENT_DAG  # 245-node DAG used by orchestrator
-except Exception:
-    AGENT_DAG: dict = {}
+AGENT_DAG: dict = {}
 
 try:
-    from .dev_stub_llm import (
+    from .real_agent_runtime import (
         is_real_agent_only,
         chat_llm_available,
-        stub_build_enabled,
-        stub_multifile_markdown,
     )
-    from .dev_stub_llm import detect_build_kind as _stub_detect_build_kind
 except Exception:
     def is_real_agent_only() -> bool: return False
     def chat_llm_available(effective_keys=None) -> bool: return True
-    def stub_build_enabled() -> bool: return False
-    def stub_multifile_markdown(prompt: str, build_kind=None) -> str: return ""
-    def _stub_detect_build_kind(msg: str) -> str: return "fullstack"
 
 try:
     from .content_policy import screen_user_content
@@ -836,15 +827,7 @@ async def _run_single_agent_with_context(
         enriched_prompt = goal_reminder + project_prompt + "\n\n" + memory_summary + context_block
     else:
         enriched_prompt = goal_reminder + project_prompt + context_block
-    # Use the AGENT_DAG system_prompt so each agent gets its full code-writing
-    # instructions (e.g. "Output ONLY complete JSX code") instead of the bare
-    # "Frontend Generation execution" stub that caused agents to return prose.
-    try:
-        from backend.agent_dag import AGENT_DAG as _AGENT_DAG
-        _dag_entry = _AGENT_DAG.get(agent_name, {})
-        _dag_system_prompt = (_dag_entry.get("system_prompt") or "").strip()
-    except Exception:
-        _dag_system_prompt = ""
+    _dag_system_prompt = ""
     # Inject design system + payment default rules for code-generating agents
     _DESIGN_PAYMENT_AGENTS = {
         "Frontend Generation", "Design Agent", "Backend Generation",
@@ -2237,4 +2220,3 @@ else:
     logger.warning(
         f"Static directory not found or empty: {STATIC_DIR}. " f"Static file serving will be disabled."
     )
-

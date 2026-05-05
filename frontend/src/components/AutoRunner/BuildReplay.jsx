@@ -188,7 +188,7 @@ export default function BuildReplay({ events = [], steps = [] }) {
     return (
       <div className="build-replay build-replay-empty">
         <GitCompare size={22} />
-        <span className="br-empty-title">No replay data yet</span>
+        <span className="br-empty-title">No recorded changes yet</span>
         <span className="br-empty-desc">Replay will appear from this job's real build events.</span>
       </div>
     );

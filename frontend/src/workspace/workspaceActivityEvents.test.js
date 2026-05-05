@@ -61,7 +61,7 @@ describe('workspaceActivityEvents', () => {
 
   test('formats failure and infrastructure events', () => {
     expect(formatWorkspaceActivityEvent({ type: 'job_failed', payload: { failure_reason: 'preview_gate_failed' } })).toBe(
-      'Fix loop continuing',
+      'Proof failed - checking error',
     );
     expect(formatWorkspaceActivityEvent({ type: 'step_infrastructure_failure', payload: {} })).toBe(
       'Infrastructure issue: run stopped for a host or dependency failure',

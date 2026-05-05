@@ -142,7 +142,6 @@ a {{ color: var(--color-primary); }}
 def get_vite_react_scaffold(app_name: str) -> Dict[str, str]:
     """Return a minimal Vite+React+TS scaffold guaranteed to build."""
     slug = re.sub(r"[^a-z0-9]+", "-", app_name.lower()).strip("-") or "app"
-    colors = generate_brand_tokens(app_name)["colors"]
     return {
         "package.json": json.dumps({
             "name": slug,
@@ -233,18 +232,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 """,
         "src/index.css": brand_css_file(app_name),
-        "src/App.tsx": f"""import React from 'react'
-
-export default function App() {{
-  return (
-    <div style={{{{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '{colors["bg"]}' }}}}>
-      <div style={{{{ textAlign: 'center', color: '{colors["text"]}' }}}}>
-        <h1 style={{{{ fontSize: '2rem', fontWeight: '700', color: '{colors["primary"]}' }}}}>{app_name}</h1>
-        <p style={{{{ marginTop: '0.5rem', opacity: 0.7 }}}}>Building your application...</p>
-      </div>
-    </div>
-  )
-}}
+        "src/App.tsx": """export default function App() {
+  return null
+}
 """,
     }
 

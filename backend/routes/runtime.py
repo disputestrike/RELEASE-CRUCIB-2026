@@ -1,5 +1,5 @@
 """
-Runtime control routes: task lifecycle, event feed, and swarm capability introspection.
+Runtime control routes: task lifecycle, event feed, and build runtime introspection.
 """
 
 from __future__ import annotations
@@ -52,15 +52,7 @@ def _get_optional_user():
 
 
 def _agent_catalog_count() -> Optional[int]:
-    try:
-        try:
-            from ..agent_dag import AGENT_DAG
-        except ImportError:  # compatibility for legacy tests importing `routes.runtime`
-            from backend.agent_dag import AGENT_DAG
-
-        return len(AGENT_DAG)
-    except Exception:
-        return None
+    return 0
 
 
 class CreateTaskBody(BaseModel):
@@ -208,7 +200,7 @@ async def runtime_metrics(_user: dict = Depends(_get_optional_user())):
             "catalog": "available",
             "spawn_runtime": "available",
             "live_count": len(active_tasks),
-            "note": "Active agent count reflects current runtime tasks, not the total DAG catalog.",
+            "note": "Active count reflects current runtime tasks.",
         },
     }
 
@@ -264,11 +256,11 @@ async def swarm_capabilities(_user: dict = Depends(_get_optional_user())):
 
     return {
         "success": True,
-        "mode": "SWAN",
+        "mode": "single_tool_runtime",
         "spawn_limit": hard_cap,
         "spawn_unbounded": hard_cap is None,
         "estimated_agent_catalog_count": agent_count,
-        "truth_statement": "Core agent catalog is real; large population claims are modeled cohorts unless explicitly marked as live LLM branches.",
+        "truth_statement": "Build execution uses the single runtime path; legacy agent catalogs are not used for workspace builds.",
     }
 
 

@@ -54,13 +54,15 @@ export function formatWorkspaceActivityEvent(ev) {
       return name && name !== 'Step' ? `Retrying: ${name}` : 'Retrying step';
     case 'job_started':
       return 'Runtime started';
-    case 'claude_code_backend_selected':
+    case 'runtime_backend_selected':
       return 'Build runtime selected';
     case 'pipeline_dispatch':
     case 'pipeline_started':
       return 'Build runtime started';
-    case 'legacy_steps_cleared':
-      return 'Old step rows cleared';
+    case 'runtime_steps_cleared':
+      return 'Runtime rows refreshed';
+    case 'runtime_resume_prepared':
+      return 'Runtime resumed';
     case 'plan_created':
       return 'Build plan ready';
     case 'tool_call': {
@@ -90,7 +92,7 @@ export function formatWorkspaceActivityEvent(ev) {
       return status ? `Job status: ${status}` : null;
     }
     case 'job_failed': {
-      return 'Fix loop continuing';
+      return 'Proof failed - checking error';
     }
     case 'dag_node_started':
       return name && name !== 'Step' ? `Starting ${name}` : 'Starting next task';

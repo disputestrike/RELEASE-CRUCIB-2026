@@ -10,11 +10,11 @@ from ..services.runtime_contract import require_canonical_db
 _logger = logging.getLogger(__name__)
 
 
-def _claude_code_plan(goal: str) -> Dict[str, Any]:
+def _single_runtime_plan(goal: str) -> Dict[str, Any]:
     return {
-        "engine": "claude_code_tool_loop",
+        "engine": "single_tool_runtime",
         "goal": str(goal or ""),
-        "orchestration_mode": "claude_code_tool_loop",
+        "orchestration_mode": "single_tool_runtime",
         "recommended_build_target": "full_system_generator",
         "phase_count": 0,
         "selected_agent_count": 0,
@@ -34,12 +34,7 @@ def _claude_code_plan(goal: str) -> Dict[str, Any]:
 
 
 def _legacy_job_steps_enabled() -> bool:
-    return (os.environ.get("CRUCIBAI_LEGACY_JOB_STEPS") or "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return False
 
 
 async def create_job_service(
@@ -70,11 +65,8 @@ async def create_job_service(
     if resolve_project_id is not None:
         project_id = await resolve_project_id(project_id, user)
 
-    use_legacy_steps = _legacy_job_steps_enabled()
-    if use_legacy_steps:
-        plan = await generate_plan(body.goal, project_state=planner_project_state or {})
-    else:
-        plan = _claude_code_plan(body.goal)
+    use_legacy_steps = False
+    plan = _single_runtime_plan(body.goal)
     if update_last_build_state is not None:
         try:
             update_last_build_state(plan)
@@ -103,25 +95,12 @@ async def create_job_service(
             "created_at": _dt.now(_tz.utc).isoformat(),
         }
 
-    if pool and use_legacy_steps:
-        from ..services.runtime.execution_authority import build_runtime_native_step_defs
-
-        step_defs = build_runtime_native_step_defs(plan)
-        for idx, sd in enumerate(step_defs):
-            await rs.create_step(
-                job_id=job["id"],
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
-            )
-    elif pool:
+    if pool:
         await rs.append_job_event(
             job["id"],
-            "claude_code_backend_selected",
+            "runtime_backend_selected",
             {
-                "engine": "claude_code_tool_loop",
+                "engine": "single_tool_runtime",
                 "legacy_job_steps": False,
             },
         )
@@ -167,23 +146,7 @@ async def get_job_service(
     except Exception:
         latest_failure = None
 
-    if pool_getter is not None:
-        try:
-            rs = runtime_state_getter()
-            pool = await pool_getter()
-            if pool is not None:
-                rs.set_pool(pool)
-                steps = await rs.get_steps(job_id)
-                events = await rs.get_job_events(job_id, limit=120)
-                from ..orchestration.controller_brain import build_live_job_progress
-
-                controller_progress = build_live_job_progress(
-                    job=job,
-                    steps=steps or [],
-                    events=events or [],
-                )
-        except Exception:
-            _logger.warning("get_job_service: controller_progress unavailable", exc_info=True)
+    _ = pool_getter
     out: Dict[str, Any] = {
         "success": True,
         "job": job,

@@ -1,7 +1,7 @@
 """
 Git Intelligence Service — mines git history to extract reusable patterns.
 
-This is the "Skill Creator" equivalent from Everything Claude Code.
+This is the runtime skill-intelligence layer.
 Analyzes commits, diffs, and file history to extract:
   - Repeated implementation patterns
   - Common bug fix patterns

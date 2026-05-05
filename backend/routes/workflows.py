@@ -45,7 +45,6 @@ async def run_workflow(
 ):
     """Trigger a named workflow — creates a plan and starts execution."""
     from workflows import get_workflow, workflow_to_plan_goal, WORKFLOWS
-    import asyncio
 
     wf = get_workflow(body.workflow_key)
     if not wf:
@@ -55,34 +54,10 @@ async def run_workflow(
     if not goal:
         raise HTTPException(status_code=400, detail="Could not generate goal for workflow")
 
-    # Trigger execution via unified runtime engine.
-    try:
-        import uuid
-        from backend.services.runtime.runtime_engine import runtime_engine
-
-        job_id = str(uuid.uuid4())
-        response = await runtime_engine.execute_with_control(
-            task_id=job_id,
-            user_id=user.get("id", "anonymous"),
-            request=goal,
-            conversation_id=f"workflow-{body.workflow_key}-{job_id}",
-        )
-
-        return {
-            "success": True,
-            "job_id": response.get("task_id") or job_id,
-            "workflow": wf["name"],
-            "goal": goal[:200],
-            "stream_url": f"/api/runtime/tasks/{response.get('task_id')}",
-        }
-
-    except Exception as e:
-        logger.exception("workflow run error: %s", e)
-        # Fallback: just return the goal for the frontend to submit normally
-        return {
-            "success": False,
-            "fallback": True,
-            "goal": goal,
-            "workflow": wf["name"],
-            "error": str(e),
-        }
+    return {
+        "success": False,
+        "requires_workspace_job": True,
+        "workflow": wf["name"],
+        "goal": goal,
+        "message": "Start this workflow from the workspace so it uses the single build runtime.",
+    }

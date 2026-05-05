@@ -10,10 +10,11 @@ import './ExecutionTimeline.css';
 const FILTERS = ['All', 'Active', 'Errors', 'Retries'];
 
 const TOOL_RUNTIME_EVENTS = new Set([
-  'claude_code_backend_selected',
+  'runtime_backend_selected',
   'pipeline_dispatch',
   'pipeline_started',
-  'legacy_steps_cleared',
+  'runtime_steps_cleared',
+  'runtime_resume_prepared',
   'plan_created',
   'tool_call',
   'tool_result',
@@ -40,9 +41,9 @@ const payloadOf = (event) => {
 
 const typeOf = (event) => event?.type || event?.event_type || '';
 
-const isClaudeRuntimeEvent = (event) => {
+const isToolRuntimeEvent = (event) => {
   const payload = payloadOf(event);
-  return TOOL_RUNTIME_EVENTS.has(typeOf(event)) || payload.engine === 'claude_code_tool_loop';
+  return TOOL_RUNTIME_EVENTS.has(typeOf(event)) || payload.engine === 'single_tool_runtime';
 };
 
 const isLegacyAgentStep = (step) => {
@@ -75,7 +76,9 @@ const eventStatus = (type, payload) => {
 const eventTitle = (type, payload) => {
   if (type === 'plan_created') return 'Build plan ready';
   if (type === 'pipeline_started') return 'Runtime started';
-  if (type === 'legacy_steps_cleared') return 'Old step rows cleared';
+  if (type === 'runtime_backend_selected') return 'Runtime selected';
+  if (type === 'runtime_steps_cleared') return 'Runtime rows refreshed';
+  if (type === 'runtime_resume_prepared') return 'Runtime resumed';
   if (type === 'tool_call') return `${payload.title || payload.label || payload.tool || payload.name || 'Working'} ${compact(payload.input || payload.command || payload.path, 80)}`.trim();
   if (type === 'tool_result') return `${payload.title || payload.label || payload.tool || payload.name || 'Work'} complete`;
   if (type === 'file_written') return `Saved ${String(payload.path || 'file').split('/').pop()}`;
@@ -86,13 +89,13 @@ const eventTitle = (type, payload) => {
   if (type === 'repair_started') return 'Fix pass started';
   if (type === 'repair_completed') return 'Fix pass completed';
   if (type === 'job_completed') return 'Workspace ready';
-  if (type === 'job_failed') return 'Fix loop continuing';
+  if (type === 'job_failed') return 'Proof failed - checking error';
   return titleCase(type) || 'Runtime event';
 };
 
-const buildClaudeRows = (events) =>
+const buildToolRuntimeRows = (events) =>
   (events || [])
-    .filter(isClaudeRuntimeEvent)
+    .filter(isToolRuntimeEvent)
     .map((event, index) => {
       const payload = payloadOf(event);
       const type = typeOf(event);
@@ -178,10 +181,10 @@ export default function ExecutionTimeline({
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
-  const claudeRuntimeActive = useMemo(() => events.some(isClaudeRuntimeEvent), [events]);
+  const toolRuntimeActive = useMemo(() => events.some(isToolRuntimeEvent), [events]);
   const timelineRows = useMemo(
-    () => (claudeRuntimeActive ? buildClaudeRows(events) : steps.filter((step) => !isLegacyAgentStep(step))),
-    [claudeRuntimeActive, events, steps],
+    () => (toolRuntimeActive ? buildToolRuntimeRows(events) : steps.filter((step) => !isLegacyAgentStep(step))),
+    [toolRuntimeActive, events, steps],
   );
 
   // Auto-expand every in-flight step (parallel batches can have multiple running)
@@ -217,7 +220,7 @@ export default function ExecutionTimeline({
     });
   };
 
-  const currentPhase = claudeRuntimeActive ? 'Runtime proof flow' : (job?.current_phase || 'planning');
+  const currentPhase = toolRuntimeActive ? 'Runtime proof flow' : (job?.current_phase || 'planning');
 
   const filteredSteps = timelineRows.filter(s => {
     switch (filter) {

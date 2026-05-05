@@ -66,7 +66,7 @@ function formatEvent(ev) {
     case 'job_completed':
       return 'Workspace ready';
     case 'job_failed': {
-      return 'Fix loop continuing';
+      return 'Proof failed - checking error';
     }
     case 'dag_node_started':
       return name && name !== 'Step' ? `Starting ${name}` : 'Starting next task';

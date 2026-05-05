@@ -36,8 +36,6 @@ async def build_plan_service(
     is_real_agent_only: Callable[[], bool],
     chat_llm_available: Callable[[dict], bool],
     real_agent_no_llm_keys_detail: str,
-    stub_build_enabled: Callable[[], bool],
-    stub_plan_and_suggestions: Callable[[str, str], tuple[str, list[str]]],
     get_model_chain: Callable[..., Any],
     call_llm_with_fallback: Callable[..., Awaitable[tuple[str, Any]]],
     ensure_credit_balance: Callable[[str], Awaitable[None]],
@@ -64,15 +62,6 @@ async def build_plan_service(
     effective_plan = effective_api_keys(user_keys_plan)
     if is_real_agent_only() and not chat_llm_available(effective_plan):
         raise HTTPException(status_code=503, detail=real_agent_no_llm_keys_detail)
-    if stub_build_enabled():
-        plan_text, suggestions = stub_plan_and_suggestions(prompt, build_kind)
-        return {
-            "plan_text": plan_text,
-            "suggestions": suggestions,
-            "model_used": "dev-stub",
-            "swarm_used": use_swarm,
-            "plan_tokens": 500,
-        }
     kind_instruction = kind_instruction_map.get(build_kind, "")
     system = f'''You are a product and engineering planner. Given a user request to build an application, output a concise plan in this exact format (use the headings and bullets, no extra text before/after).{kind_instruction}
 

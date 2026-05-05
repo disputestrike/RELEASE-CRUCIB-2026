@@ -82,9 +82,23 @@ def _search_files(workspace_path: str, pattern: str) -> str:
     return "\n".join(sorted(results)) or f"[no files matching {pattern}]"
 
 
+def _safe_write_runtime(workspace_path: str, rel: str, content: str) -> str:
+    root = Path(workspace_path).resolve()
+    rel_clean = str(rel or "").replace("\\", "/").lstrip("/")
+    if not rel_clean or rel_clean.startswith("../") or "/../" in f"/{rel_clean}":
+        return ""
+    full = (root / rel_clean).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        return ""
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(content if isinstance(content, str) else str(content), encoding="utf-8")
+    return str(full.relative_to(root)).replace("\\", "/")
+
+
 def _write_file(workspace_path: str, rel: str, content: str) -> str:
-    from .executor import _safe_write
-    written = _safe_write(workspace_path, rel, content)
+    written = _safe_write_runtime(workspace_path, rel, content)
     if written:
         return f"[written: {written}]"
     return f"[write rejected or failed: {rel}]"
@@ -100,8 +114,7 @@ def _edit_file(workspace_path: str, rel: str, old_str: str, new_str: str) -> str
         if old_str not in src:
             return f"[edit failed: string not found in {rel}]"
         new_src = src.replace(old_str, new_str, 1)
-        from .executor import _safe_write
-        written = _safe_write(workspace_path, rel, new_src)
+        written = _safe_write_runtime(workspace_path, rel, new_src)
         return f"[edited: {written}]" if written else f"[edit rejected: {rel}]"
     except OSError as e:
         return f"[error editing {rel}: {e}]"

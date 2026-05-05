@@ -280,31 +280,31 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
 
 # ── Causal chain analyser ──────────────────────────────────────────────────────
 
-# DAG downstream map — if X fails, these are also blocked
+# Runtime downstream map: if X fails, these checks are also blocked.
 CAUSAL_CHAINS = {
-    "agents.database_agent": [
-        "agents.multi_tenant_agent",
-        "agents.data_pipeline_agent",
-        "agents.data_warehouse_agent",
-        "agents.database_schema_validator_agent",
-        "agents.orm_setup_agent",
-        "agents.ml_data_pipeline_agent",
-        "agents.database_optimization_agent",
+    "runtime.database": [
+        "runtime.multi_tenant",
+        "runtime.data_pipeline",
+        "runtime.data_warehouse",
+        "runtime.database_schema_validator",
+        "runtime.orm_setup",
+        "runtime.ml_data_pipeline",
+        "runtime.database_optimization",
     ],
-    "agents.frontend_generation": [
-        "agents.e2e_test_agent",
-        "agents.responsive_breakpoints_agent",
-        "agents.typography_system_agent",
-        "agents.iot_dashboard_agent",
-        "agents.build_validator_agent",
+    "runtime.frontend": [
+        "runtime.e2e_test",
+        "runtime.responsive_breakpoints",
+        "runtime.typography_system",
+        "runtime.iot_dashboard",
+        "runtime.build_validator",
     ],
-    "agents.backend_generation": [
-        "agents.database_agent",
-        "agents.deployment_agent",
-        "agents.websocket_agent",
-        "agents.logging_agent",
-        "agents.api_contract_validator_agent",
-        "agents.cors_security_headers_agent",
+    "runtime.backend": [
+        "runtime.database",
+        "runtime.deployment",
+        "runtime.websocket",
+        "runtime.logging",
+        "runtime.api_contract_validator",
+        "runtime.cors_security_headers",
     ],
     "verification.compile": [
         "verification.preview",

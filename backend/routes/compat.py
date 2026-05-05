@@ -67,35 +67,9 @@ def _safe_user_id(user: Any) -> str:
 
 
 def _load_agent_catalog(limit: int | None = None) -> List[Dict[str, Any]]:
-    """Return the real DAG-backed agent catalog, reduced to safe public metadata."""
-    try:
-        from ..agent_dag import AGENT_DAG
-
-        agents: List[Dict[str, Any]] = []
-        for name, spec in AGENT_DAG.items():
-            depends_on = list(spec.get("depends_on") or [])
-            prompt = str(spec.get("system_prompt") or "")
-            agents.append(
-                {
-                    "id": name.lower().replace(" ", "_").replace("/", "_"),
-                    "name": name,
-                    "category": str(spec.get("category") or spec.get("phase") or "agent"),
-                    "depends_on": depends_on[:12],
-                    "dependency_count": len(depends_on),
-                    "has_system_prompt": bool(prompt.strip()),
-                    "status": "available",
-                }
-            )
-        return agents[:limit] if limit else agents
-    except Exception:
-        fallback = [
-            {"id": "planner", "name": "Planner", "category": "core", "status": "available"},
-            {"id": "architect", "name": "Architect", "category": "core", "status": "available"},
-            {"id": "frontend", "name": "Frontend", "category": "build", "status": "available"},
-            {"id": "backend", "name": "Backend", "category": "build", "status": "available"},
-            {"id": "validator", "name": "Validator", "category": "quality", "status": "available"},
-        ]
-        return fallback[:limit] if limit else fallback
+    """Legacy catalog endpoint placeholder: workspace builds use the single runtime."""
+    _ = limit
+    return []
 
 
 def _agent_by_name(agent_name: str) -> Dict[str, Any] | None:
@@ -332,11 +306,10 @@ async def agents_advantage_compat(_user: dict = Depends(_get_optional_user())):
     return {
         "status": "available",
         "catalog_count": len(agents),
-        "selling_advantage": "DAG-backed specialist agent catalog plus spawnable sub-agent branches for jobs and simulations.",
+        "selling_advantage": "Single runtime builder with durable jobs, files, preview, and proof.",
         "what_is_real_now": [
-            "Agent catalog is loaded from backend.agent_dag.AGENT_DAG.",
-            "Job orchestration can select specialist agents and phases.",
-            "Spawn route can run parallel sub-agent branches against a durable job.",
+            "Workspace builds run through the single tool runtime.",
+            "Job state, events, files, preview, and proof resolve from one durable job id.",
             "Simulation route uses scenario-specific agents and modeled population cohorts.",
         ],
         "honesty_rules": [

@@ -1,8 +1,8 @@
 /**
  * Context Manager — semantic anchoring + adaptive folding
- * Beats Claude Code's autoCompact by being transparent and user-visible
+ * Keeps compaction transparent and user-visible.
  * 
- * How it beats Claude Code:
+ * Runtime goals:
  * - Their folding is hidden. Ours is visible in the UI.
  * - We preserve intent anchors (goals, decisions) permanently
  * - Low-signal tool output gets folded automatically

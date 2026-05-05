@@ -395,13 +395,18 @@ export default function UnifiedWorkspace() {
   );
   const sandpackDeps = useMemo(() => computeSandpackDeps(sandpackMergeFiles), [sandpackMergeFiles]);
 
-  /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
+  /**
+   * The backend session resolver is the source of truth once it hydrates. A URL
+   * can carry a stale jobId after Railway deploys or sidebar/project recovery;
+   * if the session maps that stale id to the latest valid job, every pane must
+   * follow the session job instead of continuing to poll the dead URL id.
+   */
   const sessionJobId = activeWorkspaceSession?.jobId || null;
   const sessionProjectId = activeWorkspaceSession?.projectId || null;
   const sessionTaskId = activeWorkspaceSession?.taskId || null;
   const activeTaskId = sessionTaskId || taskIdFromUrl || null;
 
-  const effectiveJobId = jobIdFromUrl || sessionJobId || jobId;
+  const effectiveJobId = sessionJobId || jobIdFromUrl || jobId;
   const canonicalJobKey = useMemo(() => {
     const normalizedJob = normalizeIdentityToken(effectiveJobId);
     if (normalizedJob) return `job:${normalizedJob}`;

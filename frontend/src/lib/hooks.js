@@ -1,6 +1,6 @@
 /**
  * Hooks layer — lifecycle interception points
- * Mirrors Claude Code's hook system: onPromptSubmit, beforeToolCall, etc.
+ * Runtime hook system: onPromptSubmit, beforeToolCall, etc.
  */
 class HookEngine {
   constructor() {

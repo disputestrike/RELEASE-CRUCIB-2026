@@ -207,15 +207,15 @@ ROOT_CAUSE_GRAPH = {
         ("server.py", "python_syntax", "regenerate_backend"),
         ("server.py", "hardcoded_secrets", "fix_secrets"),
     ],
-    "agents.database_agent": [
+    "runtime.database": [
         ("schema.sql", "text_exists", "regenerate_schema"),
         ("server.py", "python_syntax", "check_backend"),
     ],
-    "agents.frontend_generation": [
+    "runtime.frontend": [
         ("src/App.jsx", "jsx_syntax", "regenerate_frontend"),
         ("src/main.jsx", "text_exists", "regenerate_entry_point"),
     ],
-    "agents.backend_generation": [
+    "runtime.backend": [
         ("server.py", "python_syntax", "regenerate_backend"),
         ("requirements.txt", "text_exists", "regenerate_requirements"),
     ],

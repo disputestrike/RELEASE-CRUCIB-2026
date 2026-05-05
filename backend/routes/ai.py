@@ -167,15 +167,12 @@ async def ai_chat(
         _merge_prior_turns_into_message,
         _needs_live_data,
         _speed_from_plan,
-        _stub_detect_build_kind,
         _tokens_to_credits,
         _user_credits,
         chat_llm_available,
         get_workspace_api_keys,
         is_real_agent_only,
         screen_user_content,
-        stub_build_enabled,
-        stub_multifile_markdown,
     )
 
     db = _get_db()
@@ -267,42 +264,6 @@ async def ai_chat(
             raise HTTPException(status_code=400, detail=_content_block)
         if is_real_agent_only() and not chat_llm_available(effective):
             raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
-        if stub_build_enabled():
-            response = stub_multifile_markdown(
-                data.message or "", _stub_detect_build_kind(data.message or "")
-            )
-            session_id = data.session_id or str(uuid.uuid4())
-            tokens_used = min(200, max(40, len(combined_text) // 4))
-            if db is not None:
-                await db.chat_history.insert_one(
-                    {
-                        "id": str(uuid.uuid4()),
-                        "session_id": session_id,
-                        "user_id": user["id"] if user else None,
-                        "message": data.message,
-                        "response": response,
-                        "model": "dev-stub",
-                        "tokens_used": tokens_used,
-                        "created_at": __import__("datetime")
-                        .datetime.now(__import__("datetime").timezone.utc)
-                        .isoformat(),
-                    }
-                )
-            if user and not user.get("public_api"):
-                cred = _user_credits(user)
-                credit_deduct = min(_tokens_to_credits(tokens_used), cred)
-                if credit_deduct > 0 and db is not None:
-                    await _ensure_credit_balance(user["id"])
-                    await db.users.update_one(
-                        {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
-                    )
-            return {
-                "response": response,
-                "message": response,
-                "session_id": session_id,
-                "model_used": "dev-stub",
-                "tokens_used": tokens_used,
-            }
         model_chain = _get_model_chain(
             data.model or "auto", combined_text, effective_keys=effective
         )
@@ -770,45 +731,6 @@ async def ai_streaming_chat(
             raise HTTPException(status_code=400, detail=_content_block)
         if is_real_agent_only() and not chat_llm_available(effective):
             raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
-        if stub_build_enabled():
-            async def generate_stub_response():
-                response = stub_multifile_markdown(
-                    data.message or "", _stub_detect_build_kind(data.message or "")
-                )
-                session_id = data.session_id or str(uuid.uuid4())
-                tokens_used = min(200, max(40, len(combined_text) // 4))
-                if db is not None:
-                    await db.chat_history.insert_one(
-                        {
-                            "id": str(uuid.uuid4()),
-                            "session_id": session_id,
-                            "user_id": user["id"] if user else None,
-                            "message": data.message,
-                            "response": response,
-                            "model": "dev-stub",
-                            "tokens_used": tokens_used,
-                            "created_at": __import__("datetime")
-                            .datetime.now(__import__("datetime").timezone.utc)
-                            .isoformat(),
-                        }
-                    )
-                if user and not user.get("public_api"):
-                    cred = _user_credits(user)
-                    credit_deduct = min(_tokens_to_credits(tokens_used), cred)
-                    if credit_deduct > 0 and db is not None:
-                        await _ensure_credit_balance(user["id"])
-                        await db.users.update_one(
-                            {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
-                        )
-                yield json.dumps({
-                    "response": response,
-                    "message": response,
-                    "session_id": session_id,
-                    "model_used": "dev-stub",
-                    "tokens_used": tokens_used,
-                }) + "\n"
-            return StreamingResponse(generate_stub_response(), media_type="application/json")
-
         model_chain = _get_model_chain(
             data.model or "auto", combined_text, effective_keys=effective
         )
