@@ -389,6 +389,7 @@ async def _stage_generate(
 ) -> Dict[str, Any]:
     """Stage 2: Run a single-conversation agent to build the entire app."""
     from backend.orchestration.runtime_engine import run_agent_loop, run_text_agent_loop
+    from backend.orchestration.claude_code_backbone import run_generation_with_backbone
 
     manifest_text = "\n".join(plan.get("file_manifest") or [])
     build_cmd = " ".join(_command_argv(plan.get("build_command"), ["npm", "run", "build"]))
@@ -442,68 +443,22 @@ Fix every error. Stop only when the build exits with code 0."""
             "file_count": len(plan.get("file_manifest") or []),
         })
 
-    async def _run_text_fallback(reason: str) -> Dict[str, Any]:
-        if on_progress:
-            await on_progress(
-                "provider_fallback",
-                {"from": "anthropic_native", "to": "cerebras_text", "reason": reason},
-            )
-        fallback_caller = _make_cerebras_text_caller()
-        fallback_result = await asyncio.wait_for(
-            run_text_agent_loop(
-                agent_name="GenerateAgent",
-                system_prompt=_GENERATE_SYSTEM_PROMPT,
-                user_message=user_message,
-                workspace_path=workspace_path,
-                call_text_llm=fallback_caller,
-                max_iterations=min(GEN_MAX_ITER, 20),
-                on_event=on_progress,
-            ),
-            timeout=GEN_TIMEOUT_S,
-        )
-        fallback_result["provider_fallback"] = {
-            "from": "anthropic_native",
-            "to": "cerebras_text",
-            "reason": reason,
-        }
-        return fallback_result
-
-    if loop_type == "native":
-        try:
-            result = await asyncio.wait_for(
-                run_agent_loop(
-                    agent_name="GenerateAgent",
-                    system_prompt=_GENERATE_SYSTEM_PROMPT,
-                    user_message=user_message,
-                    workspace_path=workspace_path,
-                    call_llm=caller,
-                    max_iterations=GEN_MAX_ITER,
-                    on_event=on_progress,
-                ),
-                timeout=GEN_TIMEOUT_S,
-            )
-        except Exception as native_error:
-            if not _has_cerebras_key():
-                raise
-            result = await _run_text_fallback(str(native_error)[:240])
-        else:
-            if not (result.get("files_written") or []) and _has_cerebras_key():
-                fallback_result = await _run_text_fallback("native_returned_no_files")
-                if fallback_result.get("files_written") or not result:
-                    result = fallback_result
-    else:
-        result = await asyncio.wait_for(
-            run_text_agent_loop(
-                agent_name="GenerateAgent",
-                system_prompt=_GENERATE_SYSTEM_PROMPT,
-                user_message=user_message,
-                workspace_path=workspace_path,
-                call_text_llm=caller,
-                max_iterations=min(GEN_MAX_ITER, 20),  # text loop has higher per-iter overhead
-                on_event=on_progress,
-            ),
-            timeout=GEN_TIMEOUT_S,
-        )
+    result = await run_generation_with_backbone(
+        agent_name="GenerateAgent",
+        system_prompt=_GENERATE_SYSTEM_PROMPT,
+        user_message=user_message,
+        workspace_path=workspace_path,
+        loop_type=loop_type,
+        caller=caller,
+        run_agent_loop=run_agent_loop,
+        run_text_agent_loop=run_text_agent_loop,
+        has_text_fallback=_has_cerebras_key,
+        make_text_fallback=_make_cerebras_text_caller,
+        max_iterations=GEN_MAX_ITER,
+        text_max_iterations=min(GEN_MAX_ITER, 20),
+        timeout_seconds=GEN_TIMEOUT_S,
+        on_event=on_progress,
+    )
 
     logger.info(
         "pipeline generate: iterations=%d, files_written=%d, elapsed=%.1fs",
@@ -635,8 +590,18 @@ def _contract_completion_profile(plan: Dict[str, Any], goal: str = "") -> Dict[s
         raw_class = raw_class or "automation_workflow"
     elif "api" in goal_text and "frontend" not in goal_text:
         raw_class = raw_class or "api_backend"
+    elif "full-stack" in goal_text or "full stack" in goal_text or "backend" in goal_text:
+        raw_class = raw_class or "fullstack_web"
 
     profiles: Dict[str, Dict[str, Any]] = {
+        "fullstack_web": {
+            "product_name": "Full-Stack Workspace",
+            "domain_label": "Application workflow",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Authentication", "Dashboard", "Data persistence"],
+            "tables": ["users", "sessions", "dashboard_records", "audit_logs"],
+            "nav_label": "Workspace",
+        },
         "api_backend": {
             "product_name": "Contract API",
             "domain_label": "API resources",
@@ -884,8 +849,210 @@ def _contract_completion_profile(plan: Dict[str, Any], goal: str = "") -> Dict[s
     if contract_tables:
         profile["tables"] = [table.lower().replace(" ", "_") for table in contract_tables[:12]]
 
-    profile["build_class"] = raw_class or "fullstack_saas"
+    profile["build_class"] = raw_class or "fullstack_web"
     return profile
+
+
+def _contract_feature_flags(plan: Dict[str, Any], goal: str = "") -> Dict[str, bool]:
+    contract = plan.get("build_contract") or {}
+    build_class = str(contract.get("build_class") or plan.get("build_type") or "").lower()
+    text = " ".join(
+        [
+            str(goal or ""),
+            str(contract.get("original_goal") or ""),
+            json.dumps(contract.get("core_workflows") or ""),
+            json.dumps(contract.get("required_pages") or ""),
+            json.dumps(contract.get("required_backend_modules") or ""),
+            json.dumps(contract.get("required_routes") or ""),
+            json.dumps(contract.get("required_api_endpoints") or ""),
+        ]
+    ).lower()
+
+    billing_terms = (
+        "billing",
+        "checkout",
+        "payment",
+        "payments",
+        "paypal",
+        "stripe",
+        "braintree",
+        "subscription",
+        "subscriptions",
+        "invoice",
+        "invoices",
+        "pricing",
+        "cart",
+        "order",
+        "orders",
+    )
+    auth_terms = ("auth", "authentication", "login", "sign in", "user account", "rbac", "permission")
+    database_terms = ("database", "db", "postgres", "migration", "persist", "persistence", "crud")
+
+    billing_required = bool(contract.get("billing_requirements")) or any(term in text for term in billing_terms)
+    if build_class in {"ecommerce", "marketplace", "fintech_platform", "regulated_saas", "fullstack_saas"}:
+        billing_required = billing_required or any(term in text for term in billing_terms)
+
+    auth_required = bool(contract.get("auth_requirements")) or any(term in text for term in auth_terms)
+    if build_class in {
+        "fullstack_web",
+        "fullstack_saas",
+        "regulated_saas",
+        "ecommerce",
+        "marketplace",
+        "crm",
+        "internal_admin_tool",
+        "healthcare_platform",
+        "fintech_platform",
+        "govtech_platform",
+        "defense_enterprise_system",
+    }:
+        auth_required = True
+
+    database_required = bool(contract.get("required_database_tables")) or any(term in text for term in database_terms)
+    if build_class not in {"web_marketing_site", "saas_frontend"}:
+        database_required = True
+
+    return {
+        "auth": auth_required,
+        "billing": billing_required,
+        "database": database_required,
+        "dashboard": "dashboard" in text or build_class in {"fullstack_web", "fullstack_saas"},
+    }
+
+
+def _strip_billing_from_contract_workspace(files: Dict[str, str]) -> None:
+    """Remove payment/billing surfaces when the prompt contract did not ask for them."""
+
+    files.pop("src/pages/BillingPage.tsx", None)
+    files.pop("backend/routes/billing.py", None)
+
+    if ".env.example" in files:
+        files[".env.example"] = "\n".join(
+            line
+            for line in files[".env.example"].splitlines()
+            if not line.startswith("PAYPAL_")
+        ).rstrip() + "\n"
+
+    if "src/services/api.ts" in files:
+        files["src/services/api.ts"] = (
+            files["src/services/api.ts"]
+            .replace("export type BillingOverview = { plan: string; status: string; renewalDate: string; entitlement: string };\n", "")
+            .replace("""  billing(token: string) {
+    return request<BillingOverview>('/billing/overview', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+""", "")
+            .replace("""  createCheckout(token: string, planId: string) {
+    return request<{ checkoutUrl: string }>('/billing/create-checkout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ planId }),
+    });
+  },
+""", "")
+        )
+
+    if "src/components/Header.tsx" in files:
+        files["src/components/Header.tsx"] = (
+            files["src/components/Header.tsx"]
+            .replace("import { Boxes, CreditCard, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';", "import { Boxes, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';")
+            .replace("    ['billing', CreditCard, 'Billing'],\n", "")
+        )
+
+    if "src/App.tsx" in files:
+        files["src/App.tsx"] = (
+            files["src/App.tsx"]
+            .replace("import BillingPage from './pages/BillingPage';\n", "")
+            .replace("            <li>PayPal checkout and webhook contract</li>\n", "")
+            .replace("          {section === 'billing' && <BillingPage />}\n", "")
+        )
+
+    if "src/pages/LoginPage.tsx" in files:
+        files["src/pages/LoginPage.tsx"] = (
+            files["src/pages/LoginPage.tsx"]
+            .replace("SaaS MVP with real API contract", "Full-stack app with real API contract")
+            .replace("Sign in through the backend auth route, then inspect dashboard and PayPal billing flows.", "Sign in through the backend auth route, then inspect the dashboard and application workflow.")
+        )
+
+    if "src/pages/SecurityPage.tsx" in files:
+        files["src/pages/SecurityPage.tsx"] = files["src/pages/SecurityPage.tsx"].replace(
+            "<p>PayPal webhook settlement requires provider signature verification before subscription state changes.</p>",
+            "<p>Critical routes are wired to backend handlers and documented in the proof bundle.</p>",
+        )
+
+    if "backend/main.py" in files:
+        files["backend/main.py"] = (
+            files["backend/main.py"]
+            .replace("from backend.routes import auth, billing, dashboard, domain", "from backend.routes import auth, dashboard, domain")
+            .replace('app = FastAPI(title="CrucibAI SaaS MVP API")', 'app = FastAPI(title="CrucibAI Generated App API")')
+            .replace("app.include_router(billing.router)\n", "")
+        )
+
+    if "backend/models.py" in files:
+        files["backend/models.py"] = (
+            files["backend/models.py"]
+            .replace("""class CheckoutRequest(BaseModel):
+    planId: str
+
+""", "")
+            .replace("""class BillingRecord(BaseModel):
+    plan: str
+    status: str
+    renewalDate: str
+    entitlement: str
+""", "")
+        )
+
+    if "backend/repositories.py" in files:
+        files["backend/repositories.py"] = files["backend/repositories.py"].replace("""def billing_overview():
+    return {"plan": "pro_monthly", "status": "active", "renewalDate": str(date.today()), "entitlement": "dashboard_plus_billing"}
+""", "")
+
+    if "db/migrations/001_initial.sql" in files:
+        files["db/migrations/001_initial.sql"] = (
+            files["db/migrations/001_initial.sql"]
+            .replace("""CREATE TABLE IF NOT EXISTS subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  provider TEXT NOT NULL DEFAULT 'paypal',
+  plan_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  renewal_date DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,
+  subscription_id TEXT NOT NULL REFERENCES subscriptions(id),
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+""", "")
+        )
+
+    if "tests/test_api_contract.py" in files:
+        files["tests/test_api_contract.py"] = (
+            files["tests/test_api_contract.py"]
+            .replace("def test_login_dashboard_and_billing_contract():", "def test_login_dashboard_and_domain_contract():")
+            .replace("    assert client.get(\"/api/billing/overview\", headers=headers).status_code == 200\n", "")
+        )
+
+    if "README.md" in files:
+        files["README.md"] = (
+            files["README.md"]
+            .replace("- Billing includes PayPal checkout preparation and webhook signature verification.\n", "")
+            .replace("- Database migrations define users, subscriptions, invoices, and audit logs.", "- Database migrations define users, domain records, and audit logs.")
+        )
+
+    if "docs/ARCHITECTURE.md" in files:
+        files["docs/ARCHITECTURE.md"] = (
+            files["docs/ARCHITECTURE.md"]
+            .replace(", PayPal billing contract", "")
+            .replace("Live payment settlement requires PayPal credentials and webhook configuration.", "External provider credentials are only required when the requested product includes live integrations.")
+        )
 
 
 async def _write_contract_completion_workspace(
@@ -898,8 +1065,9 @@ async def _write_contract_completion_workspace(
 
     root = Path(workspace_path)
     root.mkdir(parents=True, exist_ok=True)
-    goal_literal = json.dumps(str(goal or "Build a SaaS MVP")[:1200])
+    goal_literal = json.dumps(str(goal or "Build a full-stack application")[:1200])
     profile = _contract_completion_profile(plan, goal)
+    features = _contract_feature_flags(plan, goal)
     product_name = str(profile["product_name"])
     build_class = str(profile["build_class"])
     domain_label = str(profile["domain_label"])
@@ -1170,8 +1338,8 @@ export default function LoginPage() {
     <main className="login-shell">
       <form className="login-panel" onSubmit={submit}>
         <p className="eyebrow">Authenticated workspace</p>
-        <h1>SaaS MVP with real API contract</h1>
-        <p>Sign in through the backend auth route, then inspect dashboard and PayPal billing flows.</p>
+        <h1>Generated app with real API contract</h1>
+        <p>Sign in through the backend auth route, then inspect the requested workflow and proof surfaces.</p>
         <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
         <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         {error && <div className="error">{error}</div>}
@@ -1387,7 +1555,7 @@ aside { padding: 28px; border-right: 1px solid var(--line); background: var(--so
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routes import auth, billing, dashboard, domain
 
-app = FastAPI(title="CrucibAI SaaS MVP API")
+app = FastAPI(title="CrucibAI Generated App API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -1674,6 +1842,8 @@ The generated workspace includes a Vite React preview surface, FastAPI backend, 
 No external certification is claimed. Live payment settlement requires PayPal credentials and webhook configuration.
 """,
     }
+    if not features["billing"]:
+        _strip_billing_from_contract_workspace(files)
     if build_class in {"mobile_expo", "mobile_flutter", "mobile_react_native"}:
         files.update(
             {
@@ -1770,7 +1940,7 @@ export function tick(state: GameState): GameState {
             {
                 "files": written[:120],
                 "count": len(written),
-                "summary": "Completed strict auth, billing, backend, database, deployment, and API contract files.",
+                "summary": "Completed contract-driven backend, frontend, database, deployment, and proof files.",
             },
         )
     return written

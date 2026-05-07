@@ -4,6 +4,7 @@ import importlib
 import pytest
 
 from backend.orchestration import pipeline_orchestrator
+from backend.orchestration import claude_code_backbone
 from backend.orchestration.enterprise_proof import generate_enterprise_proof_artifacts
 
 
@@ -14,6 +15,40 @@ def test_generate_prompt_contains_crucib_grade_directive():
     assert "Frozen BuildContract" not in prompt
     assert "Do not fake critical paths" in prompt
     assert "Every frontend API call must map to a real backend route" in prompt
+
+
+def test_clean_room_claude_code_backbone_is_vendored_and_fused():
+    root = claude_code_backbone.vendored_source_root()
+
+    assert claude_code_backbone.backbone_available() is True
+    assert (root / "agent.py").exists()
+    assert (root / "tool_registry.py").exists()
+    assert (root / "NOTICE.md").exists()
+
+    fused = claude_code_backbone.build_backbone_system_prompt("BASE")
+    assert "CLAUDE CODE BACKBONE RUNTIME" in fused
+    assert "Read/Glob/Grep" in fused
+    assert "Do not default to SaaS" in fused
+
+
+@pytest.mark.asyncio
+async def test_backbone_translates_runtime_tool_events():
+    events = []
+
+    async def collect(event_type, payload):
+        events.append((event_type, payload))
+
+    callback = claude_code_backbone.make_backbone_event_callback(collect)
+    await callback("tool_call", {"tool_name": "read_file", "path": "src/App.tsx"})
+    await callback("tool_result", {"tool_name": "run_command", "output": "exit_code=0", "success": True})
+
+    backbone_events = [(kind, payload) for kind, payload in events if kind.startswith("claude_code_")]
+    assert backbone_events[0][0] == "claude_code_tool_start"
+    assert backbone_events[0][1]["event"] == "ToolStart"
+    assert backbone_events[0][1]["name"] == "Read"
+    assert backbone_events[1][0] == "claude_code_tool_end"
+    assert backbone_events[1][1]["event"] == "ToolEnd"
+    assert backbone_events[1][1]["name"] == "Bash"
 
 
 def test_pre_generation_contract_is_written_and_attached_to_plan(tmp_path):
@@ -62,6 +97,44 @@ def test_contract_completion_profile_uses_prompt_derived_contract():
     assert profile["domain_items"][:3] == ["Patient Intake", "Appointment Triage", "Phi Audit"]
     assert profile["tables"][:3] == ["patients", "appointments", "phi_access_log"]
     assert profile["nav_label"] == "Patient Intake"
+
+
+@pytest.mark.asyncio
+async def test_generic_fullstack_contract_does_not_force_saas_or_billing(tmp_path):
+    goal = "Build a full-stack web app with user authentication and dashboard"
+    plan = {
+        "build_type": "fullstack_web",
+        "build_contract": {
+            "build_class": "fullstack_web",
+            "original_goal": goal,
+            "auth_requirements": ["login", "current user"],
+            "core_workflows": ["login", "dashboard"],
+            "required_database_tables": ["users", "sessions", "dashboard_records"],
+            "required_api_endpoints": ["/api/auth/login", "/api/dashboard/overview"],
+        },
+        "file_manifest": ["src/App.tsx"],
+    }
+
+    profile = pipeline_orchestrator._contract_completion_profile(plan, goal)
+    assert profile["build_class"] == "fullstack_web"
+
+    written = await pipeline_orchestrator._write_contract_completion_workspace(
+        str(tmp_path),
+        goal,
+        plan,
+    )
+    assert "backend/routes/auth.py" in written
+    assert "backend/routes/billing.py" not in written
+    assert "src/pages/BillingPage.tsx" not in written
+
+    all_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in tmp_path.rglob("*")
+        if path.is_file() and path.suffix in {".ts", ".tsx", ".py", ".md", ".json", ".sql", ".example"}
+    )
+    assert "PayPal" not in all_text
+    assert "paypal" not in all_text
+    assert "SaaS MVP" not in all_text
 
 
 @pytest.mark.asyncio
