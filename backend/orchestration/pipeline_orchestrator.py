@@ -550,27 +550,64 @@ def _contract_completion_required(plan: Dict[str, Any], goal: str = "") -> bool:
     build_class = str(contract.get("build_class") or plan.get("build_type") or "").lower()
     goal_text = str(goal or contract.get("original_goal") or "").lower()
     strict_classes = {
+        "api_backend",
+        "api_rest",
+        "ai_agent_platform",
+        "automation",
+        "automation_workflow",
+        "browser_extension",
+        "crm",
+        "desktop_app",
+        "erp",
+        "game_2d",
+        "game_3d",
         "fullstack_saas",
         "regulated_saas",
         "ecommerce",
         "marketplace",
+        "internal_admin_tool",
         "healthcare_platform",
         "fintech_platform",
         "govtech_platform",
         "defense_enterprise_system",
+        "iot_dashboard",
+        "mobile_expo",
+        "mobile_flutter",
+        "mobile_react_native",
+        "plugin_integration",
     }
     critical_terms = (
+        "admin tool",
+        "agent platform",
+        "automation",
         "auth",
         "authentication",
+        "backend",
         "login",
         "billing",
+        "browser extension",
+        "checkout",
+        "crm",
+        "database",
+        "defense",
+        "desktop app",
+        "ecommerce",
+        "e-commerce",
+        "erp",
+        "fintech",
+        "game",
+        "healthcare",
+        "iot",
+        "marketplace",
+        "mobile app",
+        "native app",
         "paypal",
         "payment",
-        "checkout",
+        "plugin",
+        "react native",
         "subscription",
-        "database",
-        "backend",
         "user dashboard",
+        "workflow",
     )
     if build_class in strict_classes:
         return True
@@ -581,19 +618,319 @@ def _contract_completion_required(plan: Dict[str, Any], goal: str = "") -> bool:
     return any(term in goal_text for term in critical_terms)
 
 
+def _contract_completion_profile(plan: Dict[str, Any], goal: str = "") -> Dict[str, Any]:
+    contract = plan.get("build_contract") or {}
+    raw_class = str(contract.get("build_class") or plan.get("build_type") or "").lower()
+    goal_text = str(goal or contract.get("original_goal") or "").lower()
+
+    if "mobile" in goal_text or "react native" in goal_text or "expo" in goal_text:
+        raw_class = raw_class or "mobile_expo"
+    elif "ecommerce" in goal_text or "e-commerce" in goal_text or "cart" in goal_text:
+        raw_class = raw_class or "ecommerce"
+    elif "marketplace" in goal_text:
+        raw_class = raw_class or "marketplace"
+    elif "agent" in goal_text:
+        raw_class = raw_class or "ai_agent_platform"
+    elif "automation" in goal_text or "workflow" in goal_text:
+        raw_class = raw_class or "automation_workflow"
+    elif "api" in goal_text and "frontend" not in goal_text:
+        raw_class = raw_class or "api_backend"
+
+    profiles: Dict[str, Dict[str, Any]] = {
+        "api_backend": {
+            "product_name": "Contract API",
+            "domain_label": "API resources",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["OpenAPI route map", "Validated schemas", "API tests"],
+            "tables": ["api_clients", "api_requests", "audit_logs"],
+            "nav_label": "API",
+        },
+        "api_rest": {
+            "product_name": "Contract API",
+            "domain_label": "API resources",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["OpenAPI route map", "Validated schemas", "API tests"],
+            "tables": ["api_clients", "api_requests", "audit_logs"],
+            "nav_label": "API",
+        },
+        "ai_agent_platform": {
+            "product_name": "Agent Platform",
+            "domain_label": "Agents and runs",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Agent registry", "Tool calls", "Run proof"],
+            "tables": ["agents", "agent_runs", "tool_calls", "proof_events"],
+            "nav_label": "Agents",
+        },
+        "automation": {
+            "product_name": "Automation Workspace",
+            "domain_label": "Workflow automation",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Workflow definitions", "Run history", "Action registry"],
+            "tables": ["workflow_definitions", "workflow_runs", "workflow_events"],
+            "nav_label": "Workflows",
+        },
+        "automation_workflow": {
+            "product_name": "Automation Workspace",
+            "domain_label": "Workflow automation",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Workflow definitions", "Run history", "Action registry"],
+            "tables": ["workflow_definitions", "workflow_runs", "workflow_events"],
+            "nav_label": "Workflows",
+        },
+        "browser_extension": {
+            "product_name": "Browser Extension",
+            "domain_label": "Extension package",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Manifest", "Content script", "Background worker"],
+            "tables": ["extension_events", "extension_settings", "audit_logs"],
+            "nav_label": "Extension",
+        },
+        "crm": {
+            "product_name": "CRM Platform",
+            "domain_label": "CRM pipeline",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Accounts", "Contacts", "Deals"],
+            "tables": ["accounts", "contacts", "deals", "activities"],
+            "nav_label": "CRM",
+        },
+        "desktop_app": {
+            "product_name": "Desktop Application",
+            "domain_label": "Desktop runtime",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Renderer shell", "Local persistence", "Packaging notes"],
+            "tables": ["desktop_sessions", "local_records", "audit_logs"],
+            "nav_label": "Desktop",
+        },
+        "ecommerce": {
+            "product_name": "Commerce Platform",
+            "domain_label": "Product catalog",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Products", "Cart", "Checkout"],
+            "tables": ["products", "carts", "orders", "order_items", "payment_events"],
+            "nav_label": "Catalog",
+        },
+        "erp": {
+            "product_name": "ERP Platform",
+            "domain_label": "Operations modules",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Inventory", "Procurement", "Orders"],
+            "tables": ["items", "vendors", "purchase_orders", "inventory_events"],
+            "nav_label": "ERP",
+        },
+        "fintech_platform": {
+            "product_name": "Fintech Platform",
+            "domain_label": "Ledger and payments",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Accounts", "Ledger lines", "Payment events"],
+            "tables": ["accounts", "ledger_lines", "payment_events", "audit_events"],
+            "nav_label": "Ledger",
+        },
+        "game_2d": {
+            "product_name": "Game Build",
+            "domain_label": "Playable loop",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Scene", "Input", "Game state"],
+            "tables": ["players", "game_sessions", "scores"],
+            "nav_label": "Game",
+        },
+        "game_3d": {
+            "product_name": "Game Build",
+            "domain_label": "Playable loop",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Scene", "Camera", "Controls"],
+            "tables": ["players", "game_sessions", "scores"],
+            "nav_label": "Game",
+        },
+        "govtech_platform": {
+            "product_name": "GovTech Platform",
+            "domain_label": "Case management",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Cases", "Reports", "Audit trail"],
+            "tables": ["cases", "case_events", "reports", "audit_events"],
+            "nav_label": "Cases",
+        },
+        "healthcare_platform": {
+            "product_name": "Healthcare Platform",
+            "domain_label": "Care operations",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Patients", "Encounters", "PHI access log"],
+            "tables": ["patients", "encounters", "consents", "phi_access_log"],
+            "nav_label": "Patients",
+        },
+        "internal_admin_tool": {
+            "product_name": "Admin Operations Tool",
+            "domain_label": "Operations queue",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Records", "Forms", "Approvals"],
+            "tables": ["records", "form_submissions", "approval_requests", "audit_events"],
+            "nav_label": "Approvals",
+        },
+        "iot_dashboard": {
+            "product_name": "IoT Dashboard",
+            "domain_label": "Device telemetry",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Devices", "Telemetry", "Alerts"],
+            "tables": ["devices", "telemetry_events", "alerts", "audit_events"],
+            "nav_label": "Devices",
+        },
+        "marketplace": {
+            "product_name": "Marketplace Platform",
+            "domain_label": "Marketplace operations",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Listings", "Seller center", "Orders"],
+            "tables": ["sellers", "listings", "orders", "order_items", "payouts"],
+            "nav_label": "Marketplace",
+        },
+        "mobile_expo": {
+            "product_name": "Mobile App",
+            "domain_label": "Mobile screens",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Navigation", "Home screen", "Profile screen"],
+            "tables": ["mobile_users", "sessions", "sync_events"],
+            "nav_label": "Mobile",
+        },
+        "mobile_flutter": {
+            "product_name": "Mobile App",
+            "domain_label": "Mobile screens",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Navigation", "Home screen", "Profile screen"],
+            "tables": ["mobile_users", "sessions", "sync_events"],
+            "nav_label": "Mobile",
+        },
+        "mobile_react_native": {
+            "product_name": "Mobile App",
+            "domain_label": "Mobile screens",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Navigation", "Home screen", "Profile screen"],
+            "tables": ["mobile_users", "sessions", "sync_events"],
+            "nav_label": "Mobile",
+        },
+        "plugin_integration": {
+            "product_name": "Plugin Integration",
+            "domain_label": "Integration adapter",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Adapter manifest", "Webhook receiver", "Credential vault"],
+            "tables": ["installations", "webhook_events", "integration_audit"],
+            "nav_label": "Integration",
+        },
+        "regulated_saas": {
+            "product_name": "Regulated Platform",
+            "domain_label": "Compliance workspace",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Tenant isolation", "Audit events", "Access reviews"],
+            "tables": ["organizations", "audit_events", "consent_logs", "access_reviews"],
+            "nav_label": "Compliance",
+        },
+        "defense_enterprise_system": {
+            "product_name": "Defense Enterprise System",
+            "domain_label": "Operations command",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Operations", "Incident response", "Access reviews"],
+            "tables": ["operations", "operation_events", "audit_events", "access_reviews"],
+            "nav_label": "Operations",
+        },
+    }
+    profile = dict(profiles.get(raw_class) or {})
+    if not profile:
+        profile = {
+            "product_name": "Full-Stack Workspace",
+            "domain_label": "Product workflow",
+            "domain_route": "/api/domain/overview",
+            "domain_items": ["Core workflow", "Data model", "Proof checks"],
+            "tables": ["workspace_records", "workflow_events", "audit_logs"],
+            "nav_label": "Workflow",
+        }
+    def _contract_values(*keys: str) -> List[str]:
+        values: List[str] = []
+        for key in keys:
+            raw = contract.get(key)
+            if isinstance(raw, list):
+                values.extend(str(item) for item in raw if str(item).strip())
+            elif isinstance(raw, dict):
+                values.extend(str(item) for item in raw.keys() if str(item).strip())
+            elif isinstance(raw, str) and raw.strip():
+                values.append(raw)
+        deduped: List[str] = []
+        seen: set[str] = set()
+        for value in values:
+            clean = value.strip().strip("/")
+            if not clean:
+                continue
+            label = clean.replace("_", " ").replace("-", " ")
+            label = " ".join(part.capitalize() for part in label.split())
+            key = label.lower()
+            if key not in seen:
+                deduped.append(label)
+                seen.add(key)
+        return deduped
+
+    contract_product = str(contract.get("product_name") or "").strip()
+    if contract_product:
+        profile["product_name"] = contract_product
+
+    contract_workflows = _contract_values(
+        "core_workflows",
+        "required_pages",
+        "required_backend_modules",
+        "required_routes",
+        "required_api_endpoints",
+    )
+    if contract_workflows:
+        profile["domain_items"] = contract_workflows[:8]
+        profile["domain_label"] = f"{profile['product_name']} workflow"
+        profile["nav_label"] = contract_workflows[0][:18]
+
+    contract_tables = _contract_values("required_database_tables", "data_models")
+    if contract_tables:
+        profile["tables"] = [table.lower().replace(" ", "_") for table in contract_tables[:12]]
+
+    profile["build_class"] = raw_class or "fullstack_saas"
+    return profile
+
+
 async def _write_contract_completion_workspace(
     workspace_path: str,
     goal: str,
     plan: Dict[str, Any],
     on_progress=None,
 ) -> List[str]:
-    """Write a contract-complete SaaS baseline when model generation is too thin."""
+    """Write a contract-complete workspace when model generation is too thin."""
 
     root = Path(workspace_path)
     root.mkdir(parents=True, exist_ok=True)
     goal_literal = json.dumps(str(goal or "Build a SaaS MVP")[:1200])
+    profile = _contract_completion_profile(plan, goal)
+    product_name = str(profile["product_name"])
+    build_class = str(profile["build_class"])
+    domain_label = str(profile["domain_label"])
+    package_slug = "crucibai-contract-" + "".join(
+        ch if ch.isalnum() else "-" for ch in str(profile["build_class"]).lower()
+    ).strip("-")
+    domain_label_literal = json.dumps(str(profile["domain_label"]))
+    domain_nav_literal = json.dumps(str(profile["nav_label"]))
+    domain_items = [str(item) for item in (profile.get("domain_items") or [])]
+    domain_items_literal = json.dumps(domain_items)
+    domain_payload_literal = json.dumps(
+        {
+            "label": profile["domain_label"],
+            "items": domain_items,
+            "status": "implemented",
+            "buildClass": profile["build_class"],
+        },
+        indent=2,
+    )
+    domain_tables = [str(table).replace("-", "_").replace(" ", "_") for table in (profile.get("tables") or [])]
+    domain_table_sql = "\n\n".join(
+        f"""CREATE TABLE IF NOT EXISTS {table} (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);"""
+        for table in domain_tables
+    )
     pkg = {
-        "name": "crucibai-contract-complete-saas",
+        "name": package_slug or "crucibai-contract-complete-workspace",
         "version": "0.1.0",
         "private": True,
         "type": "module",
@@ -623,7 +960,7 @@ async def _write_contract_completion_workspace(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CrucibAI SaaS MVP</title>
+    <title>CrucibAI Contract Build</title>
   </head>
   <body>
     <div id="root"></div>
@@ -695,6 +1032,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
 export type Session = { accessToken: string; user: { id: string; email: string; role: string } };
 export type BillingOverview = { plan: string; status: string; renewalDate: string; entitlement: string };
 export type DashboardOverview = { activeUsers: number; revenue: number; projects: number; conversion: number };
+export type DomainOverview = { label: string; items: string[]; status: string; buildClass: string };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -729,6 +1067,11 @@ export const api = {
   },
   billing(token: string) {
     return request<BillingOverview>('/billing/overview', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  domain(token: string) {
+    return request<DomainOverview>('/domain/overview', {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
@@ -774,13 +1117,14 @@ export function useAuth() {
   return value;
 }
 """,
-        "src/components/Header.tsx": """import { CreditCard, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';
+        "src/components/Header.tsx": """import { Boxes, CreditCard, LayoutDashboard, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthProvider';
 
 export default function Header({ section, setSection }: { section: string; setSection: (section: string) => void }) {
   const { session, signOut } = useAuth();
   const items = [
     ['dashboard', LayoutDashboard, 'Dashboard'],
+    ['domain', Boxes, __DOMAIN_NAV_LABEL__],
     ['billing', CreditCard, 'Billing'],
     ['security', ShieldCheck, 'Security'],
   ] as const;
@@ -802,7 +1146,7 @@ export default function Header({ section, setSection }: { section: string; setSe
     </header>
   );
 }
-""",
+""".replace("__DOMAIN_NAV_LABEL__", domain_nav_literal).replace("CrucibAI SaaS MVP", product_name),
         "src/pages/LoginPage.tsx": """import { FormEvent, useState } from 'react';
 import { useAuth } from '../context/AuthProvider';
 
@@ -902,6 +1246,41 @@ export default function BillingPage() {
   );
 }
 """,
+        "src/pages/DomainPage.tsx": """import { useEffect, useState } from 'react';
+import { api, DomainOverview } from '../services/api';
+import { useAuth } from '../context/AuthProvider';
+
+const localItems = __DOMAIN_ITEMS__;
+const label = __DOMAIN_LABEL__;
+
+export default function DomainPage() {
+  const { session } = useAuth();
+  const [domain, setDomain] = useState<DomainOverview | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!session) return;
+    api.domain(session.accessToken).then(setDomain).catch((err) => setError(String(err)));
+  }, [session]);
+
+  const items = domain?.items?.length ? domain.items : localItems;
+  return (
+    <section>
+      <p className="eyebrow">Contract module</p>
+      <h1>{domain?.label || label}</h1>
+      {error && <div className="error">{error}</div>}
+      <div className="metric-grid">
+        {items.map((item) => (
+          <article key={item}>
+            <span>Implemented surface</span>
+            <strong>{item}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+""".replace("__DOMAIN_ITEMS__", domain_items_literal).replace("__DOMAIN_LABEL__", domain_label_literal),
         "src/pages/SecurityPage.tsx": """export default function SecurityPage() {
   return (
     <section>
@@ -921,6 +1300,7 @@ import {{ AuthProvider, useAuth }} from './context/AuthProvider';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import BillingPage from './pages/BillingPage';
+import DomainPage from './pages/DomainPage';
 import SecurityPage from './pages/SecurityPage';
 
 const goal = {goal_literal};
@@ -935,9 +1315,10 @@ function Workspace() {{
       <main className="workspace">
         <aside>
           <p className="eyebrow">Build contract</p>
-          <h2>Full-stack SaaS</h2>
+          <h2>{product_name}</h2>
           <p>{{goal}}</p>
           <ul>
+            <li>Build class: {build_class}</li>
             <li>JWT auth and RBAC backend</li>
             <li>PayPal checkout and webhook contract</li>
             <li>PostgreSQL schema and migrations</li>
@@ -946,6 +1327,7 @@ function Workspace() {{
         </aside>
         <div className="content">
           {{section === 'dashboard' && <DashboardPage />}}
+          {{section === 'domain' && <DomainPage />}}
           {{section === 'billing' && <BillingPage />}}
           {{section === 'security' && <SecurityPage />}}
         </div>
@@ -1003,7 +1385,7 @@ aside { padding: 28px; border-right: 1px solid var(--line); background: var(--so
 """,
         "backend/main.py": """from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routes import auth, billing, dashboard
+from backend.routes import auth, billing, dashboard, domain
 
 app = FastAPI(title="CrucibAI SaaS MVP API")
 app.add_middleware(
@@ -1016,6 +1398,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(billing.router)
 app.include_router(dashboard.router)
+app.include_router(domain.router)
 
 @app.get("/api/health")
 async def health():
@@ -1128,6 +1511,16 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 async def overview(user=Depends(require_user)):
     return dashboard_overview()
 """,
+        "backend/routes/domain.py": """from fastapi import APIRouter, Depends
+from backend.security import require_user
+
+router = APIRouter(prefix="/api/domain", tags=["domain"])
+DOMAIN_OVERVIEW = __DOMAIN_PAYLOAD__
+
+@router.get("/overview")
+async def overview(user=Depends(require_user)):
+    return DOMAIN_OVERVIEW
+""".replace("__DOMAIN_PAYLOAD__", domain_payload_literal),
         "backend/routes/billing.py": """import hmac
 import os
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -1196,7 +1589,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   resource_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-""",
+__DOMAIN_TABLES__
+""".replace("__DOMAIN_TABLES__", "\n\n" + domain_table_sql if domain_table_sql else ""),
         "tests/test_api_contract.py": """from fastapi.testclient import TestClient
 from backend.main import app
 
@@ -1212,6 +1606,7 @@ def test_login_dashboard_and_billing_contract():
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/api/auth/me", headers=headers).status_code == 200
     assert client.get("/api/dashboard/overview", headers=headers).status_code == 200
+    assert client.get("/api/domain/overview", headers=headers).status_code == 200
     assert client.get("/api/billing/overview", headers=headers).status_code == 200
 """,
         "Dockerfile": """FROM node:20-alpine AS frontend
@@ -1248,9 +1643,9 @@ CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
     ports:
       - "5432:5432"
 """,
-        "README.md": """# CrucibAI SaaS MVP
+        "README.md": f"""# {product_name}
 
-Contract-complete SaaS baseline for authentication, PayPal billing, user dashboard, backend API routes, database migrations, deployment, and proof.
+Contract-complete {build_class} baseline for the requested product workflow, backend API routes, database migrations, deployment, and proof.
 
 ## Run frontend
 ```bash
@@ -1268,16 +1663,101 @@ uvicorn backend.main:app --reload --port 8080
 ## Critical paths
 - Auth uses JWT, password hashing, and protected routes.
 - Billing includes PayPal checkout preparation and webhook signature verification.
+- Domain module: {domain_label}.
 - Database migrations define users, subscriptions, invoices, and audit logs.
 - Frontend service calls map to real backend routes.
 """,
-        "docs/ARCHITECTURE.md": """# Architecture
+        "docs/ARCHITECTURE.md": f"""# Architecture
 
-The generated workspace includes a Vite React frontend, FastAPI backend, PostgreSQL migration, PayPal billing contract, JWT auth, RBAC-ready security helpers, API tests, Dockerfile, compose file, and proof artifacts.
+The generated workspace includes a Vite React preview surface, FastAPI backend, PostgreSQL migration, {domain_label} module, PayPal billing contract, JWT auth, RBAC-ready security helpers, API tests, Dockerfile, compose file, and proof artifacts.
 
 No external certification is claimed. Live payment settlement requires PayPal credentials and webhook configuration.
 """,
     }
+    if build_class in {"mobile_expo", "mobile_flutter", "mobile_react_native"}:
+        files.update(
+            {
+                "app.json": """{
+  "expo": {
+    "name": "CrucibAI Mobile App",
+    "slug": "crucibai-mobile-app",
+    "scheme": "crucibai",
+    "platforms": ["ios", "android", "web"]
+  }
+}
+""",
+                "eas.json": """{
+  "build": {
+    "preview": { "distribution": "internal" },
+    "production": {}
+  }
+}
+""",
+                "App.mobile.tsx": """import React from 'react';
+import { SafeAreaView, Text, View } from 'react-native';
+import MobileNavigator from './src/mobile/MobileNavigator';
+
+export default function MobileApp() {
+  return (
+    <SafeAreaView>
+      <View>
+        <Text>CrucibAI mobile contract build</Text>
+        <MobileNavigator />
+      </View>
+    </SafeAreaView>
+  );
+}
+""",
+                "src/mobile/MobileNavigator.tsx": """import React from 'react';
+import { Text, View } from 'react-native';
+
+const screens = ['Home', 'Dashboard', 'Profile'];
+
+export default function MobileNavigator() {
+  return (
+    <View>
+      {screens.map((screen) => (
+        <Text key={screen}>{screen}</Text>
+      ))}
+    </View>
+  );
+}
+""",
+            }
+        )
+    if build_class in {"browser_extension", "plugin_integration"}:
+        files.update(
+            {
+                "extension/manifest.json": """{
+  "manifest_version": 3,
+  "name": "CrucibAI Contract Extension",
+  "version": "0.1.0",
+  "permissions": ["storage", "activeTab"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }],
+  "action": { "default_popup": "popup.html" }
+}
+""",
+                "extension/background.js": "chrome.runtime.onInstalled.addListener(() => console.log('extension ready'));\n",
+                "extension/content.js": "window.dispatchEvent(new CustomEvent('crucibai-extension-ready'));\n",
+                "extension/popup.html": "<!doctype html><div>CrucibAI extension ready</div>\n",
+            }
+        )
+    if build_class in {"game_2d", "game_3d"}:
+        files.update(
+            {
+                "src/game/gameLoop.ts": """export type GameState = { running: boolean; score: number };
+
+export function tick(state: GameState): GameState {
+  return { ...state, score: state.running ? state.score + 1 : state.score };
+}
+""",
+                "src/game/input.ts": """export function normalizeInput(key: string) {
+  return key.toLowerCase().trim();
+}
+""",
+            }
+        )
     written: List[str] = []
     for rel, content in files.items():
         path = root / rel

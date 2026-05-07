@@ -42,6 +42,28 @@ def test_pre_generation_contract_is_written_and_attached_to_plan(tmp_path):
     assert plan["contract_satisfied"] is False
 
 
+def test_contract_completion_profile_uses_prompt_derived_contract():
+    plan = {
+        "build_type": "healthcare_platform",
+        "build_contract": {
+            "build_class": "healthcare_platform",
+            "product_name": "ClinicOps Command",
+            "core_workflows": ["patient intake", "appointment triage", "PHI audit"],
+            "required_database_tables": ["patients", "appointments", "phi_access_log"],
+        },
+    }
+
+    profile = pipeline_orchestrator._contract_completion_profile(
+        plan,
+        "Build a healthcare platform for patient intake and audit",
+    )
+
+    assert profile["product_name"] == "ClinicOps Command"
+    assert profile["domain_items"][:3] == ["Patient Intake", "Appointment Triage", "Phi Audit"]
+    assert profile["tables"][:3] == ["patients", "appointments", "phi_access_log"]
+    assert profile["nav_label"] == "Patient Intake"
+
+
 @pytest.mark.asyncio
 async def test_contract_completion_workspace_satisfies_strict_saas_gate(tmp_path):
     goal = "Build a SaaS MVP with authentication, PayPal billing, and user dashboard"
@@ -78,6 +100,66 @@ async def test_contract_completion_workspace_satisfies_strict_saas_gate(tmp_path
     gate = result["delivery_gate"]
     assert gate["status"] == "PASS"
     assert gate["allowed"] is True
+    assert result["api_alignment"]["passed"] is True
+    assert result["classification"]["blocked"] == []
+    assert result["classification"]["mocked"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("build_class", "goal", "expected_files"),
+    [
+        (
+            "ecommerce",
+            "Build an e-commerce store with product catalog, cart, checkout, and PayPal payments",
+            ["src/pages/DomainPage.tsx", "backend/routes/domain.py", "db/migrations/001_initial.sql"],
+        ),
+        (
+            "ai_agent_platform",
+            "Build an AI agent platform with tool runs and proof trail",
+            ["src/pages/DomainPage.tsx", "backend/routes/domain.py", "db/migrations/001_initial.sql"],
+        ),
+        (
+            "mobile_expo",
+            "Build a React Native mobile app with navigation and multiple screens",
+            ["app.json", "eas.json", "App.mobile.tsx", "src/mobile/MobileNavigator.tsx"],
+        ),
+        (
+            "api_backend",
+            "Build a REST API backend with database, schemas, and tests",
+            ["backend/main.py", "backend/routes/domain.py", "tests/test_api_contract.py"],
+        ),
+    ],
+)
+async def test_contract_completion_supports_non_saas_classes(tmp_path, build_class, goal, expected_files):
+    plan = {
+        "build_type": build_class,
+        "build_contract": {
+            "build_class": build_class,
+            "original_goal": goal,
+        },
+        "file_manifest": ["src/App.tsx"],
+    }
+
+    written = await pipeline_orchestrator._write_contract_completion_workspace(
+        str(tmp_path),
+        goal,
+        plan,
+    )
+    for path in expected_files:
+        assert path in written
+        assert (tmp_path / path).exists()
+
+    result = generate_enterprise_proof_artifacts(
+        str(tmp_path),
+        {"id": f"tsk_{build_class}", "goal": goal},
+        plan={"build_command": ["npm", "run", "build"], "build_contract": plan["build_contract"]},
+        assemble_result={"success": True},
+        verify_result={"passed": True, "returncode": 0, "dist_exists": True},
+    )
+
+    assert result["delivery_gate"]["status"] == "PASS"
+    assert result["delivery_gate"]["allowed"] is True
     assert result["api_alignment"]["passed"] is True
     assert result["classification"]["blocked"] == []
     assert result["classification"]["mocked"] == []

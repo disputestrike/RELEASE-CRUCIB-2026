@@ -369,6 +369,21 @@ def _strict_delivery_required(goal: str, build_class: str) -> bool:
         "marketplace",
         "automation_workflow",
         "ai_agent_platform",
+        "api_backend",
+        "api_rest",
+        "automation",
+        "browser_extension",
+        "crm",
+        "desktop_app",
+        "erp",
+        "game_2d",
+        "game_3d",
+        "internal_admin_tool",
+        "iot_dashboard",
+        "mobile_expo",
+        "mobile_flutter",
+        "mobile_react_native",
+        "plugin_integration",
     }
 
 
