@@ -910,19 +910,73 @@ async def run_pipeline_job(
         # ── Finalize ─────────────────────────────────────────────────────────
         build_passed = verify_result.get("passed", False)
         elapsed = round(time.monotonic() - t0, 2)
+        enterprise_proof: Dict[str, Any] = {}
+        delivery_gate: Dict[str, Any] = {}
 
-        if build_passed:
+        try:
+            from backend.orchestration.enterprise_proof import generate_enterprise_proof_artifacts
+
+            enterprise_proof = generate_enterprise_proof_artifacts(
+                workspace_path,
+                {"id": job_id, "goal": goal},
+                plan=plan,
+                generation_result=gen_result,
+                assemble_result=assemble_result,
+                verify_result=verify_result,
+                repair_result=repair_result,
+            )
+            delivery_gate = enterprise_proof.get("delivery_gate") or {}
+            await _emit("proof_bundle_ready", {
+                "proof_files": enterprise_proof.get("proof_files") or [],
+                "delivery_gate": delivery_gate,
+                "api_alignment_passed": (enterprise_proof.get("api_alignment") or {}).get("passed"),
+            })
+        except Exception as proof_error:
+            logger.exception("pipeline[%s] enterprise proof generation failed: %s", job_id, proof_error)
+            delivery_gate = {
+                "status": "FAILED_DELIVERY_GATE",
+                "allowed": False,
+                "blocks_completion": True,
+                "failed_checks": ["proof_generation"],
+                "error": str(proof_error)[:500],
+            }
+            await _emit("proof_bundle_failed", {"error": str(proof_error)[:500]})
+
+        gate_blocks_completion = bool(delivery_gate.get("blocks_completion"))
+
+        if build_passed and not gate_blocks_completion:
             final_status = "completed"
-            await update_job_state(job_id, "completed")
+            await update_job_state(job_id, "completed", extra={
+                "delivery_gate": delivery_gate,
+                "proof_files": enterprise_proof.get("proof_files") or [],
+            })
             await _emit("job_completed", {
                 "stages": stages_completed,
                 "elapsed_seconds": elapsed,
                 "files_written": len(gen_result.get("files_written") or []),
                 "dist_exists": verify_result.get("dist_exists"),
+                "delivery_gate": delivery_gate,
+                "proof_files": enterprise_proof.get("proof_files") or [],
+            })
+        elif build_passed and gate_blocks_completion:
+            final_status = "blocked"
+            await update_job_state(job_id, "blocked", extra={
+                "delivery_gate": delivery_gate,
+                "proof_files": enterprise_proof.get("proof_files") or [],
+            })
+            await _emit("job_failed", {
+                "stages": stages_completed,
+                "elapsed_seconds": elapsed,
+                "failure_reason": "FAILED_DELIVERY_GATE",
+                "message": "The app builds, but the delivery contract gate found critical unimplemented, mocked, or unwired paths.",
+                "delivery_gate": delivery_gate,
             })
         else:
             final_status = "failed"
-            await update_job_state(job_id, "failed")
+            await update_job_state(job_id, "failed", extra={
+                "delivery_gate": delivery_gate,
+                "proof_files": enterprise_proof.get("proof_files") or [],
+            })
             error_excerpt = (
                 verify_result.get("stderr")
                 or verify_result.get("stdout")
@@ -934,6 +988,7 @@ async def run_pipeline_job(
                 "failure_reason": "Proof failed on the build command.",
                 "message": "The generated app did not build yet. Details include the exact command output.",
                 "build_stderr": str(error_excerpt)[:1200],
+                "delivery_gate": delivery_gate,
             })
 
         return {
@@ -945,6 +1000,8 @@ async def run_pipeline_job(
             "assemble": assemble_result,
             "verify": verify_result,
             "repair": repair_result,
+            "enterprise_proof": enterprise_proof,
+            "delivery_gate": delivery_gate,
         }
 
     except asyncio.TimeoutError as e:

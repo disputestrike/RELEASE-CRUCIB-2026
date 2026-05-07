@@ -323,6 +323,9 @@ class TestContractSatisfaction:
         
         for table in contract.required_database_tables:
             contract.update_progress("required_database_tables", table, done=True)
+
+        for endpoint in contract.required_api_endpoints:
+            contract.update_progress("required_api_endpoints", endpoint, done=True)
         
         assert contract.is_satisfied() is True
     

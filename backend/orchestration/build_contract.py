@@ -71,6 +71,19 @@ class BuildContract:
     
     # Stack (with defaults)
     stack: Dict[str, str] = field(default_factory=dict)
+
+    # Product Contract Shape (with defaults)
+    target_platforms: List[str] = field(default_factory=list)
+    users: List[str] = field(default_factory=list)
+    roles: List[str] = field(default_factory=list)
+    permissions: List[str] = field(default_factory=list)
+    core_workflows: List[str] = field(default_factory=list)
+    data_models: List[str] = field(default_factory=list)
+    auth_requirements: List[str] = field(default_factory=list)
+    billing_requirements: List[str] = field(default_factory=list)
+    compliance_requirements: List[str] = field(default_factory=list)
+    security_controls: List[str] = field(default_factory=list)
+    deployment_target: str = ""
     
     # Required Artifacts (with defaults)
     required_files: List[str] = field(default_factory=list)
@@ -156,11 +169,14 @@ class BuildContract:
     contract_progress: Dict = field(default_factory=lambda: {
         "required_files": {"done": [], "missing": [], "percent": 0},
         "required_routes": {"done": [], "missing": [], "percent": 0},
+        "required_api_endpoints": {"done": [], "missing": [], "percent": 0},
         "required_backend_modules": {"done": [], "missing": [], "percent": 0},
         "required_database_tables": {"done": [], "missing": [], "percent": 0},
+        "required_migrations": {"done": [], "missing": [], "percent": 0},
         "required_workers": {"done": [], "missing": [], "percent": 0},
         "required_integrations": {"done": [], "missing": [], "percent": 0},
         "required_tests": {"done": [], "missing": [], "percent": 0},
+        "required_docs": {"done": [], "missing": [], "percent": 0},
         "required_preview_routes": {"done": [], "missing": [], "percent": 0}
     })
     
@@ -243,6 +259,7 @@ class BuildContract:
         required_checks = [
             ("required_files", self.required_files),
             ("required_routes", self.required_routes),
+            ("required_api_endpoints", self.required_api_endpoints),
             ("required_database_tables", self.required_database_tables),
         ]
         
@@ -271,11 +288,14 @@ class BuildContract:
         required_checks = [
             ("required_files", self.required_files),
             ("required_routes", self.required_routes),
+            ("required_api_endpoints", self.required_api_endpoints),
             ("required_database_tables", self.required_database_tables),
             ("required_backend_modules", self.required_backend_modules),
+            ("required_migrations", self.required_migrations),
             ("required_workers", self.required_workers),
             ("required_integrations", self.required_integrations),
             ("required_tests", self.required_tests),
+            ("required_docs", self.required_docs),
         ]
         
         for progress_key, required_list in required_checks:
@@ -302,6 +322,17 @@ class BuildContract:
             "original_goal": self.original_goal,
             "dimensions": self.dimensions,
             "stack": self.stack,
+            "target_platforms": self.target_platforms,
+            "users": self.users,
+            "roles": self.roles,
+            "permissions": self.permissions,
+            "core_workflows": self.core_workflows,
+            "data_models": self.data_models,
+            "auth_requirements": self.auth_requirements,
+            "billing_requirements": self.billing_requirements,
+            "compliance_requirements": self.compliance_requirements,
+            "security_controls": self.security_controls,
+            "deployment_target": self.deployment_target,
             "required_files": self.required_files,
             "required_folders": self.required_folders,
             "required_routes": self.required_routes,
@@ -346,6 +377,17 @@ class BuildContract:
             original_goal=data["original_goal"],
             dimensions=data.get("dimensions", {}),
             stack=data.get("stack", {}),
+            target_platforms=data.get("target_platforms", []),
+            users=data.get("users", []),
+            roles=data.get("roles", []),
+            permissions=data.get("permissions", []),
+            core_workflows=data.get("core_workflows", []),
+            data_models=data.get("data_models", []),
+            auth_requirements=data.get("auth_requirements", []),
+            billing_requirements=data.get("billing_requirements", []),
+            compliance_requirements=data.get("compliance_requirements", []),
+            security_controls=data.get("security_controls", []),
+            deployment_target=data.get("deployment_target", ""),
             required_files=data.get("required_files", []),
             required_folders=data.get("required_folders", []),
             required_routes=data.get("required_routes", []),

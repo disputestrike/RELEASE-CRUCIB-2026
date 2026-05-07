@@ -43,6 +43,17 @@ class BuildContractGenerator:
             original_goal=prompt,
             dimensions=dims,
             stack=self._synthesize_stack(dims),
+            target_platforms=self._synthesize_target_platforms(dims),
+            users=self._synthesize_users(dims),
+            roles=self._synthesize_roles(dims),
+            permissions=self._synthesize_permissions(dims),
+            core_workflows=self._synthesize_core_workflows(dims),
+            data_models=self._synthesize_data_models(dims),
+            auth_requirements=self._synthesize_auth_requirements(dims),
+            billing_requirements=self._synthesize_billing_requirements(dims),
+            compliance_requirements=self._synthesize_compliance_requirements(dims),
+            security_controls=self._synthesize_security_controls(dims),
+            deployment_target=self._synthesize_deployment_target(dims),
             
             # Synthesize all required artifacts from dimensions
             required_files=self._synthesize_files(dims),
@@ -104,6 +115,22 @@ class BuildContractGenerator:
     
     def _determine_build_class(self, dims: Dict) -> str:
         """Determine build class from dimensions (emergent, not from registry)."""
+        if dims.get("healthcare"):
+            return "healthcare_platform"
+        if dims.get("fintech"):
+            return "fintech_platform"
+        if dims.get("government") or dims.get("govtech"):
+            return "govtech_platform"
+        if dims.get("defense") or dims.get("defense_enterprise"):
+            return "defense_enterprise_system"
+        if dims.get("marketplace"):
+            return "marketplace"
+        if dims.get("ecommerce"):
+            return "ecommerce"
+        if dims.get("ai_agent_platform"):
+            return "ai_agent_platform"
+        if dims.get("automation"):
+            return "automation_workflow"
         if dims.get("internal_admin"):
             return "internal_admin_tool"
         if dims.get("marketing_site"):
@@ -115,15 +142,17 @@ class BuildContractGenerator:
         elif dims.get("mobile"):
             return "mobile_react_native" if dims.get("react") else "mobile_flutter"
         elif dims.get("api") and not dims.get("frontend"):
-            return "api_rest"
+            return "api_backend"
         elif dims.get("data_pipeline"):
             return "data_pipeline"
         elif dims.get("tenancy") and dims.get("compliance"):
             return "regulated_saas"
+        elif dims.get("billing") or dims.get("auth") or dims.get("database") or dims.get("tenancy"):
+            return "fullstack_saas"
         elif dims.get("crm") or dims.get("analytics"):
-            return "saas"
+            return "saas_frontend" if not dims.get("backend") else "fullstack_saas"
         elif dims.get("frontend"):
-            return "web_app"
+            return "saas_frontend"
         else:
             return "generic"
     
@@ -150,6 +179,143 @@ class BuildContractGenerator:
             return match.group(1).strip()
         
         return "Untitled Project"
+
+    def _synthesize_target_platforms(self, dims: Dict) -> List[str]:
+        platforms = []
+        if dims.get("frontend") or dims.get("marketing_site") or dims.get("internal_admin"):
+            platforms.append("web")
+        if dims.get("mobile"):
+            platforms.extend(["ios", "android"])
+        if dims.get("api") or dims.get("backend"):
+            platforms.append("api")
+        if dims.get("cli"):
+            platforms.append("cli")
+        return platforms or ["web"]
+
+    def _synthesize_users(self, dims: Dict) -> List[str]:
+        if dims.get("marketplace"):
+            return ["buyer", "seller", "admin"]
+        if dims.get("healthcare"):
+            return ["patient", "provider", "admin"]
+        if dims.get("internal_admin"):
+            return ["operator", "manager", "admin"]
+        if dims.get("billing") or dims.get("auth") or dims.get("tenancy"):
+            return ["member", "team_admin", "owner"]
+        return ["visitor", "user"]
+
+    def _synthesize_roles(self, dims: Dict) -> List[str]:
+        roles = ["user"]
+        if dims.get("auth") or dims.get("backend") or dims.get("database"):
+            roles.extend(["admin", "owner"])
+        if dims.get("tenancy"):
+            roles.extend(["org_admin", "member"])
+        if dims.get("compliance"):
+            roles.append("auditor")
+        if dims.get("marketplace"):
+            roles.extend(["buyer", "seller", "support"])
+        return sorted(set(roles))
+
+    def _synthesize_permissions(self, dims: Dict) -> List[str]:
+        permissions = ["read:own"]
+        if dims.get("auth") or dims.get("backend") or dims.get("database"):
+            permissions.extend(["create:own", "update:own", "delete:own", "admin:manage"])
+        if dims.get("tenancy"):
+            permissions.extend(["tenant:read", "tenant:manage"])
+        if dims.get("billing"):
+            permissions.extend(["billing:read", "billing:manage"])
+        if dims.get("compliance"):
+            permissions.extend(["audit:read", "audit:export"])
+        return sorted(set(permissions))
+
+    def _synthesize_core_workflows(self, dims: Dict) -> List[str]:
+        workflows = ["open app", "inspect generated output", "view proof"]
+        if dims.get("auth"):
+            workflows.extend(["register account", "sign in", "access protected route", "sign out"])
+        if dims.get("billing"):
+            workflows.extend(["select plan", "create checkout", "receive webhook", "enforce entitlement"])
+        if dims.get("database"):
+            workflows.extend(["create record", "read record", "update record", "delete record"])
+        if dims.get("tenancy"):
+            workflows.append("switch tenant with isolated data")
+        if dims.get("marketplace") or dims.get("ecommerce"):
+            workflows.extend(["browse catalog", "manage cart", "place order"])
+        if dims.get("automation"):
+            workflows.extend(["define trigger", "run workflow", "inspect run history"])
+        return workflows
+
+    def _synthesize_data_models(self, dims: Dict) -> List[str]:
+        models = []
+        for table in self._synthesize_database_tables(dims):
+            models.append(table)
+        if dims.get("billing"):
+            models.extend(["plans", "customers", "subscriptions", "invoices", "entitlements"])
+        if dims.get("marketplace") or dims.get("ecommerce"):
+            models.extend(["products", "carts", "orders", "order_items"])
+        if dims.get("automation"):
+            models.extend(["workflow_definitions", "workflow_runs", "workflow_events"])
+        return sorted(set(models))
+
+    def _synthesize_auth_requirements(self, dims: Dict) -> List[str]:
+        if not (dims.get("auth") or dims.get("tenancy") or dims.get("billing") or dims.get("compliance")):
+            return []
+        requirements = ["session_or_jwt_validation", "password_hashing", "protected_routes", "current_user_endpoint"]
+        if dims.get("tenancy"):
+            requirements.append("tenant_scoped_session")
+        if dims.get("compliance"):
+            requirements.append("audit_auth_events")
+        return requirements
+
+    def _synthesize_billing_requirements(self, dims: Dict) -> List[str]:
+        if not dims.get("billing"):
+            return []
+        return [
+            "plans",
+            "customers",
+            "subscriptions",
+            "checkout_or_order_creation",
+            "webhook_signature_verification",
+            "subscription_status_endpoint",
+            "invoice_records",
+            "entitlement_checks",
+            "test_mode_provider_support",
+        ]
+
+    def _synthesize_compliance_requirements(self, dims: Dict) -> List[str]:
+        requirements = []
+        if dims.get("compliance"):
+            requirements.extend(["control_matrix", "data_flow_map", "risk_register", "audit_log_spec"])
+        if dims.get("healthcare") or dims.get("hipaa"):
+            requirements.append("hipaa_readiness")
+        if dims.get("fintech") or dims.get("pci"):
+            requirements.extend(["pci_conscious_architecture", "ledger_auditability"])
+        if dims.get("gdpr"):
+            requirements.extend(["data_export", "data_delete", "retention_policy"])
+        return sorted(set(requirements))
+
+    def _synthesize_security_controls(self, dims: Dict) -> List[str]:
+        controls = [
+            "input_validation",
+            "safe_error_responses",
+            "cors_configuration",
+            "security_headers",
+            "rate_limiting",
+            "secret_redaction",
+            "no_hardcoded_secrets",
+        ]
+        if dims.get("auth") or dims.get("tenancy") or dims.get("billing"):
+            controls.extend(["rbac", "session_validation", "audit_logging"])
+        if dims.get("tenancy"):
+            controls.append("tenant_isolation")
+        if dims.get("compliance"):
+            controls.extend(["data_retention_policy", "incident_response_runbook"])
+        return sorted(set(controls))
+
+    def _synthesize_deployment_target(self, dims: Dict) -> str:
+        if dims.get("mobile"):
+            return "expo_or_app_store_ready"
+        if dims.get("deployment") or dims.get("docker"):
+            return "containerized_web_service"
+        return "zip_and_railway_ready"
     
     def _synthesize_stack(self, dims: Dict) -> Dict[str, str]:
         """Synthesize stack from dimensions."""
@@ -466,9 +632,15 @@ class BuildContractGenerator:
             modules.append("integrations")
         
         if dims.get("billing"):
-            modules.append("billing")
+            modules.extend(["billing", "entitlements"])
+
+        if dims.get("marketplace") or dims.get("ecommerce"):
+            modules.extend(["catalog", "orders"])
+
+        if dims.get("automation"):
+            modules.extend(["workflow_executor", "run_history"])
         
-        return modules
+        return sorted(set(modules))
     
     def _synthesize_api_endpoints(self, dims: Dict) -> List[str]:
         """Synthesize required API endpoints."""
@@ -506,6 +678,21 @@ class BuildContractGenerator:
                 "/api/analytics/dashboard",
                 "/api/analytics/reports"
             ])
+
+        if dims.get("billing"):
+            endpoints.extend([
+                "/api/billing/plans",
+                "/api/billing/checkout",
+                "/api/billing/webhook",
+                "/api/billing/subscription-status",
+            ])
+
+        if dims.get("marketplace") or dims.get("ecommerce"):
+            endpoints.extend([
+                "/api/products",
+                "/api/cart",
+                "/api/orders",
+            ])
         
         return endpoints
     
@@ -523,7 +710,15 @@ class BuildContractGenerator:
                 "audit_events",
             ]
         if not (
-            dims.get("database") or dims.get("auth") or dims.get("tenancy") or dims.get("crm") or dims.get("compliance")
+            dims.get("database")
+            or dims.get("auth")
+            or dims.get("tenancy")
+            or dims.get("crm")
+            or dims.get("compliance")
+            or dims.get("billing")
+            or dims.get("marketplace")
+            or dims.get("ecommerce")
+            or dims.get("automation")
         ):
             return []
 
@@ -543,8 +738,17 @@ class BuildContractGenerator:
         
         if dims.get("integrations"):
             tables.extend(["integrations", "webhooks"])
+
+        if dims.get("billing"):
+            tables.extend(["plans", "customers", "subscriptions", "invoices", "entitlements", "payment_events"])
+
+        if dims.get("marketplace") or dims.get("ecommerce"):
+            tables.extend(["products", "carts", "orders", "order_items"])
+
+        if dims.get("automation"):
+            tables.extend(["workflow_definitions", "workflow_runs", "workflow_events"])
         
-        return tables
+        return sorted(set(tables))
     
     def _synthesize_migrations(self, dims: Dict) -> List[str]:
         """Synthesize required migration files."""
@@ -604,6 +808,12 @@ class BuildContractGenerator:
         
         if dims.get("api"):
             tests.append("test_api_contracts")
+
+        if dims.get("billing"):
+            tests.extend(["test_billing_checkout", "test_billing_webhook_signature"])
+
+        if dims.get("database"):
+            tests.append("test_database_migrations")
         
         return tests
     
@@ -877,11 +1087,14 @@ class BuildContractGenerator:
         progress = {
             "required_files": {"done": [], "missing": [], "percent": 0},
             "required_routes": {"done": [], "missing": [], "percent": 0},
+            "required_api_endpoints": {"done": [], "missing": [], "percent": 0},
             "required_backend_modules": {"done": [], "missing": [], "percent": 0},
             "required_database_tables": {"done": [], "missing": [], "percent": 0},
+            "required_migrations": {"done": [], "missing": [], "percent": 0},
             "required_workers": {"done": [], "missing": [], "percent": 0},
             "required_integrations": {"done": [], "missing": [], "percent": 0},
             "required_tests": {"done": [], "missing": [], "percent": 0},
+            "required_docs": {"done": [], "missing": [], "percent": 0},
             "required_preview_routes": {"done": [], "missing": [], "percent": 0}
         }
         
@@ -894,6 +1107,15 @@ class BuildContractGenerator:
         
         for table in self._synthesize_database_tables(dims):
             progress["required_database_tables"]["missing"].append(table)
+
+        for endpoint in self._synthesize_api_endpoints(dims):
+            progress["required_api_endpoints"]["missing"].append(endpoint)
+
+        for migration in self._synthesize_migrations(dims):
+            progress["required_migrations"]["missing"].append(migration)
+
+        for doc in self._synthesize_docs(dims):
+            progress["required_docs"]["missing"].append(doc)
 
         for route in self._synthesize_preview_routes(dims):
             progress["required_preview_routes"]["missing"].append(route)

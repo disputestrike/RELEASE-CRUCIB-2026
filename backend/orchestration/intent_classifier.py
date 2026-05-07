@@ -70,9 +70,22 @@ class IntentClassifier:
         
         # Billing
         "billing": ["billing", "payment", "subscription", "paypal", "invoice", "pricing"],
+
+        # Product/domain classes
+        "marketplace": ["marketplace", "multi-vendor", "multivendor", "buyer", "seller", "listing", "payout", "commission"],
+        "ecommerce": ["e-commerce", "ecommerce", "store", "cart", "checkout", "product catalog", "shop"],
+        "healthcare": ["healthcare", "ehr", "emr", "telehealth", "clinical", "patient", "hipaa", "phi"],
+        "fintech": ["fintech", "banking", "ledger", "wallet", "lending", "kyc", "aml", "pci"],
+        "government": ["government", "govtech", "public sector", "federal", "state agency"],
+        "defense": ["defense", "defence", "dod", "military", "classified"],
+        "ai_agent_platform": ["ai agent", "agent platform", "multi-agent", "autonomous agent"],
+        "automation": ["automation", "workflow automation", "zapier", "trigger", "action", "run history"],
+        "gdpr": ["gdpr", "data subject", "right to be forgotten"],
+        "hipaa": ["hipaa", "phi"],
+        "pci": ["pci", "card data", "payment card"],
         
         # Frontend
-        "frontend": ["react", "vue", "angular", "frontend", "spa", "dashboard", "admin panel", "admin tool"],
+        "frontend": ["react", "vue", "angular", "frontend", "spa", "dashboard", "admin panel", "admin tool", "website", "web app", "product ui", "user interface", "saas"],
 
         # Internal operations/admin tools
         "internal_admin": [

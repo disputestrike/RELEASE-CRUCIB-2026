@@ -136,7 +136,26 @@ def update_contract_progress_from_workspace(
     for route in contract.required_preview_routes:
         contract.update_progress("required_preview_routes", route, done=route in route_map)
 
-    combined = "\n".join(source_files.values()).lower()
+    combined_raw = "\n".join(source_files.values())
+    combined = combined_raw.lower()
+    for endpoint in contract.required_api_endpoints:
+        endpoint_lower = endpoint.lower()
+        contract.update_progress(
+            "required_api_endpoints",
+            endpoint,
+            done=endpoint_lower in combined or endpoint_lower.replace("/api", "") in combined,
+        )
+
+    for migration in contract.required_migrations:
+        contract.update_progress(
+            "required_migrations",
+            migration,
+            done=any(path.endswith(migration) for path in actual_paths),
+        )
+
+    for doc in contract.required_docs:
+        contract.update_progress("required_docs", doc, done=doc in actual_paths)
+
     pkg = {}
     try:
         pkg = json.loads(source_files.get("package.json") or "{}")
@@ -204,6 +223,17 @@ CONTRACT_COMPARE_FIELDS = (
     "build_class",
     "dimensions",
     "stack",
+    "target_platforms",
+    "users",
+    "roles",
+    "permissions",
+    "core_workflows",
+    "data_models",
+    "auth_requirements",
+    "billing_requirements",
+    "compliance_requirements",
+    "security_controls",
+    "deployment_target",
     "required_files",
     "required_folders",
     "required_routes",

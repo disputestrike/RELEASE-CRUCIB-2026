@@ -245,6 +245,28 @@ def assert_workspace_download_allowed(
             detail="Workspace export requires a completed job. Pass ?draft=true for interim bundles.",
         )
 
+    enterprise_gate_path = os.path.join(workspace_path, ".crucibai", "delivery_gate.json")
+    if os.path.isfile(enterprise_gate_path):
+        try:
+            with open(enterprise_gate_path, encoding="utf-8") as f:
+                enterprise_gate = json.load(f)
+            if not enterprise_gate.get("allowed"):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "gate": "enterprise_delivery_gate",
+                        "status": enterprise_gate.get("status"),
+                        "failed_checks": enterprise_gate.get("failed_checks") or [],
+                    },
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=422,
+                detail={"gate": "enterprise_delivery_gate", "error": f"Could not read delivery gate: {e}"},
+            )
+
     passed, marker = check_biv_marker(workspace_path)
     try:
         min_score = int(os.environ.get("CRUCIBAI_MIN_BIV_SCORE") or "0")
@@ -303,6 +325,21 @@ def assert_workspace_publish_allowed(workspace_path: str, job: Optional[Dict[str
     status = str((job or {}).get("status") or "").lower()
     if status in {"failed", "blocked", "cancelled", "canceled", "error"}:
         raise HTTPException(status_code=404, detail="Published app not found")
+
+    enterprise_gate_path = os.path.join(workspace_path, ".crucibai", "delivery_gate.json")
+    if os.path.isfile(enterprise_gate_path):
+        try:
+            with open(enterprise_gate_path, encoding="utf-8") as f:
+                enterprise_gate = json.load(f)
+            if enterprise_gate.get("blocks_completion") or not enterprise_gate.get("allowed"):
+                raise HTTPException(status_code=404, detail="Published app not found")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=422,
+                detail={"gate": "enterprise_delivery_gate", "error": f"Could not read delivery gate: {e}"},
+            )
 
     passed, marker = check_biv_marker(workspace_path)
     try:
