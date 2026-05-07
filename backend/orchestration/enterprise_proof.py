@@ -437,6 +437,105 @@ def _feature_lines(items: Iterable[Mapping[str, Any]]) -> List[str]:
     return [f"{item.get('feature')}: {item.get('evidence')}" for item in items]
 
 
+def _domain_terms(goal: str, contract: Mapping[str, Any]) -> List[str]:
+    lower_goal = goal.lower()
+    terms = []
+    for key in (
+        "healthcare",
+        "fintech",
+        "legal",
+        "government",
+        "defense",
+        "education",
+        "ecommerce",
+        "marketplace",
+        "automation",
+        "ai agent",
+        "iot",
+    ):
+        if key in lower_goal:
+            terms.append(key)
+    build_class = str(contract.get("build_class") or "")
+    if build_class and build_class not in terms:
+        terms.append(build_class)
+    return terms or ["general software"]
+
+
+def _research_docs(goal: str, contract: Mapping[str, Any]) -> Dict[str, str]:
+    domains = _domain_terms(goal, contract)
+    workflows = contract.get("core_workflows") or []
+    models = contract.get("data_models") or []
+    compliance = contract.get("compliance_requirements") or []
+    security = contract.get("security_controls") or []
+
+    return {
+        "docs/research_notes/DOMAIN_RESEARCH.md": (
+            "# Domain Research\n\n"
+            f"- Detected domains: {', '.join(domains)}\n"
+            "- Research mode: deterministic domain-pack synthesis from the approved build contract.\n"
+            "- Current/live external standards should be rechecked before regulated production use.\n\n"
+            "## Extracted Workflows\n"
+            f"{_md_list(workflows)}\n\n"
+            "## Extracted Data Models\n"
+            f"{_md_list(models)}"
+        ),
+        "docs/requirements/REQUIREMENTS_FROM_RESEARCH.md": (
+            "# Requirements From Research\n\n"
+            "## Product Shape\n"
+            f"- Build class: {contract.get('build_class')}\n"
+            f"- Target platforms: {', '.join(contract.get('target_platforms') or []) or 'not specified'}\n\n"
+            "## Workflows\n"
+            f"{_md_list(workflows)}\n\n"
+            "## Security Controls\n"
+            f"{_md_list(security)}"
+        ),
+        "docs/compliance/COMPLIANCE_NOTES.md": (
+            "# Compliance Notes\n\n"
+            "This is readiness documentation only and does not claim certification.\n\n"
+            f"{_md_list(compliance or ['No regulated compliance obligation detected from the request.'])}"
+        ),
+        "docs/technical_spec/DOMAIN_TECHNICAL_SPEC.md": (
+            "# Domain Technical Spec\n\n"
+            f"- Stack: {json.dumps(contract.get('stack') or {}, sort_keys=True)}\n"
+            f"- Deployment target: {contract.get('deployment_target') or 'zip_and_railway_ready'}\n\n"
+            "## API Endpoints\n"
+            f"{_md_list(contract.get('required_api_endpoints') or [])}\n\n"
+            "## Database Tables\n"
+            f"{_md_list(contract.get('required_database_tables') or [])}"
+        ),
+    }
+
+
+def _compliance_docs(contract: Mapping[str, Any]) -> Dict[str, str]:
+    controls = contract.get("security_controls") or []
+    tables = contract.get("required_database_tables") or []
+    roles = contract.get("roles") or []
+    permissions = contract.get("permissions") or []
+    requirements = contract.get("compliance_requirements") or []
+    base_note = "Readiness artifact only. External certification requires external audit, counsel, and production evidence."
+    return {
+        "docs/compliance/CONTROL_MATRIX.md": "# Control Matrix\n\n" + base_note + "\n\n" + _md_list(controls),
+        "docs/compliance/DATA_FLOW_MAP.md": "# Data Flow Map\n\n" + _md_list(tables),
+        "docs/compliance/RISK_REGISTER.md": "# Risk Register\n\n" + _md_list(requirements or ["No regulated risk class detected."]),
+        "docs/compliance/AUDIT_LOG_SPEC.md": "# Audit Log Spec\n\n- actor_id\n- action\n- resource_type\n- resource_id\n- tenant_id\n- timestamp\n- metadata\n",
+        "docs/compliance/ACCESS_CONTROL_MATRIX.md": (
+            "# Access Control Matrix\n\n"
+            "## Roles\n"
+            f"{_md_list(roles)}\n\n"
+            "## Permissions\n"
+            f"{_md_list(permissions)}"
+        ),
+        "docs/compliance/RETENTION_POLICY.md": "# Retention Policy\n\n" + base_note + "\n\n- Define retention by data class.\n- Support export/delete where applicable.\n",
+        "docs/compliance/INCIDENT_RESPONSE_RUNBOOK.md": "# Incident Response Runbook\n\n- Detect\n- Contain\n- Eradicate\n- Recover\n- Notify where required\n",
+        "docs/compliance/VENDOR_INTEGRATION_RISK.md": "# Vendor Integration Risk\n\n- Track provider credentials.\n- Verify webhook signatures.\n- Avoid logging sensitive payloads.\n",
+        "docs/compliance/HIPAA_READINESS.md": "# HIPAA Readiness\n\n" + base_note + "\n\n- Minimum necessary access\n- PHI access audit\n- BAA review\n",
+        "docs/compliance/SOC2_CONTROL_MAPPING.md": "# SOC2 Control Mapping\n\n" + base_note + "\n\n- Security\n- Availability\n- Confidentiality\n- Change management\n",
+        "docs/compliance/GDPR_DATA_MAP.md": "# GDPR Data Map\n\n" + base_note + "\n\n- Data categories\n- Processing purpose\n- Retention\n- Export/delete workflow\n",
+        "docs/compliance/SECURITY_CONTROLS.md": "# Security Controls\n\n" + _md_list(controls),
+        "docs/compliance/AUDIT_EVIDENCE_PLAN.md": "# Audit Evidence Plan\n\n- Build proof\n- Test proof\n- Access logs\n- Change logs\n- Deployment logs\n",
+    }
+
+
 def _compute_delivery_gate(
     *,
     goal: str,
@@ -632,6 +731,8 @@ def generate_enterprise_proof_artifacts(
             "Never treat this certificate as an external compliance certification."
         ),
     }
+    documents.update(_research_docs(goal, contract))
+    documents.update(_compliance_docs(contract))
 
     if repair_result is not None:
         proof_files.append("proof/REPAIR_LOG.md")

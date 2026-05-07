@@ -80,6 +80,15 @@ def test_enterprise_proof_blocks_strict_build_with_mocked_critical_paths(tmp_pat
     assert "critical_paths_not_fully_implemented" in gate["failed_checks"]
     for rel in REQUIRED_PROOF_FILES:
         assert (ws / rel).exists(), rel
+    for rel in (
+        "docs/research_notes/DOMAIN_RESEARCH.md",
+        "docs/requirements/REQUIREMENTS_FROM_RESEARCH.md",
+        "docs/compliance/COMPLIANCE_NOTES.md",
+        "docs/technical_spec/DOMAIN_TECHNICAL_SPEC.md",
+        "docs/compliance/CONTROL_MATRIX.md",
+        "docs/compliance/AUDIT_EVIDENCE_PLAN.md",
+    ):
+        assert (ws / rel).exists(), rel
     assert (ws / ".crucibai" / "delivery_gate.json").exists()
 
 

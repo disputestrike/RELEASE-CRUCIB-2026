@@ -123,6 +123,16 @@ class BuildContractGenerator:
             return "govtech_platform"
         if dims.get("defense") or dims.get("defense_enterprise"):
             return "defense_enterprise_system"
+        if dims.get("desktop_app"):
+            return "desktop_app"
+        if dims.get("browser_extension"):
+            return "browser_extension"
+        if dims.get("plugin_integration"):
+            return "plugin_integration"
+        if dims.get("iot"):
+            return "iot_dashboard"
+        if dims.get("erp"):
+            return "erp"
         if dims.get("marketplace"):
             return "marketplace"
         if dims.get("ecommerce"):

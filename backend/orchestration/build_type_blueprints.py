@@ -92,10 +92,20 @@ BLUEPRINTS: Dict[str, Dict[str, Any]] = {
         "routes": [],
         "backend": ["server_entry", "route_map", "schema", "tests", "openapi"],
     },
+    "api_rest": {
+        "label": "API/backend",
+        "routes": [],
+        "backend": ["server_entry", "route_map", "schema", "tests", "openapi"],
+    },
     "mobile_expo": {
         "label": "Expo mobile app",
         "routes": [],
         "mobile": ["App.tsx", "screens", "navigation", "app.json", "eas.json"],
+    },
+    "mobile_react_native": {
+        "label": "React Native mobile app",
+        "routes": [],
+        "mobile": ["App.tsx", "screens", "navigation", "package.json", "app.json"],
     },
     "automation": {
         "label": "Automation/workflow",
@@ -153,6 +163,49 @@ BLUEPRINTS: Dict[str, Dict[str, Any]] = {
         "routes": ["/", "/agents", "/runs", "/tools", "/proof", "/settings", "/404"],
         "backend": ["agents", "tool_registry", "runs", "proof", "audit"],
         "database": ["users", "agents", "agent_runs", "tool_calls", "proof_events"],
+    },
+    "crm": {
+        "label": "CRM",
+        "routes": ["/", "/crm", "/crm/accounts", "/crm/contacts", "/crm/deals", "/settings", "/404"],
+        "backend": ["accounts", "contacts", "deals", "activities", "tasks"],
+        "database": ["accounts", "contacts", "deals", "activities", "tasks", "audit_events"],
+    },
+    "erp": {
+        "label": "ERP",
+        "routes": ["/", "/inventory", "/procurement", "/orders", "/reports", "/settings", "/404"],
+        "backend": ["inventory", "procurement", "orders", "reporting", "audit"],
+        "database": ["items", "vendors", "purchase_orders", "inventory_events", "audit_events"],
+    },
+    "desktop_app": {
+        "label": "Desktop app",
+        "routes": [],
+        "desktop": ["electron_or_tauri_entry", "renderer", "local_storage", "packaging"],
+    },
+    "iot_dashboard": {
+        "label": "IoT dashboard",
+        "routes": ["/", "/devices", "/telemetry", "/alerts", "/settings", "/404"],
+        "backend": ["devices", "telemetry_ingest", "alerts", "websocket_updates"],
+        "database": ["devices", "telemetry_events", "alerts", "audit_events"],
+    },
+    "game_2d": {
+        "label": "2D game",
+        "routes": ["/"],
+        "game": ["scene", "input", "state", "assets", "loop"],
+    },
+    "game_3d": {
+        "label": "3D game",
+        "routes": ["/"],
+        "game": ["three_scene", "camera", "controls", "assets", "loop"],
+    },
+    "browser_extension": {
+        "label": "Browser extension",
+        "routes": [],
+        "extension": ["manifest", "content_script", "background_worker", "popup"],
+    },
+    "plugin_integration": {
+        "label": "Plugin/integration",
+        "routes": [],
+        "integration": ["manifest", "adapter", "auth", "webhooks", "tests"],
     },
 }
 
