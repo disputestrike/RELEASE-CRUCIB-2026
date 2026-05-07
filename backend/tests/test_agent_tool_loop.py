@@ -7,6 +7,15 @@ import pytest
 from backend.orchestration.runtime_engine import extract_final_assistant_text
 
 
+def test_runtime_advertises_claude_code_tool_names():
+    from backend.orchestration import runtime_engine as re
+
+    names = {tool["name"] for tool in re.TOOL_DEFINITIONS}
+    assert {"Read", "Write", "Edit", "Bash", "Glob", "Grep"}.issubset(names)
+    assert "read_file" not in names
+    assert "run_command" not in names
+
+
 @pytest.mark.asyncio
 async def test_extract_final_assistant_text_prefers_last_assistant():
     messages = [
@@ -62,6 +71,66 @@ async def test_run_agent_loop_two_turns_tool_then_text(tmp_path):
 
     assert out["iterations"] == 2
     assert extract_final_assistant_text(out["messages"]) == "Listed workspace."
+
+
+@pytest.mark.asyncio
+async def test_run_agent_loop_executes_claude_code_named_tools(tmp_path):
+    from backend.orchestration import runtime_engine as re
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "App.tsx").write_text("export default function App() { return null; }\n", encoding="utf-8")
+
+    events = []
+
+    async def on_event(event_type, payload):
+        events.append((event_type, payload))
+
+    responses = iter(
+        [
+            {
+                "stop_reason": "tool_use",
+                "content": [
+                    {"type": "tool_use", "id": "read_1", "name": "Read", "input": {"file_path": "src/App.tsx"}},
+                    {"type": "tool_use", "id": "grep_1", "name": "Grep", "input": {"pattern": "export", "path": "src"}},
+                ],
+            },
+            {
+                "stop_reason": "tool_use",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "edit_1",
+                        "name": "Edit",
+                        "input": {
+                            "file_path": "src/App.tsx",
+                            "old_string": "return null",
+                            "new_string": "return <main>Built</main>",
+                        },
+                    }
+                ],
+            },
+            {"stop_reason": "end_turn", "content": [{"type": "text", "text": "Edited workspace."}]},
+        ]
+    )
+
+    async def fake_llm(messages, system, tools, thinking=None):
+        assert {tool["name"] for tool in tools} >= {"Read", "Write", "Edit", "Bash", "Glob", "Grep"}
+        return next(responses)
+
+    out = await re.run_agent_loop(
+        agent_name="GenerateAgent",
+        system_prompt="sys",
+        user_message="task",
+        workspace_path=str(tmp_path),
+        call_llm=fake_llm,
+        max_iterations=5,
+        on_event=on_event,
+    )
+
+    assert out["iterations"] == 3
+    assert "return <main>Built</main>" in (tmp_path / "src" / "App.tsx").read_text(encoding="utf-8")
+    assert any(payload.get("name") == "Read" for kind, payload in events if kind == "tool_call")
+    assert any(payload.get("name") == "Edit" for kind, payload in events if kind == "tool_result")
 
 
 @pytest.mark.asyncio

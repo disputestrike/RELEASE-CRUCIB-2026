@@ -30,6 +30,9 @@ def test_clean_room_claude_code_backbone_is_vendored_and_fused():
     assert "Read/Glob/Grep" in fused
     assert "Do not default to SaaS" in fused
 
+    tool_names = {tool["name"] for tool in claude_code_backbone.get_claude_code_tool_definitions()}
+    assert {"Read", "Write", "Edit", "Bash", "Glob", "Grep"}.issubset(tool_names)
+
 
 @pytest.mark.asyncio
 async def test_backbone_translates_runtime_tool_events():

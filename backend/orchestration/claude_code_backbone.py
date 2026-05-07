@@ -15,10 +15,13 @@ The adapter deliberately does not import Anthropic leaked/decompiled source.
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
+import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 RuntimeEventCallback = Callable[[str, Dict[str, Any]], Awaitable[None] | None]
@@ -66,6 +69,15 @@ _TOOL_NAME_MAP = {
     "run_command": "Bash",
 }
 
+_CANONICAL_TOOLS = {
+    "Read": "read_file",
+    "Glob": "search_files",
+    "Grep": "grep_files",
+    "Write": "write_file",
+    "Edit": "edit_file",
+    "Bash": "run_command",
+}
+
 
 def vendored_source_root() -> Path:
     return Path(__file__).resolve().parents[1] / "third_party" / "clawspring"
@@ -78,6 +90,152 @@ def backbone_available() -> bool:
         and (root / "tool_registry.py").exists()
         and (root / "LICENSE").exists()
     )
+
+
+def _load_vendored_tool_registry() -> ModuleType:
+    registry_path = vendored_source_root() / "tool_registry.py"
+    spec = importlib.util.spec_from_file_location(
+        "crucibai_vendored_clawspring_tool_registry",
+        registry_path,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load ClawSpring tool registry at {registry_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _workspace_tool_schemas() -> List[Dict[str, Any]]:
+    return [
+        {
+            "name": "Read",
+            "description": "Read a file from the generated workspace.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"file_path": {"type": "string"}},
+                "required": ["file_path"],
+            },
+        },
+        {
+            "name": "Write",
+            "description": "Create or replace a file in the generated workspace.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["file_path", "content"],
+            },
+        },
+        {
+            "name": "Edit",
+            "description": "Replace text in an existing workspace file.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string"},
+                    "old_string": {"type": "string"},
+                    "new_string": {"type": "string"},
+                },
+                "required": ["file_path", "old_string", "new_string"],
+            },
+        },
+        {
+            "name": "Bash",
+            "description": "Run an allowlisted build, install, test, or inspection command.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string"},
+                    "description": {"type": "string"},
+                    "cwd": {"type": "string"},
+                },
+                "required": ["command"],
+            },
+        },
+        {
+            "name": "Glob",
+            "description": "Find files by glob pattern in the workspace.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "path": {"type": "string"},
+                },
+                "required": ["pattern"],
+            },
+        },
+        {
+            "name": "Grep",
+            "description": "Search workspace file contents for a text pattern.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "path": {"type": "string"},
+                    "include": {"type": "string"},
+                },
+                "required": ["pattern"],
+            },
+        },
+    ]
+
+
+def get_claude_code_tool_definitions() -> List[Dict[str, Any]]:
+    """Return schemas from the vendored ClawSpring ToolDef registry."""
+
+    registry = _load_vendored_tool_registry()
+    registry.clear_registry()
+    for schema in _workspace_tool_schemas():
+        # Execution is handled by CrucibAI's workspace sandbox, but the tool
+        # catalog is registered through the clean-room ClawSpring registry.
+        registry.register_tool(
+            registry.ToolDef(
+                name=schema["name"],
+                schema=schema,
+                func=lambda _params, _config: "",
+                read_only=schema["name"] in {"Read", "Glob", "Grep"},
+                concurrent_safe=schema["name"] in {"Read", "Glob", "Grep"},
+            )
+        )
+    return registry.get_tool_schemas()
+
+
+def normalize_claude_tool_name(tool_name: str) -> str:
+    raw = str(tool_name or "").strip()
+    if raw in _CANONICAL_TOOLS:
+        return _CANONICAL_TOOLS[raw]
+    return raw
+
+
+def claude_tool_input_to_runtime(tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert Claude Code tool inputs to CrucibAI runtime tool inputs."""
+
+    name = normalize_claude_tool_name(tool_name)
+    raw = dict(tool_input or {})
+    if name in {"read_file", "write_file", "edit_file"}:
+        if "file_path" in raw and "path" not in raw:
+            raw["path"] = raw["file_path"]
+        if "old_string" in raw and "old_str" not in raw:
+            raw["old_str"] = raw["old_string"]
+        if "new_string" in raw and "new_str" not in raw:
+            raw["new_str"] = raw["new_string"]
+    elif name == "search_files":
+        raw.setdefault("pattern", raw.get("glob") or raw.get("file_pattern") or "*")
+    elif name == "grep_files":
+        raw.setdefault("pattern", raw.get("query") or raw.get("regex") or "")
+        raw.setdefault("subdir", raw.get("path") or "")
+    elif name == "run_command":
+        command = raw.get("command")
+        if isinstance(command, list) and "argv" not in raw:
+            raw["argv"] = command
+        elif isinstance(command, str) and "argv" not in raw:
+            import shlex
+
+            raw["argv"] = shlex.split(command, posix=False)
+    return raw
 
 
 def build_backbone_system_prompt(base_prompt: str) -> str:

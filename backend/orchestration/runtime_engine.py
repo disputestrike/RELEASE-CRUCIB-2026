@@ -22,6 +22,11 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+from backend.orchestration.claude_code_backbone import (
+    claude_tool_input_to_runtime,
+    get_claude_code_tool_definitions,
+    normalize_claude_tool_name,
+)
 from backend.tool_executor import is_allowlisted_run_command
 
 logger = logging.getLogger(__name__)
@@ -80,6 +85,38 @@ def _search_files(workspace_path: str, pattern: str) -> str:
             if fnmatch.fnmatch(fname, pattern) or fnmatch.fnmatch(rel.replace("\\", "/"), pattern):
                 results.append(rel.replace("\\", "/"))
     return "\n".join(sorted(results)) or f"[no files matching {pattern}]"
+
+
+def _grep_files(workspace_path: str, pattern: str, subdir: str = "", include: str = "") -> str:
+    base = Path(workspace_path)
+    if subdir:
+        base = base / _norm_cwd(subdir)
+    if not base.exists():
+        return f"[directory not found: {subdir or '.'}]"
+    needle = str(pattern or "")
+    if not needle:
+        return "[grep: missing pattern]"
+    import fnmatch
+
+    include_pattern = str(include or "*")
+    results: List[str] = []
+    for root, dirs, files in os.walk(base):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("node_modules", "__pycache__", "dist")]
+        for fname in files:
+            rel = os.path.relpath(os.path.join(root, fname), workspace_path).replace("\\", "/")
+            if include and not fnmatch.fnmatch(fname, include_pattern) and not fnmatch.fnmatch(rel, include_pattern):
+                continue
+            full = os.path.join(root, fname)
+            try:
+                with open(full, encoding="utf-8", errors="ignore") as handle:
+                    for line_no, line in enumerate(handle, start=1):
+                        if needle.lower() in line.lower():
+                            results.append(f"{rel}:{line_no}:{line.strip()[:240]}")
+                            if len(results) >= 200:
+                                return "\n".join(results)
+            except OSError:
+                continue
+    return "\n".join(results) or f"[no matches for {needle}]"
 
 
 def _safe_write_runtime(workspace_path: str, rel: str, content: str) -> str:
@@ -203,88 +240,23 @@ async def _execute_run_command(workspace_path: str, tool_input: Dict[str, Any]) 
 
 # ─── Tool definitions for the LLM ─────────────────────────────────────────────
 
-TOOL_DEFINITIONS = [
-    {
-        "name": "read_file",
-        "description": "Read the contents of a file in the workspace.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"path": {"type": "string", "description": "Relative file path"}},
-            "required": ["path"],
-        },
-    },
-    {
-        "name": "list_files",
-        "description": "List files in the workspace or a subdirectory.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"subdir": {"type": "string", "description": "Subdirectory to list (optional)"}},
-        },
-    },
-    {
-        "name": "search_files",
-        "description": "Search for files matching a glob pattern.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"pattern": {"type": "string", "description": "Glob pattern e.g. '*.jsx'"}},
-            "required": ["pattern"],
-        },
-    },
-    {
-        "name": "write_file",
-        "description": "Write content to a file in the workspace (creates or overwrites).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string"},
-                "content": {"type": "string"},
-            },
-            "required": ["path", "content"],
-        },
-    },
-    {
-        "name": "edit_file",
-        "description": "Replace the first occurrence of old_str with new_str in a file.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string"},
-                "old_str": {"type": "string"},
-                "new_str": {"type": "string"},
-            },
-            "required": ["path", "old_str", "new_str"],
-        },
-    },
-    {
-        "name": "run_command",
-        "description": (
-            "Run an allowlisted build/check command inside the workspace (never pass raw shell). "
-            "Use argv as a list, e.g. [\"npm\", \"run\", \"build\"] or [\"python\", \"--version\"]. "
-            "Optional cwd is a path relative to workspace root (subfolder only)."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "argv": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Argv list (no shell), first element is executable",
-                },
-                "cwd": {
-                    "type": "string",
-                    "description": "Working directory relative to workspace (optional)",
-                },
-            },
-            "required": ["argv"],
-        },
-    },
-]
+TOOL_DEFINITIONS = get_claude_code_tool_definitions()
 
-READ_ONLY_TOOLS = {"read_file", "list_files", "search_files"}
-WRITE_TOOLS = {"write_file", "edit_file"}
+READ_ONLY_TOOLS = {"read_file", "list_files", "search_files", "grep_files", "Read", "Glob", "Grep"}
+WRITE_TOOLS = {"write_file", "edit_file", "Write", "Edit"}
 
 
 def _display_tool_name(tool_name: str) -> str:
+    canonical = {
+        "Read": "Read",
+        "Glob": "Glob",
+        "Grep": "Grep",
+        "Write": "Write",
+        "Edit": "Edit",
+        "Bash": "Bash",
+    }.get(str(tool_name or ""))
+    if canonical:
+        return canonical
     return {
         "read_file": "Inspect",
         "list_files": "Inspect",
@@ -296,16 +268,20 @@ def _display_tool_name(tool_name: str) -> str:
 
 
 def _tool_input_label(tool_name: str, tool_input: Dict[str, Any]) -> str:
-    if tool_name == "run_command":
+    normalized = normalize_claude_tool_name(tool_name)
+    runtime_input = claude_tool_input_to_runtime(tool_name, tool_input)
+    if normalized == "run_command":
         argv = tool_input.get("argv") if "argv" in tool_input else tool_input.get("command")
+        if isinstance(argv, str):
+            return argv
         if isinstance(argv, list):
             return " ".join(str(x) for x in argv)
         return str(argv or "")
-    if tool_name == "search_files":
-        return str(tool_input.get("pattern") or "")
-    if tool_name == "list_files":
-        return str(tool_input.get("subdir") or ".")
-    return str(tool_input.get("path") or "")
+    if normalized in {"search_files", "grep_files"}:
+        return str(runtime_input.get("pattern") or "")
+    if normalized == "list_files":
+        return str(runtime_input.get("subdir") or ".")
+    return str(runtime_input.get("path") or "")
 
 
 def _short_result(content: str, limit: int = 4000) -> str:
@@ -341,18 +317,32 @@ async def _emit_runtime_event(
 # ─── Tool executor ────────────────────────────────────────────────────────────
 
 async def _execute_tool(tool_name: str, tool_input: Dict[str, Any], workspace_path: str) -> str:
-    if tool_name == "read_file":
-        return _read_file(workspace_path, tool_input.get("path", ""))
-    elif tool_name == "list_files":
-        return _list_files(workspace_path, tool_input.get("subdir", ""))
-    elif tool_name == "search_files":
-        return _search_files(workspace_path, tool_input.get("pattern", "*"))
-    elif tool_name == "write_file":
-        return _write_file(workspace_path, tool_input.get("path", ""), tool_input.get("content", ""))
-    elif tool_name == "edit_file":
-        return _edit_file(workspace_path, tool_input.get("path", ""), tool_input.get("old_str", ""), tool_input.get("new_str", ""))
-    elif tool_name == "run_command":
-        return await _execute_run_command(workspace_path, tool_input)
+    normalized = normalize_claude_tool_name(tool_name)
+    runtime_input = claude_tool_input_to_runtime(tool_name, tool_input)
+    if normalized == "read_file":
+        return _read_file(workspace_path, runtime_input.get("path", ""))
+    elif normalized == "list_files":
+        return _list_files(workspace_path, runtime_input.get("subdir", ""))
+    elif normalized == "search_files":
+        return _search_files(workspace_path, runtime_input.get("pattern", "*"))
+    elif normalized == "grep_files":
+        return _grep_files(
+            workspace_path,
+            runtime_input.get("pattern", ""),
+            runtime_input.get("subdir", ""),
+            runtime_input.get("include", ""),
+        )
+    elif normalized == "write_file":
+        return _write_file(workspace_path, runtime_input.get("path", ""), runtime_input.get("content", ""))
+    elif normalized == "edit_file":
+        return _edit_file(
+            workspace_path,
+            runtime_input.get("path", ""),
+            runtime_input.get("old_str", ""),
+            runtime_input.get("new_str", ""),
+        )
+    elif normalized == "run_command":
+        return await _execute_run_command(workspace_path, runtime_input)
     else:
         return f"[unknown tool: {tool_name}]"
 
@@ -374,6 +364,7 @@ async def _execute_tools_batch(
     async def _run_one(tool: Dict[str, Any]) -> tuple[str, str]:
         tool_input = tool.get("input", {}) or {}
         tool_name = tool["name"]
+        runtime_input = claude_tool_input_to_runtime(tool_name, tool_input)
         display_name = _display_tool_name(tool_name)
         input_label = _tool_input_label(tool_name, tool_input)
         await _emit_runtime_event(
@@ -385,9 +376,9 @@ async def _execute_tools_batch(
                 "name": display_name,
                 "tool": display_name,
                 "input": input_label,
-                "path": tool_input.get("path"),
-                "pattern": tool_input.get("pattern"),
-                "command": input_label if tool_name == "run_command" else None,
+                "path": runtime_input.get("path"),
+                "pattern": runtime_input.get("pattern"),
+                "command": input_label if normalize_claude_tool_name(tool_name) == "run_command" else None,
             },
         )
         result = await _execute_tool(tool_name, tool_input, workspace_path)
@@ -400,9 +391,9 @@ async def _execute_tools_batch(
                 "name": display_name,
                 "tool": display_name,
                 "input": input_label,
-                "path": tool_input.get("path"),
-                "pattern": tool_input.get("pattern"),
-                "command": input_label if tool_name == "run_command" else None,
+                "path": runtime_input.get("path"),
+                "pattern": runtime_input.get("pattern"),
+                "command": input_label if normalize_claude_tool_name(tool_name) == "run_command" else None,
                 "output": _short_result(result),
                 "success": not str(result).startswith(("[error", "[write rejected", "[edit failed", "[run_command rejected")),
             },
@@ -619,11 +610,11 @@ async def run_text_agent_loop(
 You can use workspace tools by returning ONLY valid JSON:
 {
   "tool_calls": [
-    {"name": "list_files", "input": {"subdir": ""}},
-    {"name": "read_file", "input": {"path": "src/App.jsx"}},
-    {"name": "write_file", "input": {"path": "src/App.jsx", "content": "..."}},
-    {"name": "edit_file", "input": {"path": "src/App.jsx", "old_str": "...", "new_str": "..."}},
-    {"name": "run_command", "input": {"argv": ["npm", "run", "build"]}}
+    {"name": "Glob", "input": {"pattern": "**/*"}},
+    {"name": "Read", "input": {"file_path": "src/App.jsx"}},
+    {"name": "Write", "input": {"file_path": "src/App.jsx", "content": "..."}},
+    {"name": "Edit", "input": {"file_path": "src/App.jsx", "old_string": "...", "new_string": "..."}},
+    {"name": "Bash", "input": {"command": "npm run build"}}
   ],
   "continue": true,
   "final": ""
