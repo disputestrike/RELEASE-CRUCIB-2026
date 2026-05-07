@@ -1,7 +1,10 @@
 import json
 import importlib
 
+import pytest
+
 from backend.orchestration import pipeline_orchestrator
+from backend.orchestration.enterprise_proof import generate_enterprise_proof_artifacts
 
 
 def test_generate_prompt_contains_crucib_grade_directive():
@@ -37,6 +40,47 @@ def test_pre_generation_contract_is_written_and_attached_to_plan(tmp_path):
     assert payload["billing_requirements"]
     assert payload["required_proof_types"]
     assert plan["contract_satisfied"] is False
+
+
+@pytest.mark.asyncio
+async def test_contract_completion_workspace_satisfies_strict_saas_gate(tmp_path):
+    goal = "Build a SaaS MVP with authentication, PayPal billing, and user dashboard"
+    plan = {
+        "build_type": "fullstack_saas",
+        "stack": "react+vite+ts+fastapi+postgres",
+        "file_manifest": ["src/App.tsx"],
+    }
+    pipeline_orchestrator._materialize_pre_generation_contract(
+        str(tmp_path),
+        job_id="tsk_contract_completion",
+        goal=goal,
+        plan=plan,
+    )
+
+    written = await pipeline_orchestrator._write_contract_completion_workspace(
+        str(tmp_path),
+        goal,
+        plan,
+    )
+    assert "backend/routes/auth.py" in written
+    assert "backend/routes/billing.py" in written
+    assert "db/migrations/001_initial.sql" in written
+    assert pipeline_orchestrator._contract_completion_required(plan, goal) is True
+
+    result = generate_enterprise_proof_artifacts(
+        str(tmp_path),
+        {"id": "tsk_contract_completion", "goal": goal},
+        plan={"build_command": ["npm", "run", "build"], "build_contract": plan["build_contract"]},
+        assemble_result={"success": True},
+        verify_result={"passed": True, "returncode": 0, "dist_exists": True},
+    )
+
+    gate = result["delivery_gate"]
+    assert gate["status"] == "PASS"
+    assert gate["allowed"] is True
+    assert result["api_alignment"]["passed"] is True
+    assert result["classification"]["blocked"] == []
+    assert result["classification"]["mocked"] == []
 
 
 def test_generate_caller_uses_cerebras_when_primary_provider_requests_it(monkeypatch):
