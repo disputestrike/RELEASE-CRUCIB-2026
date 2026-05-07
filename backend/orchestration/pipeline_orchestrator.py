@@ -250,8 +250,25 @@ def _make_cerebras_text_caller():
     return _call
 
 
+def _cerebras_primary_requested() -> bool:
+    value = (
+        os.environ.get("PRIMARY_LLM_PROVIDER", "")
+        or os.environ.get("CRUCIB_PRIMARY_LLM", "")
+    ).strip().lower()
+    return value in {"cerebras", "cerebra", "cb"}
+
+
+def _has_cerebras_key() -> bool:
+    if os.environ.get("CEREBRAS_API_KEY", "").strip():
+        return True
+    return any(os.environ.get(f"CEREBRAS_API_KEY_{idx}", "").strip() for idx in range(1, 6))
+
+
 def _pick_generate_caller(use_anthropic: bool = True):
     """Return (caller, loop_type) where loop_type is 'native' or 'text'."""
+    if _cerebras_primary_requested():
+        return _make_cerebras_text_caller(), "text"
+
     claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if use_anthropic and claude_key:
         from backend.anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
@@ -425,19 +442,55 @@ Fix every error. Stop only when the build exits with code 0."""
             "file_count": len(plan.get("file_manifest") or []),
         })
 
-    if loop_type == "native":
-        result = await asyncio.wait_for(
-            run_agent_loop(
+    async def _run_text_fallback(reason: str) -> Dict[str, Any]:
+        if on_progress:
+            await on_progress(
+                "provider_fallback",
+                {"from": "anthropic_native", "to": "cerebras_text", "reason": reason},
+            )
+        fallback_caller = _make_cerebras_text_caller()
+        fallback_result = await asyncio.wait_for(
+            run_text_agent_loop(
                 agent_name="GenerateAgent",
                 system_prompt=_GENERATE_SYSTEM_PROMPT,
                 user_message=user_message,
                 workspace_path=workspace_path,
-                call_llm=caller,
-                max_iterations=GEN_MAX_ITER,
+                call_text_llm=fallback_caller,
+                max_iterations=min(GEN_MAX_ITER, 20),
                 on_event=on_progress,
             ),
             timeout=GEN_TIMEOUT_S,
         )
+        fallback_result["provider_fallback"] = {
+            "from": "anthropic_native",
+            "to": "cerebras_text",
+            "reason": reason,
+        }
+        return fallback_result
+
+    if loop_type == "native":
+        try:
+            result = await asyncio.wait_for(
+                run_agent_loop(
+                    agent_name="GenerateAgent",
+                    system_prompt=_GENERATE_SYSTEM_PROMPT,
+                    user_message=user_message,
+                    workspace_path=workspace_path,
+                    call_llm=caller,
+                    max_iterations=GEN_MAX_ITER,
+                    on_event=on_progress,
+                ),
+                timeout=GEN_TIMEOUT_S,
+            )
+        except Exception as native_error:
+            if not _has_cerebras_key():
+                raise
+            result = await _run_text_fallback(str(native_error)[:240])
+        else:
+            if not (result.get("files_written") or []) and _has_cerebras_key():
+                fallback_result = await _run_text_fallback("native_returned_no_files")
+                if fallback_result.get("files_written") or not result:
+                    result = fallback_result
     else:
         result = await asyncio.wait_for(
             run_text_agent_loop(

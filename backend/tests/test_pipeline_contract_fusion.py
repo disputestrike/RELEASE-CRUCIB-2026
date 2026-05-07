@@ -1,4 +1,5 @@
 import json
+import importlib
 
 from backend.orchestration import pipeline_orchestrator
 
@@ -37,3 +38,30 @@ def test_pre_generation_contract_is_written_and_attached_to_plan(tmp_path):
     assert payload["required_proof_types"]
     assert plan["contract_satisfied"] is False
 
+
+def test_generate_caller_uses_cerebras_when_primary_provider_requests_it(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic-present")
+    monkeypatch.setenv("CEREBRAS_API_KEY", "cerebras-present")
+    monkeypatch.setenv("PRIMARY_LLM_PROVIDER", "cerebras")
+
+    _caller, loop_type = pipeline_orchestrator._pick_generate_caller()
+
+    assert loop_type == "text"
+
+
+def test_cerebras_key_pool_round_robins(monkeypatch):
+    monkeypatch.setenv("CEREBRAS_API_KEY", "key-zero")
+    monkeypatch.setenv("CEREBRAS_API_KEY_1", "key-one")
+    monkeypatch.setenv("CEREBRAS_API_KEY_2", "key-zero")
+
+    import backend.cerebras_roundrobin as roundrobin
+
+    roundrobin = importlib.reload(roundrobin)
+    try:
+        assert roundrobin.get_available_key_count() == 2
+        assert [roundrobin.get_next_cerebras_key_with_index()[1] for _ in range(3)] == [0, 1, 0]
+    finally:
+        monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
+        monkeypatch.delenv("CEREBRAS_API_KEY_1", raising=False)
+        monkeypatch.delenv("CEREBRAS_API_KEY_2", raising=False)
+        importlib.reload(roundrobin)
