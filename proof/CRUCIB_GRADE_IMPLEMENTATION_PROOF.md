@@ -6,7 +6,7 @@ This document proves what is fused into the current app and what the system must
 
 ## Current Verdict
 
-The contract, runtime loop, proof bundle, delivery classification, API alignment gate, and export gate are fused into the active build pipeline. New builds now write proof artifacts into the generated workspace and block strict enterprise/auth/billing/database/compliance delivery when critical paths are mocked, stubbed, blocked, or unwired.
+The contract, runtime loop, proof bundle, delivery classification, API alignment gate, and export gate are fused into the active build pipeline. New builds now materialize a frozen BuildContract before generation, pass that contract into the single tool runtime, write proof artifacts into the generated workspace, and block strict enterprise/auth/billing/database/compliance delivery when critical paths are mocked, stubbed, blocked, or unwired.
 
 The app is not allowed to silently call a critical path enterprise-ready without proof. Missing credentials or external certifications are classified as blocked or mocked rather than faked.
 
@@ -14,7 +14,7 @@ The app is not allowed to silently call a critical path enterprise-ready without
 
 ```text
 python -m py_compile backend/orchestration/enterprise_proof.py backend/orchestration/build_contract.py backend/orchestration/contract_generator.py backend/orchestration/intent_classifier.py backend/orchestration/build_type_blueprints.py backend/orchestration/pipeline_orchestrator.py backend/orchestration/delivery_gate.py
-pytest -q backend/tests/test_enterprise_proof_gate.py backend/tests/test_build_contract_system.py backend/tests/test_delivery_gate_export.py backend/tests/test_intent_contract_website.py backend/tests/test_single_runtime_backend_contract.py backend/tests/test_pipeline_crash_fix.py backend/tests/test_runtime_contract_and_autofix.py backend/tests/test_workspace_contracts.py
+pytest -q backend/tests/test_pipeline_contract_fusion.py backend/tests/test_enterprise_proof_gate.py backend/tests/test_build_contract_system.py backend/tests/test_delivery_gate_export.py backend/tests/test_intent_contract_website.py backend/tests/test_single_runtime_backend_contract.py backend/tests/test_pipeline_crash_fix.py backend/tests/test_runtime_contract_and_autofix.py backend/tests/test_workspace_contracts.py
 npm --prefix frontend run build
 ```
 
@@ -34,6 +34,7 @@ Live /api/health returned 200.
 | Intent analysis | Fused | `backend/orchestration/intent_classifier.py` |
 | Build type classification | Fused | `backend/orchestration/contract_generator.py`, `backend/orchestration/build_type_blueprints.py` |
 | Build contract generation | Fused | `backend/orchestration/build_contract.py`, `backend/orchestration/contract_artifacts.py` |
+| Contract-first runtime input | Fused | `pipeline_orchestrator._materialize_pre_generation_contract` writes `.crucibai/build_contract.json` before generation and injects it into the runtime prompt |
 | Runtime tool loop | Fused | `backend/orchestration/pipeline_orchestrator.py` calls `runtime_engine.run_agent_loop` and `run_text_agent_loop` |
 | File read/write/edit/list/search tools | Fused | `backend/orchestration/runtime_engine.py` |
 | Allowlisted command execution | Fused | `backend/orchestration/runtime_engine.py`, `backend/tool_executor.py` |
@@ -188,6 +189,8 @@ Strict builds block completion when critical features such as auth, billing, dat
 If the enterprise gate says `allowed: false`, export returns a blocking error instead of handing the user an unverified ZIP.
 
 ## What Is Intentionally Not Claimed
+
+The repository still contains older planner/DAG modules for compatibility and tests. The active job creation, plan, run-auto, resume, and pipeline paths select `single_tool_runtime`; the older DAG modules are not the supported build backend.
 
 The system does not claim:
 

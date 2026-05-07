@@ -117,8 +117,26 @@ REPAIR_MAX_ITER  = int(os.environ.get("CRUCIBAI_REPAIR_MAX_ITER", "20"))
 
 # ─── System prompt for the generate agent ────────────────────────────────────
 
+_CRUCIB_GRADE_DIRECTIVE = """\
+CRUCIB-GRADE BUILD STANDARD:
+- You are not a chat assistant, UI generator, or prototype generator.
+- Convert the user's lawful software request into a complete working system.
+- Behavior beats artifacts: a button, route, Dockerfile, auth screen, or billing page is not complete unless it is wired and proven.
+- Before and during generation, obey the frozen BuildContract. Do not silently reduce scope.
+- Generate full stack structure when the request requires it: frontend, backend, database/migrations, tests, docs, deployment, runtime, and proof.
+- Do not fake critical paths: auth, billing, checkout, subscription status, tenant isolation, admin permission, audit logs, file upload, email, webhooks, background jobs, AI actions, data persistence, core CRUD, export, and deployment.
+- If credentials or external accounts are unavailable, build the complete test-mode/provider abstraction, persist state, document the blocker, and never pretend live production behavior.
+- Every frontend API call must map to a real backend route. Protected routes must enforce auth. Admin routes must enforce role checks. Billing webhooks must verify signatures.
+- Security baseline: password hashing/session validation when auth is required, RBAC, input validation, CORS/security headers, rate limiting where applicable, secret redaction, safe errors, audit logging, and env validation.
+- Serious/regulated domains require readiness artifacts for security, compliance, control mapping, data flows, risk, retention, incident response, and vendor risk without claiming external certification.
+- Run install/build/tests where available, parse failures as data, repair root causes, rerun checks, and leave proof artifacts.
+- Final delivery may only be treated as successful when the delivery gate passes. Otherwise classify failed, blocked, mocked, stubbed, or unverified work honestly.
+"""
+
 _GENERATE_SYSTEM_PROMPT = """\
 You are CrucibAI's master builder agent. You build complete, production-ready applications from scratch.
+
+{crucib_grade_directive}
 
 YOUR MISSION:
 Build the entire application described in the goal. Do not stop until ALL of the following are true:
@@ -179,10 +197,12 @@ PACKAGE.JSON RULES:
 - Include `@types/react` and `@types/react-dom` in devDependencies
 
 A scaffold has already been written to the workspace with a working package.json, vite.config.ts, and entry point. Start by reading these files, then build on top of them.
-"""
+""".replace("{crucib_grade_directive}", _CRUCIB_GRADE_DIRECTIVE)
 
 _REPAIR_SYSTEM_PROMPT = """\
 You are CrucibAI's repair agent. The build failed and you need to fix it.
+
+{crucib_grade_directive}
 
 Your job:
 1. Read the build error output provided
@@ -194,7 +214,7 @@ Your job:
 Do NOT rewrite working files. Make surgical fixes only.
 Prioritize: missing imports → type errors → missing files → config issues.
 When the build passes, output a short summary of what you fixed.
-"""
+""".replace("{crucib_grade_directive}", _CRUCIB_GRADE_DIRECTIVE)
 
 
 # ─── LLM caller factories ─────────────────────────────────────────────────────
@@ -316,6 +336,32 @@ async def _stage_plan(goal: str) -> Dict[str, Any]:
     return plan
 
 
+def _materialize_pre_generation_contract(
+    workspace_path: str,
+    *,
+    job_id: str,
+    goal: str,
+    plan: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Freeze the BuildContract before the runtime writes product files."""
+
+    from backend.orchestration.contract_artifacts import persist_contract_artifacts
+
+    contract_result = persist_contract_artifacts(
+        workspace_path,
+        {
+            "id": job_id,
+            "goal": goal,
+            "build_target": plan.get("crucib_build_target") or plan.get("build_target"),
+        },
+    )
+    contract = contract_result.get("contract_dict") or {}
+    plan["build_contract"] = contract
+    plan["contract_missing"] = contract_result.get("missing") or {}
+    plan["contract_satisfied"] = bool(contract_result.get("satisfied"))
+    return contract
+
+
 # ─── Stage 2: Generate ────────────────────────────────────────────────────────
 
 async def _stage_generate(
@@ -330,6 +376,11 @@ async def _stage_generate(
     manifest_text = "\n".join(plan.get("file_manifest") or [])
     build_cmd = " ".join(_command_argv(plan.get("build_command"), ["npm", "run", "build"]))
     install_cmd = " ".join(_command_argv(plan.get("install_command"), ["npm", "install"]))
+    contract_text = json.dumps(
+        plan.get("build_contract") or {},
+        indent=2,
+        sort_keys=True,
+    )
 
     # Enrich goal with detected intent + requirements before passing to agent
     enriched_goal = goal
@@ -348,6 +399,16 @@ async def _stage_generate(
 Stack: {plan.get("stack", "react+vite+ts")}
 Build command: {build_cmd}
 Install command: {install_cmd}
+
+## Frozen BuildContract (mandatory)
+Build to satisfy this contract. If the contract requires auth, billing, database,
+backend, compliance, deployment, or proof, generate real wired subsystems or a
+clearly blocked/test-mode structure with proof. Do not silently downgrade to a
+static placeholder site.
+
+```json
+{contract_text}
+```
 
 ## File Manifest (every file you must write)
 {manifest_text}
@@ -831,6 +892,25 @@ async def run_pipeline_job(
                 await _emit("workspace_foundation_ready", {"app_name": app_name, "files": len(scaffold_files)})
             except Exception as _se:
                 logger.warning("pipeline[%s] scaffold injection failed (non-fatal): %s", job_id, _se)
+
+        try:
+            contract = _materialize_pre_generation_contract(
+                workspace_path,
+                job_id=job_id,
+                goal=goal,
+                plan=plan,
+            )
+            await _emit("build_contract_ready", {
+                "build_class": contract.get("build_class"),
+                "required_routes": contract.get("required_routes") or [],
+                "required_api_endpoints": contract.get("required_api_endpoints") or [],
+                "required_database_tables": contract.get("required_database_tables") or [],
+                "required_proof_types": contract.get("required_proof_types") or [],
+                "status": contract.get("status"),
+            })
+        except Exception as contract_error:
+            logger.exception("pipeline[%s] pre-generation contract failed: %s", job_id, contract_error)
+            await _emit("build_contract_failed", {"error": str(contract_error)[:500]})
 
         await _emit("stage_started", {"stage": "generate", "label": "Writing files"})
         logger.info("pipeline[%s] stage=2/generate (%d files)", job_id, len(plan.get("file_manifest") or []))
