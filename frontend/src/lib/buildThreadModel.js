@@ -45,6 +45,18 @@ const parseTs = (event) => {
 
 const text = (value) => String(value || '').trim();
 
+const toArray = (value, keys = []) => {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  const candidates = [...keys, 'items', 'events', 'steps', 'messages', 'data', 'results'];
+  for (const key of candidates) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+  const values = Object.values(value);
+  if (values.length && values.every((item) => item && typeof item === 'object')) return values;
+  return [];
+};
+
 const compact = (value, max = 240) => {
   const s = text(value).replace(/\s+/g, ' ');
   if (s.length <= max) return s;
@@ -59,7 +71,7 @@ const titleCase = (value) =>
 const firstOf = (...values) => values.map(text).find(Boolean) || '';
 
 const filterEventsForJob = (events, activeJobId) =>
-  (events || []).filter((ev) => {
+  toArray(events, ['events']).filter((ev) => {
     if (!ev) return false;
     if (!activeJobId) return true;
     const evJob = ev.job_id || ev.jobId || readPayload(ev).job_id || readPayload(ev).jobId;
@@ -459,7 +471,7 @@ export function buildThreadModel({ userMessages = [], events = [], activeJobId =
   const newId = (prefix) => `${prefix}_${idCounter.n++}`;
 
   const filteredEvents = filterEventsForJob(events, activeJobId);
-  const userMsgs = (userMessages || [])
+  const userMsgs = toArray(userMessages, ['messages'])
     .filter((m) => !activeJobId || !m?.jobId || m.jobId === activeJobId)
     .filter((m) => text(m?.body).length > 0)
     .map((m) => ({
@@ -655,4 +667,5 @@ export const __test__ = {
   toolBlockForEvent,
   collapseProgressGroups,
   filterEventsForJob,
+  toArray,
 };

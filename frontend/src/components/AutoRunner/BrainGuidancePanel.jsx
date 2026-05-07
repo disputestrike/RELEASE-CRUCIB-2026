@@ -57,7 +57,8 @@ const looksLikeCode = (value) => {
 
 function ToolResult({ text, detail }) {
   const { preview, overflow } = compactText(text);
-  if (!preview && !detail?.length) return null;
+  const detailLines = Array.isArray(detail) ? detail : detail ? [String(detail)] : [];
+  if (!preview && !detailLines.length) return null;
   return (
     <>
       {preview ? (
@@ -67,13 +68,13 @@ function ToolResult({ text, detail }) {
           <div className="cc-tool-result">{preview}</div>
         )
       ) : null}
-      {(overflow || detail?.length) ? (
+      {(overflow || detailLines.length) ? (
         <details className="cc-tool-details">
           <summary>Details</summary>
           {overflow ? <pre>{overflow}</pre> : null}
-          {detail?.length ? (
+          {detailLines.length ? (
             <div className="cc-tool-detail-stack">
-              {detail.map((line, i) => (
+              {detailLines.map((line, i) => (
                 <div key={`${line}-${i}`}>{line}</div>
               ))}
             </div>
@@ -204,6 +205,7 @@ function ToolUseBlock({ item, defaultOpen = false }) {
 function ToolGroup({ item }) {
   const [open, setOpen] = useState(false);
   const tool = item.tool || 'Progress';
+  const children = Array.isArray(item.children) ? item.children : [];
   return (
     <div className={`cc-tool cc-tool--${item.status || 'success'}`}>
       <button type="button" className="cc-tool-head" onClick={() => setOpen((v) => !v)}>
@@ -215,7 +217,7 @@ function ToolGroup({ item }) {
       </button>
       {open ? (
         <div className="cc-tool-body cc-tool-body--stack">
-          {item.children.map((child) => (
+          {children.map((child) => (
             <ToolUseBlock key={child.id} item={child} />
           ))}
         </div>
@@ -225,6 +227,7 @@ function ToolGroup({ item }) {
 }
 
 function TodoList({ item }) {
+  const steps = Array.isArray(item.steps) ? item.steps : [];
   return (
     <div className="cc-tool cc-tool--todo">
       <div className="cc-tool-head cc-tool-head--static">
@@ -232,7 +235,7 @@ function TodoList({ item }) {
         <span className="cc-tool-name">{item.title}</span>
       </div>
       <ul className="cc-todo-list">
-        {item.steps.map((step) => {
+        {steps.map((step) => {
           const done = ['completed', 'success', 'done'].includes(String(step.status || '').toLowerCase());
           const running = ['running', 'in_progress', 'active'].includes(String(step.status || '').toLowerCase());
           return (

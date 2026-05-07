@@ -82,6 +82,18 @@ function compactCount(value) {
   return String(n);
 }
 
+function toArray(value, keys = []) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  const candidates = [...keys, 'items', 'events', 'steps', 'messages', 'files', 'paths', 'targets', 'data'];
+  for (const key of candidates) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+  const values = Object.values(value);
+  if (values.length && values.every((item) => item && typeof item === 'object')) return values;
+  return [];
+}
+
 function PaneButton({ pane, active, onClick }) {
   const Icon = PANE_ICONS[pane] || Box;
   return (
@@ -167,7 +179,18 @@ export default function ClaudeCodeWorkspace({
   navigate,
 }) {
   const stateLabel = jobStateLabel({ job, stage, loading });
-  const filteredUserMessages = (userChatMessages || []).filter(
+  const safeUserMessages = toArray(userChatMessages, ['messages']);
+  const safeEvents = toArray(events, ['events']);
+  const safeSteps = toArray(steps, ['steps']);
+  const safeWsPaths = toArray(wsPaths, ['files', 'paths'])
+    .map((path) => (typeof path === 'string' ? path : path?.path || path?.name || ''))
+    .filter(Boolean);
+  const safeBuildTargets = toArray(buildTargets, ['targets']);
+  const safeRightPanes = toArray(visibleRightPanes)
+    .map((pane) => String(pane || '').trim().toLowerCase())
+    .filter((pane) => PANE_LABELS[pane]);
+  const panesToRender = safeRightPanes.length ? safeRightPanes : ['preview', 'live', 'proof', 'code'];
+  const filteredUserMessages = safeUserMessages.filter(
     (m) => !m.jobId || !effectiveJobId || m.jobId === effectiveJobId,
   );
   const hasSandpack = Boolean(sandpackFiles && Object.keys(sandpackFiles).length > 0);
@@ -213,10 +236,10 @@ export default function ClaudeCodeWorkspace({
             </div>
             <div className="ccw-header-actions">
               <span className="ccw-counter" title="Rendered runtime events">
-                {compactCount(events?.length)} events
+                {compactCount(safeEvents.length)} events
               </span>
               <span className="ccw-counter" title="Workspace paths loaded">
-                {compactCount(wsPaths?.length)} files
+                {compactCount(safeWsPaths.length)} files
               </span>
               <button type="button" className="ccw-icon-btn" title="Sync workspace" onClick={reloadWorkspaceFromServer} disabled={!canSync}>
                 <RefreshCw size={15} />
@@ -235,7 +258,7 @@ export default function ClaudeCodeWorkspace({
           <section className="ccw-transcript" aria-label="Runtime transcript">
             <BrainGuidancePanel
               userMessages={filteredUserMessages}
-              events={events}
+              events={safeEvents}
               jobStatus={job?.status}
               jobId={effectiveJobId || null}
               previewUrl={previewUrl}
@@ -270,7 +293,7 @@ export default function ClaudeCodeWorkspace({
               authLoading={authLoading}
               buildTarget={buildTarget}
               onBuildTargetChange={setBuildTarget}
-              buildTargets={buildTargets}
+              buildTargets={safeBuildTargets}
               showExecutionTargets={false}
               showContinuation={false}
               showQuickChips={false}
@@ -333,15 +356,15 @@ export default function ClaudeCodeWorkspace({
                   connectionMode={connectionMode}
                   activeAgentCount={activeAgentCount}
                   jobStatus={job?.status}
-                  steps={steps}
+                  steps={safeSteps}
                   healthLatencyMs={healthMs}
-                  eventCount={events.length}
+                  eventCount={safeEvents.length}
                   proofItemCount={proofItemCount}
                 />
               </div>
 
               <nav className="ccw-pane-tabs" aria-label="Artifact panes">
-                {visibleRightPanes.map((pane) => (
+                {panesToRender.map((pane) => (
                   <PaneButton
                     key={pane}
                     pane={pane}
@@ -365,20 +388,20 @@ export default function ClaudeCodeWorkspace({
                     token={token}
                     apiBase={apiBase}
                     jobStatus={job?.status}
-                    events={events}
+                    events={safeEvents}
                   />
                 )}
                 {activePane === 'live' && (
                   <WorkspaceLiveControl
                     job={job}
                     stage={stage}
-                    steps={steps}
-                    events={events}
+                    steps={safeSteps}
+                    events={safeEvents}
                     proof={proof}
                     previewStatus={previewStatus}
                     previewUrl={previewUrl}
                     hasSandpack={hasSandpack}
-                    workspacePathCount={wsPaths.length}
+                    workspacePathCount={safeWsPaths.length}
                     latestFailure={latestFailure}
                     blockedDetail={previewBlockedDetail}
                     connectionMode={connectionMode}
@@ -394,8 +417,8 @@ export default function ClaudeCodeWorkspace({
                 )}
                 {activePane === 'timeline' && (
                   <ExecutionTimeline
-                    steps={steps}
-                    events={events}
+                    steps={safeSteps}
+                    events={safeEvents}
                     job={job}
                     onRetryStep={handleRetryStep}
                     onJumpToCode={jumpStepToCode}
@@ -431,13 +454,13 @@ export default function ClaudeCodeWorkspace({
                     jobId={effectiveJobId}
                     projectId={effectiveProjectId}
                     token={token}
-                    events={events}
+                    events={safeEvents}
                     proof={proof}
                   />
                 )}
                 {activePane === 'explorer' && uxMode === 'pro' && (
                   <SystemExplorer
-                    steps={steps}
+                    steps={safeSteps}
                     proof={proof}
                     job={job}
                     projectId={effectiveProjectId}
@@ -445,7 +468,7 @@ export default function ClaudeCodeWorkspace({
                     openWorkspacePath={openWorkspacePath}
                   />
                 )}
-                {activePane === 'replay' && uxMode === 'pro' && <BuildReplay events={events} steps={steps} />}
+                {activePane === 'replay' && uxMode === 'pro' && <BuildReplay events={safeEvents} steps={safeSteps} />}
                 {activePane === 'failure' && (
                   failureStep ? (
                     <FailureDrawer
@@ -474,11 +497,11 @@ export default function ClaudeCodeWorkspace({
                           <span>{zipBusy ? 'Preparing...' : 'Download workspace'}</span>
                         </button>
                       ) : null}
-                      <span>{wsPaths.length ? `${wsPaths.length} paths` : 'No file list yet'}</span>
+                      <span>{safeWsPaths.length ? `${safeWsPaths.length} paths` : 'No file list yet'}</span>
                     </div>
                     <div className="ccw-code-main">
                       <WorkspaceFileTree
-                        paths={wsPaths}
+                        paths={safeWsPaths}
                         selectedPath={activeWsPath}
                         onSelectPath={(path) => {
                           setActiveWsPath(path);

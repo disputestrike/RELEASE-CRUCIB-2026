@@ -40,6 +40,8 @@ try:
         post_generate_audit,
         build_repair_hint,
         brand_css_file,
+        node_workspace_env,
+        resolve_node_command,
     )
     _RELIABILITY_AVAILABLE = True
 except ImportError:
@@ -47,6 +49,23 @@ except ImportError:
     logger.warning("build_reliability not available — running without reliability layer")
 
 # ─── Pipeline feature flag ────────────────────────────────────────────────────
+
+if "node_workspace_env" not in globals():
+    def node_workspace_env(extra_path: Optional[str] = None) -> Dict[str, str]:
+        env = os.environ.copy()
+        env["NODE_ENV"] = "development"
+        env["NPM_CONFIG_PRODUCTION"] = "false"
+        env["npm_config_production"] = "false"
+        env["CI"] = "false"
+        if extra_path:
+            env["PATH"] = f"{extra_path}{os.pathsep}{env.get('PATH', '')}"
+        return env
+
+
+if "resolve_node_command" not in globals():
+    def resolve_node_command(cmd: List[str]) -> List[str]:
+        return cmd
+
 
 def pipeline_enabled() -> bool:
     """The single tool runtime is the only supported build backend."""
@@ -398,15 +417,79 @@ Fix every error. Stop only when the build exits with code 0."""
 
 # ─── Stage 3: Assemble ────────────────────────────────────────────────────────
 
+def _plan_build_target(plan: Dict[str, Any]) -> str:
+    raw = (
+        plan.get("crucib_build_target")
+        or plan.get("build_target")
+        or plan.get("target")
+        or plan.get("build_type")
+        or "vite_react"
+    )
+    target = str(raw or "vite_react").strip().lower()
+    if target in {"saas_app", "dashboard", "ecommerce", "fullstack_web", "other"}:
+        return "vite_react"
+    return target or "vite_react"
+
+
+async def _write_deterministic_workspace(
+    workspace_path: str,
+    goal: str,
+    plan: Dict[str, Any],
+    on_progress=None,
+) -> List[str]:
+    """Write a complete local app when the model provider returns no files."""
+    try:
+        from backend.orchestration.generated_app_template import build_frontend_file_set
+    except Exception as exc:
+        logger.warning("pipeline deterministic workspace template unavailable: %s", exc)
+        return []
+
+    ws = Path(workspace_path)
+    ws.mkdir(parents=True, exist_ok=True)
+    job_like = {
+        "id": "deterministic",
+        "goal": goal,
+        "prompt": goal,
+        "build_target": _plan_build_target(plan),
+        "requirements": {"prompt": goal},
+    }
+    files = build_frontend_file_set(job_like)
+    written: List[str] = []
+    for rel_path, content in files:
+        rel = str(rel_path).replace("\\", "/").lstrip("/")
+        if not rel or rel.startswith("../"):
+            continue
+        full_path = ws / rel
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.write_text(str(content), encoding="utf-8")
+        written.append(rel)
+        if on_progress and len(written) <= 40:
+            await on_progress("file_written", {
+                "path": rel,
+                "summary": "Workspace file saved.",
+            })
+
+    if written and on_progress:
+        await on_progress("workspace_files_updated", {
+            "files": written[:120],
+            "count": len(written),
+            "summary": "Generated a complete workspace from the request so preview and proof can continue.",
+        })
+    logger.info("pipeline deterministic workspace wrote %d files", len(written))
+    return written
+
+
 def _run_command_sync(argv: List[str], cwd: str, timeout: float = 120.0) -> tuple:
     """Run a command synchronously. Returns (returncode, stdout, stderr)."""
     try:
+        bin_path = str(Path(cwd) / "node_modules" / ".bin")
         proc = subprocess.run(
-            argv,
+            resolve_node_command(argv),
             cwd=cwd,
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=node_workspace_env(bin_path),
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired:
@@ -752,11 +835,23 @@ async def run_pipeline_job(
         await _emit("stage_started", {"stage": "generate", "label": "Writing files"})
         logger.info("pipeline[%s] stage=2/generate (%d files)", job_id, len(plan.get("file_manifest") or []))
         gen_result = await _stage_generate(goal, plan, workspace_path, on_progress=_progress)
+        if not (gen_result.get("files_written") or []):
+            local_files = await _write_deterministic_workspace(
+                workspace_path,
+                goal,
+                plan,
+                on_progress=_progress,
+            )
+            if local_files:
+                gen_result["files_written"] = local_files
+                gen_result["local_generation"] = True
+                gen_result["local_generation_reason"] = "model_provider_returned_no_files"
         stages_completed.append("generate")
         await _emit("stage_completed", {
             "stage": "generate",
             "iterations": gen_result.get("iterations"),
             "files_written": len(gen_result.get("files_written") or []),
+            "local_generation": bool(gen_result.get("local_generation")),
         })
 
         # Cancel/pause gate

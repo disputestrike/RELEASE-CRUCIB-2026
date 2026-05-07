@@ -23,6 +23,18 @@ import './Sidebar.css';
 
 const DISMISSED_PROJECT_IDS_KEY = 'crucibai_sidebar_dismissed_project_ids';
 
+function toArray(value, keys = []) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  const candidates = [...keys, 'items', 'tasks', 'projects', 'data', 'results'];
+  for (const key of candidates) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+  const values = Object.values(value);
+  if (values.length && values.every((item) => item && typeof item === 'object')) return values;
+  return [];
+}
+
 function readDismissedProjectIds() {
   try {
     const raw = sessionStorage.getItem(DISMISSED_PROJECT_IDS_KEY);
@@ -180,7 +192,11 @@ export const Sidebar = ({
 
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for ordering
   const listItems = useMemo(() => {
-    const fromStore = (storeTasks.length > 0 ? storeTasks : propTasks || []).slice(0, 200).map(t => ({
+    const safeStoreTasks = toArray(storeTasks, ['tasks']);
+    const safePropTasks = toArray(propTasks, ['tasks']);
+    const safeProjects = toArray(projects, ['projects']);
+    const taskSource = safeStoreTasks.length > 0 ? safeStoreTasks : safePropTasks;
+    const fromStore = taskSource.slice(0, 200).map(t => ({
       id: t.id,
       name: t.name || 'Task',
       status: t.status || 'pending',
@@ -201,7 +217,7 @@ export const Sidebar = ({
       const nextTs = Number(task.createdAt || 0);
       if (!prev || nextTs >= prevTs) latestTaskByProject.set(task.linkedProjectId, task);
     }
-    const fromProjects = (projects || [])
+    const fromProjects = safeProjects
       .filter((p) => p && !dismissedProjectSet.has(p.id))
       .map((p) => {
         const linked = latestTaskByProject.get(p.id) || null;

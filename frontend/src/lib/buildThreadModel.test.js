@@ -56,3 +56,18 @@ test('deriveCurrentActivity reports the active tool rather than a generic loop p
     status: 'running',
   });
 });
+
+test('accepts API envelopes without crashing the workspace transcript', () => {
+  const items = buildThreadModel({
+    activeJobId: 'job-1',
+    userMessages: { messages: [{ id: 'u1', role: 'user', body: 'Build storefront', ts: 1, jobId: 'job-1' }] },
+    events: {
+      events: [
+        ev('workspace_files_updated', { files: ['src/App.jsx'], summary: 'Files saved' }, '2026-05-03T12:00:01.000Z'),
+      ],
+    },
+  });
+
+  expect(items[0]).toMatchObject({ kind: 'user_message', content: 'Build storefront' });
+  expect(items.some((item) => item.kind === 'tool_use' && item.tool === 'Files')).toBe(true);
+});

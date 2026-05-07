@@ -42,8 +42,8 @@ export async function fetchAllWorkspaceFilePaths(listUrl, headers, pageSize = 50
   while (guard < maxPages) {
     guard += 1;
     const r = await axios.get(listUrl, { headers, params: { offset, limit: pageSize } });
-    const batch = r.data?.files;
-    if (!Array.isArray(batch)) break;
+    const batch = toArray(r.data, ['files']);
+    if (!batch.length) break;
     for (const row of batch) {
       if (typeof row === 'string') all.push(normalizeWorkspacePath(row));
       else if (row && typeof row.path === 'string') all.push(normalizeWorkspacePath(row.path));
@@ -55,13 +55,23 @@ export async function fetchAllWorkspaceFilePaths(listUrl, headers, pageSize = 50
   return [...new Set(all.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+function toArray(value, keys = []) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  const candidates = [...keys, 'items', 'events', 'steps', 'files', 'data'];
+  for (const key of candidates) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+  return [];
+}
+
 /**
  * Last writer per path from real dag_node_completed events + step roster (no fabricated mapping).
  */
 export function buildTraceIndexFromEvents(events, steps) {
   const byPath = {};
-  const stepById = new Map((steps || []).map((s) => [String(s.id), s]));
-  const ordered = [...(events || [])].sort((a, b) => {
+  const stepById = new Map(toArray(steps, ['steps']).map((s) => [String(s.id), s]));
+  const ordered = toArray(events, ['events']).sort((a, b) => {
     const ta = new Date(a.ts || a.created_at || 0).getTime();
     const tb = new Date(b.ts || b.created_at || 0).getTime();
     return ta - tb;

@@ -26,12 +26,37 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+def node_workspace_env(extra_path: Optional[str] = None) -> Dict[str, str]:
+    """Environment for generated app installs/builds inside production hosts."""
+    env = os.environ.copy()
+    env["NODE_ENV"] = "development"
+    env["NPM_CONFIG_PRODUCTION"] = "false"
+    env["npm_config_production"] = "false"
+    env["CI"] = "false"
+    if extra_path:
+        env["PATH"] = f"{extra_path}{os.pathsep}{env.get('PATH', '')}"
+    return env
+
+
+def resolve_node_command(cmd: List[str]) -> List[str]:
+    """Resolve npm/npx/node shims on Windows while preserving Linux behavior."""
+    if not cmd:
+        return cmd
+    head = str(cmd[0])
+    if head.lower() in {"npm", "npx", "node"}:
+        resolved = shutil.which(head) or shutil.which(f"{head}.cmd")
+        if resolved:
+            return [resolved, *cmd[1:]]
+    return cmd
 
 
 # ── 1. App name extraction ────────────────────────────────────────────────────
@@ -250,19 +275,21 @@ def npm_install_with_retry(workspace_path: str, timeout: float = 180.0) -> Tuple
     Returns (returncode, stdout, stderr) from the first passing run.
     """
     strategies = [
-        ["npm", "install"],
-        ["npm", "install", "--legacy-peer-deps"],
-        ["npm", "install", "--force"],
+        ["npm", "install", "--include=dev", "--no-fund", "--no-audit"],
+        ["npm", "install", "--include=dev", "--legacy-peer-deps", "--no-fund", "--no-audit"],
+        ["npm", "install", "--include=dev", "--force", "--no-fund", "--no-audit"],
     ]
+    env = node_workspace_env()
     last_result = (1, "", "No strategies tried")
     for cmd in strategies:
         try:
             proc = subprocess.run(
-                cmd,
+                resolve_node_command(cmd),
                 cwd=workspace_path,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                env=env,
             )
             if proc.returncode == 0:
                 logger.info("npm install success with: %s", " ".join(cmd))

@@ -50,15 +50,28 @@ function normalizeProofPayload(data, jobId) {
   };
 }
 
+function arrayFromPayload(data, keys = []) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+  const candidates = [...keys, 'items', 'events', 'steps', 'messages', 'data', 'results'];
+  for (const key of candidates) {
+    if (Array.isArray(data[key])) return data[key];
+  }
+  const values = Object.values(data);
+  if (values.length && values.every((item) => item && typeof item === 'object')) return values;
+  return [];
+}
+
 function handleStreamPayload(data, jobId, token, setters) {
   const { setEvents, setSteps, setProof, setJob, setLatestFailure, fetchJobState, fetchCheckpoints } = setters;
   if (!data || !data.type || data.type === 'heartbeat') return;
 
   setEvents((prev) => {
+    const safePrev = Array.isArray(prev) ? prev : [];
     const id = data.id ?? `${data.type}-${data.step_id ?? ''}-${data.ts ?? ''}-${JSON.stringify(data.payload || {}).slice(0, 80)}`;
-    const exists = prev.some((e) => (e.id ?? '') === id);
-    if (exists) return prev;
-    return [...prev, { ...data, id }];
+    const exists = safePrev.some((e) => (e.id ?? '') === id);
+    if (exists) return safePrev;
+    return [...safePrev, { ...data, id }];
   });
 
   if (
@@ -70,7 +83,7 @@ function handleStreamPayload(data, jobId, token, setters) {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
       .get(`${API_BASE}/jobs/${jobId}/steps`, { headers })
-      .then((r) => setSteps(r.data?.steps || []))
+      .then((r) => setSteps(arrayFromPayload(r.data, ['steps'])))
       .catch(() => {});
     if (data.type === 'step_completed' || data.type === 'step_failed') {
       axios
@@ -170,8 +183,8 @@ export function useJobStream(jobId, token) {
         setJob(d?.job ?? d);
         setLatestFailure(d?.latest_failure ?? null);
       }
-      if (stepsRes.status === 'fulfilled') setSteps(stepsRes.value.data?.steps || []);
-      if (eventsRes.status === 'fulfilled') setEvents(eventsRes.value.data?.events || []);
+      if (stepsRes.status === 'fulfilled') setSteps(arrayFromPayload(stepsRes.value.data, ['steps']));
+      if (eventsRes.status === 'fulfilled') setEvents(arrayFromPayload(eventsRes.value.data, ['events']));
       if (proofRes.status === 'fulfilled') {
         setProof(normalizeProofPayload(proofRes.value.data, jobId));
       } else {
