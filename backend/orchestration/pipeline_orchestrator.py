@@ -672,7 +672,7 @@ export default defineConfig({
 }
 """,
         ".env.example": """VITE_API_BASE_URL=/api
-JWT_SECRET=change-me
+JWT_SECRET=replace-with-32-byte-minimum-jwt-secret
 DATABASE_URL=postgresql://crucibai:crucibai@db:5432/crucibai
 PAYPAL_CLIENT_ID=configure-paypal-client-id
 PAYPAL_CLIENT_SECRET=configure-paypal-client-secret
@@ -1032,7 +1032,7 @@ import jwt
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer = HTTPBearer(auto_error=False)
-JWT_SECRET = os.getenv("JWT_SECRET", "development-secret-change-me")
+JWT_SECRET = os.getenv("JWT_SECRET", "development-secret-change-me-32-byte-minimum")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
